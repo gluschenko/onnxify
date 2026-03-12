@@ -20,6 +20,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Google.Protobuf" Version="3.34.0" />
+		<PackageReference Include="TorchSharp" Version="0.106.0" />
 	</ItemGroup>
 
 </Project>
