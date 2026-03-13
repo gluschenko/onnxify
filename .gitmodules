@@ -6,3 +6,6 @@
 	path = third_party/protobuf
 	url = https://github.com/protocolbuffers/protobuf.git
 	branch = 34.x
+[submodule "third_party/json"]
+	path = third_party/json
+	url = https://github.com/nlohmann/json.git
