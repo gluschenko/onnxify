@@ -19,7 +19,17 @@ int main()
 
     for (const auto& schema : schemas)
     {
-        if (schema.Name() != "Conv") {
+        if (
+            schema.Name() != "Conv" && 
+            schema.Name() != "Clip" && 
+            schema.Name() != "Add" && 
+            schema.Name() != "Shape" &&
+            schema.Name() != "Gather" &&
+            schema.Name() != "GlobalAveragePool" &&
+            schema.Name() != "Reshape" &&
+            schema.Name() != "Gemm" &&
+            schema.Name() != "Unsqueeze"
+        ) {
             continue;
         }
 
