@@ -178,7 +178,7 @@ namespace Onnxify.ConsoleTest
                 OpType = "Conv",
                 Name = "conv2",
                 Input = { "pool1_out", "conv2_w", "conv2_b" },
-                Output = { "conv2_out" }
+                Output = { "conv2_out" },
             });
 
             graph.Node.Add(new NodeProto
