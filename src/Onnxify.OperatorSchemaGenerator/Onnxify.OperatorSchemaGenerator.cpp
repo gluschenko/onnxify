@@ -6,6 +6,7 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <nlohmann/json_fwd.hpp>
+#include <filesystem>
 
 using namespace std;
 using json = nlohmann::json;
@@ -93,7 +94,10 @@ int main()
     std::cout << "Total operators: " << schemas.size() << "\n\n";
     std::cout << root.dump(4) << std::endl;
 
-    std::ofstream file("onnx_operators.json");
+    std::filesystem::path path = "../../../../Onnxify/Assets/onnx_operators.json";
+    std::filesystem::create_directories(path.parent_path());
+
+    std::ofstream file(path);
     file << root.dump(4);
     file.close();
     

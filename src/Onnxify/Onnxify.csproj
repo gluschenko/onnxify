@@ -30,4 +30,14 @@
 		<PackageReference Include="TorchSharp" Version="0.106.0" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <ProjectReference Include="..\Onnxify.Abstractions\Onnxify.Abstractions.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Update="Assets\**">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+
 </Project>

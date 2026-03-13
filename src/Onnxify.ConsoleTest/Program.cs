@@ -26,6 +26,14 @@ namespace Onnxify.ConsoleTest
             Console.ReadKey();
         }
 
+        static void AA()
+        {
+            var inputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "bvlcalexnet-12-qdq.onnx");
+            var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "bvlcalexnet-12-qdq__.onnx");
+
+
+        }
+
         static void A()
         {
             Console.WriteLine("A");
@@ -55,13 +63,13 @@ namespace Onnxify.ConsoleTest
 
             var inputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "bvlcalexnet-12-qdq.onnx");
             var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "bvlcalexnet-12-qdq__.onnx");
-            var textOutputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "bvlcalexnet-12-qdq.txt");
+            var outputPath2 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "bvlcalexnet-12-qdq.txt");
 
             var data = File.ReadAllBytes(inputPath);
             var model = ModelProto.Parser.ParseFrom(data);
 
             var text = model.Graph.ToString();
-            File.WriteAllTextAsync(textOutputPath, text);
+            File.WriteAllTextAsync(outputPath2, text);
 
             using (var fs = File.Create(outputPath))
             {
@@ -74,7 +82,7 @@ namespace Onnxify.ConsoleTest
             Console.WriteLine("C");
 
             var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "test.onnx");
-            var textOutputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "test.txt");
+            var outputPath2 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "test.txt");
 
             var model = new ModelProto
             {
@@ -227,7 +235,7 @@ namespace Onnxify.ConsoleTest
             graph.Initializer.Add(CreateTensor("fc_b", [1000]));
 
             var text = model.Graph.ToString();
-            File.WriteAllTextAsync(textOutputPath, text);
+            File.WriteAllTextAsync(outputPath2, text);
 
             using (var fs = File.Create(outputPath))
             {
