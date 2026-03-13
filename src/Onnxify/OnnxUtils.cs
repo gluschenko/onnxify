@@ -10,15 +10,16 @@ namespace Onnxify
     /// </summary>
     internal static class OnnxUtils
     {
-        private static TypeProto MakeType(TypeProto typeProto, TensorProto.Types.DataType dataType,
-            List<long> dims, List<bool> dimsParam)
+        private static TypeProto MakeType(
+            TypeProto typeProto, 
+            TensorProto.Types.DataType dataType,
+            List<long> dims, 
+            List<bool> dimsParam
+        )
         {
             ArgumentNullException.ThrowIfNull(typeProto, nameof(typeProto));
 
-            if (typeProto.TensorType == null)
-            {
-                typeProto.TensorType = new TypeProto.Types.Tensor();
-            }
+            typeProto.TensorType ??= new TypeProto.Types.Tensor();
 
             typeProto.TensorType.ElemType = (int)dataType;
             if (dims != null)
@@ -27,12 +28,18 @@ namespace Onnxify
                 {
                     var d = new TensorShapeProto.Types.Dimension();
                     if (typeProto.TensorType.Shape == null)
+                    {
                         typeProto.TensorType.Shape = new TensorShapeProto();
+                    }
 
                     if (dimsParam != null && dimsParam.Count > index && dimsParam[index])
+                    {
                         d.DimParam = "None";
+                    }
                     else
+                    {
                         d.DimValue = dims[index];
+                    }
 
                     typeProto.TensorType.Shape.Dim.Add(d);
                 }
@@ -41,15 +48,22 @@ namespace Onnxify
             return typeProto;
         }
 
-        private static ValueInfoProto MakeValue(ValueInfoProto value, string name, TensorProto.Types.DataType dataType,
-            List<long> dims, List<bool> dimsParam)
+        private static ValueInfoProto MakeValue(
+            ValueInfoProto value, 
+            string name, 
+            TensorProto.Types.DataType dataType,
+            List<long> dims, 
+            List<bool> dimsParam
+        )
         {
             ArgumentNullException.ThrowIfNull(value, nameof(value));
             ArgumentException.ThrowIfNullOrEmpty(name, nameof(name));
 
             value.Name = name;
             if (value.Type == null)
+            {
                 value.Type = new TypeProto();
+            }
 
             MakeType(value.Type, dataType, dims, dimsParam);
             return value;
@@ -59,8 +73,10 @@ namespace Onnxify
         {
             ArgumentException.ThrowIfNullOrEmpty(key, nameof(key));
 
-            var attribute = new AttributeProto();
-            attribute.Name = key;
+            var attribute = new AttributeProto
+            {
+                Name = key
+            };
             return attribute;
         }
 
@@ -222,6 +238,7 @@ namespace Onnxify
 
         public static void NodeAddAttributes(NodeProto node, string argName, bool value)
             => node.Attribute.Add(MakeAttribute(argName, value));
+
         public static void NodeAddAttributes(NodeProto node, string argName, Type value)
             => node.Attribute.Add(MakeAttribute(argName, ConvertToTensorProtoType(value)));
 
@@ -286,7 +303,9 @@ namespace Onnxify
             return dataType;
         }
 
-        private static ByteString StringToByteString(ReadOnlyMemory<char> str) => ByteString.CopyFrom(Encoding.UTF8.GetBytes(str.ToString()));
+        private static ByteString StringToByteString(ReadOnlyMemory<char> str) 
+            => ByteString.CopyFrom(Encoding.UTF8.GetBytes(str.ToString()));
+
         private static IEnumerable<ByteString> StringToByteString(IEnumerable<ReadOnlyMemory<char>> str)
             => str.Select(s => ByteString.CopyFrom(Encoding.UTF8.GetBytes(s.ToString())));
 
@@ -437,9 +456,12 @@ namespace Onnxify
         // Make long scalar in ONNX from native C# number
         public static TensorProto MakeInt64(string name, long value)
         {
-            var tensor = new TensorProto();
-            tensor.Name = name;
-            tensor.DataType = (int)TensorProto.Types.DataType.Int64;
+            var tensor = new TensorProto
+            {
+                Name = name,
+                DataType = (int)TensorProto.Types.DataType.Int64
+            };
+
             tensor.Int64Data.Add(value);
             return tensor;
         }
@@ -447,23 +469,34 @@ namespace Onnxify
         // Make long vector (i.e., 1-D tensor) with dims=null. Otherwise, dims is used as the shape of the produced tensor.
         public static TensorProto MakeInt64s(string name, IEnumerable<long> values, IEnumerable<long>? dims = null)
         {
-            var tensor = new TensorProto();
-            tensor.Name = name;
-            tensor.DataType = (int)TensorProto.Types.DataType.Int64;
+            var tensor = new TensorProto
+            {
+                Name = name,
+                DataType = (int)TensorProto.Types.DataType.Int64
+            };
+
             tensor.Int64Data.AddRange(values);
             if (dims != null)
+            {
                 tensor.Dims.AddRange(dims);
+            }
             else
+            {
                 tensor.Dims.Add(values.Count());
+            }
+
             return tensor;
         }
 
         // Make int32 and smaller integer types scalar in ONNX from native C# number
         public static TensorProto MakeInt32(string name, Type type, int value)
         {
-            var tensor = new TensorProto();
-            tensor.Name = name;
-            tensor.DataType = (int)ConvertToTensorProtoType(type);
+            var tensor = new TensorProto
+            {
+                Name = name,
+                DataType = (int)ConvertToTensorProtoType(type)
+            };
+
             tensor.Int32Data.Add(value);
             return tensor;
         }
@@ -471,23 +504,33 @@ namespace Onnxify
         // Make int32 and smaller integer types vector (i.e., 1-D tensor) with dims=null. Otherwise, dims is used as the shape of the produced tensor.
         public static TensorProto MakeInt32s(string name, Type type, IEnumerable<int> values, IEnumerable<long>? dims = null)
         {
-            var tensor = new TensorProto();
-            tensor.Name = name;
-            tensor.DataType = (int)ConvertToTensorProtoType(type);
+            var tensor = new TensorProto
+            {
+                Name = name,
+                DataType = (int)ConvertToTensorProtoType(type)
+            };
+
             tensor.Int32Data.AddRange(values);
             if (dims != null)
+            {
                 tensor.Dims.AddRange(dims);
+            }
             else
+            {
                 tensor.Dims.Add(values.Count());
+            }
+
             return tensor;
         }
 
         // Make ulong and uint integer types scalar in ONNX from native C# number
         public static TensorProto MakeUInt(string name, bool isUint64, ulong value)
         {
-            var tensor = new TensorProto();
-            tensor.Name = name;
-            tensor.DataType = (int)ConvertToTensorProtoType(isUint64 ? typeof(ulong) : typeof(uint));
+            var tensor = new TensorProto
+            {
+                Name = name,
+                DataType = (int)ConvertToTensorProtoType(isUint64 ? typeof(ulong) : typeof(uint))
+            };
             tensor.Uint64Data.Add(value);
             return tensor;
         }
@@ -495,23 +538,34 @@ namespace Onnxify
         // Make ulong and uint integer vector (i.e., 1-D tensor) with dims=null. Otherwise, dims is used as the shape of the produced tensor.
         public static TensorProto MakeUInts(string name, bool isUint64, IEnumerable<ulong> values, IEnumerable<long>? dims = null)
         {
-            var tensor = new TensorProto();
-            tensor.Name = name;
-            tensor.DataType = (int)ConvertToTensorProtoType(isUint64 ? typeof(ulong) : typeof(uint));
+            var tensor = new TensorProto
+            {
+                Name = name,
+                DataType = (int)ConvertToTensorProtoType(isUint64 ? typeof(ulong) : typeof(uint))
+            };
+
             tensor.Uint64Data.AddRange(values);
             if (dims != null)
+            {
                 tensor.Dims.AddRange(dims);
+            }
             else
+            {
                 tensor.Dims.Add(values.Count());
+            }
+
             return tensor;
         }
 
         // Make int32 and smaller integer types scalar in ONNX from native C# number
         public static TensorProto MakeDouble(string name, double value)
         {
-            var tensor = new TensorProto();
-            tensor.Name = name;
-            tensor.DataType = (int)TensorProto.Types.DataType.Double;
+            var tensor = new TensorProto
+            {
+                Name = name,
+                DataType = (int)TensorProto.Types.DataType.Double
+            };
+
             tensor.DoubleData.Add(value);
             return tensor;
         }
@@ -554,9 +608,11 @@ namespace Onnxify
         // Make float vector (i.e., 1-D tensor) with dims=null. Otherwise, dims is used as the shape of the produced tensor.
         public static TensorProto MakeFloats(string name, IEnumerable<float> values, IEnumerable<long>? dims = null)
         {
-            var tensor = new TensorProto();
-            tensor.Name = name;
-            tensor.DataType = (int)TensorProto.Types.DataType.Float;
+            var tensor = new TensorProto
+            {
+                Name = name,
+                DataType = (int)TensorProto.Types.DataType.Float
+            };
             tensor.FloatData.AddRange(values);
             if (dims != null)
             {
