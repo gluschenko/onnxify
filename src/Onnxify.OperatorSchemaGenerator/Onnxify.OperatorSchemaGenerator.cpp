@@ -1,64 +1,84 @@
 ﻿#include "Onnxify.OperatorSchemaGenerator.h"
 #include <onnx/defs/schema.h>
-#include "StringBuilder.h"
 #include <string>
 #include <vector>
 #include <iostream>
+#include <fstream>
 #include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 
 using namespace std;
 using json = nlohmann::json;
 
-struct Operator
-{
-public:
-    string name;
-    int sinceVersion = 0;
-};
-
 int main()
 {
-    auto builder = new StringBuilder();
+    json root;
+    root["operators"] = json::array();
 
     auto schemas = ONNX_NAMESPACE::OpSchemaRegistry::get_all_schemas();
-    auto operators = std::vector<Operator>();
+
+    for (const auto& schema : schemas)
+    {
+        json op;
+
+        op["name"] = schema.Name();
+        op["sinceVersion"] = schema.SinceVersion();
+
+        // inputs
+        op["inputs"] = json::array();
+
+        for (const auto& input : schema.inputs())
+        {
+            json j;
+
+            j["name"] = input.GetName();
+            j["type"] = input.GetTypeStr();
+            j["option"] = (int)input.GetOption();
+
+            op["inputs"].push_back(j);
+        }
+
+        // outputs
+        op["outputs"] = json::array();
+
+        for (const auto& output : schema.outputs())
+        {
+            json j;
+
+            j["name"] = output.GetName();
+            j["type"] = output.GetTypeStr();
+            j["option"] = (int)output.GetOption();
+
+            op["outputs"].push_back(j);
+        }
+
+        // attributes
+        op["attributes"] = json::array();
+
+        for (const auto& attr : schema.attributes())
+        {
+            json j;
+
+            j["name"] = attr.first;
+            j["type"] = (int)attr.second.type;
+            j["required"] = attr.second.required;
+
+            if (!attr.second.description.empty())
+                j["description"] = attr.second.description;
+
+            op["attributes"].push_back(j);
+        }
+
+        root["operators"].push_back(op);
+    }
 
     std::cout << "Total operators: " << schemas.size() << "\n\n";
+    std::cout << root.dump(4) << std::endl;
 
-    for (const auto& item : schemas)
-    {
-        auto& attributes = item.attributes();
-        auto& inputs = item.inputs();
-        auto& outputs = item.outputs();
-
-		json j;
-
-
-        Operator op;
-        op.name = item.Name();
-        op.sinceVersion = item.SinceVersion();
-
-        operators.push_back(op);
-    }
-
-    builder->append("{ ");
-    builder->append("operators: ");
-    builder->append("[");
-
-    for (const auto& item : operators)
-    {
-        builder->append(R"(
-        
-        )");
-    }
-
-    builder->append("]");
-    builder->append(" }");
-
-    auto text = builder->toString();
-
-    std::cout << "Source code: " << text << "\n\n";
-
+    std::ofstream file("onnx_operators.json");
+    file << root.dump(4);
+    file.close();
+    
     return 0;
 }
 
