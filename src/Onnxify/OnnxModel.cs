@@ -14,4 +14,9 @@
             Name = name;
         }
     }
+
+    public class OnnxTensor
+    {
+
+    }
 }

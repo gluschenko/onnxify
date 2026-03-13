@@ -8,14 +8,27 @@
 
 	<PropertyGroup>
 		<CurrentAbsolutePath>$(MSBuildThisFileDirectory)</CurrentAbsolutePath>
-		<ThirdPartyAbsolutePath>$([System.IO.Path]::Combine('$(MSBuildThisFileDirectory)', '../../third_party/onnx/onnx'))</ThirdPartyAbsolutePath>
-		<ProtobufOutputAbsolutePath>$([System.IO.Path]::Combine('$(MSBuildThisFileDirectory)', 'Protobuf'))</ProtobufOutputAbsolutePath>
-		<ProtobufOutputTargetAbsolutePath>$([System.IO.Path]::Combine('$(ProtobufOutputAbsolutePath)', 'OnnxMl.cs'))</ProtobufOutputTargetAbsolutePath>
+		
+		<ThirdPartySourcePath>$([System.IO.Path]::Combine('$(CurrentAbsolutePath)', '../../third_party/onnx'))</ThirdPartySourcePath>
+		<ThirdPartyTargetPath>$([System.IO.Path]::Combine('$(CurrentAbsolutePath)', 'Protobuf'))</ThirdPartyTargetPath>
+		
+		<ProtoOnnxMLSourcePath>$([System.IO.Path]::Combine('$(ThirdPartySourcePath)', 'onnx', 'onnx-ml.proto3'))</ProtoOnnxMLSourcePath>
+		<ProtoOnnxMLTargetPath>$([System.IO.Path]::Combine('$(ThirdPartyTargetPath)', 'OnnxMl.cs'))</ProtoOnnxMLTargetPath>
+
+		<ProtoOnnxOperatorsMLSourcePath>$([System.IO.Path]::Combine('$(ThirdPartySourcePath)', 'onnx', 'onnx-operators-ml.proto3'))</ProtoOnnxOperatorsMLSourcePath>
+		<ProtoOnnxOperatorsMLTargetPath>$([System.IO.Path]::Combine('$(ThirdPartyTargetPath)', 'OnnxOperatorsMl.cs'))</ProtoOnnxOperatorsMLTargetPath>
 	</PropertyGroup>
 
-	<Target Name="PreBuild" BeforeTargets="PreBuildEvent" Condition="!Exists('$(ProtobufOutputTargetAbsolutePath)')">
-		<MakeDir Directories="$(ProtobufOutputAbsolutePath)" Condition="!Exists('$(ProtobufOutputAbsolutePath)')" />
-		<Exec Command="protoc --proto_path=$(ThirdPartyAbsolutePath) --csharp_out=$(ProtobufOutputAbsolutePath) $(ThirdPartyAbsolutePath)/onnx-ml.proto3" />
+	<Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+		<MakeDir Condition="!Exists('$(ThirdPartyTargetPath)')" Directories="$(ThirdPartyTargetPath)" />
+		<Exec 
+			Condition="!Exists('$(ProtoOnnxMLTargetPath)')" 
+			Command="protoc --proto_path=$(ThirdPartySourcePath) --csharp_out=$(ThirdPartyTargetPath) $(ProtoOnnxMLSourcePath)" 
+		/>
+		<Exec
+			Condition="!Exists('$(ProtoOnnxOperatorsMLTargetPath)')"
+			Command="protoc --proto_path=$(ThirdPartySourcePath) --csharp_out=$(ThirdPartyTargetPath) $(ProtoOnnxOperatorsMLSourcePath)"
+		/>
 	</Target>
 
 	<ItemGroup>
