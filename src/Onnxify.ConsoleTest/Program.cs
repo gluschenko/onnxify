@@ -1,5 +1,6 @@
 ﻿using Google.Protobuf;
 using Onnx;
+using Onnxify.Abstractions;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -18,6 +19,7 @@ namespace Onnxify.ConsoleTest
             Console.InputEncoding = Encoding.Unicode;
             Console.OutputEncoding = Encoding.Unicode;
 
+            AA();
             A();
             B();
             C();
@@ -28,10 +30,121 @@ namespace Onnxify.ConsoleTest
 
         static void AA()
         {
-            var inputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "bvlcalexnet-12-qdq.onnx");
-            var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "bvlcalexnet-12-qdq__.onnx");
+            Console.WriteLine("AA");
 
+            static string Pascal(string s)
+            {
+                if (string.IsNullOrEmpty(s))
+                {
+                    return s;
+                }
 
+                return char.ToUpperInvariant(s[0]) + s.Substring(1);
+            }
+
+            static string InputName(string name)
+            {
+                var p = Pascal(name);
+
+                if (p.Equals("Input", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "Input";
+                }
+
+                return "Input" + p;
+            }
+
+            static string OutputName(string name)
+            {
+                var p = Pascal(name);
+
+                if (p.Equals("Output", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "Output";
+                }
+
+                return "Output" + p;
+            }
+
+            static string MapType(string type)
+            {
+                return type switch
+                {
+                    "T" => nameof(TensorProto),
+                    "Tind" => nameof(TensorProto),
+                    "T1" => nameof(TensorProto),
+                    "tensor(int64)" => nameof(TensorProto),
+                    "tensor(int32)" => nameof(TensorProto),
+                    "tensor(float)" => nameof(TensorProto),
+                    "tensor(double)" => nameof(TensorProto),
+                    "tensor(bool)" => nameof(TensorProto),
+
+                    _ => throw new NotSupportedException($"Unsupported ONNX type: {type}")
+                };
+            }
+
+            var inputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "onnx_operators.json");
+            var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "Onnxify", "OnnxOperators.cs");
+
+            var json = File.ReadAllText(inputPath);
+            var root = JsonSerializer.Deserialize<OperatorSchemaRoot>(json) ?? throw new Exception();
+
+            var sourceBuilder = new StringBuilder();
+
+            sourceBuilder.AppendLine($"""
+            using Onnx;
+            using Onnxify.Abstractions;
+
+            namespace Onnxify;
+
+            """);
+
+            foreach (var op in root.Operators)
+            {
+                var propBuilder = new StringBuilder();
+
+                foreach (var x in op.Inputs)
+                {
+                    var required = x.Option == FormalParameterOption.Single ? " required " : " ";
+                    var nullable = x.Option == FormalParameterOption.Optional ? "?" : "";
+
+                    propBuilder.AppendLine($$"""
+                        public{{required}}FormalParameter<{{MapType(x.Type)}}>{{nullable}} {{InputName(x.Name)}} { get; set; }
+                    """);
+                }
+
+                foreach (var x in op.Outputs)
+                {
+                    var required = x.Option == FormalParameterOption.Single ? " required " : "";
+                    var nullable = x.Option == FormalParameterOption.Optional ? "?" : "";
+
+                    propBuilder.AppendLine($$"""
+                        public{{required}}FormalParameter<{{MapType(x.Type)}}>{{nullable}} {{OutputName(x.Name)}} { get; set; }
+                    """);
+                }
+
+                sourceBuilder.AppendLine($$"""
+                /// <summary>
+                /// {{op.Name}} operator:
+                /// <para>
+                /// {{(op.Doc ?? "").Trim().Replace("\n", "\n/// ")}}
+                /// </para>
+                /// </summary>
+                public sealed class {{op.Name}} : {{nameof(Operator)}}
+                {
+                    public override string Name => "{{op.Name}}";
+                    public override string Domain => "{{op.Domain}}";
+                    public override int SinceVersion => {{op.SinceVersion}};
+
+                    {{propBuilder.ToString().TrimStart()}}
+                }
+
+                """);
+            }
+
+            var sourceCode = sourceBuilder.ToString();
+
+            File.WriteAllText(outputPath, sourceCode);
         }
 
         static void A()

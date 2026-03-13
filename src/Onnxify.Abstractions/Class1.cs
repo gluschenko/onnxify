@@ -4,7 +4,6 @@
     {
         public abstract string Name { get; }
         public abstract string Domain { get; }
-        public abstract string Doc { get; }
         public abstract int SinceVersion { get; }
     }
 

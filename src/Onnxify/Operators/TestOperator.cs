@@ -3,11 +3,10 @@ using Onnxify.Abstractions;
 
 namespace Onnxify.Operators
 {
-    public class Conv : Operator
+    public class TestOperator : Operator
     {
         public override string Name => "Conv";
         public override string Domain => "";
-        public override string Doc => "...";
         public override int SinceVersion => 13;
 
         public required FormalParameter<TensorProto> InputX { get; set; }
