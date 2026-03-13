@@ -2,3 +2,7 @@
 	path = third_party/onnx
 	url = https://github.com/onnx/onnx.git
 	branch = rel-1.9.1
+[submodule "third_party/protobuf"]
+	path = third_party/protobuf
+	url = https://github.com/protocolbuffers/protobuf.git
+	branch = 34.x
