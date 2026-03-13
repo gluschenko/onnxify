@@ -19,23 +19,29 @@ int main()
 
     for (const auto& schema : schemas)
     {
+        if (schema.Name() != "Conv") {
+            continue;
+        }
+
         json op;
 
         op["name"] = schema.Name();
         op["sinceVersion"] = schema.SinceVersion();
+        op["domain"] = schema.domain();
+        op["doc"] = schema.doc();
 
         // inputs
         op["inputs"] = json::array();
 
         for (const auto& input : schema.inputs())
         {
-            json j;
+            json x;
 
-            j["name"] = input.GetName();
-            j["type"] = input.GetTypeStr();
-            j["option"] = (int)input.GetOption();
+            x["name"] = input.GetName();
+            x["type"] = input.GetTypeStr();
+            x["option"] = (int)input.GetOption();
 
-            op["inputs"].push_back(j);
+            op["inputs"].push_back(x);
         }
 
         // outputs
@@ -43,13 +49,13 @@ int main()
 
         for (const auto& output : schema.outputs())
         {
-            json j;
+            json x;
 
-            j["name"] = output.GetName();
-            j["type"] = output.GetTypeStr();
-            j["option"] = (int)output.GetOption();
+            x["name"] = output.GetName();
+            x["type"] = output.GetTypeStr();
+            x["option"] = (int)output.GetOption();
 
-            op["outputs"].push_back(j);
+            op["outputs"].push_back(x);
         }
 
         // attributes
@@ -57,16 +63,18 @@ int main()
 
         for (const auto& attr : schema.attributes())
         {
-            json j;
+            json x;
 
-            j["name"] = attr.first;
-            j["type"] = (int)attr.second.type;
-            j["required"] = attr.second.required;
+            x["name"] = attr.first;
+            x["type"] = (int)attr.second.type;
+            x["required"] = attr.second.required;
 
             if (!attr.second.description.empty())
-                j["description"] = attr.second.description;
+            {
+                x["description"] = attr.second.description;
+            }
 
-            op["attributes"].push_back(j);
+            op["attributes"].push_back(x);
         }
 
         root["operators"].push_back(op);
