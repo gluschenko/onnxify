@@ -21,14 +21,8 @@
 
 	<Target Name="PreBuild" BeforeTargets="PreBuildEvent">
 		<MakeDir Condition="!Exists('$(ThirdPartyTargetPath)')" Directories="$(ThirdPartyTargetPath)" />
-		<Exec 
-			Condition="!Exists('$(ProtoOnnxMLTargetPath)')" 
-			Command="protoc --proto_path=$(ThirdPartySourcePath) --csharp_out=$(ThirdPartyTargetPath) $(ProtoOnnxMLSourcePath)" 
-		/>
-		<Exec
-			Condition="!Exists('$(ProtoOnnxOperatorsMLTargetPath)')"
-			Command="protoc --proto_path=$(ThirdPartySourcePath) --csharp_out=$(ThirdPartyTargetPath) $(ProtoOnnxOperatorsMLSourcePath)"
-		/>
+		<Exec Condition="!Exists('$(ProtoOnnxMLTargetPath)')" Command="protoc --proto_path=$(ThirdPartySourcePath) --csharp_out=$(ThirdPartyTargetPath) $(ProtoOnnxMLSourcePath)" />
+		<Exec Condition="!Exists('$(ProtoOnnxOperatorsMLTargetPath)')" Command="protoc --proto_path=$(ThirdPartySourcePath) --csharp_out=$(ThirdPartyTargetPath) $(ProtoOnnxOperatorsMLSourcePath)" />
 	</Target>
 
 	<ItemGroup>
