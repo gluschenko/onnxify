@@ -5,11 +5,11 @@
         
     }
 
-    public abstract class OnnxNode
+    public abstract class OnnxNodeX
     {
         public string Name { get; private set; }
 
-        protected OnnxNode(string name)
+        protected OnnxNodeX(string name)
         {
             Name = name;
         }

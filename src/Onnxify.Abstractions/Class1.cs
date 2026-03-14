@@ -19,12 +19,27 @@
         public string Name { get; }
         public Type Type => typeof(T);
         public FormalParameterOption Option { get; }
-        public T Value { get; }
 
-        public FormalParameter(string name, T value)
+        public FormalParameter(string name)
         {
             Name = name;
-            Value = value;
+        }
+    }
+
+    public interface IOperatorAttribute
+    {
+        public string Name { get; }
+        public Type Type { get; }
+    }
+
+    public class OperatorAttribute<T> : IOperatorAttribute
+    {
+        public string Name { get; }
+        public Type Type => typeof(T);
+
+        public OperatorAttribute(string name)
+        {
+            Name = name;
         }
     }
 
@@ -33,15 +48,21 @@
     /// </summary>
     public enum FormalParameterOption : byte
     {
-        // The formal parameter is single and not optional.
-        // Number of supplied actual parameters must be 1.
+        /// <summary>
+        /// The formal parameter is single and not optional.
+        /// Number of supplied actual parameters must be 1.
+        /// </summary>
         Single = 0,
-        // The formal parameter is single and optional.
-        // Number of supplied actual parameters may be 0 or 1.
+        /// <summary>
+        /// The formal parameter is single and optional.
+        /// Number of supplied actual parameters may be 0 or 1.
+        /// </summary>
         Optional = 1,
-        // The formal parameter is variadic.
-        // Number of supplied actual parameters must be N or more, where
-        // the minimum value N is indicated separately (default value 1).
+        /// <summary>
+        /// The formal parameter is variadic.
+        /// Number of supplied actual parameters must be N or more, where
+        /// the minimum value N is indicated separately (default value 1).
+        /// </summary>
         Variadic = 2,
     };
 
@@ -50,16 +71,22 @@
     /// </summary>
     public enum DifferentiationCategory : byte
     {
-        // Whether this formal parameter is differentiable or not cannot
-        // be statically determined. It also covers variadic formal
-        // parameters which contain both of differentiable and
-        // non-differentiable variables.
+        /// <summary>
+        /// Whether this formal parameter is differentiable or not cannot
+        /// be statically determined. It also covers variadic formal
+        /// parameters which contain both of differentiable and
+        /// non-differentiable variables.
+        /// </summary>
         Unknown = 0,
-        // This formal parameter is differentiable. That is, this formal
-        // parameter can be differentiable input of Gradient operator.
+        /// <summary>
+        /// This formal parameter is differentiable. That is, this formal
+        /// parameter can be differentiable input of Gradient operator.
+        /// </summary>
         Differentiable = 1,
-        // This formal parameter is not differentiable. That is, this formal
-        // parameter can not be differentiable input of Gradient operator.
+        /// <summary>
+        /// This formal parameter is not differentiable. That is, this formal
+        /// parameter can not be differentiable input of Gradient operator.
+        /// </summary>
         NonDifferentiable = 2
     };
 }

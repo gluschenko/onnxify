@@ -66,6 +66,18 @@ namespace Onnxify.ConsoleTest
                 return "Output" + p;
             }
 
+            static string AttributeName(string name)
+            {
+                var p = Pascal(name);
+
+                if (p.Equals("Attribute", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "Attribute";
+                }
+
+                return "Attribute" + p;
+            }
+
             static string MapType(string type)
             {
                 return type switch
@@ -83,8 +95,34 @@ namespace Onnxify.ConsoleTest
                 };
             }
 
+            static string MapAttributeType(AttributeProto.Types.AttributeType type)
+            {
+                return type switch
+                {
+                    AttributeProto.Types.AttributeType.Undefined => typeof(object).Name,
+
+                    AttributeProto.Types.AttributeType.Float => typeof(float).Name,
+                    AttributeProto.Types.AttributeType.Int => typeof(long).Name,
+                    AttributeProto.Types.AttributeType.String => typeof(string).Name,
+
+                    AttributeProto.Types.AttributeType.Tensor => nameof(TensorProto),
+                    AttributeProto.Types.AttributeType.Graph => nameof(GraphProto),
+                    AttributeProto.Types.AttributeType.SparseTensor => nameof(SparseTensorProto),
+
+                    AttributeProto.Types.AttributeType.Floats => $"{typeof(float).Name}[]",
+                    AttributeProto.Types.AttributeType.Ints => $"{typeof(long).Name}[]",
+                    AttributeProto.Types.AttributeType.Strings => $"{typeof(string).Name}[]",
+
+                    AttributeProto.Types.AttributeType.Tensors => $"{nameof(TensorProto)}[]",
+                    AttributeProto.Types.AttributeType.Graphs => $"{nameof(GraphProto)}[]",
+                    AttributeProto.Types.AttributeType.SparseTensors => $"{nameof(SparseTensorProto)}[]",
+
+                    _ => throw new NotSupportedException($"Unsupported AttributeType: {type}")
+                };
+            }
+
             var inputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "onnx_operators.json");
-            var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "Onnxify", "OnnxOperators.cs");
+            var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "Onnxify", "Operators", "OnnxOperators.cs");
 
             var json = File.ReadAllText(inputPath);
             var root = JsonSerializer.Deserialize<OperatorSchemaRoot>(json) ?? throw new Exception();
@@ -95,7 +133,7 @@ namespace Onnxify.ConsoleTest
             using Onnx;
             using Onnxify.Abstractions;
 
-            namespace Onnxify;
+            namespace Onnxify.Operators;
 
             """);
 
@@ -113,9 +151,14 @@ namespace Onnxify.ConsoleTest
                     """);
                 }
 
+                if (op.Inputs.Count != 0)
+                {
+                    propBuilder.AppendLine();
+                }
+
                 foreach (var x in op.Outputs)
                 {
-                    var required = x.Option == FormalParameterOption.Single ? " required " : "";
+                    var required = x.Option == FormalParameterOption.Single ? " required " : " ";
                     var nullable = x.Option == FormalParameterOption.Optional ? "?" : "";
 
                     propBuilder.AppendLine($$"""
@@ -123,11 +166,33 @@ namespace Onnxify.ConsoleTest
                     """);
                 }
 
+                if (op.Outputs.Count != 0)
+                {
+                    propBuilder.AppendLine();
+                }
+
+                foreach (var x in op.Attributes)
+                {
+                    var required = x.Required ? " required " : " ";
+                    var nullable = x.Required ? "" : "?";
+
+                    var typeEnum = (AttributeProto.Types.AttributeType)x.Type;
+
+                    propBuilder.AppendLine($$"""
+                        public{{required}}OperatorAttribute<{{MapAttributeType(typeEnum)}}>{{nullable}} {{AttributeName(x.Name)}} { get; set; }
+                    """);
+                }
+
+                if (op.Attributes.Count != 0)
+                {
+                    propBuilder.AppendLine();
+                }
+
                 sourceBuilder.AppendLine($$"""
                 /// <summary>
                 /// {{op.Name}} operator:
                 /// <para>
-                /// {{(op.Doc ?? "").Trim().Replace("\n", "\n/// ")}}
+                /// {{(op.Doc ?? "").Trim().Replace("\n", $"{Environment.NewLine}/// ")}}
                 /// </para>
                 /// </summary>
                 public sealed class {{op.Name}} : {{nameof(Operator)}}
