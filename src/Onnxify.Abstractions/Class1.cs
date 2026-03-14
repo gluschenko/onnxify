@@ -12,6 +12,7 @@
         public string Name { get; }
         public Type Type { get; }
         public FormalParameterOption Option { get; }
+        public string? ValueName { get; }
     }
 
     public class FormalParameter<T> : IFormalParameter
@@ -19,10 +20,12 @@
         public string Name { get; }
         public Type Type => typeof(T);
         public FormalParameterOption Option { get; }
+        public string? ValueName { get; }
 
-        public FormalParameter(string name)
+        public FormalParameter(string name, string? valueName)
         {
             Name = name;
+            ValueName = valueName;
         }
     }
 
@@ -30,16 +33,20 @@
     {
         public string Name { get; }
         public Type Type { get; }
+        object? UntypedValue { get; }
     }
 
     public class OperatorAttribute<T> : IOperatorAttribute
     {
         public string Name { get; }
         public Type Type => typeof(T);
+        public T Value { get; }
+        public object? UntypedValue => Value;
 
-        public OperatorAttribute(string name)
+        public OperatorAttribute(string name, T value)
         {
             Name = name;
+            Value = value;
         }
     }
 
