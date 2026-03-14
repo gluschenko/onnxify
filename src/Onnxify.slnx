@@ -1,5 +1,4 @@
 <Solution>
-  <Project Path="Onnxify.Abstractions/Onnxify.Abstractions.csproj" Id="2eae1671-cdfa-457a-8aa5-704d0035b44e" />
   <Project Path="Onnxify.ConsoleTest/Onnxify.ConsoleTest.csproj" Id="5c5a0524-cb99-49b6-99af-dc2cdc27ee43" />
   <Project Path="Onnxify.TorchSharp/Onnxify.TorchSharp.csproj" Id="90452197-f039-4f45-a177-04f0af4e1957" />
   <Project Path="Onnxify/Onnxify.csproj" Id="c2d6af74-de08-469c-ae86-91955fc31cb4" />

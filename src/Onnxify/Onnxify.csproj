@@ -31,10 +31,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\Onnxify.Abstractions\Onnxify.Abstractions.csproj" />
-	</ItemGroup>
-
-	<ItemGroup>
 		<None Update="Assets\**">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>

@@ -103,43 +103,30 @@ namespace Onnxify.Operators
             {
                 AttributeProto.Types.AttributeType.Undefined
                     => new OperatorAttribute<object?>(attr.Name, null),
-
                 AttributeProto.Types.AttributeType.Float
                     => new OperatorAttribute<float>(attr.Name, attr.F),
-
                 AttributeProto.Types.AttributeType.Int
                     => new OperatorAttribute<long>(attr.Name, attr.I),
-
                 AttributeProto.Types.AttributeType.String
                     => new OperatorAttribute<string>(attr.Name, attr.S.ToStringUtf8()),
-
                 AttributeProto.Types.AttributeType.Tensor
                     => new OperatorAttribute<TensorProto>(attr.Name, attr.T),
-
                 AttributeProto.Types.AttributeType.Graph
                     => new OperatorAttribute<GraphProto>(attr.Name, attr.G),
-
                 AttributeProto.Types.AttributeType.SparseTensor
                     => new OperatorAttribute<SparseTensorProto>(attr.Name, attr.SparseTensor),
-
                 AttributeProto.Types.AttributeType.Floats
                     => new OperatorAttribute<float[]>(attr.Name, attr.Floats.ToArray()),
-
                 AttributeProto.Types.AttributeType.Ints
                     => new OperatorAttribute<long[]>(attr.Name, attr.Ints.ToArray()),
-
                 AttributeProto.Types.AttributeType.Strings
                     => new OperatorAttribute<string[]>(attr.Name, attr.Strings.Select(x => x.ToStringUtf8()).ToArray()),
-
                 AttributeProto.Types.AttributeType.Tensors
                     => new OperatorAttribute<TensorProto[]>(attr.Name, attr.Tensors.ToArray()),
-
                 AttributeProto.Types.AttributeType.Graphs
                     => new OperatorAttribute<GraphProto[]>(attr.Name, attr.Graphs.ToArray()),
-
                 AttributeProto.Types.AttributeType.SparseTensors
                     => new OperatorAttribute<SparseTensorProto[]>(attr.Name, attr.SparseTensors.ToArray()),
-
                 _ => throw new NotSupportedException($"Unsupported AttributeType: {attr.Type}")
             };
         }
