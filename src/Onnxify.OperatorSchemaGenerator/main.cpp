@@ -1,5 +1,4 @@
-﻿#include "Onnxify.OperatorSchemaGenerator.h"
-#include <onnx/defs/schema.h>
+﻿#include <onnx/defs/schema.h>
 #include <string>
 #include <vector>
 #include <iostream>

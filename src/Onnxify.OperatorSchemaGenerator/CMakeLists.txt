@@ -28,7 +28,7 @@ add_subdirectory(${ONNX_ROOT} ${CMAKE_BINARY_DIR}/onnx-build)
 add_subdirectory(${JSON_ROOT} ${CMAKE_BINARY_DIR}/json-build)
 
 # Add source to this project's executable.
-add_executable (Onnxify.OperatorSchemaGenerator "Onnxify.OperatorSchemaGenerator.cpp" "Onnxify.OperatorSchemaGenerator.h"  )
+add_executable (Onnxify.OperatorSchemaGenerator "main.cpp"   )
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET Onnxify.OperatorSchemaGenerator PROPERTY CXX_STANDARD 20)
