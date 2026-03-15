@@ -1,9 +1,6 @@
 ﻿using Google.Protobuf;
 using Onnx;
 using System.Collections.ObjectModel;
-using System.Xml.Linq;
-using static Onnx.TensorProto.Types;
-using static Tensorboard.CostGraphDef.Types;
 
 namespace Onnxify
 {
@@ -149,6 +146,11 @@ namespace Onnxify
 
         private readonly GraphProto _graph;
 
+        public IReadOnlyCollection<OnnxValue> Inputs => _inputs.Values;
+        public IReadOnlyCollection<OnnxValue> Outputs => _outputs.Values;
+        public IReadOnlyCollection<OnnxNode> Nodes => _nodes.Values;
+
+        // TODO: ordered dictionary or keyed collection
         private readonly Dictionary<string, OnnxTensor> _tensors;
         private readonly Dictionary<string, OnnxValue> _constraints;
         private readonly Dictionary<string, OnnxValue> _inputs;
@@ -178,7 +180,7 @@ namespace Onnxify
             return null;
         }
 
-        public IOnnxValue? GetValue(string name)
+        public IOnnxGraphNode? GetValue(string name)
         {
             if (_inputs.TryGetValue(name, out var input))
             {
@@ -198,6 +200,11 @@ namespace Onnxify
             if (_tensors.TryGetValue(name, out var tensor))
             {
                 return tensor;
+            }
+
+            if (_nodes.TryGetValue(name, out var node))
+            {
+                return node;
             }
 
             return null;
@@ -252,12 +259,18 @@ namespace Onnxify
         }
     }
 
-    public class OnnxNode
+    public interface IOnnxGraphNode
+    {
+        public string Name { get; }
+        public OnnxGraph GetGraph();
+    }
+
+    public class OnnxNode : IOnnxGraphNode
     {
         public string Name { get; init; }
         public string OpType { get; set; }
-        public IReadOnlyList<string> Inputs { get; set; }
-        public IReadOnlyList<string> Outputs { get; set; }
+        public List<IOnnxGraphNode> Inputs { get; set; }
+        public List<IOnnxGraphNode> Outputs { get; set; }
 
         private readonly NodeProto _node;
         private readonly OnnxGraph _graph;
@@ -269,8 +282,14 @@ namespace Onnxify
 
             Name = node.Name;
             OpType = node.OpType;
-            Inputs = node.Input.ToArray();
-            Outputs = node.Output.ToArray();
+
+            Inputs = node.Input
+                .Select(x => graph.GetValue(x) ?? throw new Exception($"No node in graph '{x}'"))
+                .ToList();
+
+            Outputs = node.Output
+                .Select(x => graph.GetValue(x) ?? throw new Exception($"No node in graph '{x}'"))
+                .ToList();
         }
 
         public OnnxGraph GetGraph()
@@ -278,11 +297,11 @@ namespace Onnxify
             return _graph;
         }
 
-        public IEnumerable<IOnnxValue> GetInputValues()
+        public IEnumerable<IOnnxGraphNode> GetInputValues()
         {
             foreach (var x in Inputs)
             {
-                var value = _graph.GetValue(x);
+                var value = _graph.GetValue(x.Name);
                 if (value is not null)
                 {
                     yield return value;
@@ -290,11 +309,11 @@ namespace Onnxify
             }
         }
 
-        public IEnumerable<IOnnxValue> GetOutputValues()
+        public IEnumerable<IOnnxGraphNode> GetOutputValues()
         {
             foreach (var x in Outputs)
             {
-                var value = _graph.GetValue(x);
+                var value = _graph.GetValue(x.Name);
                 if (value is not null)
                 {
                     yield return value;
@@ -311,26 +330,20 @@ namespace Onnxify
             newNode.Input.Clear();
             foreach (var x in Inputs)
             {
-                newNode.Input.Add(x);
+                newNode.Input.Add(x.Name);
             }
 
             newNode.Output.Clear();
             foreach (var x in Outputs)
             {
-                newNode.Output.Add(x);
+                newNode.Output.Add(x.Name);
             }
 
             return newNode;
         }
     }
 
-    public interface IOnnxValue
-    {
-        public string Name { get; }
-        public OnnxGraph GetGraph();
-    }
-
-    public class OnnxTensor : IOnnxValue
+    public class OnnxTensor : IOnnxGraphNode
     {
         public string Name { get; init; }
         public TensorProto.Types.DataLocation DataLocation { set; get; }
@@ -362,7 +375,7 @@ namespace Onnxify
         }
     }
 
-    public class OnnxValue : IOnnxValue
+    public class OnnxValue : IOnnxGraphNode
     {
         public string Name { get; init; }
 
