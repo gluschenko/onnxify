@@ -42,6 +42,7 @@ namespace Onnxify.ConsoleTest
             });
 
             model.Save(outputPath);
+            Console.WriteLine(text);
         }
 
         static void AA()

@@ -1,6 +1,9 @@
 ﻿using Google.Protobuf;
 using Onnx;
 using System.Collections.ObjectModel;
+using System.Xml.Linq;
+using static Onnx.TensorProto.Types;
+using static Tensorboard.CostGraphDef.Types;
 
 namespace Onnxify
 {
@@ -127,25 +130,25 @@ namespace Onnxify
             }
 
             using var fileStream = File.Create(path);
-            _model.WriteTo(fileStream);
+
+            var newModel = ToProto();
+            newModel.WriteTo(fileStream);
+        }
+
+        internal ModelProto ToProto()
+        {
+            var newModel = _model.Clone();
+            newModel.Graph = _graph.ToProto();
+            return newModel;
         }
     }
 
     public class OnnxGraph
     {
-        public string Name
-        {
-            get => _graph.Name;
-            set => _graph.Name = value;
-        }
-
-        public IReadOnlyCollection<OnnxTensor> Tensors => _tensors.Values;
-        public IReadOnlyCollection<OnnxValue> Constraints => _constraints.Values;
-        public IReadOnlyCollection<OnnxValue> Inputs => _inputs.Values;
-        public IReadOnlyCollection<OnnxValue> Outputs => _outputs.Values;
-        public IReadOnlyCollection<OnnxNode> Nodes => _nodes.Values;
+        public string Name { get; init; }
 
         private readonly GraphProto _graph;
+
         private readonly Dictionary<string, OnnxTensor> _tensors;
         private readonly Dictionary<string, OnnxValue> _constraints;
         private readonly Dictionary<string, OnnxValue> _inputs;
@@ -155,11 +158,14 @@ namespace Onnxify
         internal OnnxGraph(GraphProto graph)
         {
             _graph = graph;
+
             _tensors = graph.Initializer.ToDictionary(x => x.Name, x => new OnnxTensor(x, this));
             _constraints = graph.ValueInfo.ToDictionary(x => x.Name, x => new OnnxValue(x, this));
             _inputs = graph.Input.ToDictionary(x => x.Name, x => new OnnxValue(x, this));
             _outputs = graph.Output.ToDictionary(x => x.Name, x => new OnnxValue(x, this));
             _nodes = graph.Node.ToDictionary(x => x.Name, x => new OnnxNode(x, this));
+
+            Name = graph.Name;
         }
 
         public OnnxNode? GetNode(string name)
@@ -206,14 +212,52 @@ namespace Onnxify
 
             return null;
         }
+
+        public GraphProto ToProto()
+        {
+            var newGraph = _graph.Clone();
+            newGraph.Name = Name;
+
+            newGraph.Initializer.Clear();
+            foreach (var (_, x) in _tensors)
+            {
+                newGraph.Initializer.Add(x.ToProto());
+            }
+
+            newGraph.ValueInfo.Clear();
+            foreach (var (_, x) in _constraints)
+            {
+                newGraph.ValueInfo.Add(x.ToProto());
+            }
+
+            newGraph.Input.Clear();
+            foreach (var (_, x) in _inputs)
+            {
+                newGraph.Input.Add(x.ToProto());
+            }
+
+            newGraph.Output.Clear();
+            foreach (var (_, x) in _outputs)
+            {
+                newGraph.Output.Add(x.ToProto());
+            }
+
+            newGraph.Node.Clear();
+            foreach (var (_, x) in _nodes)
+            {
+                newGraph.Node.Add(x.ToProto());
+            }
+
+            return newGraph;
+        }
     }
 
     public class OnnxNode
     {
-        public string Name => _node.Name;
-        public string OpType => _node.OpType;
-        public IReadOnlyList<string> Inputs => _node.Input;
-        public IReadOnlyList<string> Outputs => _node.Output;
+        public string Name { get; init; }
+        public string OpType { get; set; }
+        public IReadOnlyList<string> Inputs { get; set; }
+        public IReadOnlyList<string> Outputs { get; set; }
 
         private readonly NodeProto _node;
         private readonly OnnxGraph _graph;
@@ -222,6 +266,11 @@ namespace Onnxify
         {
             _node = node;
             _graph = graph;
+
+            Name = node.Name;
+            OpType = node.OpType;
+            Inputs = node.Input.ToArray();
+            Outputs = node.Output.ToArray();
         }
 
         public OnnxGraph GetGraph()
@@ -255,10 +304,23 @@ namespace Onnxify
 
         internal NodeProto ToProto()
         {
-            var node = _node.Clone();
+            var newNode = _node.Clone();
+            newNode.Name = Name;
+            newNode.OpType = OpType;
 
+            newNode.Input.Clear();
+            foreach (var x in Inputs)
+            {
+                newNode.Input.Add(x);
+            }
 
-            return node;
+            newNode.Output.Clear();
+            foreach (var x in Outputs)
+            {
+                newNode.Output.Add(x);
+            }
+
+            return newNode;
         }
     }
 
@@ -270,7 +332,8 @@ namespace Onnxify
 
     public class OnnxTensor : IOnnxValue
     {
-        public string Name => _tensor.Name;
+        public string Name { get; init; }
+        public TensorProto.Types.DataLocation DataLocation { set; get; }
 
         private readonly TensorProto _tensor;
         private readonly OnnxGraph _graph;
@@ -279,17 +342,29 @@ namespace Onnxify
         {
             _tensor = tensor;
             _graph = graph;
+
+            Name = tensor.Name;
+            DataLocation = tensor.DataLocation;
         }
 
         public OnnxGraph GetGraph()
         {
             return _graph;
         }
+
+        internal TensorProto ToProto()
+        {
+            var newTensor = _tensor.Clone();
+            newTensor.Name = Name;
+            newTensor.DataLocation = DataLocation;
+
+            return newTensor;
+        }
     }
 
     public class OnnxValue : IOnnxValue
     {
-        public string Name => _valueInfo.Name;
+        public string Name { get; init; }
 
         private readonly ValueInfoProto _valueInfo;
         private readonly OnnxGraph _graph;
@@ -298,11 +373,21 @@ namespace Onnxify
         {
             _valueInfo = valueInfo;
             _graph = graph;
+
+            Name = valueInfo.Name;
         }
 
         public OnnxGraph GetGraph()
         {
             return _graph;
+        }
+
+        internal ValueInfoProto ToProto()
+        {
+            var newValue = _valueInfo.Clone();
+            newValue.Name = Name;
+
+            return newValue;
         }
     }
 }
