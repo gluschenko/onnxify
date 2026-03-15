@@ -20,13 +20,23 @@ namespace Onnxify.ConsoleTest
             Console.InputEncoding = Encoding.Unicode;
             Console.OutputEncoding = Encoding.Unicode;
 
-            AA();
+            Test();
+            /*AA();
             A();
             B();
-            C();
+            C();*/
 
             Console.WriteLine("Press any key to pay respect...");
             Console.ReadKey();
+        }
+
+        static void Test()
+        {
+            var inputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "bvlcalexnet-12-qdq.onnx");
+            var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "bvlcalexnet-12-qdq__test.onnx");
+            var model = OnnxModel.FromFile(inputPath);
+
+            model.Save(outputPath);
         }
 
         static void AA()

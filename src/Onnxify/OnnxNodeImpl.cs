@@ -5,7 +5,7 @@ using static Onnx.OnnxMlReflection;
 
 namespace Onnxify
 {
-    internal abstract class OnnxNode
+    internal abstract class OnnxNodeXXXX
     {
         public abstract void AddAttribute(string argName, double value);
         public abstract void AddAttribute(string argName, long value);
@@ -23,7 +23,7 @@ namespace Onnxify
         public abstract void AddAttribute(string argName, Type t);
     }
 
-    internal sealed class OnnxNodeImpl : OnnxNode
+    internal sealed class OnnxNodeImpl : OnnxNodeXXXX
     {
         private readonly NodeProto _node;
 
