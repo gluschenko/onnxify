@@ -36,6 +36,11 @@ namespace Onnxify.ConsoleTest
             var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "bvlcalexnet-12-qdq__test.onnx");
             var model = OnnxModel.FromFile(inputPath);
 
+            var text = JsonSerializer.Serialize(model, new JsonSerializerOptions
+            {
+                WriteIndented = true,
+            });
+
             model.Save(outputPath);
         }
 
