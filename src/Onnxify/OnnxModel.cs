@@ -69,7 +69,7 @@ public class OnnxModel
         OpsetImport = new List<OperatorSetIdProto>(model.OpsetImport);
     }
 
-    public static OnnxModel Create(OnnxModelCreateOptions? options)
+    public static OnnxModel Create(OnnxModelCreateOptions? options = null)
     {
         options ??= new OnnxModelCreateOptions();
 
@@ -105,7 +105,7 @@ public class OnnxModel
     {
         if (File.Exists(path) && !overwrite)
         {
-            throw new Exception($"File already exists at '{path}'");
+            throw new IOException($"File already exists at '{path}'");
         }
 
         using var fileStream = File.Create(path);
@@ -299,9 +299,9 @@ public class OnnxNode : IOnnxGraphNode
     public string Domain { get; set; }
     public string DocString { get; set; }
 
-    public List<IOnnxGraphEdge> Inputs { get; set; } = [];
-    public List<IOnnxGraphEdge> Outputs { get; set; } = [];
-    public List<AttributeProto> Attributes { get; set; } = [];
+    public List<IOnnxGraphEdge> Inputs { get; private set; } = [];
+    public List<IOnnxGraphEdge> Outputs { get; private set; } = [];
+    public List<AttributeProto> Attributes { get; private set; } = [];
 
     private readonly NodeProto _node;
     private readonly OnnxGraph _graph;
@@ -318,19 +318,19 @@ public class OnnxNode : IOnnxGraphNode
 
         foreach (var x in node.Input)
         {
-            var value = graph.GetValue(x) ?? throw new Exception($"No node in graph '{x}'");
+            var value = graph.GetValue(x) ?? throw new InvalidOperationException($"No graph value found for '{x}'.");
             Inputs.Add(value);
         }
 
         foreach (var x in node.Output)
         {
-            var value = graph.GetValue(x) ?? throw new Exception($"No node in graph '{x}'");
+            var value = graph.GetValue(x) ?? throw new InvalidOperationException($"No graph value found for '{x}'.");
             Outputs.Add(value);
         }
 
         foreach (var attribute in node.Attribute)
         {
-            node.Attribute.Add(attribute);
+            Attributes.Add(attribute.Clone());
         }
     }
 
@@ -362,7 +362,7 @@ public class OnnxNode : IOnnxGraphNode
         newNode.Attribute.Clear();
         foreach (var attribute in Attributes)
         {
-            newNode.Attribute.Add(attribute);
+            newNode.Attribute.Add(attribute.Clone());
         }
 
         return newNode;
@@ -448,38 +448,15 @@ public class OnnxEdge : IOnnxGraphEdge
     }
 }
 
-public static class EnumerableExtensions
-{
-    public static bool TryGetValue<T, TKey>(
-        this IEnumerable<T> source,
-        Func<T, TKey> keySelector,
-        Func<TKey, bool> predicate,
-        [MaybeNullWhen(true)] out T? value
-    ) where T : class
-    {
-        foreach (var element in source)
-        {
-            if (predicate(keySelector(element)))
-            {
-                value = element;
-                return true;
-            }
-        }
-
-        value = null;
-        return false;
-    }
-}
-
 public class LazyDictionary<TKey, TValue> : KeyedCollection<TKey, TValue> where TKey : notnull
 {
     private readonly Func<TValue, TKey> _keySelector;
-    private readonly EqualityComparer<TKey> _equalityComparer;
+    private readonly IEqualityComparer<TKey> _equalityComparer;
 
-    public LazyDictionary(Func<TValue, TKey> keySelector, EqualityComparer<TKey> equality) : base(equality)
+    public LazyDictionary(Func<TValue, TKey> keySelector, IEqualityComparer<TKey> comparer) : base(comparer)
     {
         _keySelector = keySelector;
-        _equalityComparer = equality;
+        _equalityComparer = comparer;
     }
 
     protected override TKey GetKeyForItem(TValue item)
@@ -503,19 +480,11 @@ public class LazyDictionary<TKey, TValue> : KeyedCollection<TKey, TValue> where 
             {
                 var index = Items.IndexOf(existing);
                 SetItem(index, value);
-                return;
             }
-
-            for (int i = 0; i < Items.Count; i++)
+            else
             {
-                if (_equalityComparer.Equals(GetKeyForItem(Items[i]), key))
-                {
-                    SetItem(i, value);
-                    return;
-                }
+                Add(value);
             }
-
-            Add(value);
         }
     }
 }
