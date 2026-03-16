@@ -1,6 +1,7 @@
 ﻿using Google.Protobuf;
 using Onnx;
 using System.Collections.ObjectModel;
+using TorchSharp.Modules;
 
 namespace Onnxify
 {
@@ -49,14 +50,9 @@ namespace Onnxify
             set => _model.Domain = value;
         }
 
-        // TODO: incapsulate
-        public IReadOnlyList<StringStringEntryProto> MetadataProps => _metadataProps;
-        public IReadOnlyList<TrainingInfoProto> TrainingInfo => _trainingInfo;
-        public IReadOnlyList<OperatorSetIdProto> OpsetImport => _opsetImport;
-
-        private readonly ObservableCollection<StringStringEntryProto> _metadataProps;
-        private readonly ObservableCollection<TrainingInfoProto> _trainingInfo;
-        private readonly ObservableCollection<OperatorSetIdProto> _opsetImport;
+        public IList<StringStringEntryProto> MetadataProps { get; }
+        public IList<TrainingInfoProto> TrainingInfo { get; }
+        public IList<OperatorSetIdProto> OpsetImport { get; }
 
         public OnnxGraph Graph => _graph;
 
@@ -68,23 +64,9 @@ namespace Onnxify
             _model = model;
             _graph = new OnnxGraph(model.Graph);
 
-            _metadataProps = [];
-            foreach (var x in _model.MetadataProps)
-            {
-                _metadataProps.Add(x);
-            }
-
-            _trainingInfo = [];
-            foreach (var x in _model.TrainingInfo)
-            {
-                _trainingInfo.Add(x);
-            }
-
-            _opsetImport = [];
-            foreach (var x in _model.OpsetImport)
-            {
-                _opsetImport.Add(x);
-            }
+            MetadataProps = new List<StringStringEntryProto>(model.MetadataProps);
+            TrainingInfo = new List<TrainingInfoProto>(model.TrainingInfo);
+            OpsetImport = new List<OperatorSetIdProto>(model.OpsetImport);
         }
 
         public static OnnxModel Create(OnnxModelCreateOptions? options)
@@ -136,6 +118,16 @@ namespace Onnxify
         {
             var newModel = _model.Clone();
             newModel.Graph = _graph.ToProto();
+
+            newModel.MetadataProps.Clear();
+            newModel.MetadataProps.AddRange(MetadataProps);
+
+            newModel.TrainingInfo.Clear();
+            newModel.TrainingInfo.AddRange(TrainingInfo);
+
+            newModel.OpsetImport.Clear();
+            newModel.OpsetImport.AddRange(OpsetImport);
+
             return newModel;
         }
     }
