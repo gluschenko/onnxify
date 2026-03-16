@@ -41,7 +41,7 @@ namespace Onnxify.ConsoleTest
                 WriteIndented = true,
             });
 
-            model.Save(outputPath);
+            model.Save(outputPath, true);
             Console.WriteLine(text);
         }
 
