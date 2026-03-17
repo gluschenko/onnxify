@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/.docs/">
+    <File Path="../README.md" />
+  </Folder>
   <Folder Name="/.misc/">
     <File Path=".editorconfig" />
   </Folder>
