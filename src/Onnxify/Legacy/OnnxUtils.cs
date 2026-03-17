@@ -11,9 +11,9 @@ namespace Onnxify.Legacy
     internal static class OnnxUtils
     {
         private static TypeProto MakeType(
-            TypeProto typeProto, 
+            TypeProto typeProto,
             TensorProto.Types.DataType dataType,
-            List<long> dims, 
+            List<long> dims,
             List<bool> dimsParam
         )
         {
@@ -49,10 +49,10 @@ namespace Onnxify.Legacy
         }
 
         private static ValueInfoProto MakeValue(
-            ValueInfoProto value, 
-            string name, 
+            ValueInfoProto value,
+            string name,
             TensorProto.Types.DataType dataType,
-            List<long> dims, 
+            List<long> dims,
             List<bool> dimsParam
         )
         {
@@ -303,7 +303,7 @@ namespace Onnxify.Legacy
             return dataType;
         }
 
-        private static ByteString StringToByteString(ReadOnlyMemory<char> str) 
+        private static ByteString StringToByteString(ReadOnlyMemory<char> str)
             => ByteString.CopyFrom(Encoding.UTF8.GetBytes(str.ToString()));
 
         private static IEnumerable<ByteString> StringToByteString(IEnumerable<ReadOnlyMemory<char>> str)
@@ -331,16 +331,16 @@ namespace Onnxify.Legacy
         }
 
         public static ModelProto MakeModel(
-            List<NodeProto> nodes, 
-            string producerName, 
+            List<NodeProto> nodes,
+            string producerName,
             string name,
-            string domain, 
-            string producerVersion, 
-            long modelVersion, 
-            int opSetVersion, 
+            string domain,
+            string producerVersion,
+            long modelVersion,
+            int opSetVersion,
             List<ModelArgs> inputs,
-            List<ModelArgs> outputs, 
-            List<ModelArgs> intermediateValues, 
+            List<ModelArgs> outputs,
+            List<ModelArgs> intermediateValues,
             List<TensorProto> initializers
         )
         {
