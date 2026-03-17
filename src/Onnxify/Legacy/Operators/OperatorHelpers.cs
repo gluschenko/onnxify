@@ -1,7 +1,6 @@
 ﻿using Onnx;
-using Onnxify.Legacy;
 
-namespace Onnxify.Operators
+namespace Onnxify.Legacy.Operators
 {
     public static class OperatorHelpers
     {

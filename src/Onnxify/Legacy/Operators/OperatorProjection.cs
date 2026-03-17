@@ -1,6 +1,4 @@
-﻿using Onnxify.Legacy;
-
-namespace Onnxify.Operators
+﻿namespace Onnxify.Legacy.Operators
 {
     public class OperatorProjection
     {

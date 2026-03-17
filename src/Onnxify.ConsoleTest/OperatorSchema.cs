@@ -1,5 +1,5 @@
-﻿using Onnxify.Legacy;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
+using Onnxify.Legacy;
 
 public sealed class OperatorSchemaRoot
 {

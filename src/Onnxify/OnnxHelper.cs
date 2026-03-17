@@ -1,7 +1,7 @@
-﻿using Google.Protobuf;
-using Onnx;
-using System.Numerics;
+﻿using System.Numerics;
 using System.Runtime.InteropServices;
+using Google.Protobuf;
+using Onnx;
 
 namespace Onnxify;
 

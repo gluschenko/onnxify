@@ -1,39 +1,39 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<TargetFramework>net10.0</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
-	</PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
 
-	<PropertyGroup>
-		<CurrentAbsolutePath>$(MSBuildThisFileDirectory)</CurrentAbsolutePath>
-		
-		<ThirdPartySourcePath>$([System.IO.Path]::Combine('$(CurrentAbsolutePath)', '../../third_party/onnx'))</ThirdPartySourcePath>
-		<ThirdPartyTargetPath>$([System.IO.Path]::Combine('$(CurrentAbsolutePath)', 'Protobuf'))</ThirdPartyTargetPath>
-		
-		<ProtoOnnxMLSourcePath>$([System.IO.Path]::Combine('$(ThirdPartySourcePath)', 'onnx', 'onnx-ml.proto3'))</ProtoOnnxMLSourcePath>
-		<ProtoOnnxMLTargetPath>$([System.IO.Path]::Combine('$(ThirdPartyTargetPath)', 'OnnxMl.cs'))</ProtoOnnxMLTargetPath>
+  <PropertyGroup>
+    <CurrentAbsolutePath>$(MSBuildThisFileDirectory)</CurrentAbsolutePath>
 
-		<ProtoOnnxOperatorsMLSourcePath>$([System.IO.Path]::Combine('$(ThirdPartySourcePath)', 'onnx', 'onnx-operators-ml.proto3'))</ProtoOnnxOperatorsMLSourcePath>
-		<ProtoOnnxOperatorsMLTargetPath>$([System.IO.Path]::Combine('$(ThirdPartyTargetPath)', 'OnnxOperatorsMl.cs'))</ProtoOnnxOperatorsMLTargetPath>
-	</PropertyGroup>
+    <ThirdPartySourcePath>$([System.IO.Path]::Combine('$(CurrentAbsolutePath)', '../../third_party/onnx'))</ThirdPartySourcePath>
+    <ThirdPartyTargetPath>$([System.IO.Path]::Combine('$(CurrentAbsolutePath)', 'Protobuf'))</ThirdPartyTargetPath>
 
-	<Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-		<MakeDir Condition="!Exists('$(ThirdPartyTargetPath)')" Directories="$(ThirdPartyTargetPath)" />
-		<Exec Condition="!Exists('$(ProtoOnnxMLTargetPath)')" Command="protoc --proto_path=$(ThirdPartySourcePath) --csharp_out=$(ThirdPartyTargetPath) $(ProtoOnnxMLSourcePath)" />
-		<Exec Condition="!Exists('$(ProtoOnnxOperatorsMLTargetPath)')" Command="protoc --proto_path=$(ThirdPartySourcePath) --csharp_out=$(ThirdPartyTargetPath) $(ProtoOnnxOperatorsMLSourcePath)" />
-	</Target>
+    <ProtoOnnxMLSourcePath>$([System.IO.Path]::Combine('$(ThirdPartySourcePath)', 'onnx', 'onnx-ml.proto3'))</ProtoOnnxMLSourcePath>
+    <ProtoOnnxMLTargetPath>$([System.IO.Path]::Combine('$(ThirdPartyTargetPath)', 'OnnxMl.cs'))</ProtoOnnxMLTargetPath>
 
-	<ItemGroup>
-		<PackageReference Include="Google.Protobuf" Version="3.34.0" />
-		<PackageReference Include="TorchSharp" Version="0.106.0" />
-	</ItemGroup>
+    <ProtoOnnxOperatorsMLSourcePath>$([System.IO.Path]::Combine('$(ThirdPartySourcePath)', 'onnx', 'onnx-operators-ml.proto3'))</ProtoOnnxOperatorsMLSourcePath>
+    <ProtoOnnxOperatorsMLTargetPath>$([System.IO.Path]::Combine('$(ThirdPartyTargetPath)', 'OnnxOperatorsMl.cs'))</ProtoOnnxOperatorsMLTargetPath>
+  </PropertyGroup>
 
-	<ItemGroup>
-		<None Update="Assets\**">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-	</ItemGroup>
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <MakeDir Condition="!Exists('$(ThirdPartyTargetPath)')" Directories="$(ThirdPartyTargetPath)" />
+    <Exec Condition="!Exists('$(ProtoOnnxMLTargetPath)')" Command="protoc --proto_path=$(ThirdPartySourcePath) --csharp_out=$(ThirdPartyTargetPath) $(ProtoOnnxMLSourcePath)" />
+    <Exec Condition="!Exists('$(ProtoOnnxOperatorsMLTargetPath)')" Command="protoc --proto_path=$(ThirdPartySourcePath) --csharp_out=$(ThirdPartyTargetPath) $(ProtoOnnxOperatorsMLSourcePath)" />
+  </Target>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.34.0" />
+    <PackageReference Include="TorchSharp" Version="0.106.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Assets\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 
 </Project>

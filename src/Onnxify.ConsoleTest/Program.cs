@@ -1,10 +1,10 @@
-﻿using Google.Protobuf;
-using Onnx;
-using Onnxify.Legacy;
-using Onnxify.Operators;
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using Google.Protobuf;
+using Onnx;
+using Onnxify.Legacy;
+using Onnxify.Legacy.Operators;
 
 namespace Onnxify.ConsoleTest
 {

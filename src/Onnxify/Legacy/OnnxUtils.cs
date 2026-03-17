@@ -1,6 +1,6 @@
-﻿using Google.Protobuf;
+﻿using System.Text;
+using Google.Protobuf;
 using Onnx;
-using System.Text;
 using Version = Onnx.Version;
 
 namespace Onnxify.Legacy
