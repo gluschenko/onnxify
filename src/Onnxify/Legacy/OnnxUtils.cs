@@ -3,7 +3,7 @@ using Onnx;
 using System.Text;
 using Version = Onnx.Version;
 
-namespace Onnxify
+namespace Onnxify.Legacy
 {
     /// <summary>
     /// Contains methods to create ONNX models in protocol buffer.

@@ -1,4 +1,4 @@
-﻿using Onnxify.Abstractions;
+﻿using Onnxify.Legacy;
 using System.Text.Json.Serialization;
 
 public sealed class OperatorSchemaRoot

@@ -1,6 +1,6 @@
 ﻿using Google.Protobuf;
 using Onnx;
-using Onnxify.Abstractions;
+using Onnxify.Legacy;
 using Onnxify.Operators;
 using System.Globalization;
 using System.Text;

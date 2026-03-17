@@ -1,4 +1,4 @@
-﻿namespace Onnxify.Abstractions
+﻿namespace Onnxify.Legacy
 {
     public abstract class Operator
     {

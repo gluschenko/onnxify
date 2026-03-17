@@ -1,8 +1,8 @@
 ﻿using Onnx;
-using static Onnxify.OnnxUtils;
+using static Onnxify.Legacy.OnnxUtils;
 using static TorchSharp.torch;
 
-namespace Onnxify
+namespace Onnxify.Legacy
 {
     public class OnnxGraphBuilder
     {

@@ -1,4 +1,5 @@
 ﻿using Onnx;
+using Onnxify.Legacy;
 
 namespace Onnxify.ConsoleTest
 {

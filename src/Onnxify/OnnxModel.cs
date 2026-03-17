@@ -154,7 +154,7 @@ public class OnnxGraph
 
         foreach (var tensor in graph.Initializer)
         {
-            _tensors.Add(OnnxAttributeHelper.FromProto(tensor));
+            _tensors.Add(OnnxHelper.FromProto(tensor));
         }
 
         foreach (var value in graph.ValueInfo)
@@ -339,7 +339,7 @@ public class OnnxNode : IOnnxGraphNode
 
         foreach (var attribute in node.Attribute)
         {
-            var value = OnnxAttributeHelper.FromProto(attribute);
+            var value = OnnxHelper.FromProto(attribute);
             _attributes.Add(value);
         }
     }
@@ -393,7 +393,7 @@ public class OnnxAttribute<T> : OnnxAttributeBase
         _attribute = attribute;
 
         Type = _attribute.Type;
-        Value = OnnxAttributeHelper.GetValue<T>(attribute);
+        Value = OnnxHelper.GetValue<T>(attribute);
     }
 
     internal override AttributeProto ToProto()
@@ -407,7 +407,7 @@ public class OnnxAttribute<T> : OnnxAttributeBase
     }
 }
 
-public static class OnnxAttributeHelper
+public static class OnnxHelper
 {
     internal static OnnxTensorBase FromProto(TensorProto tensor)
     {
@@ -634,7 +634,7 @@ public class OnnxSparseTensor<T> : OnnxSparseTensorBase
     internal OnnxSparseTensor(SparseTensorProto tensor)
     {
         _tensor = tensor;
-        _value = (OnnxTensor<T>)OnnxAttributeHelper.FromProto(tensor.Values);
+        _value = (OnnxTensor<T>)OnnxHelper.FromProto(tensor.Values);
     }
 
     internal override SparseTensorProto ToProto()

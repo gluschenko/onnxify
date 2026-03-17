@@ -1,9 +1,6 @@
 ﻿using Onnx;
-using System;
-using System.Collections.Generic;
-using static Onnx.OnnxMlReflection;
 
-namespace Onnxify
+namespace Onnxify.Legacy
 {
     internal abstract class OnnxNodeXXXX
     {

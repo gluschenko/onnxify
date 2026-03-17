@@ -1,5 +1,5 @@
 ﻿using Onnx;
-using Onnxify.Abstractions;
+using Onnxify.Legacy;
 using Onnxify.Operators;
 
 namespace Onnxify.ConsoleTest;
