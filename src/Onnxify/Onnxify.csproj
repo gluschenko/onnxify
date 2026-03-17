@@ -24,8 +24,8 @@
 
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
     <MakeDir Condition="!Exists('$(ThirdPartyTargetPath)')" Directories="$(ThirdPartyTargetPath)" />
-    <Exec Condition="!Exists('$(ProtoOnnxMLTargetPath)')" Command="protoc --proto_path=$(ThirdPartySourcePath) --csharp_out=$(ThirdPartyTargetPath) $(ProtoOnnxMLSourcePath)" />
-    <Exec Condition="!Exists('$(ProtoOnnxOperatorsMLTargetPath)')" Command="protoc --proto_path=$(ThirdPartySourcePath) --csharp_out=$(ThirdPartyTargetPath) $(ProtoOnnxOperatorsMLSourcePath)" />
+    <Exec Condition="!Exists('$(ProtoOnnxMLTargetPath)')" Command="protoc --proto_path=$(ThirdPartySourcePath) --csharp_opt=internal_access --csharp_out=$(ThirdPartyTargetPath) $(ProtoOnnxMLSourcePath)" />
+    <Exec Condition="!Exists('$(ProtoOnnxOperatorsMLTargetPath)')" Command="protoc --proto_path=$(ThirdPartySourcePath) --csharp_opt=internal_access --csharp_out=$(ThirdPartyTargetPath) $(ProtoOnnxOperatorsMLSourcePath)" />
   </Target>
 
   <Target Name="CopyProtoAssets" BeforeTargets="BeforeBuild">
@@ -39,6 +39,7 @@
 
   <ItemGroup>
     <PackageReference Include="Google.Protobuf" Version="3.34.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.78.0" PrivateAssets="All" />
   </ItemGroup>
 
   <ItemGroup>
@@ -46,9 +47,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Assets\**">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <AdditionalFiles Include="Assets\*.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="Assets\onnx-ml.proto3" OutputOptions="file_extension=.g.cs,internal_access" />
   </ItemGroup>
 
 </Project>
