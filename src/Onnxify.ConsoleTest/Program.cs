@@ -3,8 +3,6 @@ using System.Text;
 using System.Text.Json;
 using Google.Protobuf;
 using Onnx;
-using Onnxify.Legacy;
-using Onnxify.Legacy.Operators;
 
 namespace Onnxify.ConsoleTest
 {
@@ -184,7 +182,7 @@ namespace Onnxify.ConsoleTest
                 /// {{(op.Doc ?? "").Trim().Replace("\n", $"{Environment.NewLine}/// ")}}
                 /// </para>
                 /// </summary>
-                public sealed class {{op.Name}} : {{nameof(Operator)}}
+                public sealed class {{op.Name}} : Operator
                 {
                     public override string Name => "{{op.Name}}";
                     public override string Domain => "{{op.Domain}}";

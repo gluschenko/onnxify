@@ -1,5 +1,5 @@
 ﻿using System.Text.Json.Serialization;
-using Onnxify.Legacy;
+using Onnx;
 
 public sealed class OperatorSchemaRoot
 {
@@ -56,5 +56,81 @@ public sealed class OperatorParameter
 
     [JsonPropertyName("type")]
     public required string Type { get; set; }
+}
+
+/// <summary>
+/// From schema.h
+/// </summary>
+public enum FormalParameterOption : byte
+{
+    /// <summary>
+    /// The formal parameter is single and not optional.
+    /// Number of supplied actual parameters must be 1.
+    /// </summary>
+    Single = 0,
+    /// <summary>
+    /// The formal parameter is single and optional.
+    /// Number of supplied actual parameters may be 0 or 1.
+    /// </summary>
+    Optional = 1,
+    /// <summary>
+    /// The formal parameter is variadic.
+    /// Number of supplied actual parameters must be N or more, where
+    /// the minimum value N is indicated separately (default value 1).
+    /// </summary>
+    Variadic = 2,
+};
+
+/// <summary>
+/// From schema.h
+/// </summary>
+public enum DifferentiationCategory : byte
+{
+    /// <summary>
+    /// Whether this formal parameter is differentiable or not cannot
+    /// be statically determined. It also covers variadic formal
+    /// parameters which contain both of differentiable and
+    /// non-differentiable variables.
+    /// </summary>
+    Unknown = 0,
+    /// <summary>
+    /// This formal parameter is differentiable. That is, this formal
+    /// parameter can be differentiable input of Gradient operator.
+    /// </summary>
+    Differentiable = 1,
+    /// <summary>
+    /// This formal parameter is not differentiable. That is, this formal
+    /// parameter can not be differentiable input of Gradient operator.
+    /// </summary>
+    NonDifferentiable = 2
+};
+
+public static class OperatorHelpers
+{
+    public static string MapAttributeType(AttributeProto.Types.AttributeType type)
+    {
+        return type switch
+        {
+            AttributeProto.Types.AttributeType.Undefined => typeof(object).Name,
+
+            AttributeProto.Types.AttributeType.Float => typeof(float).Name,
+            AttributeProto.Types.AttributeType.Int => typeof(long).Name,
+            AttributeProto.Types.AttributeType.String => typeof(string).Name,
+
+            AttributeProto.Types.AttributeType.Tensor => nameof(TensorProto),
+            AttributeProto.Types.AttributeType.Graph => nameof(GraphProto),
+            AttributeProto.Types.AttributeType.SparseTensor => nameof(SparseTensorProto),
+
+            AttributeProto.Types.AttributeType.Floats => $"{typeof(float).Name}[]",
+            AttributeProto.Types.AttributeType.Ints => $"{typeof(long).Name}[]",
+            AttributeProto.Types.AttributeType.Strings => $"{typeof(string).Name}[]",
+
+            AttributeProto.Types.AttributeType.Tensors => $"{nameof(TensorProto)}[]",
+            AttributeProto.Types.AttributeType.Graphs => $"{nameof(GraphProto)}[]",
+            AttributeProto.Types.AttributeType.SparseTensors => $"{nameof(SparseTensorProto)}[]",
+
+            _ => throw new NotSupportedException($"Unsupported AttributeType: {type}")
+        };
+    }
 }
 
