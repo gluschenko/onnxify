@@ -201,29 +201,6 @@ namespace Onnxify.ConsoleTest
             File.WriteAllText(outputPath, sourceCode);
         }
 
-        static void A()
-        {
-            Console.WriteLine("A");
-
-            var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "alexnet.onnx");
-
-            var model = new AlexNet("test-model", 10, TorchSharp.torch.CPU);
-
-            var builder = new OnnxGraphBuilder();
-
-            foreach (var (name, tensor) in model.state_dict())
-            {
-                builder.AddWeight(name, tensor);
-            }
-
-            var onnx = AlexNetExporter.Export(model);
-
-            using (var fs = File.Create(outputPath))
-            {
-                onnx.WriteTo(fs);
-            }
-        }
-
         static void B()
         {
             Console.WriteLine("B");
