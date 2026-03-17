@@ -3,6 +3,7 @@ using Onnx;
 using System.Collections.ObjectModel;
 using System.Xml.Linq;
 using static Onnx.TensorProto.Types;
+using static Tensorboard.ApiDef.Types;
 
 namespace Onnxify;
 
@@ -156,22 +157,22 @@ public class OnnxGraph
 
         foreach (var tensor in graph.Initializer)
         {
-            _tensors.Add(new OnnxTensor(tensor, this));
+            _tensors.Add(new OnnxTensor(tensor));
         }
 
         foreach (var value in graph.ValueInfo)
         {
-            _constraints.Add(new OnnxValue(value, this));
+            _constraints.Add(new OnnxValue(value));
         }
 
         foreach (var input in graph.Input)
         {
-            _inputs.Add(new OnnxValue(input, this));
+            _inputs.Add(new OnnxValue(input));
         }
 
         foreach (var output in graph.Output)
         {
-            _outputs.Add(new OnnxValue(output, this));
+            _outputs.Add(new OnnxValue(output));
         }
 
         foreach (var node in graph.Node)
@@ -180,7 +181,7 @@ public class OnnxGraph
             {
                 if (GetValue(x) is null)
                 {
-                    _edges[x] = new OnnxEdge(this, x);
+                    _edges[x] = new OnnxEdge(x);
                 }
             }
         }
@@ -291,7 +292,12 @@ public interface IOnnxGraphNode
 public interface IOnnxGraphEdge
 {
     public string Name { get; }
-    public OnnxGraph GetGraph();
+}
+
+public abstract class BaseOnnxAttribute
+{
+    public abstract string Name { get; }
+    internal abstract AttributeProto ToProto();
 }
 
 public class OnnxNode : IOnnxGraphNode
@@ -303,11 +309,11 @@ public class OnnxNode : IOnnxGraphNode
 
     public IReadOnlyList<IOnnxGraphEdge> Inputs => _inputs;
     public IReadOnlyList<IOnnxGraphEdge> Outputs => _outputs;
-    public IReadOnlyList<OnnxAttribute> Attributes => _attributes;
+    public IReadOnlyList<BaseOnnxAttribute> Attributes => _attributes;
 
     private readonly LazyDictionary<string, IOnnxGraphEdge> _inputs = new(x => x.Name, EqualityComparer<string>.Default);
     private readonly LazyDictionary<string, IOnnxGraphEdge> _outputs = new(x => x.Name, EqualityComparer<string>.Default);
-    private readonly LazyDictionary<string, OnnxAttribute> _attributes = new(x => x.Name, EqualityComparer<string>.Default);
+    private readonly LazyDictionary<string, BaseOnnxAttribute> _attributes = new(x => x.Name, EqualityComparer<string>.Default);
 
     private readonly NodeProto _node;
     private readonly OnnxGraph _graph;
@@ -336,7 +342,7 @@ public class OnnxNode : IOnnxGraphNode
 
         foreach (var attribute in node.Attribute)
         {
-            var value = new OnnxAttribute(attribute);
+            var value = OnnxAttributeHelper.FromProto(attribute);
             _attributes.Add(value);
         }
     }
@@ -376,10 +382,12 @@ public class OnnxNode : IOnnxGraphNode
     }
 }
 
-public class OnnxAttribute
+
+public class OnnxAttribute<T> : BaseOnnxAttribute
 {
-    public string Name { get; init; }
+    public override string Name => _attribute.Name;
     public AttributeProto.Types.AttributeType Type { get; init; }
+    public T Value { get; set; }
 
     private readonly AttributeProto _attribute;
 
@@ -387,17 +395,192 @@ public class OnnxAttribute
     {
         _attribute = attribute;
 
-        Name = _attribute.Name;
         Type = _attribute.Type;
+        Value = OnnxAttributeHelper.GetValue<T>(attribute);
     }
 
-    internal AttributeProto ToProto()
+    internal override AttributeProto ToProto()
     {
         var newAttribute = _attribute.Clone();
         newAttribute.Name = Name;
         newAttribute.Type = Type;
+        newAttribute.SetValue(Value);
 
         return newAttribute;
+    }
+}
+
+public static class OnnxAttributeHelper
+{
+    internal static BaseOnnxAttribute FromProto(AttributeProto attribute)
+    {
+        if (attribute.Type == AttributeProto.Types.AttributeType.Undefined)
+        {
+            return new OnnxAttribute<object>(attribute);
+        }
+        else if (attribute.Type == AttributeProto.Types.AttributeType.Float)
+        {
+            return new OnnxAttribute<float>(attribute);
+        }
+        else if (attribute.Type == AttributeProto.Types.AttributeType.Int)
+        {
+            return new OnnxAttribute<long>(attribute);
+        }
+        else if (attribute.Type == AttributeProto.Types.AttributeType.String)
+        {
+            return new OnnxAttribute<string>(attribute);
+        }
+        else if (attribute.Type == AttributeProto.Types.AttributeType.Tensor)
+        {
+            return new OnnxAttribute<OnnxTensor>(attribute);
+        }
+        else if (attribute.Type == AttributeProto.Types.AttributeType.Graph)
+        {
+            return new OnnxAttribute<OnnxGraph>(attribute);
+        }
+        else if (attribute.Type == AttributeProto.Types.AttributeType.SparseTensor)
+        {
+            return new OnnxAttribute<OnnxSparseTensor>(attribute);
+        }
+        else if (attribute.Type == AttributeProto.Types.AttributeType.Floats)
+        {
+            return new OnnxAttribute<float[]>(attribute);
+        }
+        else if (attribute.Type == AttributeProto.Types.AttributeType.Ints)
+        {
+            return new OnnxAttribute<long[]>(attribute);
+        }
+        else if (attribute.Type == AttributeProto.Types.AttributeType.Strings)
+        {
+            return new OnnxAttribute<string[]>(attribute);
+        }
+        else if (attribute.Type == AttributeProto.Types.AttributeType.Tensors)
+        {
+            return new OnnxAttribute<OnnxTensor[]>(attribute);
+        }
+        else if (attribute.Type == AttributeProto.Types.AttributeType.Graphs)
+        {
+            return new OnnxAttribute<OnnxGraph[]>(attribute);
+        }
+        else if (attribute.Type == AttributeProto.Types.AttributeType.SparseTensors)
+        {
+            return new OnnxAttribute<OnnxSparseTensor[]>(attribute);
+        }
+        else
+        {
+            throw new NotImplementedException($"Not implemented for '{attribute.Type}'");
+        }
+    }
+
+    internal static T GetValue<T>(this AttributeProto attribute)
+    {
+        return (T)GetValue(attribute);
+    }
+
+    internal static object GetValue(this AttributeProto attribute)
+    {
+        return attribute.Type switch
+        {
+            AttributeProto.Types.AttributeType.Float => attribute.F,
+            AttributeProto.Types.AttributeType.Int => attribute.I,
+            AttributeProto.Types.AttributeType.String => attribute.S.ToStringUtf8(),
+            AttributeProto.Types.AttributeType.Tensor => new OnnxTensor(attribute.T),
+            AttributeProto.Types.AttributeType.Graph => new OnnxGraph(attribute.G),
+            AttributeProto.Types.AttributeType.SparseTensor => new OnnxSparseTensor(attribute.SparseTensor),
+
+            AttributeProto.Types.AttributeType.Floats => attribute.Floats.ToArray(),
+            AttributeProto.Types.AttributeType.Ints => attribute.Ints.ToArray(),
+            AttributeProto.Types.AttributeType.Strings => attribute.Strings.Select(x => x.ToStringUtf8()).ToArray(),
+            AttributeProto.Types.AttributeType.Tensors => attribute.Tensors.Select(x => new OnnxTensor(x)).ToArray(),
+            AttributeProto.Types.AttributeType.Graphs => attribute.Graphs.Select(x => new OnnxGraph(x)).ToArray(),
+            AttributeProto.Types.AttributeType.SparseTensors => attribute.SparseTensors.Select(x => new OnnxSparseTensor(x)).ToArray(),
+
+            _ => throw new NotImplementedException($"Unsupported attribute type {attribute.Type}")
+        };
+    }
+
+    internal static void SetValue<T>(this AttributeProto attribute, T value)
+    {
+        switch (value)
+        {
+            case float f:
+                attribute.F = f;
+                attribute.Type = AttributeProto.Types.AttributeType.Float;
+                break;
+
+            case long i:
+                attribute.I = i;
+                attribute.Type = AttributeProto.Types.AttributeType.Int;
+                break;
+
+            case string s:
+                attribute.S = ByteString.CopyFromUtf8(s);
+                attribute.Type = AttributeProto.Types.AttributeType.String;
+                break;
+
+            case OnnxTensor t:
+                attribute.T = t.ToProto();
+                attribute.Type = AttributeProto.Types.AttributeType.String;
+                break;
+
+            case OnnxGraph g:
+                attribute.G = g.ToProto();
+                attribute.Type = AttributeProto.Types.AttributeType.String;
+                break;
+
+            case OnnxSparseTensor sparseTensor:
+                attribute.SparseTensor = sparseTensor.ToProto();
+                attribute.Type = AttributeProto.Types.AttributeType.String;
+                break;
+
+            case float[] floatArray:
+                attribute.Floats.Clear();
+                attribute.Floats.AddRange(floatArray);
+                attribute.Type = AttributeProto.Types.AttributeType.Floats;
+                break;
+
+            case long[] intArray:
+                attribute.Ints.Clear();
+                attribute.Ints.AddRange(intArray);
+                attribute.Type = AttributeProto.Types.AttributeType.Ints;
+                break;
+
+            case string[] stringArray:
+                attribute.Strings.Clear();
+                attribute.Strings.AddRange(stringArray.Select(ByteString.CopyFromUtf8));
+                attribute.Type = AttributeProto.Types.AttributeType.Strings;
+                break;
+
+            case OnnxTensor[] tensorArray:
+                foreach (var x in tensorArray)
+                {
+                    attribute.Tensors.Add(x.ToProto());
+                }
+
+                attribute.Type = AttributeProto.Types.AttributeType.String;
+                break;
+
+            case OnnxGraph[] graphArray:
+                foreach (var x in graphArray)
+                {
+                    attribute.Graphs.Add(x.ToProto());
+                }
+
+                attribute.Type = AttributeProto.Types.AttributeType.String;
+                break;
+
+            case OnnxSparseTensor[] sparseTensorArray:
+                foreach (var x in sparseTensorArray)
+                {
+                    attribute.SparseTensors.Add(x.ToProto());
+                }
+
+                attribute.Type = AttributeProto.Types.AttributeType.String;
+                break;
+
+            default:
+                throw new NotSupportedException($"Unsupported attribute type {typeof(T).Name}");
+        }
     }
 }
 
@@ -407,20 +590,13 @@ public class OnnxTensor : IOnnxGraphEdge
     public TensorProto.Types.DataLocation DataLocation { set; get; }
 
     private readonly TensorProto _tensor;
-    private readonly OnnxGraph _graph;
 
-    internal OnnxTensor(TensorProto tensor, OnnxGraph graph)
+    internal OnnxTensor(TensorProto tensor)
     {
         _tensor = tensor;
-        _graph = graph;
 
         Name = tensor.Name;
         DataLocation = tensor.DataLocation;
-    }
-
-    public OnnxGraph GetGraph()
-    {
-        return _graph;
     }
 
     internal TensorProto ToProto()
@@ -433,24 +609,40 @@ public class OnnxTensor : IOnnxGraphEdge
     }
 }
 
+public class OnnxSparseTensor : IOnnxGraphEdge
+{
+    public string Name => _value.Name;
+    public OnnxTensor Value => _value;
+
+    private readonly SparseTensorProto _tensor;
+    private readonly OnnxTensor _value;
+
+    internal OnnxSparseTensor(SparseTensorProto tensor)
+    {
+        _tensor = tensor;
+        _value = new OnnxTensor(tensor.Values);
+    }
+
+    internal SparseTensorProto ToProto()
+    {
+        var newTensor = _tensor.Clone();
+        newTensor.Values = _value.ToProto();
+
+        return newTensor;
+    }
+}
+
 public class OnnxValue : IOnnxGraphEdge
 {
     public string Name { get; init; }
 
     private readonly ValueInfoProto _valueInfo;
-    private readonly OnnxGraph _graph;
 
-    internal OnnxValue(ValueInfoProto valueInfo, OnnxGraph graph)
+    internal OnnxValue(ValueInfoProto valueInfo)
     {
         _valueInfo = valueInfo;
-        _graph = graph;
 
         Name = valueInfo.Name;
-    }
-
-    public OnnxGraph GetGraph()
-    {
-        return _graph;
     }
 
     internal ValueInfoProto ToProto()
@@ -465,18 +657,10 @@ public class OnnxValue : IOnnxGraphEdge
 public class OnnxEdge : IOnnxGraphEdge
 {
     public string Name { get; init; }
-    private readonly OnnxGraph _graph;
 
-    internal OnnxEdge(OnnxGraph graph, string name)
+    internal OnnxEdge(string name)
     {
-        _graph = graph;
-
         Name = name;
-    }
-
-    public OnnxGraph GetGraph()
-    {
-        return _graph;
     }
 }
 
