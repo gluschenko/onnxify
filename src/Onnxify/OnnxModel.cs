@@ -1,9 +1,6 @@
 ﻿using Google.Protobuf;
 using Onnx;
 using System.Collections.ObjectModel;
-using System.Xml.Linq;
-using static Onnx.TensorProto.Types;
-using static Tensorboard.ApiDef.Types;
 
 namespace Onnxify;
 
@@ -145,7 +142,7 @@ public class OnnxGraph
     public IReadOnlyList<OnnxNode> Nodes => _nodes;
 
     private readonly LazyDictionary<string, OnnxEdge> _edges = new(x => x.Name, EqualityComparer<string>.Default);
-    private readonly LazyDictionary<string, OnnxTensor> _tensors = new(x => x.Name, EqualityComparer<string>.Default);
+    private readonly LazyDictionary<string, OnnxTensorBase> _tensors = new(x => x.Name, EqualityComparer<string>.Default);
     private readonly LazyDictionary<string, OnnxValue> _constraints = new(x => x.Name, EqualityComparer<string>.Default);
     private readonly LazyDictionary<string, OnnxValue> _inputs = new(x => x.Name, EqualityComparer<string>.Default);
     private readonly LazyDictionary<string, OnnxValue> _outputs = new(x => x.Name, EqualityComparer<string>.Default);
@@ -157,7 +154,7 @@ public class OnnxGraph
 
         foreach (var tensor in graph.Initializer)
         {
-            _tensors.Add(new OnnxTensor(tensor));
+            _tensors.Add(OnnxAttributeHelper.FromProto(tensor));
         }
 
         foreach (var value in graph.ValueInfo)
@@ -234,7 +231,7 @@ public class OnnxGraph
         return null;
     }
 
-    public OnnxTensor? GetTensor(string name)
+    public OnnxTensorBase? GetTensor(string name)
     {
         if (_tensors.TryGetValue(name, out var result))
         {
@@ -294,7 +291,7 @@ public interface IOnnxGraphEdge
     public string Name { get; }
 }
 
-public abstract class BaseOnnxAttribute
+public abstract class OnnxAttributeBase
 {
     public abstract string Name { get; }
     internal abstract AttributeProto ToProto();
@@ -309,11 +306,11 @@ public class OnnxNode : IOnnxGraphNode
 
     public IReadOnlyList<IOnnxGraphEdge> Inputs => _inputs;
     public IReadOnlyList<IOnnxGraphEdge> Outputs => _outputs;
-    public IReadOnlyList<BaseOnnxAttribute> Attributes => _attributes;
+    public IReadOnlyList<OnnxAttributeBase> Attributes => _attributes;
 
     private readonly LazyDictionary<string, IOnnxGraphEdge> _inputs = new(x => x.Name, EqualityComparer<string>.Default);
     private readonly LazyDictionary<string, IOnnxGraphEdge> _outputs = new(x => x.Name, EqualityComparer<string>.Default);
-    private readonly LazyDictionary<string, BaseOnnxAttribute> _attributes = new(x => x.Name, EqualityComparer<string>.Default);
+    private readonly LazyDictionary<string, OnnxAttributeBase> _attributes = new(x => x.Name, EqualityComparer<string>.Default);
 
     private readonly NodeProto _node;
     private readonly OnnxGraph _graph;
@@ -383,7 +380,7 @@ public class OnnxNode : IOnnxGraphNode
 }
 
 
-public class OnnxAttribute<T> : BaseOnnxAttribute
+public class OnnxAttribute<T> : OnnxAttributeBase
 {
     public override string Name => _attribute.Name;
     public AttributeProto.Types.AttributeType Type { get; init; }
@@ -412,7 +409,31 @@ public class OnnxAttribute<T> : BaseOnnxAttribute
 
 public static class OnnxAttributeHelper
 {
-    internal static BaseOnnxAttribute FromProto(AttributeProto attribute)
+    internal static OnnxTensorBase FromProto(TensorProto tensor)
+    {
+        var type = (TensorProto.Types.DataType)tensor.DataType;
+
+        return type switch
+        {
+            TensorProto.Types.DataType.Float16 => new OnnxTensor<Half>(tensor),
+            TensorProto.Types.DataType.Bfloat16 => new OnnxTensor<Half>(tensor),
+            _ => throw new NotImplementedException($"Not implemented for '{type}'"),
+        };
+    }
+
+    internal static OnnxSparseTensorBase FromProto(SparseTensorProto tensor)
+    {
+        var type = (TensorProto.Types.DataType)tensor.Values.DataType;
+
+        return type switch
+        {
+            TensorProto.Types.DataType.Float16 => new OnnxSparseTensor<Half>(tensor),
+            TensorProto.Types.DataType.Bfloat16 => new OnnxSparseTensor<Half>(tensor),
+            _ => throw new NotImplementedException($"Not implemented for '{type}'"),
+        };
+    }
+
+    internal static OnnxAttributeBase FromProto(AttributeProto attribute)
     {
         return attribute.Type switch
         {
@@ -420,17 +441,17 @@ public static class OnnxAttributeHelper
             AttributeProto.Types.AttributeType.Int => new OnnxAttribute<long>(attribute),
             AttributeProto.Types.AttributeType.String => new OnnxAttribute<string>(attribute),
 
-            AttributeProto.Types.AttributeType.Tensor => new OnnxAttribute<OnnxTensor>(attribute),
+            AttributeProto.Types.AttributeType.Tensor => new OnnxAttribute<OnnxTensorBase>(attribute),
             AttributeProto.Types.AttributeType.Graph => new OnnxAttribute<OnnxGraph>(attribute),
-            AttributeProto.Types.AttributeType.SparseTensor => new OnnxAttribute<OnnxSparseTensor>(attribute),
+            AttributeProto.Types.AttributeType.SparseTensor => new OnnxAttribute<OnnxSparseTensorBase>(attribute),
 
             AttributeProto.Types.AttributeType.Floats => new OnnxAttribute<float[]>(attribute),
             AttributeProto.Types.AttributeType.Ints => new OnnxAttribute<long[]>(attribute),
             AttributeProto.Types.AttributeType.Strings => new OnnxAttribute<string[]>(attribute),
 
-            AttributeProto.Types.AttributeType.Tensors => new OnnxAttribute<OnnxTensor[]>(attribute),
+            AttributeProto.Types.AttributeType.Tensors => new OnnxAttribute<OnnxTensorBase[]>(attribute),
             AttributeProto.Types.AttributeType.Graphs => new OnnxAttribute<OnnxGraph[]>(attribute),
-            AttributeProto.Types.AttributeType.SparseTensors => new OnnxAttribute<OnnxSparseTensor[]>(attribute),
+            AttributeProto.Types.AttributeType.SparseTensors => new OnnxAttribute<OnnxSparseTensorBase[]>(attribute),
 
             _ => throw new NotImplementedException($"Not implemented for '{attribute.Type}'"),
         };
@@ -456,17 +477,17 @@ public static class OnnxAttributeHelper
             AttributeProto.Types.AttributeType.Int => attribute.I,
             AttributeProto.Types.AttributeType.String => attribute.S.ToStringUtf8(),
 
-            AttributeProto.Types.AttributeType.Tensor => new OnnxTensor(attribute.T),
+            AttributeProto.Types.AttributeType.Tensor => FromProto(attribute.T),
             AttributeProto.Types.AttributeType.Graph => new OnnxGraph(attribute.G),
-            AttributeProto.Types.AttributeType.SparseTensor => new OnnxSparseTensor(attribute.SparseTensor),
+            AttributeProto.Types.AttributeType.SparseTensor => FromProto(attribute.SparseTensor),
 
             AttributeProto.Types.AttributeType.Floats => attribute.Floats.ToArray(),
             AttributeProto.Types.AttributeType.Ints => attribute.Ints.ToArray(),
             AttributeProto.Types.AttributeType.Strings => attribute.Strings.Select(x => x.ToStringUtf8()).ToArray(),
 
-            AttributeProto.Types.AttributeType.Tensors => attribute.Tensors.Select(x => new OnnxTensor(x)).ToArray(),
+            AttributeProto.Types.AttributeType.Tensors => attribute.Tensors.Select(x => FromProto(x)).ToArray(),
             AttributeProto.Types.AttributeType.Graphs => attribute.Graphs.Select(x => new OnnxGraph(x)).ToArray(),
-            AttributeProto.Types.AttributeType.SparseTensors => attribute.SparseTensors.Select(x => new OnnxSparseTensor(x)).ToArray(),
+            AttributeProto.Types.AttributeType.SparseTensors => attribute.SparseTensors.Select(x => FromProto(x)).ToArray(),
 
             _ => throw new NotImplementedException($"Unsupported attribute type {attribute.Type}")
         };
@@ -491,7 +512,7 @@ public static class OnnxAttributeHelper
                 attribute.Type = AttributeProto.Types.AttributeType.String;
                 break;
 
-            case OnnxTensor t:
+            case OnnxTensorBase t:
                 attribute.T = t.ToProto();
                 attribute.Type = AttributeProto.Types.AttributeType.Tensor;
                 break;
@@ -501,7 +522,7 @@ public static class OnnxAttributeHelper
                 attribute.Type = AttributeProto.Types.AttributeType.Graph;
                 break;
 
-            case OnnxSparseTensor sparseTensor:
+            case OnnxSparseTensorBase sparseTensor:
                 attribute.SparseTensor = sparseTensor.ToProto();
                 attribute.Type = AttributeProto.Types.AttributeType.SparseTensor;
                 break;
@@ -524,7 +545,7 @@ public static class OnnxAttributeHelper
                 attribute.Type = AttributeProto.Types.AttributeType.Strings;
                 break;
 
-            case OnnxTensor[] tensorArray:
+            case OnnxTensorBase[] tensorArray:
                 attribute.Tensors.Clear();
                 foreach (var x in tensorArray)
                 {
@@ -544,7 +565,7 @@ public static class OnnxAttributeHelper
                 attribute.Type = AttributeProto.Types.AttributeType.Graphs;
                 break;
 
-            case OnnxSparseTensor[] sparseTensorArray:
+            case OnnxSparseTensorBase[] sparseTensorArray:
                 attribute.SparseTensors.Clear();
                 foreach (var x in sparseTensorArray)
                 {
@@ -560,9 +581,17 @@ public static class OnnxAttributeHelper
     }
 }
 
-public class OnnxTensor : IOnnxGraphEdge
+public abstract class OnnxTensorBase : IOnnxGraphEdge
 {
-    public string Name { get; init; }
+    public abstract string Name { get; }
+    public abstract TensorProto.Types.DataType DataType { get; }
+    internal abstract TensorProto ToProto();
+}
+
+public class OnnxTensor<T> : OnnxTensorBase
+{
+    public override string Name => _tensor.Name;
+    public override TensorProto.Types.DataType DataType => (TensorProto.Types.DataType)_tensor.DataType;
     public TensorProto.Types.DataLocation DataLocation { set; get; }
 
     private readonly TensorProto _tensor;
@@ -571,35 +600,44 @@ public class OnnxTensor : IOnnxGraphEdge
     {
         _tensor = tensor;
 
-        Name = tensor.Name;
         DataLocation = tensor.DataLocation;
     }
 
-    internal TensorProto ToProto()
+    internal override TensorProto ToProto()
     {
         var newTensor = _tensor.Clone();
         newTensor.Name = Name;
+        newTensor.DataType = (int)DataType;
         newTensor.DataLocation = DataLocation;
 
         return newTensor;
     }
 }
 
-public class OnnxSparseTensor : IOnnxGraphEdge
+public abstract class OnnxSparseTensorBase : IOnnxGraphEdge
 {
-    public string Name => _value.Name;
-    public OnnxTensor Value => _value;
+    public abstract string Name { get; }
+    public abstract TensorProto.Types.DataType DataType { get; }
+    public abstract OnnxTensorBase Value { get; }
+    internal abstract SparseTensorProto ToProto();
+}
+
+public class OnnxSparseTensor<T> : OnnxSparseTensorBase
+{
+    public override string Name => _value.Name;
+    public override TensorProto.Types.DataType DataType => _value.DataType;
+    public override OnnxTensor<T> Value => _value;
 
     private readonly SparseTensorProto _tensor;
-    private readonly OnnxTensor _value;
+    private readonly OnnxTensor<T> _value;
 
     internal OnnxSparseTensor(SparseTensorProto tensor)
     {
         _tensor = tensor;
-        _value = new OnnxTensor(tensor.Values);
+        _value = (OnnxTensor<T>)OnnxAttributeHelper.FromProto(tensor.Values);
     }
 
-    internal SparseTensorProto ToProto()
+    internal override SparseTensorProto ToProto()
     {
         var newTensor = _tensor.Clone();
         newTensor.Values = _value.ToProto();
