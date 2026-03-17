@@ -121,6 +121,19 @@ public class OnnxModel
 
         return newModel;
     }
+
+    public override string ToString()
+    {
+        return $"""
+        OnnxModel(
+            ProducerName={ProducerName},
+            ProducerVersion={ProducerVersion},
+            ModelVersion={ModelVersion},
+            IrVersion={IrVersion},
+            Domain={Domain}
+        )
+        """;
+    }
 }
 
 public interface IOnnxGraphNode
