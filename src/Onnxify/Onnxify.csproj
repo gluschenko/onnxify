@@ -17,6 +17,9 @@
 
     <ProtoOnnxOperatorsMLSourcePath>$([System.IO.Path]::Combine('$(ThirdPartySourcePath)', 'onnx', 'onnx-operators-ml.proto3'))</ProtoOnnxOperatorsMLSourcePath>
     <ProtoOnnxOperatorsMLTargetPath>$([System.IO.Path]::Combine('$(ThirdPartyTargetPath)', 'OnnxOperatorsMl.cs'))</ProtoOnnxOperatorsMLTargetPath>
+
+    <AssetsTargetPath>$([System.IO.Path]::Combine('$(CurrentAbsolutePath)', 'Assets'))</AssetsTargetPath>
+    <ProtoAssetsSourcePath>$([System.IO.Path]::Combine('$(ThirdPartySourcePath)', 'onnx'))</ProtoAssetsSourcePath>
   </PropertyGroup>
 
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
@@ -25,9 +28,21 @@
     <Exec Condition="!Exists('$(ProtoOnnxOperatorsMLTargetPath)')" Command="protoc --proto_path=$(ThirdPartySourcePath) --csharp_out=$(ThirdPartyTargetPath) $(ProtoOnnxOperatorsMLSourcePath)" />
   </Target>
 
+  <Target Name="CopyProtoAssets" BeforeTargets="BeforeBuild">
+    <ItemGroup>
+      <ProtoAssetFiles Include="$(ProtoAssetsSourcePath)\*.proto3" />
+    </ItemGroup>
+
+    <MakeDir Condition="!Exists('$(AssetsTargetPath)')" Directories="$(AssetsTargetPath)" />
+    <Copy SourceFiles="@(ProtoAssetFiles)" DestinationFolder="$(AssetsTargetPath)" SkipUnchangedFiles="true" />
+  </Target>
+
   <ItemGroup>
     <PackageReference Include="Google.Protobuf" Version="3.34.0" />
-    <PackageReference Include="TorchSharp" Version="0.106.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Onnxify.SourceGenerator\Onnxify.SourceGenerator.csproj" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
