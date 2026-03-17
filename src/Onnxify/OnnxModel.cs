@@ -1,7 +1,8 @@
 ﻿using Google.Protobuf;
 using Onnx;
 using System.Collections.ObjectModel;
-using System.Diagnostics.CodeAnalysis;
+using System.Xml.Linq;
+using static Onnx.TensorProto.Types;
 
 namespace Onnxify;
 
@@ -148,6 +149,7 @@ public class OnnxGraph
     private readonly LazyDictionary<string, OnnxValue> _inputs = new(x => x.Name, EqualityComparer<string>.Default);
     private readonly LazyDictionary<string, OnnxValue> _outputs = new(x => x.Name, EqualityComparer<string>.Default);
     private readonly LazyDictionary<string, OnnxNode> _nodes = new(x => x.Name, EqualityComparer<string>.Default);
+
     internal OnnxGraph(GraphProto graph)
     {
         _graph = graph;
@@ -299,9 +301,13 @@ public class OnnxNode : IOnnxGraphNode
     public string Domain { get; set; }
     public string DocString { get; set; }
 
-    public List<IOnnxGraphEdge> Inputs { get; private set; } = [];
-    public List<IOnnxGraphEdge> Outputs { get; private set; } = [];
-    public List<AttributeProto> Attributes { get; private set; } = [];
+    public IReadOnlyList<IOnnxGraphEdge> Inputs => _inputs;
+    public IReadOnlyList<IOnnxGraphEdge> Outputs => _outputs;
+    public IReadOnlyList<OnnxAttribute> Attributes => _attributes;
+
+    private readonly LazyDictionary<string, IOnnxGraphEdge> _inputs = new(x => x.Name, EqualityComparer<string>.Default);
+    private readonly LazyDictionary<string, IOnnxGraphEdge> _outputs = new(x => x.Name, EqualityComparer<string>.Default);
+    private readonly LazyDictionary<string, OnnxAttribute> _attributes = new(x => x.Name, EqualityComparer<string>.Default);
 
     private readonly NodeProto _node;
     private readonly OnnxGraph _graph;
@@ -319,18 +325,19 @@ public class OnnxNode : IOnnxGraphNode
         foreach (var x in node.Input)
         {
             var value = graph.GetValue(x) ?? throw new InvalidOperationException($"No graph value found for '{x}'.");
-            Inputs.Add(value);
+            _inputs.Add(value);
         }
 
         foreach (var x in node.Output)
         {
             var value = graph.GetValue(x) ?? throw new InvalidOperationException($"No graph value found for '{x}'.");
-            Outputs.Add(value);
+            _outputs.Add(value);
         }
 
         foreach (var attribute in node.Attribute)
         {
-            Attributes.Add(attribute.Clone());
+            var value = new OnnxAttribute(attribute);
+            _attributes.Add(value);
         }
     }
 
@@ -362,10 +369,35 @@ public class OnnxNode : IOnnxGraphNode
         newNode.Attribute.Clear();
         foreach (var attribute in Attributes)
         {
-            newNode.Attribute.Add(attribute.Clone());
+            newNode.Attribute.Add(attribute.ToProto());
         }
 
         return newNode;
+    }
+}
+
+public class OnnxAttribute
+{
+    public string Name { get; init; }
+    public AttributeProto.Types.AttributeType Type { get; init; }
+
+    private readonly AttributeProto _attribute;
+
+    public OnnxAttribute(AttributeProto attribute)
+    {
+        _attribute = attribute;
+
+        Name = _attribute.Name;
+        Type = _attribute.Type;
+    }
+
+    internal AttributeProto ToProto()
+    {
+        var newAttribute = _attribute.Clone();
+        newAttribute.Name = Name;
+        newAttribute.Type = Type;
+
+        return newAttribute;
     }
 }
 
@@ -451,12 +483,10 @@ public class OnnxEdge : IOnnxGraphEdge
 public class LazyDictionary<TKey, TValue> : KeyedCollection<TKey, TValue> where TKey : notnull
 {
     private readonly Func<TValue, TKey> _keySelector;
-    private readonly IEqualityComparer<TKey> _equalityComparer;
 
-    public LazyDictionary(Func<TValue, TKey> keySelector, IEqualityComparer<TKey> comparer) : base(comparer)
+    public LazyDictionary(Func<TValue, TKey> keySelector, IEqualityComparer<TKey>? comparer = null) : base(comparer)
     {
         _keySelector = keySelector;
-        _equalityComparer = comparer;
     }
 
     protected override TKey GetKeyForItem(TValue item)
@@ -471,7 +501,7 @@ public class LazyDictionary<TKey, TValue> : KeyedCollection<TKey, TValue> where 
         {
             var newKey = _keySelector(value);
 
-            if (!_equalityComparer.Equals(key, newKey))
+            if (!Comparer.Equals(key, newKey))
             {
                 throw new ArgumentException("Key of value does not match indexer key.");
             }
