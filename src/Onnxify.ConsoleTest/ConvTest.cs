@@ -1,6 +1,6 @@
 ﻿using Onnx;
 using Onnxify.Legacy;
-using Onnxify.Operators;
+using Onnxify.Legacy.Operators;
 
 namespace Onnxify.ConsoleTest;
 
