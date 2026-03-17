@@ -414,67 +414,38 @@ public static class OnnxAttributeHelper
 {
     internal static BaseOnnxAttribute FromProto(AttributeProto attribute)
     {
-        if (attribute.Type == AttributeProto.Types.AttributeType.Undefined)
+        return attribute.Type switch
         {
-            return new OnnxAttribute<object>(attribute);
-        }
-        else if (attribute.Type == AttributeProto.Types.AttributeType.Float)
-        {
-            return new OnnxAttribute<float>(attribute);
-        }
-        else if (attribute.Type == AttributeProto.Types.AttributeType.Int)
-        {
-            return new OnnxAttribute<long>(attribute);
-        }
-        else if (attribute.Type == AttributeProto.Types.AttributeType.String)
-        {
-            return new OnnxAttribute<string>(attribute);
-        }
-        else if (attribute.Type == AttributeProto.Types.AttributeType.Tensor)
-        {
-            return new OnnxAttribute<OnnxTensor>(attribute);
-        }
-        else if (attribute.Type == AttributeProto.Types.AttributeType.Graph)
-        {
-            return new OnnxAttribute<OnnxGraph>(attribute);
-        }
-        else if (attribute.Type == AttributeProto.Types.AttributeType.SparseTensor)
-        {
-            return new OnnxAttribute<OnnxSparseTensor>(attribute);
-        }
-        else if (attribute.Type == AttributeProto.Types.AttributeType.Floats)
-        {
-            return new OnnxAttribute<float[]>(attribute);
-        }
-        else if (attribute.Type == AttributeProto.Types.AttributeType.Ints)
-        {
-            return new OnnxAttribute<long[]>(attribute);
-        }
-        else if (attribute.Type == AttributeProto.Types.AttributeType.Strings)
-        {
-            return new OnnxAttribute<string[]>(attribute);
-        }
-        else if (attribute.Type == AttributeProto.Types.AttributeType.Tensors)
-        {
-            return new OnnxAttribute<OnnxTensor[]>(attribute);
-        }
-        else if (attribute.Type == AttributeProto.Types.AttributeType.Graphs)
-        {
-            return new OnnxAttribute<OnnxGraph[]>(attribute);
-        }
-        else if (attribute.Type == AttributeProto.Types.AttributeType.SparseTensors)
-        {
-            return new OnnxAttribute<OnnxSparseTensor[]>(attribute);
-        }
-        else
-        {
-            throw new NotImplementedException($"Not implemented for '{attribute.Type}'");
-        }
+            AttributeProto.Types.AttributeType.Float => new OnnxAttribute<float>(attribute),
+            AttributeProto.Types.AttributeType.Int => new OnnxAttribute<long>(attribute),
+            AttributeProto.Types.AttributeType.String => new OnnxAttribute<string>(attribute),
+
+            AttributeProto.Types.AttributeType.Tensor => new OnnxAttribute<OnnxTensor>(attribute),
+            AttributeProto.Types.AttributeType.Graph => new OnnxAttribute<OnnxGraph>(attribute),
+            AttributeProto.Types.AttributeType.SparseTensor => new OnnxAttribute<OnnxSparseTensor>(attribute),
+
+            AttributeProto.Types.AttributeType.Floats => new OnnxAttribute<float[]>(attribute),
+            AttributeProto.Types.AttributeType.Ints => new OnnxAttribute<long[]>(attribute),
+            AttributeProto.Types.AttributeType.Strings => new OnnxAttribute<string[]>(attribute),
+
+            AttributeProto.Types.AttributeType.Tensors => new OnnxAttribute<OnnxTensor[]>(attribute),
+            AttributeProto.Types.AttributeType.Graphs => new OnnxAttribute<OnnxGraph[]>(attribute),
+            AttributeProto.Types.AttributeType.SparseTensors => new OnnxAttribute<OnnxSparseTensor[]>(attribute),
+
+            _ => throw new NotImplementedException($"Not implemented for '{attribute.Type}'"),
+        };
     }
 
     internal static T GetValue<T>(this AttributeProto attribute)
     {
-        return (T)GetValue(attribute);
+        var value = GetValue(attribute);
+
+        if (value is T typed)
+        {
+            return typed;
+        }
+
+        throw new InvalidCastException($"Attribute '{attribute.Name}' is {value.GetType().Name}, not {typeof(T).Name}");
     }
 
     internal static object GetValue(this AttributeProto attribute)
@@ -484,6 +455,7 @@ public static class OnnxAttributeHelper
             AttributeProto.Types.AttributeType.Float => attribute.F,
             AttributeProto.Types.AttributeType.Int => attribute.I,
             AttributeProto.Types.AttributeType.String => attribute.S.ToStringUtf8(),
+
             AttributeProto.Types.AttributeType.Tensor => new OnnxTensor(attribute.T),
             AttributeProto.Types.AttributeType.Graph => new OnnxGraph(attribute.G),
             AttributeProto.Types.AttributeType.SparseTensor => new OnnxSparseTensor(attribute.SparseTensor),
@@ -491,6 +463,7 @@ public static class OnnxAttributeHelper
             AttributeProto.Types.AttributeType.Floats => attribute.Floats.ToArray(),
             AttributeProto.Types.AttributeType.Ints => attribute.Ints.ToArray(),
             AttributeProto.Types.AttributeType.Strings => attribute.Strings.Select(x => x.ToStringUtf8()).ToArray(),
+
             AttributeProto.Types.AttributeType.Tensors => attribute.Tensors.Select(x => new OnnxTensor(x)).ToArray(),
             AttributeProto.Types.AttributeType.Graphs => attribute.Graphs.Select(x => new OnnxGraph(x)).ToArray(),
             AttributeProto.Types.AttributeType.SparseTensors => attribute.SparseTensors.Select(x => new OnnxSparseTensor(x)).ToArray(),
@@ -520,17 +493,17 @@ public static class OnnxAttributeHelper
 
             case OnnxTensor t:
                 attribute.T = t.ToProto();
-                attribute.Type = AttributeProto.Types.AttributeType.String;
+                attribute.Type = AttributeProto.Types.AttributeType.Tensor;
                 break;
 
             case OnnxGraph g:
                 attribute.G = g.ToProto();
-                attribute.Type = AttributeProto.Types.AttributeType.String;
+                attribute.Type = AttributeProto.Types.AttributeType.Graph;
                 break;
 
             case OnnxSparseTensor sparseTensor:
                 attribute.SparseTensor = sparseTensor.ToProto();
-                attribute.Type = AttributeProto.Types.AttributeType.String;
+                attribute.Type = AttributeProto.Types.AttributeType.SparseTensor;
                 break;
 
             case float[] floatArray:
@@ -552,30 +525,33 @@ public static class OnnxAttributeHelper
                 break;
 
             case OnnxTensor[] tensorArray:
+                attribute.Tensors.Clear();
                 foreach (var x in tensorArray)
                 {
                     attribute.Tensors.Add(x.ToProto());
                 }
 
-                attribute.Type = AttributeProto.Types.AttributeType.String;
+                attribute.Type = AttributeProto.Types.AttributeType.Tensors;
                 break;
 
             case OnnxGraph[] graphArray:
+                attribute.Graphs.Clear();
                 foreach (var x in graphArray)
                 {
                     attribute.Graphs.Add(x.ToProto());
                 }
 
-                attribute.Type = AttributeProto.Types.AttributeType.String;
+                attribute.Type = AttributeProto.Types.AttributeType.Graphs;
                 break;
 
             case OnnxSparseTensor[] sparseTensorArray:
+                attribute.SparseTensors.Clear();
                 foreach (var x in sparseTensorArray)
                 {
                     attribute.SparseTensors.Add(x.ToProto());
                 }
 
-                attribute.Type = AttributeProto.Types.AttributeType.String;
+                attribute.Type = AttributeProto.Types.AttributeType.SparseTensors;
                 break;
 
             default:
