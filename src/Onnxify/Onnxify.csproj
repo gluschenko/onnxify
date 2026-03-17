@@ -12,23 +12,13 @@
     <ThirdPartySourcePath>$([System.IO.Path]::Combine('$(CurrentAbsolutePath)', '../../third_party/onnx'))</ThirdPartySourcePath>
     <ThirdPartyTargetPath>$([System.IO.Path]::Combine('$(CurrentAbsolutePath)', 'Protobuf'))</ThirdPartyTargetPath>
 
-    <ProtoOnnxMLSourcePath>$([System.IO.Path]::Combine('$(ThirdPartySourcePath)', 'onnx', 'onnx-ml.proto3'))</ProtoOnnxMLSourcePath>
-    <ProtoOnnxMLTargetPath>$([System.IO.Path]::Combine('$(ThirdPartyTargetPath)', 'OnnxMl.cs'))</ProtoOnnxMLTargetPath>
-
-    <ProtoOnnxOperatorsMLSourcePath>$([System.IO.Path]::Combine('$(ThirdPartySourcePath)', 'onnx', 'onnx-operators-ml.proto3'))</ProtoOnnxOperatorsMLSourcePath>
-    <ProtoOnnxOperatorsMLTargetPath>$([System.IO.Path]::Combine('$(ThirdPartyTargetPath)', 'OnnxOperatorsMl.cs'))</ProtoOnnxOperatorsMLTargetPath>
-
     <AssetsTargetPath>$([System.IO.Path]::Combine('$(CurrentAbsolutePath)', 'Assets'))</AssetsTargetPath>
     <ProtoAssetsSourcePath>$([System.IO.Path]::Combine('$(ThirdPartySourcePath)', 'onnx'))</ProtoAssetsSourcePath>
+    
+    <ProtoOnnxMLSourcePath>$([System.IO.Path]::Combine('$(AssetsTargetPath)', 'onnx-ml.proto3'))</ProtoOnnxMLSourcePath>
   </PropertyGroup>
 
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <MakeDir Condition="!Exists('$(ThirdPartyTargetPath)')" Directories="$(ThirdPartyTargetPath)" />
-    <Exec Condition="!Exists('$(ProtoOnnxMLTargetPath)')" Command="protoc --proto_path=$(ThirdPartySourcePath) --csharp_opt=internal_access --csharp_out=$(ThirdPartyTargetPath) $(ProtoOnnxMLSourcePath)" />
-    <Exec Condition="!Exists('$(ProtoOnnxOperatorsMLTargetPath)')" Command="protoc --proto_path=$(ThirdPartySourcePath) --csharp_opt=internal_access --csharp_out=$(ThirdPartyTargetPath) $(ProtoOnnxOperatorsMLSourcePath)" />
-  </Target>
-
-  <Target Name="CopyProtoAssets" BeforeTargets="BeforeBuild">
     <ItemGroup>
       <ProtoAssetFiles Include="$(ProtoAssetsSourcePath)\*.proto3" />
     </ItemGroup>
@@ -50,8 +40,8 @@
     <AdditionalFiles Include="Assets\*.json" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Protobuf Include="Assets\onnx-ml.proto3" OutputOptions="file_extension=.g.cs,internal_access" />
+  <ItemGroup Condition="Exists('$(ProtoOnnxMLSourcePath)')">
+    <Protobuf Include="Assets\onnx-ml.proto3" OutputOptions="file_extension=.cs" />
   </ItemGroup>
 
 </Project>
