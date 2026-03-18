@@ -124,10 +124,9 @@ public class OnnxGraph
 
         var tensor = new OnnxTensor<T>(
             name: name,
-            dataType: TensorProto.Types.DataType.Float,
-            dataLocation: TensorProto.Types.DataLocation.Default,
+            dataLocation: OnnxTensor.TensorDataLocation.Default,
             shape: [1, 3, 256, 256],
-            value: [],
+            value: new T[1 * 3 * 256 * 256],
             null
         );
 

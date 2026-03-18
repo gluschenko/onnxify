@@ -13,7 +13,6 @@ public static class OnnxHelper
 
         return type switch
         {
-            TensorProto.Types.DataType.Undefined => OnnxTensor.FromProto<object>(tensor),
             TensorProto.Types.DataType.Float => OnnxTensor.FromProto<float>(tensor),
             TensorProto.Types.DataType.Uint8 => OnnxTensor.FromProto<byte>(tensor),
             TensorProto.Types.DataType.Int8 => OnnxTensor.FromProto<sbyte>(tensor),
@@ -30,8 +29,32 @@ public static class OnnxHelper
             TensorProto.Types.DataType.Complex64 => OnnxTensor.FromProto<Complex64>(tensor),
             TensorProto.Types.DataType.Complex128 => OnnxTensor.FromProto<Complex>(tensor),
             TensorProto.Types.DataType.Bfloat16 => OnnxTensor.FromProto<BFloat16>(tensor),
+            TensorProto.Types.DataType.Undefined => OnnxTensor.FromProto<object>(tensor),
             _ => throw new NotImplementedException($"Not implemented for '{type}'"),
         };
+    }
+    
+    internal static TensorProto.Types.DataType GetDataType(Type type)
+    {
+        if (type == typeof(float)) return TensorProto.Types.DataType.Float;
+        if (type == typeof(byte)) return TensorProto.Types.DataType.Uint8;
+        if (type == typeof(sbyte)) return TensorProto.Types.DataType.Int8;
+        if (type == typeof(ushort)) return TensorProto.Types.DataType.Uint16;
+        if (type == typeof(short)) return TensorProto.Types.DataType.Int16;
+        if (type == typeof(int)) return TensorProto.Types.DataType.Int32;
+        if (type == typeof(long)) return TensorProto.Types.DataType.Int64;
+        if (type == typeof(string)) return TensorProto.Types.DataType.String;
+        if (type == typeof(bool)) return TensorProto.Types.DataType.Bool;
+        if (type == typeof(Half)) return TensorProto.Types.DataType.Float16;
+        if (type == typeof(double)) return TensorProto.Types.DataType.Double;
+        if (type == typeof(uint)) return TensorProto.Types.DataType.Uint32;
+        if (type == typeof(ulong)) return TensorProto.Types.DataType.Uint64;
+        if (type == typeof(Complex64)) return TensorProto.Types.DataType.Complex64;
+        if (type == typeof(System.Numerics.Complex)) return TensorProto.Types.DataType.Complex128;
+        if (type == typeof(BFloat16)) return TensorProto.Types.DataType.Bfloat16;
+        if (type == typeof(object)) return TensorProto.Types.DataType.Undefined;
+
+        throw new NotImplementedException($"Type '{type}' is not supported");
     }
 
     internal static OnnxSparseTensorBase FromProto(SparseTensorProto tensor)
@@ -40,7 +63,6 @@ public static class OnnxHelper
 
         return type switch
         {
-            TensorProto.Types.DataType.Undefined => new OnnxSparseTensor<object>(tensor),
             TensorProto.Types.DataType.Float => new OnnxSparseTensor<float>(tensor),
             TensorProto.Types.DataType.Uint8 => new OnnxSparseTensor<byte>(tensor),
             TensorProto.Types.DataType.Int8 => new OnnxSparseTensor<sbyte>(tensor),
@@ -57,6 +79,7 @@ public static class OnnxHelper
             TensorProto.Types.DataType.Complex64 => new OnnxSparseTensor<Complex64>(tensor),
             TensorProto.Types.DataType.Complex128 => new OnnxSparseTensor<Complex>(tensor),
             TensorProto.Types.DataType.Bfloat16 => new OnnxSparseTensor<BFloat16>(tensor),
+            TensorProto.Types.DataType.Undefined => new OnnxSparseTensor<object>(tensor),
             _ => throw new NotImplementedException($"Not implemented for '{type}'"),
         };
     }

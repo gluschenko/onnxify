@@ -5,7 +5,7 @@ namespace Onnxify;
 public abstract class OnnxSparseTensorBase : IOnnxGraphEdge
 {
     public abstract string Name { get; }
-    public abstract TensorProto.Types.DataType DataType { get; }
+    public abstract Type DataType { get; }
     public abstract OnnxTensor Value { get; }
     internal abstract SparseTensorProto ToProto();
 }
@@ -13,7 +13,7 @@ public abstract class OnnxSparseTensorBase : IOnnxGraphEdge
 public class OnnxSparseTensor<T> : OnnxSparseTensorBase
 {
     public override string Name => _value.Name;
-    public override TensorProto.Types.DataType DataType => _value.DataType;
+    public override Type DataType => _value.DataType;
     public override OnnxTensor<T> Value => _value;
 
     private readonly SparseTensorProto _tensor;
