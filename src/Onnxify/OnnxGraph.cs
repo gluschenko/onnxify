@@ -122,15 +122,15 @@ public class OnnxGraph
             throw new InvalidOperationException($"Tensor '{name}' is already added into graph");
         }
 
-        var proto = new TensorProto
-        {
-            Name = name,
-            DataType = (int)TensorProto.Types.DataType.Float,
-            DataLocation = TensorProto.Types.DataLocation.Default,
-            Dims = { 1, 3, 256, 256 },
-        };
+        var tensor = new OnnxTensor<T>(
+            name: name,
+            dataType: TensorProto.Types.DataType.Float,
+            dataLocation: TensorProto.Types.DataLocation.Default,
+            shape: [1, 3, 256, 256],
+            value: [],
+            null
+        );
 
-        var tensor = new OnnxTensor<T>(proto);
         _tensors.Add(tensor);
         return tensor;
     }
