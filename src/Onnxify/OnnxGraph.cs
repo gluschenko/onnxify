@@ -113,7 +113,55 @@ public class OnnxGraph
         return null;
     }
 
-    public GraphProto ToProto()
+    public OnnxTensor AddValue<T>(
+        string name
+    )
+    {
+        if (_tensors.Contains(name))
+        {
+            throw new InvalidOperationException($"Tensor '{name}' is already added into graph");
+        }
+
+        var proto = new TensorProto
+        {
+            Name = name,
+            DataType = (int)TensorProto.Types.DataType.Float,
+            DataLocation = TensorProto.Types.DataLocation.Default,
+            Dims = { 1, 3, 256, 256 },
+        };
+
+        var tensor = new OnnxTensor<T>(proto);
+        _tensors.Add(tensor);
+        return tensor;
+    }
+
+    public OnnxNode AddNode(
+        string name,
+        string opType,
+        IEnumerable<string> inputs,
+        IEnumerable<string> outputs,
+        IEnumerable<string> attributes
+    )
+    {
+        if (_nodes.Contains(name))
+        {
+            throw new InvalidOperationException($"Node '{name}' is already added into graph");
+        }
+
+        var proto = new NodeProto
+        {
+            Name = name,
+            OpType = opType,
+            Input = { inputs },
+            Output = { outputs },
+        };
+
+        var node = new OnnxNode(proto, this);
+        _nodes.Add(node);
+        return node;
+    }
+
+    internal GraphProto ToProto()
     {
         var newGraph = _graph.Clone();
         newGraph.Name = Name;

@@ -58,5 +58,14 @@ namespace Onnxify.ConsoleTest
 
             return _classifier.forward(x);
         }
+
+        public OnnxModel Onnxify()
+        {
+            var model = OnnxModel.Create(new OnnxModelCreationOptions());
+
+
+
+            return model;
+        }
     }
 }

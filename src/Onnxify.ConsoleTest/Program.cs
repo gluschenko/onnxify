@@ -18,7 +18,8 @@ namespace Onnxify.ConsoleTest
             Console.InputEncoding = Encoding.Unicode;
             Console.OutputEncoding = Encoding.Unicode;
 
-            Test();
+            Test1();
+            Test2();
             /*AA();
             A();
             B();
@@ -28,7 +29,7 @@ namespace Onnxify.ConsoleTest
             Console.ReadKey();
         }
 
-        static void Test()
+        static void Test1()
         {
             var inputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "bvlcalexnet-12-qdq.onnx");
             var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "bvlcalexnet-12-qdq__test.onnx");
@@ -36,6 +37,27 @@ namespace Onnxify.ConsoleTest
 
             var text = model.ToString();
             Console.WriteLine(text);
+
+            model.Save(outputPath, true);
+            return;
+        }
+
+        static void Test2()
+        {
+            var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "test.onnx");
+            var model = OnnxModel.Create(new OnnxModelCreationOptions());
+
+            var a = model.Graph.AddValue<float>("test_conv_a");
+            var b = model.Graph.AddValue<float>("test_conv_b");
+            var c = model.Graph.AddValue<float>("test_conv_c");
+
+            model.Graph.AddNode(
+                name: "test_conv",
+                opType: "Conv",
+                inputs: [a.Name, b.Name, c.Name],
+                outputs: [],
+                attributes: []
+            );
 
             model.Save(outputPath, true);
             return;
