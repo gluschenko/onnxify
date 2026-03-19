@@ -4,7 +4,7 @@ public class OnnxEdge : IOnnxGraphEdge
 {
     public string Name { get; init; }
 
-    internal OnnxEdge(string name)
+    public OnnxEdge(string name)
     {
         Name = name;
     }

@@ -47,46 +47,99 @@ namespace Onnxify.ConsoleTest
             var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "test.onnx");
             var model = OnnxModel.Create(new OnnxModelCreationOptions());
 
-            var a = model.Graph.AddTensor<float>(
-                name: "test_conv_a",
+            var input = model.Graph.AddInput(
+                name: "input_0",
+                type: OnnxTensorType.Create<float>([256, 128])
+            );
+
+            var output = model.Graph.AddOutput(
+                name: "probs_0",
+                type: OnnxTensorType.Create<float>([128, 64])
+            );
+
+            var conv1_w = model.Graph.AddTensor<float>(
+                name: "conv1_w",
+                shape: [64, 3, 11, 11],
+                value: new float[64 * 3 * 11 * 11]
+            );
+
+            var conv1_b = model.Graph.AddTensor<float>(
+                name: "conv1_b",
                 shape: [1, 3, 128, 128],
                 value: new float[1 * 3 * 128 * 128]
             );
 
-            var b = model.Graph.AddTensor<float>(
-                name: "test_conv_b",
-                shape: [1, 3, 128, 128],
-                value: new float[1 * 3 * 128 * 128]
+            var fc_w = model.Graph.AddTensor<float>(
+                name: "fc_w",
+                shape: [1000, 9216],
+                value: new float[1000 * 9216]
             );
 
-            var c = model.Graph.AddTensor<float>(
-                name: "test_conv_c",
-                shape: [1, 3, 128, 128],
-                value: new float[1 * 3 * 128 * 128]
+            var fc_b = model.Graph.AddTensor<float>(
+                name: "fc_b",
+                shape: [1000, 9216],
+                value: new float[1000]
             );
 
-            var d = model.Graph.AddValue<OnnxTensorType>(
-                name: "test_value",
-                type: new OnnxTensorType(
-                    type: typeof(float),
-                    shape: new OnnxTensorShape([
-                        new OnnxDimension<long>(200),
-                        new OnnxDimension<long>(100),
-                    ]),
-                    denotation: ""
-                )
-            );
+            var conv1_out = model.Graph.AddEdge("conv1_out");
 
             model.Graph.AddNode(
-                name: "test_conv",
+                name: "conv1",
                 opType: "Conv",
                 domain: "",
                 docString: "",
-                inputs: [a, b, c],
-                outputs: [d],
+                inputs: [input, conv1_w, conv1_b],
+                outputs: [conv1_out],
+                attributes: []
+            );
+
+            var relu1_out = model.Graph.AddEdge("relu1_out");
+
+            model.Graph.AddNode(
+                name: "relu1",
+                opType: "Relu",
+                domain: "",
+                docString: "",
+                inputs: [conv1_out],
+                outputs: [relu1_out],
+                attributes: []
+            );
+
+            var pool1_out = model.Graph.AddEdge("pool1_out");
+
+            model.Graph.AddNode(
+                name: "pool1",
+                opType: "MaxPool",
+                domain: "",
+                docString: "",
+                inputs: [relu1_out],
+                outputs: [pool1_out],
                 attributes: [
-                    new OnnxAttribute<float>("bias", 0.5f),
+                    new OnnxAttribute<long[]>("kernel_shape", [2, 2]),
+                    new OnnxAttribute<long[]>("strides", [2, 2]),
                 ]
+            );
+
+            var flat_out = model.Graph.AddEdge("flat_out");
+
+            model.Graph.AddNode(
+                name: "flatten",
+                opType: "Flatten",
+                domain: "",
+                docString: "",
+                inputs: [pool1_out],
+                outputs: [flat_out],
+                attributes: []
+            );
+
+            model.Graph.AddNode(
+                name: "fc",
+                opType: "Gemm",
+                domain: "",
+                docString: "",
+                inputs: [flat_out, fc_w, fc_b],
+                outputs: [output],
+                attributes: []
             );
 
             model.Save(outputPath, true);

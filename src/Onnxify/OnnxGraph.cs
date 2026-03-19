@@ -53,7 +53,7 @@ public class OnnxGraph
             {
                 if (GetValue(x) is null)
                 {
-                    _edges[x] = new OnnxEdge(x);
+                    _edges.Add(new OnnxEdge(x));
                 }
             }
         }
@@ -106,16 +106,6 @@ public class OnnxGraph
         return null;
     }
 
-    public OnnxTensor? GetTensor(string name)
-    {
-        if (_initializers.TryGetValue(name, out var result))
-        {
-            return result;
-        }
-
-        return null;
-    }
-
     public OnnxTensor AddTensor<T>(
         string name,
         long[] shape,
@@ -139,6 +129,30 @@ public class OnnxGraph
         return tensor;
     }
 
+    public OnnxValue AddInput<T>(string name, T type) where T : OnnxValueType
+    {
+        if (_inputs.Contains(name))
+        {
+            throw new InvalidOperationException($"Value '{name}' is already added into graph");
+        }
+
+        var placeholder = new OnnxValue<T>(name, type, null);
+        _inputs.Add(placeholder);
+        return placeholder;
+    }
+
+    public OnnxValue AddOutput<T>(string name, T type) where T : OnnxValueType
+    {
+        if (_outputs.Contains(name))
+        {
+            throw new InvalidOperationException($"Value '{name}' is already added into graph");
+        }
+
+        var placeholder = new OnnxValue<T>(name, type, null);
+        _outputs.Add(placeholder);
+        return placeholder;
+    }
+
     public OnnxValue AddValue<T>(string name, T type) where T : OnnxValueType
     {
         if (_placeholders.Contains(name))
@@ -149,6 +163,18 @@ public class OnnxGraph
         var placeholder = new OnnxValue<T>(name, type, null);
         _placeholders.Add(placeholder);
         return placeholder;
+    }
+
+    public OnnxEdge AddEdge(string name)
+    {
+        if (_edges.Contains(name))
+        {
+            throw new InvalidOperationException($"Edge '{name}' is already added into graph");
+        }
+
+        var edge = new OnnxEdge(name);
+        _edges.Add(edge);
+        return edge;
     }
 
     public OnnxNode AddNode(
