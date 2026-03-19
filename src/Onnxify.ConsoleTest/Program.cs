@@ -47,10 +47,29 @@ namespace Onnxify.ConsoleTest
             var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "test.onnx");
             var model = OnnxModel.Create(new OnnxModelCreationOptions());
 
-            var a = model.Graph.AddValue<float>("test_conv_a");
-            var b = model.Graph.AddValue<float>("test_conv_b");
-            var c = model.Graph.AddValue<float>("test_conv_c");
-            var d = model.Graph.AddValue<float>("test_conv_d");
+            var a = model.Graph.AddValue<float>(
+                name: "test_conv_a",
+                shape: [1, 3, 128, 128],
+                value: new float[1 * 3 * 128 * 128]
+            );
+
+            var b = model.Graph.AddValue<float>(
+                name: "test_conv_b",
+                shape: [1, 3, 128, 128],
+                value: new float[1 * 3 * 128 * 128]
+            );
+
+            var c = model.Graph.AddValue<float>(
+                name: "test_conv_c",
+                shape: [1, 3, 128, 128],
+                value: new float[1 * 3 * 128 * 128]
+            );
+
+            var d = model.Graph.AddValue<float>(
+                name: "test_conv_d",
+                shape: [1, 3, 128, 128],
+                value: new float[1 * 3 * 128 * 128]
+            );
 
             model.Graph.AddNode(
                 name: "test_conv",

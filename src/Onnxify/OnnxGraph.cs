@@ -114,7 +114,9 @@ public class OnnxGraph
     }
 
     public OnnxTensor AddValue<T>(
-        string name
+        string name,
+        long[] shape,
+        T[] value
     )
     {
         if (_tensors.Contains(name))
@@ -125,8 +127,8 @@ public class OnnxGraph
         var tensor = new OnnxTensor<T>(
             name: name,
             dataLocation: OnnxTensor.TensorDataLocation.Default,
-            shape: [1, 3, 256, 256],
-            value: new T[1 * 3 * 256 * 256],
+            shape: shape,
+            value: value,
             null
         );
 
