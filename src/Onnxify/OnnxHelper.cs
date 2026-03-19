@@ -33,7 +33,7 @@ public static class OnnxHelper
             _ => throw new NotImplementedException($"Not implemented for '{type}'"),
         };
     }
-    
+
     internal static TensorProto.Types.DataType GetDataType(Type type)
     {
         if (type == typeof(float)) return TensorProto.Types.DataType.Float;
@@ -88,21 +88,21 @@ public static class OnnxHelper
     {
         return attribute.Type switch
         {
-            AttributeProto.Types.AttributeType.Float => new OnnxAttribute<float>(attribute),
-            AttributeProto.Types.AttributeType.Int => new OnnxAttribute<long>(attribute),
-            AttributeProto.Types.AttributeType.String => new OnnxAttribute<string>(attribute),
+            AttributeProto.Types.AttributeType.Float => OnnxAttribute.FromProto<float>(attribute),
+            AttributeProto.Types.AttributeType.Int => OnnxAttribute.FromProto<long>(attribute),
+            AttributeProto.Types.AttributeType.String => OnnxAttribute.FromProto<string>(attribute),
 
-            AttributeProto.Types.AttributeType.Tensor => new OnnxAttribute<OnnxTensor>(attribute),
-            AttributeProto.Types.AttributeType.Graph => new OnnxAttribute<OnnxGraph>(attribute),
-            AttributeProto.Types.AttributeType.SparseTensor => new OnnxAttribute<OnnxSparseTensorBase>(attribute),
+            AttributeProto.Types.AttributeType.Tensor => OnnxAttribute.FromProto<OnnxTensor>(attribute),
+            AttributeProto.Types.AttributeType.Graph => OnnxAttribute.FromProto<OnnxGraph>(attribute),
+            AttributeProto.Types.AttributeType.SparseTensor => OnnxAttribute.FromProto<OnnxSparseTensorBase>(attribute),
 
-            AttributeProto.Types.AttributeType.Floats => new OnnxAttribute<float[]>(attribute),
-            AttributeProto.Types.AttributeType.Ints => new OnnxAttribute<long[]>(attribute),
-            AttributeProto.Types.AttributeType.Strings => new OnnxAttribute<string[]>(attribute),
+            AttributeProto.Types.AttributeType.Floats => OnnxAttribute.FromProto<float[]>(attribute),
+            AttributeProto.Types.AttributeType.Ints => OnnxAttribute.FromProto<long[]>(attribute),
+            AttributeProto.Types.AttributeType.Strings => OnnxAttribute.FromProto<string[]>(attribute),
 
-            AttributeProto.Types.AttributeType.Tensors => new OnnxAttribute<OnnxTensor[]>(attribute),
-            AttributeProto.Types.AttributeType.Graphs => new OnnxAttribute<OnnxGraph[]>(attribute),
-            AttributeProto.Types.AttributeType.SparseTensors => new OnnxAttribute<OnnxSparseTensorBase[]>(attribute),
+            AttributeProto.Types.AttributeType.Tensors => OnnxAttribute.FromProto<OnnxTensor[]>(attribute),
+            AttributeProto.Types.AttributeType.Graphs => OnnxAttribute.FromProto<OnnxGraph[]>(attribute),
+            AttributeProto.Types.AttributeType.SparseTensors => OnnxAttribute.FromProto<OnnxSparseTensorBase[]>(attribute),
 
             _ => throw new NotImplementedException($"Not implemented for '{attribute.Type}'"),
         };
@@ -255,6 +255,37 @@ public static class OnnxHelper
 
             _ => throw new NotImplementedException($"Unsupported attribute type {attribute.Type}")
         };
+    }
+
+    internal static AttributeProto.Types.AttributeType GetAttributeType(this Type type)
+    {
+        if (type == typeof(float)) return AttributeProto.Types.AttributeType.Float;
+        if (type == typeof(long) || type == typeof(int) || type == typeof(short) || type == typeof(byte))
+        {
+            return AttributeProto.Types.AttributeType.Int;
+        }
+
+        if (type == typeof(string)) return AttributeProto.Types.AttributeType.String;
+
+        if (type == typeof(TensorProto)) return AttributeProto.Types.AttributeType.Tensor;
+        if (type == typeof(GraphProto)) return AttributeProto.Types.AttributeType.Graph;
+        if (type == typeof(SparseTensorProto)) return AttributeProto.Types.AttributeType.SparseTensor;
+
+        if (type == typeof(float[])) return AttributeProto.Types.AttributeType.Floats;
+        if (type == typeof(long[]) || type == typeof(int[]) || type == typeof(short[]) || type == typeof(byte[]))
+        {
+            return AttributeProto.Types.AttributeType.Ints;
+        }
+
+        if (type == typeof(string[])) return AttributeProto.Types.AttributeType.Strings;
+
+        if (type == typeof(TensorProto[])) return AttributeProto.Types.AttributeType.Tensors;
+        if (type == typeof(GraphProto[])) return AttributeProto.Types.AttributeType.Graphs;
+        if (type == typeof(SparseTensorProto[])) return AttributeProto.Types.AttributeType.SparseTensors;
+
+        if (type == typeof(object)) return AttributeProto.Types.AttributeType.Undefined;
+
+        throw new NotImplementedException($"Type '{type}' is not supported");
     }
 
     internal static void SetValue<T>(this AttributeProto attribute, T value)

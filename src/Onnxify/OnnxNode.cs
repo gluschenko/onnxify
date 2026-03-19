@@ -18,40 +18,42 @@ public class OnnxNode : IOnnxGraphNode
     private readonly LazyDictionary<string, OnnxAttribute> _attributes = new(x => x.Name, EqualityComparer<string>.Default);
 
     private readonly NodeProto _node;
-    private readonly OnnxGraph _graph;
 
-    internal OnnxNode(NodeProto node, OnnxGraph graph)
+    internal OnnxNode(
+        string name,
+        string opType,
+        string domain,
+        string docString,
+        IEnumerable<IOnnxGraphEdge> inputs,
+        IEnumerable<IOnnxGraphEdge> outputs,
+        IEnumerable<OnnxAttribute> attributes,
+        NodeProto? proto
+    )
     {
-        _node = node;
-        _graph = graph;
-
-        Name = node.Name;
-        OpType = node.OpType;
-        Domain = node.Domain;
-        DocString = node.DocString;
-
-        foreach (var x in node.Input)
+        _node = proto ?? new NodeProto
         {
-            var value = graph.GetValue(x) ?? throw new InvalidOperationException($"No graph value found for '{x}'.");
-            _inputs.Add(value);
+            Name = name,
+        };
+
+        Name = name;
+        OpType = opType;
+        Domain = domain;
+        DocString = docString;
+
+        foreach (var x in inputs)
+        {
+            _inputs.Add(x);
         }
 
-        foreach (var x in node.Output)
+        foreach (var x in outputs)
         {
-            var value = graph.GetValue(x) ?? throw new InvalidOperationException($"No graph value found for '{x}'.");
-            _outputs.Add(value);
+            _outputs.Add(x);
         }
 
-        foreach (var attribute in node.Attribute)
+        foreach (var x in attributes)
         {
-            var value = OnnxHelper.FromProto(attribute);
-            _attributes.Add(value);
+            _attributes.Add(x);
         }
-    }
-
-    public OnnxGraph GetGraph()
-    {
-        return _graph;
     }
 
     internal NodeProto ToProto()
@@ -81,5 +83,45 @@ public class OnnxNode : IOnnxGraphNode
         }
 
         return newNode;
+    }
+
+    internal static OnnxNode FromProto(NodeProto node, OnnxGraph graph)
+    {
+        var name = node.Name;
+        var opType = node.OpType;
+        var domain = node.Domain;
+        var docString = node.DocString;
+        var inputs = new List<IOnnxGraphEdge>();
+        var outputs = new List<IOnnxGraphEdge>();
+        var attributes = new List<OnnxAttribute>();
+
+        foreach (var x in node.Input)
+        {
+            var value = graph.GetValue(x) ?? throw new InvalidOperationException($"No graph value found for '{x}'.");
+            inputs.Add(value);
+        }
+
+        foreach (var x in node.Output)
+        {
+            var value = graph.GetValue(x) ?? throw new InvalidOperationException($"No graph value found for '{x}'.");
+            outputs.Add(value);
+        }
+
+        foreach (var attribute in node.Attribute)
+        {
+            var value = OnnxHelper.FromProto(attribute);
+            attributes.Add(value);
+        }
+
+        return new OnnxNode(
+            name: name,
+            opType: opType,
+            domain: domain,
+            docString: docString,
+            inputs: inputs,
+            outputs: outputs,
+            attributes: attributes,
+            proto: node
+        );
     }
 }

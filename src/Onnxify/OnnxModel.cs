@@ -146,9 +146,3 @@ public interface IOnnxGraphEdge
 {
     public string Name { get; }
 }
-
-public abstract class OnnxAttribute
-{
-    public abstract string Name { get; }
-    internal abstract AttributeProto ToProto();
-}

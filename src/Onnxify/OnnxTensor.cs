@@ -75,7 +75,7 @@ public class OnnxTensor<T> : OnnxTensor
         Shape = shape;
         Value = value;
 
-        _tensor = tensor ?? new TensorProto 
+        _tensor = tensor ?? new TensorProto
         {
             Name = name,
         };

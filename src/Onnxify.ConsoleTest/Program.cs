@@ -50,13 +50,18 @@ namespace Onnxify.ConsoleTest
             var a = model.Graph.AddValue<float>("test_conv_a");
             var b = model.Graph.AddValue<float>("test_conv_b");
             var c = model.Graph.AddValue<float>("test_conv_c");
+            var d = model.Graph.AddValue<float>("test_conv_d");
 
             model.Graph.AddNode(
                 name: "test_conv",
                 opType: "Conv",
-                inputs: [a.Name, b.Name, c.Name],
-                outputs: [],
-                attributes: []
+                domain: "",
+                docString: "",
+                inputs: [a, b, c],
+                outputs: [d],
+                attributes: [
+                    new OnnxAttribute<float>("bias", 0.5f),
+                ]
             );
 
             model.Save(outputPath, true);

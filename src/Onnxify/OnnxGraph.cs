@@ -57,7 +57,7 @@ public class OnnxGraph
 
         foreach (var node in graph.Node)
         {
-            _nodes.Add(new OnnxNode(node, this));
+            _nodes.Add(OnnxNode.FromProto(node, this));
         }
 
         Name = graph.Name;
@@ -137,9 +137,11 @@ public class OnnxGraph
     public OnnxNode AddNode(
         string name,
         string opType,
-        IEnumerable<string> inputs,
-        IEnumerable<string> outputs,
-        IEnumerable<string> attributes
+        string domain,
+        string docString,
+        IEnumerable<IOnnxGraphEdge> inputs,
+        IEnumerable<IOnnxGraphEdge> outputs,
+        IEnumerable<OnnxAttribute> attributes
     )
     {
         if (_nodes.Contains(name))
@@ -147,15 +149,17 @@ public class OnnxGraph
             throw new InvalidOperationException($"Node '{name}' is already added into graph");
         }
 
-        var proto = new NodeProto
-        {
-            Name = name,
-            OpType = opType,
-            Input = { inputs },
-            Output = { outputs },
-        };
+        var node = new OnnxNode(
+            name: name,
+            opType: opType,
+            domain: domain,
+            docString: docString,
+            inputs: inputs,
+            outputs: outputs,
+            attributes: attributes,
+            proto: null
+        );
 
-        var node = new OnnxNode(proto, this);
         _nodes.Add(node);
         return node;
     }
