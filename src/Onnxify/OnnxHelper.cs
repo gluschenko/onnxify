@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using System.Runtime.InteropServices;
 using Google.Protobuf;
+using Google.Protobuf.Collections;
 using Onnx;
 
 namespace Onnxify;
@@ -323,50 +324,32 @@ public static class OnnxHelper
                 break;
 
             case float[] floatArray:
-                attribute.Floats.Clear();
-                attribute.Floats.AddRange(floatArray);
+                attribute.Floats.Set(floatArray);
                 attribute.Type = AttributeProto.Types.AttributeType.Floats;
                 break;
 
             case long[] intArray:
-                attribute.Ints.Clear();
-                attribute.Ints.AddRange(intArray);
+                attribute.Ints.Set(intArray);
                 attribute.Type = AttributeProto.Types.AttributeType.Ints;
                 break;
 
             case string[] stringArray:
-                attribute.Strings.Clear();
-                attribute.Strings.AddRange(stringArray.Select(ByteString.CopyFromUtf8));
+                attribute.Strings.Set(stringArray.Select(ByteString.CopyFromUtf8));
                 attribute.Type = AttributeProto.Types.AttributeType.Strings;
                 break;
 
             case OnnxTensor[] tensorArray:
-                attribute.Tensors.Clear();
-                foreach (var x in tensorArray)
-                {
-                    attribute.Tensors.Add(x.ToProto());
-                }
-
+                attribute.Tensors.Set(tensorArray.Select(x => x.ToProto()));
                 attribute.Type = AttributeProto.Types.AttributeType.Tensors;
                 break;
 
             case OnnxGraph[] graphArray:
-                attribute.Graphs.Clear();
-                foreach (var x in graphArray)
-                {
-                    attribute.Graphs.Add(x.ToProto());
-                }
-
+                attribute.Graphs.Set(graphArray.Select(x => x.ToProto()));
                 attribute.Type = AttributeProto.Types.AttributeType.Graphs;
                 break;
 
             case OnnxSparseTensorBase[] sparseTensorArray:
-                attribute.SparseTensors.Clear();
-                foreach (var x in sparseTensorArray)
-                {
-                    attribute.SparseTensors.Add(x.ToProto());
-                }
-
+                attribute.SparseTensors.Set(sparseTensorArray.Select(x => x.ToProto()));
                 attribute.Type = AttributeProto.Types.AttributeType.SparseTensors;
                 break;
 
@@ -377,8 +360,7 @@ public static class OnnxHelper
 
     internal static void SetValue<T>(this TensorProto tensor, T value, params long[] shape)
     {
-        tensor.Dims.Clear();
-        tensor.Dims.AddRange(shape);
+        tensor.Dims.Set(shape);
 
         tensor.RawData = ByteString.Empty;
 
@@ -461,8 +443,7 @@ public static class OnnxHelper
 
             case string[] s:
                 tensor.DataType = (int)TensorProto.Types.DataType.String;
-                tensor.StringData.Clear();
-                tensor.StringData.AddRange(s.Select(ByteString.CopyFromUtf8));
+                tensor.StringData.Set(s.Select(ByteString.CopyFromUtf8));
                 break;
 
             default:
@@ -530,5 +511,14 @@ public static class OnnxHelper
         }
 
         return Pack(buffer);
+    }
+
+    internal static void Set<T>(this RepeatedField<T> collection, IEnumerable<T> items)
+    {
+        collection.Clear();
+        foreach (var x in items)
+        {
+            collection.Add(x);
+        }
     }
 }

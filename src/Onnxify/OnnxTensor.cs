@@ -87,13 +87,8 @@ public class OnnxTensor<T> : OnnxTensor
         newTensor.Name = Name;
         newTensor.DataType = (int)OnnxHelper.GetDataType(DataType);
         newTensor.DataLocation = ToProto(DataLocation);
-
-        newTensor.Dims.Clear();
-        foreach (var size in Shape)
-        {
-            newTensor.Dims.Add(size);
-        }
-
+        newTensor.Dims.Set(Shape);
+        
         var data = Value.ToArray();
         newTensor.SetValue(data, Shape);
 

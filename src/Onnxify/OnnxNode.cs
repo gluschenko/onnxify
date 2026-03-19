@@ -64,23 +64,9 @@ public class OnnxNode : IOnnxGraphNode
         newNode.Domain = Domain;
         newNode.DocString = DocString;
 
-        newNode.Input.Clear();
-        foreach (var x in Inputs)
-        {
-            newNode.Input.Add(x.Name);
-        }
-
-        newNode.Output.Clear();
-        foreach (var x in Outputs)
-        {
-            newNode.Output.Add(x.Name);
-        }
-
-        newNode.Attribute.Clear();
-        foreach (var attribute in Attributes)
-        {
-            newNode.Attribute.Add(attribute.ToProto());
-        }
+        newNode.Input.Set(Inputs.Select(x => x.Name));
+        newNode.Output.Set(Outputs.Select(x => x.Name));
+        newNode.Attribute.Set(Attributes.Select(x => x.ToProto()));
 
         return newNode;
     }

@@ -171,35 +171,11 @@ public class OnnxGraph
         var newGraph = _graph.Clone();
         newGraph.Name = Name;
 
-        newGraph.Initializer.Clear();
-        foreach (var x in _tensors)
-        {
-            newGraph.Initializer.Add(x.ToProto());
-        }
-
-        newGraph.ValueInfo.Clear();
-        foreach (var x in _constraints)
-        {
-            newGraph.ValueInfo.Add(x.ToProto());
-        }
-
-        newGraph.Input.Clear();
-        foreach (var x in _inputs)
-        {
-            newGraph.Input.Add(x.ToProto());
-        }
-
-        newGraph.Output.Clear();
-        foreach (var x in _outputs)
-        {
-            newGraph.Output.Add(x.ToProto());
-        }
-
-        newGraph.Node.Clear();
-        foreach (var x in _nodes)
-        {
-            newGraph.Node.Add(x.ToProto());
-        }
+        newGraph.Initializer.Set(_tensors.Select(x => x.ToProto()));
+        newGraph.ValueInfo.Set(_constraints.Select(x => x.ToProto()));
+        newGraph.Input.Set(_inputs.Select(x => x.ToProto()));
+        newGraph.Output.Set(_outputs.Select(x => x.ToProto()));
+        newGraph.Node.Set(_nodes.Select(x => x.ToProto()));
 
         return newGraph;
     }

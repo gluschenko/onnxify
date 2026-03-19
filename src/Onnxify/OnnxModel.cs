@@ -110,14 +110,9 @@ public class OnnxModel
         var newModel = _model.Clone();
         newModel.Graph = _graph.ToProto();
 
-        newModel.MetadataProps.Clear();
-        newModel.MetadataProps.AddRange(MetadataProps);
-
-        newModel.TrainingInfo.Clear();
-        newModel.TrainingInfo.AddRange(TrainingInfo);
-
-        newModel.OpsetImport.Clear();
-        newModel.OpsetImport.AddRange(OpsetImport);
+        newModel.MetadataProps.Set(MetadataProps);
+        newModel.TrainingInfo.Set(TrainingInfo);
+        newModel.OpsetImport.Set(OpsetImport);
 
         return newModel;
     }
@@ -139,7 +134,6 @@ public class OnnxModel
 public interface IOnnxGraphNode
 {
     public string Name { get; }
-    public OnnxGraph GetGraph();
 }
 
 public interface IOnnxGraphEdge
