@@ -35,6 +35,22 @@ public static class OnnxHelper
         };
     }
 
+    internal static OnnxValue FromProto(ValueInfoProto proto)
+    {
+        var type = proto.Type.ValueCase;
+
+        return type switch
+        {
+            TypeProto.ValueOneofCase.TensorType => OnnxValue.FromProto<OnnxTensorType>(proto),
+            TypeProto.ValueOneofCase.SequenceType => throw new NotImplementedException(),
+            TypeProto.ValueOneofCase.MapType => throw new NotImplementedException(),
+            TypeProto.ValueOneofCase.SparseTensorType => throw new NotImplementedException(),
+            TypeProto.ValueOneofCase.OpaqueType => throw new NotImplementedException(),
+            TypeProto.ValueOneofCase.None => throw new NotImplementedException($"Not implemented for '{type}'"),
+            _ => throw new NotImplementedException($"Not implemented for '{type}'"),
+        };
+    }
+
     internal static TensorProto.Types.DataType GetDataType(Type type)
     {
         if (type == typeof(float)) return TensorProto.Types.DataType.Float;
@@ -260,31 +276,70 @@ public static class OnnxHelper
 
     internal static AttributeProto.Types.AttributeType GetAttributeType(this Type type)
     {
-        if (type == typeof(float)) return AttributeProto.Types.AttributeType.Float;
+        if (type == typeof(float))
+        {
+            return AttributeProto.Types.AttributeType.Float;
+        }
+
         if (type == typeof(long) || type == typeof(int) || type == typeof(short) || type == typeof(byte))
         {
             return AttributeProto.Types.AttributeType.Int;
         }
 
-        if (type == typeof(string)) return AttributeProto.Types.AttributeType.String;
+        if (type == typeof(string))
+        {
+            return AttributeProto.Types.AttributeType.String;
+        }
 
-        if (type == typeof(TensorProto)) return AttributeProto.Types.AttributeType.Tensor;
-        if (type == typeof(GraphProto)) return AttributeProto.Types.AttributeType.Graph;
-        if (type == typeof(SparseTensorProto)) return AttributeProto.Types.AttributeType.SparseTensor;
+        if (type == typeof(TensorProto))
+        {
+            return AttributeProto.Types.AttributeType.Tensor;
+        }
 
-        if (type == typeof(float[])) return AttributeProto.Types.AttributeType.Floats;
+        if (type == typeof(GraphProto))
+        {
+            return AttributeProto.Types.AttributeType.Graph;
+        }
+
+        if (type == typeof(SparseTensorProto))
+        {
+            return AttributeProto.Types.AttributeType.SparseTensor;
+        }
+
+        if (type == typeof(float[]))
+        {
+            return AttributeProto.Types.AttributeType.Floats;
+        }
+
         if (type == typeof(long[]) || type == typeof(int[]) || type == typeof(short[]) || type == typeof(byte[]))
         {
             return AttributeProto.Types.AttributeType.Ints;
         }
 
-        if (type == typeof(string[])) return AttributeProto.Types.AttributeType.Strings;
+        if (type == typeof(string[]))
+        {
+            return AttributeProto.Types.AttributeType.Strings;
+        }
 
-        if (type == typeof(TensorProto[])) return AttributeProto.Types.AttributeType.Tensors;
-        if (type == typeof(GraphProto[])) return AttributeProto.Types.AttributeType.Graphs;
-        if (type == typeof(SparseTensorProto[])) return AttributeProto.Types.AttributeType.SparseTensors;
+        if (type == typeof(TensorProto[]))
+        {
+            return AttributeProto.Types.AttributeType.Tensors;
+        }
 
-        if (type == typeof(object)) return AttributeProto.Types.AttributeType.Undefined;
+        if (type == typeof(GraphProto[]))
+        {
+            return AttributeProto.Types.AttributeType.Graphs;
+        }
+
+        if (type == typeof(SparseTensorProto[]))
+        {
+            return AttributeProto.Types.AttributeType.SparseTensors;
+        }
+
+        if (type == typeof(object))
+        {
+            return AttributeProto.Types.AttributeType.Undefined;
+        }
 
         throw new NotImplementedException($"Type '{type}' is not supported");
     }

@@ -10,15 +10,16 @@ public class OnnxGraph
 
     public IReadOnlyList<OnnxValue> Inputs => _inputs;
     public IReadOnlyList<OnnxValue> Outputs => _outputs;
+    public IReadOnlyList<OnnxTensor> Initializers => _initializers;
+    public IReadOnlyList<OnnxValue> Placeholders => _placeholders;
     public IReadOnlyList<OnnxNode> Nodes => _nodes;
-    public IReadOnlyList<OnnxTensor> Tensors => _tensors;
 
-    private readonly LazyDictionary<string, OnnxEdge> _edges = new(x => x.Name, EqualityComparer<string>.Default);
-    private readonly LazyDictionary<string, OnnxTensor> _tensors = new(x => x.Name, EqualityComparer<string>.Default);
-    private readonly LazyDictionary<string, OnnxValue> _constraints = new(x => x.Name, EqualityComparer<string>.Default);
-    private readonly LazyDictionary<string, OnnxValue> _inputs = new(x => x.Name, EqualityComparer<string>.Default);
-    private readonly LazyDictionary<string, OnnxValue> _outputs = new(x => x.Name, EqualityComparer<string>.Default);
-    private readonly LazyDictionary<string, OnnxNode> _nodes = new(x => x.Name, EqualityComparer<string>.Default);
+    private readonly LazyDictionary<string, OnnxValue> _inputs = new(x => x.Name, StringComparer.Ordinal);
+    private readonly LazyDictionary<string, OnnxValue> _outputs = new(x => x.Name, StringComparer.Ordinal);
+    private readonly LazyDictionary<string, OnnxTensor> _initializers = new(x => x.Name, StringComparer.Ordinal);
+    private readonly LazyDictionary<string, OnnxValue> _placeholders = new(x => x.Name, StringComparer.Ordinal);
+    private readonly LazyDictionary<string, OnnxNode> _nodes = new(x => x.Name, StringComparer.Ordinal);
+    private readonly LazyDictionary<string, OnnxEdge> _edges = new(x => x.Name, StringComparer.Ordinal);
 
     internal OnnxGraph(GraphProto graph)
     {
@@ -26,22 +27,22 @@ public class OnnxGraph
 
         foreach (var tensor in graph.Initializer)
         {
-            _tensors.Add(OnnxHelper.FromProto(tensor));
+            _initializers.Add(OnnxHelper.FromProto(tensor));
         }
 
         foreach (var value in graph.ValueInfo)
         {
-            _constraints.Add(new OnnxValue(value));
+            _placeholders.Add(OnnxHelper.FromProto(value));
         }
 
         foreach (var input in graph.Input)
         {
-            _inputs.Add(new OnnxValue(input));
+            _inputs.Add(OnnxHelper.FromProto(input));
         }
 
         foreach (var output in graph.Output)
         {
-            _outputs.Add(new OnnxValue(output));
+            _outputs.Add(OnnxHelper.FromProto(output));
         }
 
         foreach (var node in graph.Node)
@@ -85,12 +86,12 @@ public class OnnxGraph
             return output;
         }
 
-        if (_constraints.TryGetValue(name, out var value))
+        if (_placeholders.TryGetValue(name, out var value))
         {
             return value;
         }
 
-        if (_tensors.TryGetValue(name, out var tensor))
+        if (_initializers.TryGetValue(name, out var tensor))
         {
             return tensor;
         }
@@ -105,7 +106,7 @@ public class OnnxGraph
 
     public OnnxTensor? GetTensor(string name)
     {
-        if (_tensors.TryGetValue(name, out var result))
+        if (_initializers.TryGetValue(name, out var result))
         {
             return result;
         }
@@ -113,15 +114,24 @@ public class OnnxGraph
         return null;
     }
 
-    public OnnxTensor AddValue<T>(
+    public IOnnxGraphEdge AddValue<T>(
         string name,
         long[] shape,
-        T[] value
+        T[]? value = null
     )
     {
-        if (_tensors.Contains(name))
+        if (_initializers.Contains(name))
         {
             throw new InvalidOperationException($"Tensor '{name}' is already added into graph");
+        }
+
+        if (value is null)
+        {
+            var proto = new ValueInfoProto() { Name = name };
+
+            var placeholder = OnnxHelper.FromProto(proto);
+            _placeholders.Add(placeholder);
+            return placeholder;
         }
 
         var tensor = new OnnxTensor<T>(
@@ -132,7 +142,7 @@ public class OnnxGraph
             null
         );
 
-        _tensors.Add(tensor);
+        _initializers.Add(tensor);
         return tensor;
     }
 
@@ -171,8 +181,8 @@ public class OnnxGraph
         var newGraph = _graph.Clone();
         newGraph.Name = Name;
 
-        newGraph.Initializer.Set(_tensors.Select(x => x.ToProto()));
-        newGraph.ValueInfo.Set(_constraints.Select(x => x.ToProto()));
+        newGraph.Initializer.Set(_initializers.Select(x => x.ToProto()));
+        newGraph.ValueInfo.Set(_placeholders.Select(x => x.ToProto()));
         newGraph.Input.Set(_inputs.Select(x => x.ToProto()));
         newGraph.Output.Set(_outputs.Select(x => x.ToProto()));
         newGraph.Node.Set(_nodes.Select(x => x.ToProto()));
