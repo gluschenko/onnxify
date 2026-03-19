@@ -74,6 +74,31 @@ public static class OnnxHelper
         throw new NotImplementedException($"Type '{type}' is not supported");
     }
 
+    internal static Type GetSystemType(TensorProto.Types.DataType type)
+    {
+        return type switch
+        {
+            TensorProto.Types.DataType.Float => typeof(float),
+            TensorProto.Types.DataType.Uint8 => typeof(byte),
+            TensorProto.Types.DataType.Int8 => typeof(sbyte),
+            TensorProto.Types.DataType.Uint16 => typeof(ushort),
+            TensorProto.Types.DataType.Int16 => typeof(short),
+            TensorProto.Types.DataType.Int32 => typeof(int),
+            TensorProto.Types.DataType.Int64 => typeof(long),
+            TensorProto.Types.DataType.String => typeof(string),
+            TensorProto.Types.DataType.Bool => typeof(bool),
+            TensorProto.Types.DataType.Float16 => typeof(Half),
+            TensorProto.Types.DataType.Double => typeof(double),
+            TensorProto.Types.DataType.Uint32 => typeof(uint),
+            TensorProto.Types.DataType.Uint64 => typeof(ulong),
+            TensorProto.Types.DataType.Complex64 => typeof(Complex64),
+            TensorProto.Types.DataType.Complex128 => typeof(System.Numerics.Complex),
+            TensorProto.Types.DataType.Bfloat16 => typeof(BFloat16),
+            TensorProto.Types.DataType.Undefined => typeof(object),
+            _ => throw new NotImplementedException($"DataType '{type}' is not supported")
+        };
+    }
+
     internal static OnnxSparseTensorBase FromProto(SparseTensorProto tensor)
     {
         var type = (TensorProto.Types.DataType)tensor.Values.DataType;

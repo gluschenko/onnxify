@@ -1,4 +1,6 @@
-﻿using Onnx;
+﻿using System.Xml.Linq;
+using Google.Protobuf.WellKnownTypes;
+using Onnx;
 
 namespace Onnxify;
 
@@ -114,24 +116,15 @@ public class OnnxGraph
         return null;
     }
 
-    public IOnnxGraphEdge AddValue<T>(
+    public OnnxTensor AddTensor<T>(
         string name,
         long[] shape,
-        T[]? value = null
+        T[] value
     )
     {
         if (_initializers.Contains(name))
         {
             throw new InvalidOperationException($"Tensor '{name}' is already added into graph");
-        }
-
-        if (value is null)
-        {
-            var proto = new ValueInfoProto() { Name = name };
-
-            var placeholder = OnnxHelper.FromProto(proto);
-            _placeholders.Add(placeholder);
-            return placeholder;
         }
 
         var tensor = new OnnxTensor<T>(
@@ -144,6 +137,18 @@ public class OnnxGraph
 
         _initializers.Add(tensor);
         return tensor;
+    }
+
+    public OnnxValue AddValue<T>(string name, T type) where T : OnnxValueType
+    {
+        if (_placeholders.Contains(name))
+        {
+            throw new InvalidOperationException($"Value '{name}' is already added into graph");
+        }
+
+        var placeholder = new OnnxValue<T>(name, type, null);
+        _placeholders.Add(placeholder);
+        return placeholder;
     }
 
     public OnnxNode AddNode(

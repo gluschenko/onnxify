@@ -63,7 +63,15 @@ public abstract class OnnxValueType
         Denotation = denotation;
     }
 
-    internal abstract TypeProto ToProto();
+    internal virtual TypeProto ToProto()
+    {
+        var proto = new TypeProto
+        {
+            Denotation = Denotation
+        };
+
+        return proto;
+    }
 
     internal static OnnxValueType FromProto(TypeProto type)
     {
@@ -81,10 +89,11 @@ public abstract class OnnxValueType
 
     internal static OnnxTensorType FromProto(TypeProto.Types.Tensor proto, TypeProto typeProto)
     {
-        var type = (TensorProto.Types.DataType)proto.ElemType;
+        var type = OnnxHelper.GetSystemType((TensorProto.Types.DataType)proto.ElemType);
         var shape = OnnxTensorShape.FromProto(proto.Shape);
+        var denotation = typeProto.Denotation;
 
-        return new OnnxTensorType(type, shape, typeProto.Denotation);
+        return new OnnxTensorType(type, shape, denotation);
     }
 
     internal static OnnxValueType FromProto(TypeProto.Types.SparseTensor tensor)
@@ -110,11 +119,11 @@ public abstract class OnnxValueType
 
 public sealed class OnnxTensorType : OnnxValueType
 {
-    public TensorProto.Types.DataType Type { get; }
+    public Type Type { get; }
     public OnnxTensorShape Shape { get; }
 
-    internal OnnxTensorType(
-        TensorProto.Types.DataType type,
+    public OnnxTensorType(
+        Type type,
         OnnxTensorShape shape,
         string denotation
     ) : base(denotation)
@@ -125,13 +134,12 @@ public sealed class OnnxTensorType : OnnxValueType
 
     internal override TypeProto ToProto()
     {
-        var proto = new TypeProto
+        var proto = base.ToProto();
+
+        proto.TensorType = new TypeProto.Types.Tensor
         {
-            TensorType = new TypeProto.Types.Tensor
-            {
-                ElemType = (int)Type,
-                Shape = Shape.ToProto(),
-            }
+            ElemType = (int)OnnxHelper.GetDataType(Type),
+            Shape = Shape.ToProto(),
         };
 
         return proto;
@@ -142,7 +150,7 @@ public class OnnxTensorShape
 {
     public ImmutableArray<OnnxDimension> Dimensions { get; }
 
-    internal OnnxTensorShape(IEnumerable<OnnxDimension> dimentions)
+    public OnnxTensorShape(IEnumerable<OnnxDimension> dimentions)
     {
         Dimensions = dimentions.ToImmutableArray();
     }

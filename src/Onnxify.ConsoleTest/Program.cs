@@ -47,28 +47,34 @@ namespace Onnxify.ConsoleTest
             var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "test.onnx");
             var model = OnnxModel.Create(new OnnxModelCreationOptions());
 
-            var a = model.Graph.AddValue<float>(
+            var a = model.Graph.AddTensor<float>(
                 name: "test_conv_a",
                 shape: [1, 3, 128, 128],
                 value: new float[1 * 3 * 128 * 128]
             );
 
-            var b = model.Graph.AddValue<float>(
+            var b = model.Graph.AddTensor<float>(
                 name: "test_conv_b",
                 shape: [1, 3, 128, 128],
                 value: new float[1 * 3 * 128 * 128]
             );
 
-            var c = model.Graph.AddValue<float>(
+            var c = model.Graph.AddTensor<float>(
                 name: "test_conv_c",
                 shape: [1, 3, 128, 128],
                 value: new float[1 * 3 * 128 * 128]
             );
 
-            var d = model.Graph.AddValue<float>(
-                name: "test_conv_d",
-                shape: [1, 3, 128, 128],
-                value: new float[1 * 3 * 128 * 128]
+            var d = model.Graph.AddValue<OnnxTensorType>(
+                name: "test_value",
+                type: new OnnxTensorType(
+                    type: typeof(float),
+                    shape: new OnnxTensorShape([
+                        new OnnxDimension<long>(200),
+                        new OnnxDimension<long>(100),
+                    ]),
+                    denotation: ""
+                )
             );
 
             model.Graph.AddNode(
