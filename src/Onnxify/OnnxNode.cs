@@ -19,6 +19,25 @@ public class OnnxNode : IOnnxGraphNode
 
     private readonly NodeProto _node;
 
+    public OnnxNode(
+        string name,
+        string opType,
+        string domain,
+        string docString,
+        IEnumerable<IOnnxGraphEdge> inputs,
+        IEnumerable<IOnnxGraphEdge> outputs,
+        IEnumerable<OnnxAttribute> attributes
+    ) : this(
+        name: name,
+        opType: opType,
+        domain: domain,
+        docString: docString,
+        inputs: inputs,
+        outputs: outputs,
+        attributes: attributes,
+        proto: null
+    ) { }
+
     internal OnnxNode(
         string name,
         string opType,
@@ -109,5 +128,121 @@ public class OnnxNode : IOnnxGraphNode
             attributes: attributes,
             proto: node
         );
+    }
+
+    protected void SetInput(int index, IOnnxGraphEdge value)
+    {
+        if (value == null)
+        {
+            throw new ArgumentNullException(nameof(value));
+        }
+
+        if (index < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
+
+        // если индекс уже есть — заменяем
+        if (index < _inputs.Count)
+        {
+            var existing = _inputs[index];
+            _inputs.Remove(existing);
+        }
+
+        // KeyedCollection не поддерживает вставку по индексу нормально → просто Add
+        _inputs.Add(value);
+    }
+
+    protected void SetOptionalInput(int index, IOnnxGraphEdge? value)
+    {
+        if (index < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
+
+        if (index < _inputs.Count)
+        {
+            var existing = _inputs[index];
+            _inputs.Remove(existing);
+        }
+
+        if (value != null)
+        {
+            _inputs.Add(value);
+        }
+    }
+
+    protected void SetOutput(int index, IOnnxGraphEdge value)
+    {
+        if (value == null)
+        {
+            throw new ArgumentNullException(nameof(value));
+        }
+
+        if (index < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
+
+        if (index < _outputs.Count)
+        {
+            var existing = _outputs[index];
+            _outputs.Remove(existing);
+        }
+
+        _outputs.Add(value);
+    }
+
+    protected T? GetAttribute<T>(string name)
+    {
+        if (name == null)
+        {
+            throw new ArgumentNullException(nameof(name));
+        }
+
+        if (_attributes.TryGetValue(name, out var attr))
+        {
+            var value = attr.GetValue();
+
+            if (value is T t)
+            {
+                return t;
+            }
+
+            // попытка приведения (например long -> int)
+            return (T?)Convert.ChangeType(value, typeof(T));
+        }
+
+        return default;
+    }
+
+    protected void SetAttribute<T>(string name, T? value)
+    {
+        if (name == null)
+            throw new ArgumentNullException(nameof(name));
+
+        if (value == null)
+        {
+            _attributes.Remove(name);
+            return;
+        }
+
+        _attributes[name] = new OnnxAttribute<T>(name, value);
+    }
+
+    protected void LoadAttributes(NodeProto node)
+    {
+        if (node == null)
+        {
+            throw new ArgumentNullException(nameof(node));
+        }
+
+        _attributes.Clear();
+
+        foreach (var attr in node.Attribute)
+        {
+            var value = OnnxHelper.FromProto(attr);
+            _attributes.Add(value);
+        }
     }
 }

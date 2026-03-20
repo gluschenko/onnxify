@@ -187,11 +187,6 @@ public class OnnxGraph
         IEnumerable<OnnxAttribute> attributes
     )
     {
-        if (_nodes.Contains(name))
-        {
-            throw new InvalidOperationException($"Node '{name}' is already added into graph");
-        }
-
         var node = new OnnxNode(
             name: name,
             opType: opType,
@@ -202,6 +197,16 @@ public class OnnxGraph
             attributes: attributes,
             proto: null
         );
+
+        return AddNode(node);
+    }
+
+    public OnnxNode AddNode(OnnxNode node)
+    {
+        if (_nodes.Contains(node.Name))
+        {
+            throw new InvalidOperationException($"Node '{node.Name}' is already added into graph");
+        }
 
         _nodes.Add(node);
         return node;

@@ -7,7 +7,9 @@ public abstract class OnnxAttribute
     public abstract string Name { get; }
     internal abstract AttributeProto ToProto();
 
-    internal static OnnxAttribute<T> FromProto<T>(AttributeProto attribute)
+    public abstract object GetValue();
+
+    internal static OnnxAttribute<T> FromProto<T>(AttributeProto attribute) where T : notnull
     {
         var name = attribute.Name;
         var value = OnnxHelper.GetValue<T>(attribute);
@@ -20,7 +22,7 @@ public abstract class OnnxAttribute
     }
 }
 
-public class OnnxAttribute<T> : OnnxAttribute
+public class OnnxAttribute<T> : OnnxAttribute where T : notnull
 {
     public override string Name { get; }
     public Type Type => typeof(T);
@@ -53,5 +55,10 @@ public class OnnxAttribute<T> : OnnxAttribute
         newAttribute.SetValue(Value);
 
         return newAttribute;
+    }
+
+    public override object GetValue()
+    {
+        return Value;
     }
 }
