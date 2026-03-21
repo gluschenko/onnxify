@@ -603,7 +603,7 @@ public static class OnnxHelper
         }
     }
 
-    public static IOnnxGraphEdge[] NotNull(params IOnnxGraphEdge?[] input)
+    public static T[] NotNull<T>(params T?[] input)
     {
         return input.Where(x => x is not null).Select(x => x!).ToArray();
     } 

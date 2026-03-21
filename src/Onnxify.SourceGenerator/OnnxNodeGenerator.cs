@@ -60,29 +60,84 @@ namespace Onnxify.SourceGenerator
 
                 var className = $"{op.Name}";
 
-                
+                var list1 = new List<string>();
+
+                list1.AddRange(op.Inputs.Select(x => $"{InputName(x.Name)} = options.{InputName(x.Name)}"));
+                list1.AddRange(op.Attributes.Select(x => $"{AttributeName(x.Name)} = options.{AttributeName(x.Name)}"));
+                list1.AddRange(op.Outputs.Select(x => $"{OutputName(x.Name)} = edge{OutputName(x.Name)}"));
 
                 classes.AppendLine($$"""
-                public class {{className}} : OnnxNode
-                {
-                    public {{className}}(
-                        string name,
-                        IOnnxGraphEdge x,
-                        IOnnxGraphEdge w,
-                        IOnnxGraphEdge? b,
-                        IOnnxGraphEdge y
-                    ) : base(
-                        name: name,
-                        opType: "Conv",
-                        domain: "",
-                        docString: "",
-                        inputs: b is null ? [x, w] : [x, w, b],
-                        outputs: [y],
-                        attributes: []
-                    )
+                    public class {{className}}InputOptions
                     {
+                        {{GetFields(op.Inputs, x => InputName(x))}}
+
+                        {{GetFields(op.Attributes, x => AttributeName(x))}}
                     }
-                }
+
+                    public class {{className}}InputOutputOptions : {{className}}InputOptions
+                    {
+                        {{GetFields(op.Outputs, x => OutputName(x))}}
+                    }
+
+                    public class {{className}} : OnnxNode
+                    {
+                        public {{className}}(
+                            string name,
+                            {{className}}InputOutputOptions options
+                        ) : base(
+                            name: name,
+                            opType: "{{op.Name}}",
+                            domain: "",
+                            docString: "",
+                            inputs: OnnxHelper.NotNull<IOnnxGraphEdge>([{{string.Join(", ", op.Inputs.Select(x => $"options.{InputName(x.Name)}"))}}]),
+                            outputs: OnnxHelper.NotNull<IOnnxGraphEdge>([{{string.Join(", ", op.Outputs.Select(x => $"options.{OutputName(x.Name)}"))}}]),
+                            attributes: OnnxHelper.NotNull<OnnxAttribute>([{{string.Join(", ", op.Attributes.Select(x => $"options.{AttributeName(x.Name)}"))}}])
+                        ) { }
+                    }
+
+                    public static class {{className}}Extensions
+                    {
+                        public static IOnnxGraphEdge {{className}}(
+                            this OnnxGraph graph,
+                            string name,
+                            {{className}}InputOptions options
+                        )
+                        {
+                            {{string.Join("\n            ", (
+                                op.Outputs.Select(x => (
+                                    $"var edge{OutputName(x.Name)} = graph.AddEdge(name + \"_{x.Name}\");"
+                                )))
+                            )}}
+                            
+                            var op = new {{className}}(
+                                name: name,
+                                options: new {{className}}InputOutputOptions
+                                {
+                                    {{string.Join(", ", list1)}}
+                                }
+                            );
+
+                            graph.AddNode(op);
+                            // return {{string.Join(", ", op.Outputs.Select(x => $"options.{OutputName(x.Name)}"))}};
+                            return null;
+                        }
+
+                        public static IOnnxGraphEdge {{className}}(
+                            this OnnxGraph graph,
+                            string name,
+                            {{className}}InputOutputOptions options
+                        )
+                        {
+                            var op = new {{className}}(
+                                name: name,
+                                options: options
+                            );
+
+                            graph.AddNode(op);
+                            // return {{string.Join(", ", op.Outputs.Select(x => $"options.{OutputName(x.Name)}"))}};
+                            return null;
+                        }
+                    }
 
                 """);
             }
@@ -109,87 +164,141 @@ namespace Onnxify.SourceGenerator
             context.AddSource($"{namespaceName}.g.cs", SourceText.From(code, Encoding.UTF8));
         }
 
-        // Console.WriteLine("AA");
+        private string GetFields(IEnumerable<OperatorParameter> items, Func<string, string> onName)
+        {
+            var sb = new StringBuilder();
 
-        /*static string Pascal(string s)
+            foreach (var x in items)
+            {
+                var required = x.Option == FormalParameterOption.Single ? " required " : " ";
+                var nullable = x.Option == FormalParameterOption.Optional ? "?" : "";
+
+                sb.AppendLine($$"""
+                        public{{required}}{{MapType(x.Type)}}{{nullable}} {{onName(x.Name)}} { get; init; }
+                """);
+            }
+
+            return sb.ToString().Trim();
+        }
+        
+        private string GetFields(IEnumerable<OperatorAttribute> items, Func<string, string> onName)
+        {
+            var sb = new StringBuilder();
+
+            foreach (var x in items)
+            {
+                var required = x.Required ? " required " : " ";
+                var nullable = x.Required ? "" : "?";
+                var typeEnum = (AttributeType)x.Type;
+
+                sb.AppendLine($$"""
+                        public{{required}}{{FromProto(typeEnum)}}{{nullable}} {{AttributeName(x.Name)}} { get; set; }
+                """);
+            }
+
+            return sb.ToString().Trim();
+        }
+
+        private static string PascalCase(string s)
         {
             if (string.IsNullOrEmpty(s))
             {
                 return s;
             }
 
-            return char.ToUpperInvariant(s[0]) + s.Substring(1);
-        }*/
+            var words = s.Split([' '], StringSplitOptions.RemoveEmptyEntries);
 
-        /*static string InputName(string name)
-        {
-            var p = Pascal(name);
+            var result = new StringBuilder();
 
-            if (p.Equals("Input", StringComparison.OrdinalIgnoreCase))
+            foreach (var word in words)
             {
-                return "Input";
+                var newWord = char.ToUpperInvariant(word[0]) + word.Substring(1);
+                result.Append(newWord);
             }
 
-            return "Input" + p;
-        }*/
+            return result.ToString();
+        }
 
-        /*static string OutputName(string name)
+        public static string InputName(string name, string prefix = "")
         {
-            var p = Pascal(name);
+            var p = PascalCase(name);
 
-            if (p.Equals("Output", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(prefix) && p.Equals(prefix, StringComparison.OrdinalIgnoreCase))
             {
-                return "Output";
+                return prefix;
             }
 
-            return "Output" + p;
-        }*/
+            return prefix + p;
+        }
 
-        /*static string AttributeName(string name)
+        public static string OutputName(string name, string prefix = "")
         {
-            var p = Pascal(name);
+            var p = PascalCase(name);
 
-            if (p.Equals("Attribute", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(prefix) && p.Equals(prefix, StringComparison.OrdinalIgnoreCase))
             {
-                return "Attribute";
+                return prefix;
             }
 
-            return "Attribute" + p;
-        }*/
+            return prefix + p;
+        }
 
-        /*static string MapType(string type)
+        public static string AttributeName(string name, string prefix = "")
+        {
+            var p = PascalCase(name);
+
+            if (!string.IsNullOrEmpty(prefix) && p.Equals(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return prefix;
+            }
+
+            return prefix + p;
+        }
+
+        public static string MapType(string type)
         {
             return type switch
             {
-                "T" => "TensorProto",
-                "Tind" => "TensorProto",
-                "T1" => "TensorProto",
-                "tensor(int64)" => "TensorProto",
-                "tensor(int32)" => "TensorProto",
-                "tensor(float)" => "TensorProto",
-                "tensor(double)" => "TensorProto",
-                "tensor(bool)" => "TensorProto",
+                "T" => "IOnnxGraphEdge",
+                "Tind" => "IOnnxGraphEdge",
+                "T1" => "IOnnxGraphEdge",
+                "tensor(int64)" => "OnnxTensor<long>",
+                "tensor(int32)" => "OnnxTensor<int>",
+                "tensor(float)" => "OnnxTensor<float>",
+                "tensor(double)" => "OnnxTensor<double>",
+                "tensor(bool)" => "OnnxTensor<bool>",
 
                 _ => throw new NotSupportedException($"Unsupported ONNX type: {type}")
             };
-        }*/
+        }
 
-        /*var inputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "onnx_operators.json");
-        var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "Onnxify", "Operators", "OnnxOperators.cs");
+        public static string FromProto(AttributeType attributeType)
+        {
+            return attributeType switch
+            {
+                AttributeType.Float => "float",
+                AttributeType.Int => "long",
+                AttributeType.String => "string",
 
-        var root = JsonSerializer.Deserialize<OperatorSchemaRoot>(json) ?? throw new Exception();
+                AttributeType.Tensor => "OnnxTensor",
+                AttributeType.Graph => "OnnxGraph",
+                AttributeType.SparseTensor => "OnnxSparseTensorBase",
 
-        var sourceBuilder = new StringBuilder();
+                AttributeType.Floats => "float[]",
+                AttributeType.Ints => "long[]",
+                AttributeType.Strings => "string[]",
 
-        sourceBuilder.AppendLine($"""
-        using Onnx;
-        using Onnxify.Abstractions;
+                AttributeType.Tensors => "OnnxTensor[]",
+                AttributeType.Graphs => "OnnxGraph[]",
+                AttributeType.SparseTensors => "OnnxSparseTensorBase[]",
 
-        namespace Onnxify.Operators;
+                _ => throw new NotImplementedException($"Not implemented for '{attributeType}'"),
+            };
+        }
 
-        """);
 
-        foreach (var op in root.Operators)
+
+        /*foreach (var op in root.Operators)
         {
             var propBuilder = new StringBuilder();
 
@@ -263,4 +372,21 @@ namespace Onnxify.SourceGenerator
         */
         // File.WriteAllText(outputPath, sourceCode);
     }
+}
+
+public enum AttributeType
+{
+    Undefined = 0,
+    Float = 1,
+    Int = 2,
+    String = 3,
+    Tensor = 4,
+    Graph = 5,
+    SparseTensor = 11,
+    Floats = 6,
+    Ints = 7,
+    Strings = 8,
+    Tensors = 9,
+    Graphs = 10,
+    SparseTensors = 12,
 }
