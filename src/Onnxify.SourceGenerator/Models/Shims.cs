@@ -1,4 +1,6 @@
-﻿namespace Onnxify.SourceGenerator.Models
+﻿#pragma warning disable IDE0130 // Namespace does not match folder structure
+
+namespace System.Runtime.CompilerServices
 {
     [AttributeUsage(AttributeTargets.All, AllowMultiple = false)]
     internal sealed class RequiredMemberAttribute : Attribute
@@ -13,3 +15,5 @@
         public bool IsOptional { get; set; }
     }
 }
+
+#pragma warning restore IDE0130 // Namespace does not match folder structure

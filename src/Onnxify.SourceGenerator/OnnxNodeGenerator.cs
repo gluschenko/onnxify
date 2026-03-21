@@ -95,11 +95,15 @@ namespace Onnxify.SourceGenerator
             using System.Collections.Generic;
             using Onnxify;
             using Onnx;
+
+            #nullable enable
                     
             namespace {{namespaceName}}
             {
             {{classes}}
             }
+
+            #nullable restore
             """;
 
             context.AddSource($"{namespaceName}.g.cs", SourceText.From(code, Encoding.UTF8));
