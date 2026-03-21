@@ -7,7 +7,7 @@ using Onnxify.SourceGenerator.Models;
 namespace Onnxify.SourceGenerator
 {
     [Generator]
-    public class ProtoSchemaGenerator : IIncrementalGenerator
+    public class OnnxNodeGenerator : IIncrementalGenerator
     {
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
