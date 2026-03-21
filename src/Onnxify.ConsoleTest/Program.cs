@@ -21,11 +21,6 @@ namespace Onnxify.ConsoleTest
 
             Test1();
             Test2();
-            /*
-            AA();
-            A();
-            B();
-            */
 
             Console.WriteLine("Press any key to pay respect...");
             Console.ReadKey();
@@ -97,7 +92,7 @@ namespace Onnxify.ConsoleTest
             );
             */
 
-            model.Graph.AddNode(new Conv(
+            model.Graph.AddNode(new ConvTest(
                 name: "conv1",
                 x: input,
                 w: conv1_w,
@@ -155,165 +150,8 @@ namespace Onnxify.ConsoleTest
             );
 
             model.Save(outputPath, true);
+
             return;
-        }
-
-        static void AA()
-        {
-            Console.WriteLine("AA");
-
-            static string Pascal(string s)
-            {
-                if (string.IsNullOrEmpty(s))
-                {
-                    return s;
-                }
-
-                return char.ToUpperInvariant(s[0]) + s.Substring(1);
-            }
-
-            static string InputName(string name)
-            {
-                var p = Pascal(name);
-
-                if (p.Equals("Input", StringComparison.OrdinalIgnoreCase))
-                {
-                    return "Input";
-                }
-
-                return "Input" + p;
-            }
-
-            static string OutputName(string name)
-            {
-                var p = Pascal(name);
-
-                if (p.Equals("Output", StringComparison.OrdinalIgnoreCase))
-                {
-                    return "Output";
-                }
-
-                return "Output" + p;
-            }
-
-            static string AttributeName(string name)
-            {
-                var p = Pascal(name);
-
-                if (p.Equals("Attribute", StringComparison.OrdinalIgnoreCase))
-                {
-                    return "Attribute";
-                }
-
-                return "Attribute" + p;
-            }
-
-            static string MapType(string type)
-            {
-                return type switch
-                {
-                    "T" => nameof(TensorProto),
-                    "Tind" => nameof(TensorProto),
-                    "T1" => nameof(TensorProto),
-                    "tensor(int64)" => nameof(TensorProto),
-                    "tensor(int32)" => nameof(TensorProto),
-                    "tensor(float)" => nameof(TensorProto),
-                    "tensor(double)" => nameof(TensorProto),
-                    "tensor(bool)" => nameof(TensorProto),
-
-                    _ => throw new NotSupportedException($"Unsupported ONNX type: {type}")
-                };
-            }
-
-            var inputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "onnx_operators.json");
-            var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "Onnxify", "Operators", "OnnxOperators.cs");
-
-            var json = File.ReadAllText(inputPath);
-            var root = JsonSerializer.Deserialize<OperatorSchemaRoot>(json) ?? throw new Exception();
-
-            var sourceBuilder = new StringBuilder();
-
-            sourceBuilder.AppendLine($"""
-            using Onnx;
-            using Onnxify.Abstractions;
-
-            namespace Onnxify.Operators;
-
-            """);
-
-            foreach (var op in root.Operators)
-            {
-                var propBuilder = new StringBuilder();
-
-                foreach (var x in op.Inputs)
-                {
-                    var required = x.Option == FormalParameterOption.Single ? " required " : " ";
-                    var nullable = x.Option == FormalParameterOption.Optional ? "?" : "";
-
-                    propBuilder.AppendLine($$"""
-                        public{{required}}FormalParameter<{{MapType(x.Type)}}>{{nullable}} {{InputName(x.Name)}} { get; set; }
-                    """);
-                }
-
-                if (op.Inputs.Count != 0)
-                {
-                    propBuilder.AppendLine();
-                }
-
-                foreach (var x in op.Outputs)
-                {
-                    var required = x.Option == FormalParameterOption.Single ? " required " : " ";
-                    var nullable = x.Option == FormalParameterOption.Optional ? "?" : "";
-
-                    propBuilder.AppendLine($$"""
-                        public{{required}}FormalParameter<{{MapType(x.Type)}}>{{nullable}} {{OutputName(x.Name)}} { get; set; }
-                    """);
-                }
-
-                if (op.Outputs.Count != 0)
-                {
-                    propBuilder.AppendLine();
-                }
-
-                foreach (var x in op.Attributes)
-                {
-                    var required = x.Required ? " required " : " ";
-                    var nullable = x.Required ? "" : "?";
-
-                    var typeEnum = (AttributeProto.Types.AttributeType)x.Type;
-
-                    propBuilder.AppendLine($$"""
-                        public{{required}}OperatorAttribute<{{OperatorHelpers.MapAttributeType(typeEnum)}}>{{nullable}} {{AttributeName(x.Name)}} { get; set; }
-                    """);
-                }
-
-                if (op.Attributes.Count != 0)
-                {
-                    propBuilder.AppendLine();
-                }
-
-                sourceBuilder.AppendLine($$"""
-                /// <summary>
-                /// {{op.Name}} operator:
-                /// <para>
-                /// {{(op.Doc ?? "").Trim().Replace("\n", $"{Environment.NewLine}/// ")}}
-                /// </para>
-                /// </summary>
-                public sealed class {{op.Name}} : Operator
-                {
-                    public override string Name => "{{op.Name}}";
-                    public override string Domain => "{{op.Domain}}";
-                    public override int SinceVersion => {{op.SinceVersion}};
-
-                    {{propBuilder.ToString().TrimStart()}}
-                }
-
-                """);
-            }
-
-            var sourceCode = sourceBuilder.ToString();
-
-            File.WriteAllText(outputPath, sourceCode);
         }
 
         static void B()
@@ -334,13 +172,14 @@ namespace Onnxify.ConsoleTest
             {
                 model.WriteTo(fs);
             }
+
         }
     }
 }
 
-public sealed class Conv : OnnxNode
+public sealed class ConvTest : OnnxNode
 {
-    public Conv(
+    public ConvTest(
         string name,
         IOnnxGraphEdge x,
         IOnnxGraphEdge w,
@@ -357,8 +196,6 @@ public sealed class Conv : OnnxNode
     )
     {
     }
-
-    // --- Inputs ---
 
     public IOnnxGraphEdge X
     {
@@ -378,15 +215,11 @@ public sealed class Conv : OnnxNode
         set => SetOptionalInput(2, value);
     }
 
-    // --- Output ---
-
     public IOnnxGraphEdge Y
     {
         get => Outputs[0];
         set => SetOutput(0, value);
     }
-
-    // --- Attributes (typed) ---
 
     public long[]? Strides
     {
@@ -408,7 +241,7 @@ public sealed class Conv : OnnxNode
 
     public long Group
     {
-        get => GetAttribute<long?>("group") ?? 1;
+        get => GetAttribute<long>("group");
         set => SetAttribute("group", value);
     }
 
@@ -418,7 +251,7 @@ public sealed class Conv : OnnxNode
         set => SetAttribute("auto_pad", value);
     }
 
-    internal static Conv FromProto(NodeProto node, OnnxGraph graph)
+    internal static ConvTest FromProto(NodeProto node, OnnxGraph graph)
     {
         var inputs = node.Input
             .Select(x => graph.GetValue(x) ?? throw new InvalidOperationException($"Missing value '{x}'"))
@@ -428,7 +261,7 @@ public sealed class Conv : OnnxNode
             .Select(x => graph.GetValue(x) ?? throw new InvalidOperationException($"Missing value '{x}'"))
             .ToArray();
 
-        var conv = new Conv(
+        var conv = new ConvTest(
             name: node.Name,
             x: inputs[0],
             w: inputs[1],

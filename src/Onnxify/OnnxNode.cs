@@ -142,14 +142,12 @@ public class OnnxNode : IOnnxGraphNode
             throw new ArgumentOutOfRangeException(nameof(index));
         }
 
-        // если индекс уже есть — заменяем
         if (index < _inputs.Count)
         {
             var existing = _inputs[index];
             _inputs.Remove(existing);
         }
 
-        // KeyedCollection не поддерживает вставку по индексу нормально → просто Add
         _inputs.Add(value);
     }
 
@@ -209,17 +207,18 @@ public class OnnxNode : IOnnxGraphNode
                 return t;
             }
 
-            // попытка приведения (например long -> int)
             return (T?)Convert.ChangeType(value, typeof(T));
         }
 
-        return default;
+        return default(T?);
     }
 
-    protected void SetAttribute<T>(string name, T? value)
+    protected void SetAttribute<T>(string name, T? value) where T : notnull
     {
         if (name == null)
+        {
             throw new ArgumentNullException(nameof(name));
+        }
 
         if (value == null)
         {
