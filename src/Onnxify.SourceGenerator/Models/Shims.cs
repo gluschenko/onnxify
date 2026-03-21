@@ -1,4 +1,4 @@
-﻿namespace System.Runtime.CompilerServices
+﻿namespace Onnxify.SourceGenerator.Models
 {
     [AttributeUsage(AttributeTargets.All, AllowMultiple = false)]
     internal sealed class RequiredMemberAttribute : Attribute

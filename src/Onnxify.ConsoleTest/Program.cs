@@ -4,6 +4,7 @@ using System.Text.Json;
 using Google.Protobuf;
 using Onnx;
 using Onnxify;
+using TorchSharp.Modules;
 
 namespace Onnxify.ConsoleTest
 {
@@ -109,7 +110,7 @@ namespace Onnxify.ConsoleTest
                 value: new float[1000]
             );
 
-            var conv1_out = model.Graph.AddEdge("conv1_out");
+            // var conv1_out = model.Graph.AddEdge("conv1_out");
 
             /*
             model.Graph.AddNode(
@@ -123,13 +124,15 @@ namespace Onnxify.ConsoleTest
             );
             */
 
-            model.Graph.AddNode(new ConvTest(
+            var conv1 = model.Graph.ConvTest(
                 name: "conv1",
-                x: input,
-                w: conv1_w,
-                b: conv1_b,
-                y: conv1_out
-            ));
+                options: new ConvTestInputOptions
+                {
+                    X = input,
+                    W = conv1_w,
+                    B = conv1_b,
+                }
+            );
 
             var relu1_out = model.Graph.AddEdge("relu1_out");
 
@@ -138,7 +141,7 @@ namespace Onnxify.ConsoleTest
                 opType: "Relu",
                 domain: "",
                 docString: "",
-                inputs: [conv1_out],
+                inputs: [conv1],
                 outputs: [relu1_out],
                 attributes: []
             );
@@ -208,21 +211,69 @@ namespace Onnxify.ConsoleTest
     }
 }
 
+public static class GraphExtensions
+{
+    public static IOnnxGraphEdge ConvTest(
+        this OnnxGraph graph,
+        string name,
+        ConvTestInputOptions options
+    )
+    {
+        var op = new ConvTest(
+            name: name,
+            options: new ConvTestInputOutputOptions
+            {
+                X = options.X,
+                W = options.W,
+                B = options.B,
+                Y = graph.AddEdge(name + "_out"),
+            }
+        );
+
+        graph.AddNode(op);
+        return op.Y;
+    }
+
+    public static IOnnxGraphEdge ConvTest(
+        this OnnxGraph graph,
+        string name,
+        ConvTestInputOutputOptions options
+    )
+    {
+        var op = new ConvTest(
+            name: name,
+            options: options
+        );
+
+        graph.AddNode(op);
+        return options.Y;
+    }
+}
+
+public class ConvTestInputOptions
+{
+    public required IOnnxGraphEdge X {  get; set; }
+    public required IOnnxGraphEdge W { get; set; }
+    public IOnnxGraphEdge? B { get; set; }
+}
+
+public class ConvTestInputOutputOptions : ConvTestInputOptions
+{
+    public required IOnnxGraphEdge Y { get; set; }
+}
+
 public sealed class ConvTest : OnnxNode
 {
     public ConvTest(
         string name,
-        IOnnxGraphEdge x,
-        IOnnxGraphEdge w,
-        IOnnxGraphEdge? b,
-        IOnnxGraphEdge y
+        ConvTestInputOutputOptions options
     ) : base(
         name: name,
         opType: "Conv",
         domain: "",
         docString: "",
-        inputs: b is null ? [x, w] : [x, w, b],
-        outputs: [y],
+        inputs: OnnxHelper.NotNull([options.X, options.W, options.B]),
+        outputs: OnnxHelper.NotNull([options.Y]),
         attributes: []
     )
     {
@@ -294,10 +345,13 @@ public sealed class ConvTest : OnnxNode
 
         var conv = new ConvTest(
             name: node.Name,
-            x: inputs[0],
-            w: inputs[1],
-            b: inputs.Length > 2 ? inputs[2] : null,
-            y: outputs[0]
+            options: new ConvTestInputOutputOptions
+            {
+                X = inputs[0],
+                W = inputs[1],
+                B = inputs.Length > 2 ? inputs[2] : null,
+                Y = outputs[0],
+            }
         );
 
         conv.LoadAttributes(node);

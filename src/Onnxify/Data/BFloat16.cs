@@ -1,4 +1,4 @@
-﻿namespace Onnxify;
+﻿namespace Onnxify.Data;
 
 public readonly struct BFloat16
 {

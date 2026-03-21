@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using Google.Protobuf;
 using Google.Protobuf.Collections;
 using Onnx;
+using Onnxify.Data;
 
 namespace Onnxify;
 
@@ -601,4 +602,9 @@ public static class OnnxHelper
             collection.Add(x);
         }
     }
+
+    public static IOnnxGraphEdge[] NotNull(params IOnnxGraphEdge?[] input)
+    {
+        return input.Where(x => x is not null).Select(x => x!).ToArray();
+    } 
 }

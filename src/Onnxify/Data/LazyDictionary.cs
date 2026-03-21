@@ -1,6 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 
-namespace Onnxify;
+namespace Onnxify.Data;
 
 internal class LazyDictionary<TKey, TValue> : KeyedCollection<TKey, TValue> where TKey : notnull
 {

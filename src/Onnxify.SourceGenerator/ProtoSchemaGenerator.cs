@@ -47,20 +47,22 @@ namespace Onnxify.SourceGenerator
             var json = file.GetText()?.ToString() ?? string.Empty;
             var root = JsonSerializer.Deserialize<OperatorSchemaRoot>(json) ?? throw new Exception();
 
-            var sb = new StringBuilder();
+            var classes = new StringBuilder();
 
-            foreach (var x in root.Operators)
+            foreach (var op in root.Operators)
             {
                 context.ReportDiagnostic(
                     Diagnostic.Create(
-                        new DiagnosticDescriptor("GEN001", "test", x.Name, "gen", DiagnosticSeverity.Warning, true),
+                        new DiagnosticDescriptor("GEN001", "test", op.Name, "gen", DiagnosticSeverity.Warning, true),
                         Location.None
                     )
                 );
 
-                var className = $"{x.Name}";
+                var className = $"{op.Name}";
 
-                sb.AppendLine($$"""
+                
+
+                classes.AppendLine($$"""
                 public class {{className}} : OnnxNode
                 {
                     public {{className}}(
@@ -96,7 +98,7 @@ namespace Onnxify.SourceGenerator
                     
             namespace {{namespaceName}}
             {
-            {{sb}}
+            {{classes}}
             }
             """;
 
