@@ -1,10 +1,9 @@
 ﻿using System.Globalization;
 using System.Text;
-using System.Text.Json;
 using Google.Protobuf;
 using Onnx;
 using Onnxify;
-using TorchSharp.Modules;
+using Onnxify.Operators;
 
 namespace Onnxify.ConsoleTest
 {
@@ -47,12 +46,15 @@ namespace Onnxify.ConsoleTest
             var conv1_in = model.Graph.AddEdge("conv1_in");
             var conv1_out = model.Graph.AddEdge("conv1_out");
 
-            var conv = new Operators.Conv(
+            var conv = model.Graph.Conv(
                 name: "conv1",
-                x: conv1_in,
-                w: conv1_w,
-                b: conv1_b,
-                y: conv1_out
+                options: new ConvInputOutputOptions
+                {
+                    X = conv1_in,
+                    W = conv1_w,
+                    B = conv1_b,
+                    Y = conv1_out
+                }
             );
 
             return;

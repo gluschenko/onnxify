@@ -1,6 +1,4 @@
-﻿using System.Xml.Linq;
-using Google.Protobuf.WellKnownTypes;
-using Onnx;
+﻿using Onnx;
 using Onnxify.Data;
 
 namespace Onnxify;
