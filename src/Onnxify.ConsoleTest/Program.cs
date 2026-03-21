@@ -3,7 +3,6 @@ using System.Text;
 using Google.Protobuf;
 using Onnx;
 using Onnxify;
-using Onnxify.Operators;
 
 namespace Onnxify.ConsoleTest
 {

@@ -9,6 +9,11 @@ namespace Onnxify.SourceGenerator
     [Generator]
     public class OnnxNodeGenerator : IIncrementalGenerator
     {
+        private readonly static HashSet<string> _reservedFieldNames =
+        [
+            "Shape",
+        ];
+
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
             var assemblyName = context.CompilationProvider.Select((c, _) => c.AssemblyName);
@@ -72,7 +77,7 @@ namespace Onnxify.SourceGenerator
                     .Select(x =>
                     {
                         var type = FromProto((AttributeType)x.Type);
-                        return $"() => options.{AttributeName(x.Name)} is not null ? new OnnxAttribute<{type}>(\"{x.Name}\", ({type})options.{AttributeName(x.Name)}) : null";
+                        return $"() => options.{AttributeName(x.Name)} is {type} x ? new OnnxAttribute<{type}>(\"{x.Name}\", x) : null";
                     })
                     .ToArray();
 
@@ -91,15 +96,77 @@ namespace Onnxify.SourceGenerator
                     public class {{className}}InputOptions
                     {
                         {{GetFields(op.Inputs, x => InputName(x))}}
-
+                
                         {{GetFields(op.Attributes, x => AttributeName(x))}}
                     }
-
+                
                     public class {{className}}InputOutputOptions : {{className}}InputOptions
                     {
                         {{GetFields(op.Outputs, x => OutputName(x))}}
                     }
+                """);
 
+                var nodeFields = new StringBuilder();
+
+                for (var i = 0; i < op.Inputs.Count(); i++)
+                {
+                    var x = op.Inputs[i];
+
+                    if (x.Option != FormalParameterOption.Optional)
+                    {
+                        nodeFields.AppendLine($$"""
+                                public {{MapType(x.Type)}} {{InputName(x.Name)}}
+                                {
+                                    get => ({{MapType(x.Type)}})Inputs[{{i}}];
+                                    set => SetInput({{i}}, value);
+                                }
+                        """);
+                    }
+                    else
+                    {
+                        nodeFields.AppendLine($$"""
+                                public {{MapType(x.Type)}}? {{InputName(x.Name)}}
+                                {
+                                    get => Inputs.Count > {{i}} ? ({{MapType(x.Type)}})Inputs[{{i}}] : null;
+                                    set => SetOptionalInput({{i}}, value);
+                                }
+                        """);
+                    }
+                }
+
+                for (var i = 0; i < op.Outputs.Count(); i++)
+                {
+                    var x = op.Outputs[i];
+
+                    if (x.Option != FormalParameterOption.Optional)
+                    {
+                        nodeFields.AppendLine($$"""
+                                public {{MapType(x.Type)}} {{OutputName(x.Name)}}
+                                {
+                                    get => ({{MapType(x.Type)}})Outputs[{{i}}];
+                                    set => SetOutput({{i}}, value);
+                                }
+                        """);
+                    }
+                    else
+                    {
+                        nodeFields.AppendLine($$"""
+                                public {{MapType(x.Type)}}? {{OutputName(x.Name)}}
+                                {
+                                    get => Output.Count > {{i}} ? ({{MapType(x.Type)}})Outputs[{{i}}] : null;
+                                    set => SetOptionalOutput({{i}}, value);
+                                }
+                        """);
+                    }
+                }
+
+                classes.AppendLine($$"""
+                    /// <summary>
+                    /// {{op.Name}} operator:
+                    /// <para>
+                    /// {{(op.Doc ?? "").Trim().Replace("\n", $"\n    /// ")}}
+                    /// </para>
+                    /// </summary>
                     public class {{className}} : OnnxNode
                     {
                         public {{className}}(
@@ -114,6 +181,38 @@ namespace Onnxify.SourceGenerator
                             outputs: OnnxHelper.NotNull<IOnnxGraphEdge>([{{string.Join(", ", optionsOutputs)}}]),
                             attributes: {{optionsAttributesList}}
                         ) { }
+
+                        {{nodeFields.ToString().Trim()}}
+
+                        public long[]? Strides
+                        {
+                            get => GetAttribute<long[]>("strides");
+                            set => SetAttribute("strides", value);
+                        }
+
+                        public long[]? Pads
+                        {
+                            get => GetAttribute<long[]>("pads");
+                            set => SetAttribute("pads", value);
+                        }
+
+                        public long[]? Dilations
+                        {
+                            get => GetAttribute<long[]>("dilations");
+                            set => SetAttribute("dilations", value);
+                        }
+
+                        public long Group
+                        {
+                            get => GetAttribute<long?>("group") ?? 1;
+                            set => SetAttribute("group", value);
+                        }
+
+                        public string AutoPad
+                        {
+                            get => GetAttribute<string>("auto_pad") ?? "NOTSET";
+                            set => SetAttribute("auto_pad", value);
+                        }
                     }
 
                     public static class {{className}}Extensions
@@ -139,8 +238,8 @@ namespace Onnxify.SourceGenerator
                             );
 
                             graph.AddNode(op);
-                            // return {{string.Join(", ", op.Outputs.Select(x => $"options.{OutputName(x.Name)}"))}};
-                            return null;
+
+                            return {{string.Join(", ", op.Outputs.Select(x => $"op.{OutputName(x.Name)}"))}};
                         }
 
                         public static IOnnxGraphEdge {{className}}(
@@ -155,15 +254,15 @@ namespace Onnxify.SourceGenerator
                             );
 
                             graph.AddNode(op);
-                            // return {{string.Join(", ", op.Outputs.Select(x => $"options.{OutputName(x.Name)}"))}};
-                            return null;
+
+                            return {{string.Join(", ", op.Outputs.Select(x => $"op.{OutputName(x.Name)}"))}};
                         }
                     }
 
                 """);
             }
 
-            var namespaceName = $"{nameof(Onnxify)}.Operators";
+            var namespaceName = $"{nameof(Onnxify)}";
 
             var code = $$"""
             // <auto-generated/>
@@ -244,6 +343,12 @@ namespace Onnxify.SourceGenerator
         {
             var p = PascalCase(name);
 
+            if (_reservedFieldNames.Contains(p))
+            {
+                prefix = "Input";
+                return prefix + p;
+            }
+
             if (!string.IsNullOrEmpty(prefix) && p.Equals(prefix, StringComparison.OrdinalIgnoreCase))
             {
                 return prefix;
@@ -256,6 +361,12 @@ namespace Onnxify.SourceGenerator
         {
             var p = PascalCase(name);
 
+            if (_reservedFieldNames.Contains(p))
+            {
+                prefix = "Output";
+                return prefix + p;
+            }
+
             if (!string.IsNullOrEmpty(prefix) && p.Equals(prefix, StringComparison.OrdinalIgnoreCase))
             {
                 return prefix;
@@ -267,6 +378,12 @@ namespace Onnxify.SourceGenerator
         public static string AttributeName(string name, string prefix = "")
         {
             var p = PascalCase(name);
+
+            if (_reservedFieldNames.Contains(p))
+            {
+                prefix = "Attribute";
+                return prefix + p;
+            }
 
             if (!string.IsNullOrEmpty(prefix) && p.Equals(prefix, StringComparison.OrdinalIgnoreCase))
             {
@@ -316,82 +433,6 @@ namespace Onnxify.SourceGenerator
                 _ => throw new NotImplementedException($"Not implemented for '{attributeType}'"),
             };
         }
-
-
-
-        /*foreach (var op in root.Operators)
-        {
-            var propBuilder = new StringBuilder();
-
-            foreach (var x in op.Inputs)
-            {
-                var required = x.Option == FormalParameterOption.Single ? " required " : " ";
-                var nullable = x.Option == FormalParameterOption.Optional ? "?" : "";
-
-                propBuilder.AppendLine($$"""
-                    public{{required}}FormalParameter<{{MapType(x.Type)}}>{{nullable}} {{InputName(x.Name)}} { get; set; }
-                """);
-            }
-
-            if (op.Inputs.Count != 0)
-            {
-                propBuilder.AppendLine();
-            }
-
-            foreach (var x in op.Outputs)
-            {
-                var required = x.Option == FormalParameterOption.Single ? " required " : " ";
-                var nullable = x.Option == FormalParameterOption.Optional ? "?" : "";
-
-                propBuilder.AppendLine($$"""
-                    public{{required}}FormalParameter<{{MapType(x.Type)}}>{{nullable}} {{OutputName(x.Name)}} { get; set; }
-                """);
-            }
-
-            if (op.Outputs.Count != 0)
-            {
-                propBuilder.AppendLine();
-            }
-
-            foreach (var x in op.Attributes)
-            {
-                var required = x.Required ? " required " : " ";
-                var nullable = x.Required ? "" : "?";
-
-                var typeEnum = x.Type;
-            
-                propBuilder.AppendLine($$"""
-                    public{{required}}OperatorAttribute<{{OperatorHelpers.MapAttributeType(typeEnum)}}>{{nullable}} {{AttributeName(x.Name)}} { get; set; }
-                """);
-            }
-
-            if (op.Attributes.Count != 0)
-            {
-                propBuilder.AppendLine();
-            }
-
-            sourceBuilder.AppendLine($$"""
-            /// <summary>
-            /// {{op.Name}} operator:
-            /// <para>
-            /// {{(op.Doc ?? "").Trim().Replace("\n", $"\n/// ")}}
-            /// </para>
-            /// </summary>
-            public sealed class {{op.Name}} : Operator
-            {
-                public override string Name => "{{op.Name}}";
-                public override string Domain => "{{op.Domain}}";
-                public override int SinceVersion => {{op.SinceVersion}};
-
-                {{propBuilder.ToString().TrimStart()}}
-            }
-
-            """);
-        }
-
-        var sourceCode = sourceBuilder.ToString();
-        */
-        // File.WriteAllText(outputPath, sourceCode);
     }
 }
 
