@@ -19,11 +19,42 @@ namespace Onnxify.ConsoleTest
             Console.InputEncoding = Encoding.Unicode;
             Console.OutputEncoding = Encoding.Unicode;
 
+            Test0();
             Test1();
             Test2();
 
             Console.WriteLine("Press any key to pay respect...");
             Console.ReadKey();
+        }
+
+        static void Test0()
+        {
+            var model = OnnxModel.Create(new OnnxModelCreationOptions());
+
+            var conv1_w = model.Graph.AddTensor<float>(
+                name: "conv1_w",
+                shape: [64, 3, 11, 11],
+                value: new float[64 * 3 * 11 * 11]
+            );
+
+            var conv1_b = model.Graph.AddTensor<float>(
+                name: "conv1_b",
+                shape: [1, 3, 128, 128],
+                value: new float[1 * 3 * 128 * 128]
+            );
+
+            var conv1_in = model.Graph.AddEdge("conv1_in");
+            var conv1_out = model.Graph.AddEdge("conv1_out");
+
+            var conv = new Operators.Conv(
+                name: "conv1",
+                x: conv1_in,
+                w: conv1_w,
+                b: conv1_b,
+                y: conv1_out
+            );
+
+            return;
         }
 
         static void Test1()
@@ -241,7 +272,7 @@ public sealed class ConvTest : OnnxNode
 
     public long Group
     {
-        get => GetAttribute<long>("group");
+        get => GetAttribute<long?>("group") ?? 1;
         set => SetAttribute("group", value);
     }
 
