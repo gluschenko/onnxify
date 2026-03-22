@@ -11,18 +11,18 @@
                     "option": 0,
                     "type": "T",
                     "types": [
-                        "tensor(uint32)",
-                        "tensor(uint8)",
-                        "tensor(float)",
-                        "tensor(uint16)",
-                        "tensor(int64)",
-                        "tensor(uint64)",
-                        "tensor(int16)",
-                        "tensor(int8)",
-                        "tensor(int32)",
-                        "tensor(float16)",
+                        "tensor(bfloat16)",
                         "tensor(double)",
-                        "tensor(bfloat16)"
+                        "tensor(float)",
+                        "tensor(float16)",
+                        "tensor(int16)",
+                        "tensor(int32)",
+                        "tensor(int64)",
+                        "tensor(int8)",
+                        "tensor(uint16)",
+                        "tensor(uint32)",
+                        "tensor(uint64)",
+                        "tensor(uint8)"
                     ]
                 },
                 {
@@ -31,18 +31,18 @@
                     "option": 0,
                     "type": "T",
                     "types": [
-                        "tensor(uint32)",
-                        "tensor(uint8)",
-                        "tensor(float)",
-                        "tensor(uint16)",
-                        "tensor(int64)",
-                        "tensor(uint64)",
-                        "tensor(int16)",
-                        "tensor(int8)",
-                        "tensor(int32)",
-                        "tensor(float16)",
+                        "tensor(bfloat16)",
                         "tensor(double)",
-                        "tensor(bfloat16)"
+                        "tensor(float)",
+                        "tensor(float16)",
+                        "tensor(int16)",
+                        "tensor(int32)",
+                        "tensor(int64)",
+                        "tensor(int8)",
+                        "tensor(uint16)",
+                        "tensor(uint32)",
+                        "tensor(uint64)",
+                        "tensor(uint8)"
                     ]
                 }
             ],
@@ -54,18 +54,18 @@
                     "option": 0,
                     "type": "T",
                     "types": [
-                        "tensor(uint32)",
-                        "tensor(uint8)",
-                        "tensor(float)",
-                        "tensor(uint16)",
-                        "tensor(int64)",
-                        "tensor(uint64)",
-                        "tensor(int16)",
-                        "tensor(int8)",
-                        "tensor(int32)",
-                        "tensor(float16)",
+                        "tensor(bfloat16)",
                         "tensor(double)",
-                        "tensor(bfloat16)"
+                        "tensor(float)",
+                        "tensor(float16)",
+                        "tensor(int16)",
+                        "tensor(int32)",
+                        "tensor(int64)",
+                        "tensor(int8)",
+                        "tensor(uint16)",
+                        "tensor(uint32)",
+                        "tensor(uint64)",
+                        "tensor(uint8)"
                     ]
                 }
             ],
@@ -82,18 +82,18 @@
                     "option": 0,
                     "type": "T",
                     "types": [
-                        "tensor(uint32)",
-                        "tensor(uint8)",
-                        "tensor(float)",
-                        "tensor(uint16)",
-                        "tensor(int64)",
-                        "tensor(uint64)",
-                        "tensor(int16)",
-                        "tensor(int8)",
-                        "tensor(int32)",
-                        "tensor(float16)",
+                        "tensor(bfloat16)",
                         "tensor(double)",
-                        "tensor(bfloat16)"
+                        "tensor(float)",
+                        "tensor(float16)",
+                        "tensor(int16)",
+                        "tensor(int32)",
+                        "tensor(int64)",
+                        "tensor(int8)",
+                        "tensor(uint16)",
+                        "tensor(uint32)",
+                        "tensor(uint64)",
+                        "tensor(uint8)"
                     ]
                 },
                 {
@@ -102,18 +102,18 @@
                     "option": 1,
                     "type": "T",
                     "types": [
-                        "tensor(uint32)",
-                        "tensor(uint8)",
-                        "tensor(float)",
-                        "tensor(uint16)",
-                        "tensor(int64)",
-                        "tensor(uint64)",
-                        "tensor(int16)",
-                        "tensor(int8)",
-                        "tensor(int32)",
-                        "tensor(float16)",
+                        "tensor(bfloat16)",
                         "tensor(double)",
-                        "tensor(bfloat16)"
+                        "tensor(float)",
+                        "tensor(float16)",
+                        "tensor(int16)",
+                        "tensor(int32)",
+                        "tensor(int64)",
+                        "tensor(int8)",
+                        "tensor(uint16)",
+                        "tensor(uint32)",
+                        "tensor(uint64)",
+                        "tensor(uint8)"
                     ]
                 },
                 {
@@ -122,18 +122,18 @@
                     "option": 1,
                     "type": "T",
                     "types": [
-                        "tensor(uint32)",
-                        "tensor(uint8)",
-                        "tensor(float)",
-                        "tensor(uint16)",
-                        "tensor(int64)",
-                        "tensor(uint64)",
-                        "tensor(int16)",
-                        "tensor(int8)",
-                        "tensor(int32)",
-                        "tensor(float16)",
+                        "tensor(bfloat16)",
                         "tensor(double)",
-                        "tensor(bfloat16)"
+                        "tensor(float)",
+                        "tensor(float16)",
+                        "tensor(int16)",
+                        "tensor(int32)",
+                        "tensor(int64)",
+                        "tensor(int8)",
+                        "tensor(uint16)",
+                        "tensor(uint32)",
+                        "tensor(uint64)",
+                        "tensor(uint8)"
                     ]
                 }
             ],
@@ -145,18 +145,18 @@
                     "option": 0,
                     "type": "T",
                     "types": [
-                        "tensor(uint32)",
-                        "tensor(uint8)",
-                        "tensor(float)",
-                        "tensor(uint16)",
-                        "tensor(int64)",
-                        "tensor(uint64)",
-                        "tensor(int16)",
-                        "tensor(int8)",
-                        "tensor(int32)",
-                        "tensor(float16)",
+                        "tensor(bfloat16)",
                         "tensor(double)",
-                        "tensor(bfloat16)"
+                        "tensor(float)",
+                        "tensor(float16)",
+                        "tensor(int16)",
+                        "tensor(int32)",
+                        "tensor(int64)",
+                        "tensor(int8)",
+                        "tensor(uint16)",
+                        "tensor(uint32)",
+                        "tensor(uint64)",
+                        "tensor(uint8)"
                     ]
                 }
             ],
@@ -211,8 +211,8 @@
                     "type": "T",
                     "types": [
                         "tensor(double)",
-                        "tensor(float16)",
-                        "tensor(float)"
+                        "tensor(float)",
+                        "tensor(float16)"
                     ]
                 },
                 {
@@ -222,8 +222,8 @@
                     "type": "T",
                     "types": [
                         "tensor(double)",
-                        "tensor(float16)",
-                        "tensor(float)"
+                        "tensor(float)",
+                        "tensor(float16)"
                     ]
                 },
                 {
@@ -233,8 +233,8 @@
                     "type": "T",
                     "types": [
                         "tensor(double)",
-                        "tensor(float16)",
-                        "tensor(float)"
+                        "tensor(float)",
+                        "tensor(float16)"
                     ]
                 }
             ],
@@ -247,8 +247,8 @@
                     "type": "T",
                     "types": [
                         "tensor(double)",
-                        "tensor(float16)",
-                        "tensor(float)"
+                        "tensor(float)",
+                        "tensor(float16)"
                     ]
                 }
             ],
@@ -272,22 +272,22 @@
                     "option": 0,
                     "type": "T",
                     "types": [
-                        "tensor(uint32)",
-                        "tensor(float)",
-                        "tensor(uint8)",
-                        "tensor(uint16)",
-                        "tensor(int64)",
-                        "tensor(uint64)",
-                        "tensor(int16)",
-                        "tensor(int8)",
-                        "tensor(int32)",
                         "tensor(bfloat16)",
-                        "tensor(float16)",
-                        "tensor(double)",
-                        "tensor(string)",
                         "tensor(bool)",
+                        "tensor(complex128)",
                         "tensor(complex64)",
-                        "tensor(complex128)"
+                        "tensor(double)",
+                        "tensor(float)",
+                        "tensor(float16)",
+                        "tensor(int16)",
+                        "tensor(int32)",
+                        "tensor(int64)",
+                        "tensor(int8)",
+                        "tensor(string)",
+                        "tensor(uint16)",
+                        "tensor(uint32)",
+                        "tensor(uint64)",
+                        "tensor(uint8)"
                     ]
                 },
                 {
@@ -309,22 +309,22 @@
                     "option": 0,
                     "type": "T",
                     "types": [
-                        "tensor(uint32)",
-                        "tensor(float)",
-                        "tensor(uint8)",
-                        "tensor(uint16)",
-                        "tensor(int64)",
-                        "tensor(uint64)",
-                        "tensor(int16)",
-                        "tensor(int8)",
-                        "tensor(int32)",
                         "tensor(bfloat16)",
-                        "tensor(float16)",
-                        "tensor(double)",
-                        "tensor(string)",
                         "tensor(bool)",
+                        "tensor(complex128)",
                         "tensor(complex64)",
-                        "tensor(complex128)"
+                        "tensor(double)",
+                        "tensor(float)",
+                        "tensor(float16)",
+                        "tensor(int16)",
+                        "tensor(int32)",
+                        "tensor(int64)",
+                        "tensor(int8)",
+                        "tensor(string)",
+                        "tensor(uint16)",
+                        "tensor(uint32)",
+                        "tensor(uint64)",
+                        "tensor(uint8)"
                     ]
                 }
             ],
@@ -342,8 +342,8 @@
                     "type": "T",
                     "types": [
                         "tensor(double)",
-                        "tensor(float16)",
-                        "tensor(float)"
+                        "tensor(float)",
+                        "tensor(float16)"
                     ]
                 }
             ],
@@ -356,8 +356,8 @@
                     "type": "T",
                     "types": [
                         "tensor(double)",
-                        "tensor(float16)",
-                        "tensor(float)"
+                        "tensor(float)",
+                        "tensor(float16)"
                     ]
                 }
             ],
@@ -399,14 +399,14 @@
                     "option": 0,
                     "type": "T",
                     "types": [
-                        "tensor(double)",
-                        "tensor(float16)",
                         "tensor(bfloat16)",
-                        "tensor(uint32)",
+                        "tensor(double)",
                         "tensor(float)",
+                        "tensor(float16)",
+                        "tensor(int32)",
                         "tensor(int64)",
-                        "tensor(uint64)",
-                        "tensor(int32)"
+                        "tensor(uint32)",
+                        "tensor(uint64)"
                     ]
                 },
                 {
@@ -415,14 +415,14 @@
                     "option": 0,
                     "type": "T",
                     "types": [
-                        "tensor(double)",
-                        "tensor(float16)",
                         "tensor(bfloat16)",
-                        "tensor(uint32)",
+                        "tensor(double)",
                         "tensor(float)",
+                        "tensor(float16)",
+                        "tensor(int32)",
                         "tensor(int64)",
-                        "tensor(uint64)",
-                        "tensor(int32)"
+                        "tensor(uint32)",
+                        "tensor(uint64)"
                     ]
                 },
                 {
@@ -431,14 +431,14 @@
                     "option": 1,
                     "type": "T",
                     "types": [
-                        "tensor(double)",
-                        "tensor(float16)",
                         "tensor(bfloat16)",
-                        "tensor(uint32)",
+                        "tensor(double)",
                         "tensor(float)",
+                        "tensor(float16)",
+                        "tensor(int32)",
                         "tensor(int64)",
-                        "tensor(uint64)",
-                        "tensor(int32)"
+                        "tensor(uint32)",
+                        "tensor(uint64)"
                     ]
                 }
             ],
@@ -450,14 +450,14 @@
                     "option": 0,
                     "type": "T",
                     "types": [
-                        "tensor(double)",
-                        "tensor(float16)",
                         "tensor(bfloat16)",
-                        "tensor(uint32)",
+                        "tensor(double)",
                         "tensor(float)",
+                        "tensor(float16)",
+                        "tensor(int32)",
                         "tensor(int64)",
-                        "tensor(uint64)",
-                        "tensor(int32)"
+                        "tensor(uint32)",
+                        "tensor(uint64)"
                     ]
                 }
             ],
@@ -518,10 +518,10 @@
                     "type": "T",
                     "types": [
                         "tensor(double)",
-                        "tensor(float16)",
-                        "tensor(uint8)",
                         "tensor(float)",
-                        "tensor(int8)"
+                        "tensor(float16)",
+                        "tensor(int8)",
+                        "tensor(uint8)"
                     ]
                 }
             ],
@@ -534,10 +534,10 @@
                     "type": "T",
                     "types": [
                         "tensor(double)",
-                        "tensor(float16)",
-                        "tensor(uint8)",
                         "tensor(float)",
-                        "tensor(int8)"
+                        "tensor(float16)",
+                        "tensor(int8)",
+                        "tensor(uint8)"
                     ]
                 },
                 {
@@ -553,6 +553,72 @@
             "sinceVersion": 12
         },
         {
+            "attributes": [
+                {
+                    "description": "Indicate up to which input dimensions (exclusive) should be flattened to the outer dimension of the output. The value for axis must be in the range [-r, r], where r is the rank of the input tensor. Negative value means counting dimensions from the back. When axis = 0, the shape of the output tensor is (1, (d_0 X d_1 ... d_n), where the shape of the input tensor is (d_0, d_1, ... d_n). ",
+                    "name": "axis",
+                    "required": false,
+                    "type": 2
+                }
+            ],
+            "doc": "\nFlattens the input tensor into a 2D matrix. If input tensor has shape\n(d_0, d_1, ... d_n) then the output will have shape\n(d_0 X d_1 ... d_(axis-1), d_axis X d_(axis+1) ... X dn).\n",
+            "domain": "",
+            "inputs": [
+                {
+                    "description": "A tensor of rank >= axis.",
+                    "name": "input",
+                    "option": 0,
+                    "type": "T",
+                    "types": [
+                        "tensor(bfloat16)",
+                        "tensor(bool)",
+                        "tensor(complex128)",
+                        "tensor(complex64)",
+                        "tensor(double)",
+                        "tensor(float)",
+                        "tensor(float16)",
+                        "tensor(int16)",
+                        "tensor(int32)",
+                        "tensor(int64)",
+                        "tensor(int8)",
+                        "tensor(string)",
+                        "tensor(uint16)",
+                        "tensor(uint32)",
+                        "tensor(uint64)",
+                        "tensor(uint8)"
+                    ]
+                }
+            ],
+            "name": "Flatten",
+            "outputs": [
+                {
+                    "description": "A 2D tensor with the contents of the input tensor, with input dimensions up to axis flattened to the outer dimension of the output and remaining input dimensions flattened into the inner dimension of the output.",
+                    "name": "output",
+                    "option": 0,
+                    "type": "T",
+                    "types": [
+                        "tensor(bfloat16)",
+                        "tensor(bool)",
+                        "tensor(complex128)",
+                        "tensor(complex64)",
+                        "tensor(double)",
+                        "tensor(float)",
+                        "tensor(float16)",
+                        "tensor(int16)",
+                        "tensor(int32)",
+                        "tensor(int64)",
+                        "tensor(int8)",
+                        "tensor(string)",
+                        "tensor(uint16)",
+                        "tensor(uint32)",
+                        "tensor(uint64)",
+                        "tensor(uint8)"
+                    ]
+                }
+            ],
+            "sinceVersion": 13
+        },
+        {
             "attributes": [],
             "doc": "\nRelu takes one input data (Tensor<T>) and produces one output data\n(Tensor<T>) where the rectified linear function, y = max(0, x), is applied to\nthe tensor elementwise.\n",
             "domain": "",
@@ -564,13 +630,13 @@
                     "type": "T",
                     "types": [
                         "tensor(bfloat16)",
-                        "tensor(float)",
-                        "tensor(int32)",
-                        "tensor(int16)",
-                        "tensor(int8)",
-                        "tensor(int64)",
                         "tensor(double)",
-                        "tensor(float16)"
+                        "tensor(float)",
+                        "tensor(float16)",
+                        "tensor(int16)",
+                        "tensor(int32)",
+                        "tensor(int64)",
+                        "tensor(int8)"
                     ]
                 }
             ],
@@ -583,13 +649,13 @@
                     "type": "T",
                     "types": [
                         "tensor(bfloat16)",
-                        "tensor(float)",
-                        "tensor(int32)",
-                        "tensor(int16)",
-                        "tensor(int8)",
-                        "tensor(int64)",
                         "tensor(double)",
-                        "tensor(float16)"
+                        "tensor(float)",
+                        "tensor(float16)",
+                        "tensor(int16)",
+                        "tensor(int32)",
+                        "tensor(int64)",
+                        "tensor(int8)"
                     ]
                 }
             ],
@@ -613,22 +679,22 @@
                     "option": 0,
                     "type": "T",
                     "types": [
-                        "tensor(uint32)",
-                        "tensor(float)",
-                        "tensor(uint8)",
-                        "tensor(uint16)",
-                        "tensor(int64)",
-                        "tensor(uint64)",
-                        "tensor(int16)",
-                        "tensor(int8)",
-                        "tensor(int32)",
                         "tensor(bfloat16)",
-                        "tensor(float16)",
-                        "tensor(double)",
-                        "tensor(string)",
                         "tensor(bool)",
+                        "tensor(complex128)",
                         "tensor(complex64)",
-                        "tensor(complex128)"
+                        "tensor(double)",
+                        "tensor(float)",
+                        "tensor(float16)",
+                        "tensor(int16)",
+                        "tensor(int32)",
+                        "tensor(int64)",
+                        "tensor(int8)",
+                        "tensor(string)",
+                        "tensor(uint16)",
+                        "tensor(uint32)",
+                        "tensor(uint64)",
+                        "tensor(uint8)"
                     ]
                 },
                 {
@@ -649,22 +715,22 @@
                     "option": 0,
                     "type": "T",
                     "types": [
-                        "tensor(uint32)",
-                        "tensor(float)",
-                        "tensor(uint8)",
-                        "tensor(uint16)",
-                        "tensor(int64)",
-                        "tensor(uint64)",
-                        "tensor(int16)",
-                        "tensor(int8)",
-                        "tensor(int32)",
                         "tensor(bfloat16)",
-                        "tensor(float16)",
-                        "tensor(double)",
-                        "tensor(string)",
                         "tensor(bool)",
+                        "tensor(complex128)",
                         "tensor(complex64)",
-                        "tensor(complex128)"
+                        "tensor(double)",
+                        "tensor(float)",
+                        "tensor(float16)",
+                        "tensor(int16)",
+                        "tensor(int32)",
+                        "tensor(int64)",
+                        "tensor(int8)",
+                        "tensor(string)",
+                        "tensor(uint16)",
+                        "tensor(uint32)",
+                        "tensor(uint64)",
+                        "tensor(uint8)"
                     ]
                 }
             ],
@@ -681,22 +747,22 @@
                     "option": 0,
                     "type": "T",
                     "types": [
-                        "tensor(uint32)",
-                        "tensor(float)",
-                        "tensor(uint8)",
-                        "tensor(uint16)",
-                        "tensor(int64)",
-                        "tensor(uint64)",
-                        "tensor(int16)",
-                        "tensor(int8)",
-                        "tensor(int32)",
                         "tensor(bfloat16)",
-                        "tensor(float16)",
-                        "tensor(double)",
-                        "tensor(string)",
                         "tensor(bool)",
+                        "tensor(complex128)",
                         "tensor(complex64)",
-                        "tensor(complex128)"
+                        "tensor(double)",
+                        "tensor(float)",
+                        "tensor(float16)",
+                        "tensor(int16)",
+                        "tensor(int32)",
+                        "tensor(int64)",
+                        "tensor(int8)",
+                        "tensor(string)",
+                        "tensor(uint16)",
+                        "tensor(uint32)",
+                        "tensor(uint64)",
+                        "tensor(uint8)"
                     ]
                 }
             ],
@@ -725,22 +791,22 @@
                     "option": 0,
                     "type": "T",
                     "types": [
-                        "tensor(uint32)",
-                        "tensor(uint8)",
-                        "tensor(float)",
-                        "tensor(uint16)",
-                        "tensor(int64)",
-                        "tensor(uint64)",
-                        "tensor(int16)",
-                        "tensor(int8)",
-                        "tensor(int32)",
                         "tensor(bfloat16)",
-                        "tensor(float16)",
-                        "tensor(double)",
-                        "tensor(string)",
                         "tensor(bool)",
+                        "tensor(complex128)",
                         "tensor(complex64)",
-                        "tensor(complex128)"
+                        "tensor(double)",
+                        "tensor(float)",
+                        "tensor(float16)",
+                        "tensor(int16)",
+                        "tensor(int32)",
+                        "tensor(int64)",
+                        "tensor(int8)",
+                        "tensor(string)",
+                        "tensor(uint16)",
+                        "tensor(uint32)",
+                        "tensor(uint64)",
+                        "tensor(uint8)"
                     ]
                 },
                 {
@@ -761,22 +827,22 @@
                     "option": 0,
                     "type": "T",
                     "types": [
-                        "tensor(uint32)",
-                        "tensor(uint8)",
-                        "tensor(float)",
-                        "tensor(uint16)",
-                        "tensor(int64)",
-                        "tensor(uint64)",
-                        "tensor(int16)",
-                        "tensor(int8)",
-                        "tensor(int32)",
                         "tensor(bfloat16)",
-                        "tensor(float16)",
-                        "tensor(double)",
-                        "tensor(string)",
                         "tensor(bool)",
+                        "tensor(complex128)",
                         "tensor(complex64)",
-                        "tensor(complex128)"
+                        "tensor(double)",
+                        "tensor(float)",
+                        "tensor(float16)",
+                        "tensor(int16)",
+                        "tensor(int32)",
+                        "tensor(int64)",
+                        "tensor(int8)",
+                        "tensor(string)",
+                        "tensor(uint16)",
+                        "tensor(uint32)",
+                        "tensor(uint64)",
+                        "tensor(uint8)"
                     ]
                 }
             ],

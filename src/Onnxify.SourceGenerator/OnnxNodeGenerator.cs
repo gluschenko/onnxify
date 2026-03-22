@@ -188,13 +188,18 @@ namespace Onnxify.SourceGenerator
                     }
                 }
 
-                classes.AppendLine($$"""
+                var comment = $$"""
                     /// <summary>
                     /// {{op.Name}} operator:
                     /// <para>
                     /// {{(op.Doc ?? "").Trim().Replace("\n", $"\n    /// ")}}
                     /// </para>
                     /// </summary>
+
+                """;
+
+                classes.AppendLine($$"""
+                    {{comment}}
                     public class {{className}} : OnnxNode
                     {
                         public {{className}}(
@@ -240,6 +245,7 @@ namespace Onnxify.SourceGenerator
                 classes.AppendLine($$"""
                     public static class {{className}}Extensions
                     {
+                        {{comment}}
                         public static {{extensionMethodReturnType}} {{className}}(
                             this OnnxGraph graph,
                             string name,
@@ -265,6 +271,7 @@ namespace Onnxify.SourceGenerator
                             return {{extensionMethodReturnValue}};
                         }
                 
+                        {{comment}}
                         public static {{extensionMethodReturnType}} {{className}}(
                             this OnnxGraph graph,
                             string name,

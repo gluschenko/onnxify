@@ -137,28 +137,23 @@ namespace Onnxify.ConsoleTest
                 }
             );
 
-            // var flatten = model.Graph.Flatten
-
-            var flat_out = model.Graph.AddEdge("flat_out");
-
-            model.Graph.AddNode(
+            var flatten = model.Graph.Flatten(
                 name: "flatten",
-                opType: "Flatten",
-                domain: "",
-                docString: "",
-                inputs: [pool1.Y],
-                outputs: [flat_out],
-                attributes: []
+                options: new FlattenInputOptions
+                {
+                    Input = pool1.Y,
+                }
             );
 
-            model.Graph.AddNode(
+            model.Graph.Gemm(
                 name: "fc",
-                opType: "Gemm",
-                domain: "",
-                docString: "",
-                inputs: [flat_out, fc_w, fc_b],
-                outputs: [output],
-                attributes: []
+                options: new GemmInputOutputOptions
+                {
+                    A = flatten,
+                    B = fc_b,
+                    C = fc_w,
+                    Y = output,
+                }
             );
 
             model.Save(outputPath, true);

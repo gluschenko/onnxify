@@ -25,6 +25,7 @@ int main()
             schema.Name() != "Add" && 
             schema.Name() != "Shape" &&
             schema.Name() != "Gather" &&
+            schema.Name() != "Flatten" &&
             schema.Name() != "GlobalAveragePool" &&
             schema.Name() != "Reshape" &&
             schema.Name() != "Gemm" &&
@@ -54,10 +55,19 @@ int main()
             x["option"] = (int)input.GetOption();
             x["description"] = input.GetDescription();
 
-            x["types"] = json::array();
+            std::vector<std::string> types;
+            types.reserve(input.GetTypes().size());
+
             for (const auto& type : input.GetTypes())
             {
-                x["types"].push_back(*type);
+                types.push_back(*type);
+            }
+
+            std::sort(types.begin(), types.end());
+
+            for (const auto& type : types)
+            {
+                x["types"].push_back(type);
             }
 
             op["inputs"].push_back(x);
@@ -75,10 +85,19 @@ int main()
             x["option"] = (int)output.GetOption();
             x["description"] = output.GetDescription();
 
-            x["types"] = json::array();
+            std::vector<std::string> types;
+            types.reserve(output.GetTypes().size());
+
             for (const auto& type : output.GetTypes())
             {
-                x["types"].push_back(*type);
+                types.push_back(*type);
+            }
+
+            std::sort(types.begin(), types.end());
+
+            for (const auto& type : types)
+            {
+                x["types"].push_back(type);
             }
 
             op["outputs"].push_back(x);
