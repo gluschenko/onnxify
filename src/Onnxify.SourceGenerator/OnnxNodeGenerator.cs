@@ -55,6 +55,7 @@ namespace Onnxify.SourceGenerator
             var root = JsonSerializer.Deserialize<OperatorSchemaRoot>(json) ?? throw new Exception();
 
             var classes = new StringBuilder();
+            var typeResolver = new List<string>();
 
             foreach (var op in root.Operators)
             {
@@ -297,13 +298,23 @@ namespace Onnxify.SourceGenerator
                             docString: "",
                             inputs: OnnxHelper.NotNull<IOnnxGraphEdge>([{{string.Join(", ", optionsInputs)}}]),
                             outputs: OnnxHelper.NotNull<IOnnxGraphEdge>([{{string.Join(", ", optionsOutputs)}}]),
-                            attributes: {{optionsAttributesList}}
+                            attributes: CreateAttributes(options)
                         ) { }
 
                         {{nodeFields.ToString().Trim()}}
 
+                        internal static OnnxAttribute[] CreateAttributes({{className}}InputOutputOptions options)
+                        {
+                            return {{optionsAttributesList}};
+                        }
+
                         internal static {{className}} {{className}}FromProto(NodeProto node, OnnxGraph graph)
                         {
+                            if (node.OpType != "{{op.Name}}")
+                            {
+                                throw new InvalidOperationException($"Node type is not valid '{node.OpType}' != '{{op.Name}}'");
+                            }
+                            
                             var inputs = node.Input
                                 .Select(x => graph.GetValue(x) ?? throw new InvalidOperationException($"Missing value '{x}'"))
                                 .ToArray();
@@ -397,7 +408,26 @@ namespace Onnxify.SourceGenerator
                         }
                     }
                 """);
+
+                typeResolver.Add($$"""
+                "{{op.Name}}" => {{className}}.{{className}}FromProto(node, graph)
+                """);
             }
+
+
+            classes.AppendLine($$"""
+            public static class OnnxNodeHelper
+            {
+                public static OnnxNode? TryFromProto(NodeProto node, OnnxGraph graph)
+                {
+                    return node.OpType switch
+                    {
+                        {{string.Join(",\n", typeResolver.Select(x => x.Trim()))}},
+                        _ => null,
+                    };
+                }
+            }
+            """);
 
             var namespaceName = $"{nameof(Onnxify)}";
 
