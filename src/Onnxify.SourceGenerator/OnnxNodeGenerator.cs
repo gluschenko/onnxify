@@ -116,16 +116,7 @@ namespace Onnxify.SourceGenerator
                 {
                     var x = op.Inputs[i];
 
-                    nodeFields.AppendLine($$"""
-                    /// <summary>
-                    /// <para>
-                    /// {{x.Name}}: {{(x.Description ?? "").Comment()}}
-                    /// </para>
-                    /// <para>
-                    /// Allowed types: {{string.Join(", ", x.Types)}}
-                    /// </para>
-                    /// </summary>
-                    """);
+                    nodeFields.AppendLine(GetParameterComment(x));
 
                     if (x.Option != FormalParameterOption.Optional)
                     {
@@ -153,16 +144,7 @@ namespace Onnxify.SourceGenerator
                 {
                     var x = op.Outputs[i];
 
-                    nodeFields.AppendLine($$"""
-                    /// <summary>
-                    /// <para>
-                    /// {{x.Name}}: {{(x.Description ?? "").Comment()}}
-                    /// </para>
-                    /// <para>
-                    /// Allowed types: {{string.Join(", ", x.Types)}}
-                    /// </para>
-                    /// </summary>
-                    """);
+                    nodeFields.AppendLine(GetParameterComment(x));
 
                     if (x.Option != FormalParameterOption.Optional)
                     {
@@ -192,16 +174,7 @@ namespace Onnxify.SourceGenerator
 
                     var type = FromProto((AttributeType)x.Type);
 
-                    nodeFields.AppendLine($$"""
-                    /// <summary>
-                    /// <para>
-                    /// {{x.Name}}: {{(x.Description ?? "").Comment()}}
-                    /// </para>
-                    /// <para>
-                    /// Allowed types: {{string.Join(", ", [type])}}
-                    /// </para>
-                    /// </summary>
-                    """);
+                    nodeFields.AppendLine(GetAttributeComment(x));
 
                     if (x.Required)
                     {
@@ -233,15 +206,6 @@ namespace Onnxify.SourceGenerator
                         """);
                     }
                 }
-
-                var comment = $$"""
-                /// <summary>
-                /// {{op.Name}} operator:
-                /// <para>
-                /// {{(op.Doc ?? "").Comment()}}
-                /// </para>
-                /// </summary>
-                """;
 
                 var list1 = new List<string>();
 
@@ -288,7 +252,7 @@ namespace Onnxify.SourceGenerator
                 }));
 
                 classes.AppendLine($$"""
-                {{comment}}
+                {{GetOperatorComment(op)}}
                 public class {{className}} : OnnxNode
                 {
                     public {{className}}(
@@ -367,7 +331,7 @@ namespace Onnxify.SourceGenerator
                 classes.AppendLine($$"""
                 public static class {{className}}Extensions
                 {
-                    {{comment.Indent(1)}}
+                    {{GetOperatorComment(op).Indent(1)}}
                     public static {{extensionMethodReturnType}} {{className}}(
                         this OnnxGraph graph,
                         string name,
@@ -393,7 +357,7 @@ namespace Onnxify.SourceGenerator
                         return {{extensionMethodReturnValue.Indent(2)}};
                     }
                 
-                    {{comment.Indent(1)}}
+                    {{GetOperatorComment(op).Indent(1)}}
                     public static {{extensionMethodReturnType}} {{className}}(
                         this OnnxGraph graph,
                         string name,
@@ -464,14 +428,7 @@ namespace Onnxify.SourceGenerator
                 var nullable = x.Option == FormalParameterOption.Optional ? "?" : "";
 
                 sb.AppendLine($$"""
-                /// <summary>
-                /// <para>
-                /// {{x.Name}}: {{(x.Description ?? "").Comment()}}
-                /// </para>
-                /// <para>
-                /// Allowed types: {{string.Join(", ", x.Types)}}
-                /// </para>
-                /// </summary>
+                {{GetParameterComment(x)}}
                 public{{required}}{{MapType(x.Types)}}{{nullable}} {{onName(x.Name)}} { get; init; }
                 """);
             }
@@ -491,19 +448,55 @@ namespace Onnxify.SourceGenerator
                 var type = FromProto(typeEnum);
 
                 sb.AppendLine($$"""
-                /// <summary>
-                /// <para>
-                /// {{x.Name}}: {{(x.Description ?? "").Comment()}}
-                /// </para>
-                /// <para>
-                /// Allowed types: {{string.Join(", ", [type])}}
-                /// </para>
-                /// </summary>
+                {{GetAttributeComment(x)}}
                 public{{required}}{{type}}{{nullable}} {{AttributeName(x.Name)}} { get; set; }
                 """);
             }
 
             return sb.ToString().Trim();
+        }
+
+        public static string GetOperatorComment(OperatorSchema op)
+        {
+            return $$"""
+            /// <summary>
+            /// {{op.Name}} operator:
+            /// <para>
+            /// {{(op.Doc ?? "").Comment()}}
+            /// </para>
+            /// </summary>
+            """;
+        }
+
+        public static string GetParameterComment(OperatorParameter x)
+        {
+            return $$"""
+            /// <summary>
+            /// <para>
+            /// {{x.Name}}: {{(x.Description ?? "").Comment()}}
+            /// </para>
+            /// <para>
+            /// Allowed types: {{string.Join(", ", x.Types)}}
+            /// </para>
+            /// </summary>
+            """;
+        }
+
+        public static string GetAttributeComment(OperatorAttribute x)
+        {
+            var typeEnum = (AttributeType)x.Type;
+            var type = FromProto(typeEnum);
+
+            return $$"""
+            /// <summary>
+            /// <para>
+            /// {{x.Name}}: {{(x.Description ?? "").Comment()}}
+            /// </para>
+            /// <para>
+            /// Allowed types: {{string.Join(", ", [type])}}
+            /// </para>
+            /// </summary>
+            """;
         }
 
         public static string GetFieldName(string name, string prefix = "")
