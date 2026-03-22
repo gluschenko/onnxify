@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 using Onnxify.SourceGenerator.Models;
@@ -476,7 +477,7 @@ namespace Onnxify.SourceGenerator
             /// {{x.Name}}: {{(x.Description ?? "").Comment()}}
             /// </para>
             /// <para>
-            /// Allowed types: {{string.Join(", ", x.Types)}}
+            /// Allowed types: {{string.Join(", ", x.Types.Select(x => MapType(x))).Comment()}}
             /// </para>
             /// </summary>
             """;
@@ -493,7 +494,7 @@ namespace Onnxify.SourceGenerator
             /// {{x.Name}}: {{(x.Description ?? "").Comment()}}
             /// </para>
             /// <para>
-            /// Allowed types: {{string.Join(", ", [type])}}
+            /// Allowed types: {{string.Join(", ", [type]).Comment()}}
             /// </para>
             /// </summary>
             """;
@@ -575,7 +576,7 @@ namespace Onnxify.SourceGenerator
                 "tensor(complex64)" => "OnnxTensor<Complex64>",
                 "tensor(complex128)" => "OnnxTensor<Complex>",
 
-                _ => throw new NotSupportedException($"Unsupported ONNX type: {type}")
+                _ => type, // throw new NotSupportedException($"Unsupported ONNX type: {type}")
             };
         }
 
@@ -628,7 +629,7 @@ namespace Onnxify.SourceGenerator
 
         public static string Comment(this string text)
         {
-            return text.Trim().Replace("\n", $"\n/// ").Replace("<", "&lt;").Replace(">", "&gt;");
+            return text.Trim().ToXmlDoc().Replace("\n", $"\n/// ").Trim();
         }
 
         public static string Indent(this string text, int tabs)
@@ -654,4 +655,58 @@ public enum AttributeType
     Tensors = 9,
     Graphs = 10,
     SparseTensors = 12,
+}
+
+public static class MarkdownHelper
+{
+    private static readonly Regex _codeBlockRegex = new(
+        @"```(?:\w+)?\s*([\s\S]*?)```",
+        RegexOptions.Compiled
+    );
+
+    private static readonly Regex _inlineCodeRegex = new(
+        @"`([^`\n]+?)`",
+        RegexOptions.Compiled
+    );
+
+    public static string ToXmlDoc(this string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return string.Empty;
+
+        var blocks = new List<string>();
+        text = _codeBlockRegex.Replace(text, m =>
+        {
+            var content = Escape(m.Groups[1].Value.Trim());
+            blocks.Add($"<code>{content}</code>");
+            return $"@@CODEBLOCK_{blocks.Count - 1}@@";
+        });
+
+        text = _inlineCodeRegex.Replace(text, m =>
+        {
+            var content = Escape(m.Groups[1].Value);
+            return $"<c>{content}</c>";
+        });
+
+        text = Escape(text);
+
+        for (int i = 0; i < blocks.Count; i++)
+        {
+            text = text.Replace($"@@CODEBLOCK_{i}@@", blocks[i]);
+        }
+
+        var paragraphs = text
+            .Split(new[] { "\r\n\r\n", "\n\n" }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(p => $"<para>{p.Trim()}</para>");
+
+        return string.Join("\n", paragraphs);
+    }
+
+    private static string Escape(string text)
+    {
+        return text
+            .Replace("&", "&amp;")
+            .Replace("<", "&lt;")
+            .Replace(">", "&gt;");
+    }
 }
