@@ -9,10 +9,10 @@ public abstract class OnnxAttribute
 
     public abstract object GetValue();
 
-    internal static OnnxAttribute<T> FromProto<T>(AttributeProto attribute) where T : notnull
+    internal static OnnxAttribute<T> FromProto<T>(AttributeProto attribute, OnnxModelBaseOptions options) where T : notnull
     {
         var name = attribute.Name;
-        var value = OnnxHelper.GetValue<T>(attribute);
+        var value = OnnxHelper.GetValue<T>(attribute, options);
 
         return new OnnxAttribute<T>(
             name: name,

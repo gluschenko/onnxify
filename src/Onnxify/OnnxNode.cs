@@ -93,6 +93,7 @@ public class OnnxNode : IOnnxGraphNode
 
     internal static OnnxNode FromProto(NodeProto node, OnnxGraph graph)
     {
+        var options = graph.GetOptions();
         var typedNode = OnnxNodeHelper.TryFromProto(node, graph);
 
         if (typedNode is not null)
@@ -122,7 +123,7 @@ public class OnnxNode : IOnnxGraphNode
 
         foreach (var attribute in node.Attribute)
         {
-            var value = OnnxHelper.FromProto(attribute);
+            var value = OnnxHelper.FromProto(attribute, options);
             attributes.Add(value);
         }
 

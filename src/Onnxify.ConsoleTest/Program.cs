@@ -23,6 +23,7 @@ namespace Onnxify.ConsoleTest
             Test2();
             Test3();
             Test4();
+            Test5();
 
             Console.WriteLine("Press any key to pay respect...");
             Console.ReadKey();
@@ -190,6 +191,19 @@ namespace Onnxify.ConsoleTest
 
             var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "alexnet__test.onnx");
             onnxModel.Save(outputPath, true);
+            return;
+        }
+
+        static void Test5()
+        {
+            var inputModelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "real_esrgan_x4plus-onnx-float", "real_esrgan_x4plus.onnx");
+            var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "real_esrgan_x4plus-onnx-float", "real_esrgan_x4plus___.onnx");
+            var model = OnnxModel.FromFile(inputModelPath);
+
+            var text = model.ToString();
+            Console.WriteLine(text);
+
+            model.Save(outputPath, true);
             return;
         }
     }
@@ -372,33 +386,6 @@ public sealed class ConvTest : OnnxNode
                 RemoveAttribute("strides");
             }
         }
-    }
-
-    internal static Conv FromProto(NodeProto node, OnnxGraph graph)
-    {
-        var inputs = node.Input
-            .Select(x => graph.GetValue(x) ?? throw new InvalidOperationException($"Missing value '{x}'"))
-            .ToArray();
-
-        var outputs = node.Output
-            .Select(x => graph.GetValue(x) ?? throw new InvalidOperationException($"Missing value '{x}'"))
-            .ToArray();
-
-        var attributes = node.Attribute.ToDictionary(x => x.Name, x => x.GetValue());
-
-        var op = new Conv(
-            name: node.Name,
-            options: new ConvInputOutputOptions
-            {
-                X = inputs[0],
-                W = inputs[1],
-                B = inputs.Length > 2 ? inputs[2] : null,
-                Y = outputs[0],
-                AutoPad = (string?)attributes.GetValueOrDefault("auto_pad"),
-            }
-        );
-
-        return op;
     }
 }
 

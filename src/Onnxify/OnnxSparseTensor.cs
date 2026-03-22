@@ -19,10 +19,10 @@ public class OnnxSparseTensor<T> : OnnxSparseTensorBase
     private readonly SparseTensorProto _tensor;
     private readonly OnnxTensor<T> _value;
 
-    internal OnnxSparseTensor(SparseTensorProto tensor)
+    internal OnnxSparseTensor(SparseTensorProto tensor, OnnxModelBaseOptions options)
     {
         _tensor = tensor;
-        _value = (OnnxTensor<T>)OnnxHelper.FromProto(tensor.Values);
+        _value = (OnnxTensor<T>)OnnxHelper.FromProto(tensor.Values, options);
     }
 
     internal override SparseTensorProto ToProto()

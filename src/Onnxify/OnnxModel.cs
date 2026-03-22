@@ -1,4 +1,5 @@
 ﻿using Google.Protobuf;
+using Google.Protobuf.WellKnownTypes;
 using Onnx;
 
 namespace Onnxify;
@@ -49,11 +50,13 @@ public class OnnxModel
 
     private readonly ModelProto _model;
     private readonly OnnxGraph _graph;
+    private readonly OnnxModelBaseOptions _options;
 
-    internal OnnxModel(ModelProto model)
+    internal OnnxModel(ModelProto model, OnnxModelBaseOptions options)
     {
         _model = model;
-        _graph = new OnnxGraph(model.Graph);
+        _options = options;
+        _graph = new OnnxGraph(model.Graph, _options);
 
         MetadataProps = new List<StringStringEntryProto>(model.MetadataProps);
         TrainingInfo = new List<TrainingInfoProto>(model.TrainingInfo);
@@ -77,7 +80,10 @@ public class OnnxModel
             Version = options.Opset,
         });
 
-        return new OnnxModel(model);
+        return new OnnxModel(model, new OnnxModelBaseOptions
+        {
+            DataLocation = options.DataLocation,
+        });
     }
 
     public static OnnxModel FromFile(string path)
@@ -89,7 +95,10 @@ public class OnnxModel
 
         var data = File.ReadAllBytes(path);
         var model = ModelProto.Parser.ParseFrom(data);
-        return new OnnxModel(model);
+        return new OnnxModel(model, new OnnxModelBaseOptions
+        {
+            DataLocation = Path.GetDirectoryName(path),
+        });
     }
 
     public void Save(string path, bool overwrite = false)

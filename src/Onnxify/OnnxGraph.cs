@@ -8,6 +8,7 @@ public class OnnxGraph
     public string Name { get; init; }
 
     private readonly GraphProto _graph;
+    private readonly OnnxModelBaseOptions _options;
 
     public IReadOnlyList<OnnxValue> Inputs => _inputs;
     public IReadOnlyList<OnnxValue> Outputs => _outputs;
@@ -22,13 +23,14 @@ public class OnnxGraph
     private readonly LazyDictionary<string, OnnxNode> _nodes = new(x => x.Name, StringComparer.Ordinal);
     private readonly LazyDictionary<string, OnnxEdge> _edges = new(x => x.Name, StringComparer.Ordinal);
 
-    internal OnnxGraph(GraphProto graph)
+    internal OnnxGraph(GraphProto graph, OnnxModelBaseOptions options)
     {
         _graph = graph;
+        _options = options;
 
         foreach (var tensor in graph.Initializer)
         {
-            _initializers.Add(OnnxHelper.FromProto(tensor));
+            _initializers.Add(OnnxHelper.FromProto(tensor, options));
         }
 
         foreach (var value in graph.ValueInfo)
@@ -63,6 +65,11 @@ public class OnnxGraph
         }
 
         Name = graph.Name;
+    }
+
+    internal OnnxModelBaseOptions GetOptions()
+    {
+        return _options;
     }
 
     public OnnxNode? GetNode(string name)

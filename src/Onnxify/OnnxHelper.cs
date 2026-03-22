@@ -9,29 +9,29 @@ namespace Onnxify;
 
 public static class OnnxHelper
 {
-    internal static OnnxTensor FromProto(TensorProto tensor)
+    internal static OnnxTensor FromProto(TensorProto tensor, OnnxModelBaseOptions options)
     {
         var type = (TensorProto.Types.DataType)tensor.DataType;
 
         return type switch
         {
-            TensorProto.Types.DataType.Float => OnnxTensor.FromProto<float>(tensor),
-            TensorProto.Types.DataType.Uint8 => OnnxTensor.FromProto<byte>(tensor),
-            TensorProto.Types.DataType.Int8 => OnnxTensor.FromProto<sbyte>(tensor),
-            TensorProto.Types.DataType.Uint16 => OnnxTensor.FromProto<ushort>(tensor),
-            TensorProto.Types.DataType.Int16 => OnnxTensor.FromProto<short>(tensor),
-            TensorProto.Types.DataType.Int32 => OnnxTensor.FromProto<int>(tensor),
-            TensorProto.Types.DataType.Int64 => OnnxTensor.FromProto<long>(tensor),
-            TensorProto.Types.DataType.String => OnnxTensor.FromProto<string>(tensor),
-            TensorProto.Types.DataType.Bool => OnnxTensor.FromProto<bool>(tensor),
-            TensorProto.Types.DataType.Float16 => OnnxTensor.FromProto<Half>(tensor),
-            TensorProto.Types.DataType.Double => OnnxTensor.FromProto<double>(tensor),
-            TensorProto.Types.DataType.Uint32 => OnnxTensor.FromProto<uint>(tensor),
-            TensorProto.Types.DataType.Uint64 => OnnxTensor.FromProto<ulong>(tensor),
-            TensorProto.Types.DataType.Complex64 => OnnxTensor.FromProto<Complex64>(tensor),
-            TensorProto.Types.DataType.Complex128 => OnnxTensor.FromProto<Complex>(tensor),
-            TensorProto.Types.DataType.Bfloat16 => OnnxTensor.FromProto<BFloat16>(tensor),
-            TensorProto.Types.DataType.Undefined => OnnxTensor.FromProto<object>(tensor),
+            TensorProto.Types.DataType.Float => OnnxTensor.FromProto<float>(tensor, options),
+            TensorProto.Types.DataType.Uint8 => OnnxTensor.FromProto<byte>(tensor, options),
+            TensorProto.Types.DataType.Int8 => OnnxTensor.FromProto<sbyte>(tensor, options),
+            TensorProto.Types.DataType.Uint16 => OnnxTensor.FromProto<ushort>(tensor, options),
+            TensorProto.Types.DataType.Int16 => OnnxTensor.FromProto<short>(tensor, options),
+            TensorProto.Types.DataType.Int32 => OnnxTensor.FromProto<int>(tensor, options),
+            TensorProto.Types.DataType.Int64 => OnnxTensor.FromProto<long>(tensor, options),
+            TensorProto.Types.DataType.String => OnnxTensor.FromProto<string>(tensor, options),
+            TensorProto.Types.DataType.Bool => OnnxTensor.FromProto<bool>(tensor, options),
+            TensorProto.Types.DataType.Float16 => OnnxTensor.FromProto<Half>(tensor, options),
+            TensorProto.Types.DataType.Double => OnnxTensor.FromProto<double>(tensor, options),
+            TensorProto.Types.DataType.Uint32 => OnnxTensor.FromProto<uint>(tensor, options),
+            TensorProto.Types.DataType.Uint64 => OnnxTensor.FromProto<ulong>(tensor, options),
+            TensorProto.Types.DataType.Complex64 => OnnxTensor.FromProto<Complex64>(tensor, options),
+            TensorProto.Types.DataType.Complex128 => OnnxTensor.FromProto<Complex>(tensor, options),
+            TensorProto.Types.DataType.Bfloat16 => OnnxTensor.FromProto<BFloat16>(tensor, options),
+            TensorProto.Types.DataType.Undefined => OnnxTensor.FromProto<object>(tensor, options),
             _ => throw new NotImplementedException($"Not implemented for '{type}'"),
         };
     }
@@ -100,87 +100,103 @@ public static class OnnxHelper
         };
     }
 
-    internal static OnnxSparseTensorBase FromProto(SparseTensorProto tensor)
+    internal static OnnxSparseTensorBase FromProto(SparseTensorProto tensor, OnnxModelBaseOptions options)
     {
         var type = (TensorProto.Types.DataType)tensor.Values.DataType;
 
         return type switch
         {
-            TensorProto.Types.DataType.Float => new OnnxSparseTensor<float>(tensor),
-            TensorProto.Types.DataType.Uint8 => new OnnxSparseTensor<byte>(tensor),
-            TensorProto.Types.DataType.Int8 => new OnnxSparseTensor<sbyte>(tensor),
-            TensorProto.Types.DataType.Uint16 => new OnnxSparseTensor<ushort>(tensor),
-            TensorProto.Types.DataType.Int16 => new OnnxSparseTensor<short>(tensor),
-            TensorProto.Types.DataType.Int32 => new OnnxSparseTensor<int>(tensor),
-            TensorProto.Types.DataType.Int64 => new OnnxSparseTensor<long>(tensor),
-            TensorProto.Types.DataType.String => new OnnxSparseTensor<string>(tensor),
-            TensorProto.Types.DataType.Bool => new OnnxSparseTensor<bool>(tensor),
-            TensorProto.Types.DataType.Float16 => new OnnxSparseTensor<Half>(tensor),
-            TensorProto.Types.DataType.Double => new OnnxSparseTensor<double>(tensor),
-            TensorProto.Types.DataType.Uint32 => new OnnxSparseTensor<uint>(tensor),
-            TensorProto.Types.DataType.Uint64 => new OnnxSparseTensor<ulong>(tensor),
-            TensorProto.Types.DataType.Complex64 => new OnnxSparseTensor<Complex64>(tensor),
-            TensorProto.Types.DataType.Complex128 => new OnnxSparseTensor<Complex>(tensor),
-            TensorProto.Types.DataType.Bfloat16 => new OnnxSparseTensor<BFloat16>(tensor),
-            TensorProto.Types.DataType.Undefined => new OnnxSparseTensor<object>(tensor),
+            TensorProto.Types.DataType.Float => new OnnxSparseTensor<float>(tensor, options),
+            TensorProto.Types.DataType.Uint8 => new OnnxSparseTensor<byte>(tensor, options),
+            TensorProto.Types.DataType.Int8 => new OnnxSparseTensor<sbyte>(tensor, options),
+            TensorProto.Types.DataType.Uint16 => new OnnxSparseTensor<ushort>(tensor, options),
+            TensorProto.Types.DataType.Int16 => new OnnxSparseTensor<short>(tensor, options),
+            TensorProto.Types.DataType.Int32 => new OnnxSparseTensor<int>(tensor, options),
+            TensorProto.Types.DataType.Int64 => new OnnxSparseTensor<long>(tensor, options),
+            TensorProto.Types.DataType.String => new OnnxSparseTensor<string>(tensor, options),
+            TensorProto.Types.DataType.Bool => new OnnxSparseTensor<bool>(tensor, options),
+            TensorProto.Types.DataType.Float16 => new OnnxSparseTensor<Half>(tensor, options),
+            TensorProto.Types.DataType.Double => new OnnxSparseTensor<double>(tensor, options),
+            TensorProto.Types.DataType.Uint32 => new OnnxSparseTensor<uint>(tensor, options),
+            TensorProto.Types.DataType.Uint64 => new OnnxSparseTensor<ulong>(tensor, options),
+            TensorProto.Types.DataType.Complex64 => new OnnxSparseTensor<Complex64>(tensor, options),
+            TensorProto.Types.DataType.Complex128 => new OnnxSparseTensor<Complex>(tensor, options),
+            TensorProto.Types.DataType.Bfloat16 => new OnnxSparseTensor<BFloat16>(tensor, options),
+            TensorProto.Types.DataType.Undefined => new OnnxSparseTensor<object>(tensor, options),
             _ => throw new NotImplementedException($"Not implemented for '{type}'"),
         };
     }
 
-    internal static OnnxAttribute FromProto(AttributeProto attribute)
+    internal static OnnxAttribute FromProto(AttributeProto attribute, OnnxModelBaseOptions options)
     {
         return attribute.Type switch
         {
-            AttributeProto.Types.AttributeType.Float => OnnxAttribute.FromProto<float>(attribute),
-            AttributeProto.Types.AttributeType.Int => OnnxAttribute.FromProto<long>(attribute),
-            AttributeProto.Types.AttributeType.String => OnnxAttribute.FromProto<string>(attribute),
+            AttributeProto.Types.AttributeType.Float => OnnxAttribute.FromProto<float>(attribute, options),
+            AttributeProto.Types.AttributeType.Int => OnnxAttribute.FromProto<long>(attribute, options),
+            AttributeProto.Types.AttributeType.String => OnnxAttribute.FromProto<string>(attribute, options),
 
-            AttributeProto.Types.AttributeType.Tensor => OnnxAttribute.FromProto<OnnxTensor>(attribute),
-            AttributeProto.Types.AttributeType.Graph => OnnxAttribute.FromProto<OnnxGraph>(attribute),
-            AttributeProto.Types.AttributeType.SparseTensor => OnnxAttribute.FromProto<OnnxSparseTensorBase>(attribute),
+            AttributeProto.Types.AttributeType.Tensor => OnnxAttribute.FromProto<OnnxTensor>(attribute, options),
+            AttributeProto.Types.AttributeType.Graph => OnnxAttribute.FromProto<OnnxGraph>(attribute, options),
+            AttributeProto.Types.AttributeType.SparseTensor => OnnxAttribute.FromProto<OnnxSparseTensorBase>(attribute, options),
 
-            AttributeProto.Types.AttributeType.Floats => OnnxAttribute.FromProto<float[]>(attribute),
-            AttributeProto.Types.AttributeType.Ints => OnnxAttribute.FromProto<long[]>(attribute),
-            AttributeProto.Types.AttributeType.Strings => OnnxAttribute.FromProto<string[]>(attribute),
+            AttributeProto.Types.AttributeType.Floats => OnnxAttribute.FromProto<float[]>(attribute, options),
+            AttributeProto.Types.AttributeType.Ints => OnnxAttribute.FromProto<long[]>(attribute, options),
+            AttributeProto.Types.AttributeType.Strings => OnnxAttribute.FromProto<string[]>(attribute, options),
 
-            AttributeProto.Types.AttributeType.Tensors => OnnxAttribute.FromProto<OnnxTensor[]>(attribute),
-            AttributeProto.Types.AttributeType.Graphs => OnnxAttribute.FromProto<OnnxGraph[]>(attribute),
-            AttributeProto.Types.AttributeType.SparseTensors => OnnxAttribute.FromProto<OnnxSparseTensorBase[]>(attribute),
+            AttributeProto.Types.AttributeType.Tensors => OnnxAttribute.FromProto<OnnxTensor[]>(attribute, options),
+            AttributeProto.Types.AttributeType.Graphs => OnnxAttribute.FromProto<OnnxGraph[]>(attribute, options),
+            AttributeProto.Types.AttributeType.SparseTensors => OnnxAttribute.FromProto<OnnxSparseTensorBase[]>(attribute, options),
 
             _ => throw new NotImplementedException($"Not implemented for '{attribute.Type}'"),
         };
     }
 
-    internal static object GetValue(this TensorProto tensor)
+    internal static object GetValue(this TensorProto tensor, OnnxModelBaseOptions options)
     {
         var type = (TensorProto.Types.DataType)tensor.DataType;
+
+        if (tensor.DataLocation == TensorProto.Types.DataLocation.External)
+        {
+            if (!Directory.Exists(options.DataLocation))
+            {
+                throw new IOException($"Data location is not a directory: {options.DataLocation ?? "<null>"}");
+            }
+
+            var external = tensor.ExternalData.ToDictionary(x => x.Key, x => x.Value);
+
+            if (!external.TryGetValue("location", out var location))
+            {
+                throw new InvalidOperationException("External tensor missing 'location'");
+            }
+
+            var offset = external.TryGetValue("offset", out var offStr)
+                ? long.Parse(offStr)
+                : 0;
+
+            var length = external.TryGetValue("length", out var lenStr)
+                ? long.Parse(lenStr)
+                : -1;
+
+            var path = Path.Combine(options.DataLocation ?? "", location);
+
+            using var fs = File.OpenRead(path);
+            fs.Seek(offset, SeekOrigin.Begin);
+
+            if (length < 0)
+            {
+                length = fs.Length - offset;
+            }
+
+            var buffer = new byte[length];
+            fs.ReadExactly(buffer);
+
+            return ConvertRaw(buffer, type);
+        }
 
         if (tensor.RawData.Length > 0)
         {
             var span = tensor.RawData.Span;
-
-            return type switch
-            {
-                TensorProto.Types.DataType.Float => MemoryMarshal.Cast<byte, float>(span).ToArray(),
-                TensorProto.Types.DataType.Double => MemoryMarshal.Cast<byte, double>(span).ToArray(),
-                TensorProto.Types.DataType.Int32 => MemoryMarshal.Cast<byte, int>(span).ToArray(),
-                TensorProto.Types.DataType.Int64 => MemoryMarshal.Cast<byte, long>(span).ToArray(),
-                TensorProto.Types.DataType.Uint32 => MemoryMarshal.Cast<byte, uint>(span).ToArray(),
-                TensorProto.Types.DataType.Uint64 => MemoryMarshal.Cast<byte, ulong>(span).ToArray(),
-                TensorProto.Types.DataType.Int16 => MemoryMarshal.Cast<byte, short>(span).ToArray(),
-                TensorProto.Types.DataType.Uint16 => MemoryMarshal.Cast<byte, ushort>(span).ToArray(),
-                TensorProto.Types.DataType.Int8 => MemoryMarshal.Cast<byte, sbyte>(span).ToArray(),
-                TensorProto.Types.DataType.Uint8 => span.ToArray(),
-                TensorProto.Types.DataType.Bool => span.ToArray().Select(x => x != 0).ToArray(),
-
-                TensorProto.Types.DataType.Float16 => ConvertHalf(span),
-                TensorProto.Types.DataType.Bfloat16 => ConvertBFloat16(span),
-
-                TensorProto.Types.DataType.Complex64 => ConvertComplex64(span),
-                TensorProto.Types.DataType.Complex128 => ConvertComplex128(span),
-
-                _ => throw new NotImplementedException($"Unsupported raw tensor type {type}")
-            };
+            return ConvertRaw(span, type);
         }
 
         return type switch
@@ -196,9 +212,38 @@ public static class OnnxHelper
         };
     }
 
-    internal static IEnumerable<T> GetValue<T>(this TensorProto tensor)
+    internal static object ConvertRaw(
+        ReadOnlySpan<byte> span,
+        TensorProto.Types.DataType type
+    )
     {
-        var value = GetValue(tensor);
+        return type switch
+        {
+            TensorProto.Types.DataType.Float => MemoryMarshal.Cast<byte, float>(span).ToArray(),
+            TensorProto.Types.DataType.Double => MemoryMarshal.Cast<byte, double>(span).ToArray(),
+            TensorProto.Types.DataType.Int32 => MemoryMarshal.Cast<byte, int>(span).ToArray(),
+            TensorProto.Types.DataType.Int64 => MemoryMarshal.Cast<byte, long>(span).ToArray(),
+            TensorProto.Types.DataType.Uint32 => MemoryMarshal.Cast<byte, uint>(span).ToArray(),
+            TensorProto.Types.DataType.Uint64 => MemoryMarshal.Cast<byte, ulong>(span).ToArray(),
+            TensorProto.Types.DataType.Int16 => MemoryMarshal.Cast<byte, short>(span).ToArray(),
+            TensorProto.Types.DataType.Uint16 => MemoryMarshal.Cast<byte, ushort>(span).ToArray(),
+            TensorProto.Types.DataType.Int8 => MemoryMarshal.Cast<byte, sbyte>(span).ToArray(),
+            TensorProto.Types.DataType.Uint8 => span.ToArray(),
+            TensorProto.Types.DataType.Bool => span.ToArray().Select(x => x != 0).ToArray(),
+
+            TensorProto.Types.DataType.Float16 => ConvertHalf(span),
+            TensorProto.Types.DataType.Bfloat16 => ConvertBFloat16(span),
+
+            TensorProto.Types.DataType.Complex64 => ConvertComplex64(span),
+            TensorProto.Types.DataType.Complex128 => ConvertComplex128(span),
+
+            _ => throw new NotImplementedException($"Unsupported raw tensor type {type}")
+        };
+    }
+
+    internal static IEnumerable<T> GetValue<T>(this TensorProto tensor, OnnxModelBaseOptions options)
+    {
+        var value = GetValue(tensor, options);
 
         if (value is IEnumerable<T> typed)
         {
@@ -264,9 +309,9 @@ public static class OnnxHelper
         return result;
     }
 
-    internal static T GetValue<T>(this AttributeProto attribute)
+    internal static T GetValue<T>(this AttributeProto attribute, OnnxModelBaseOptions options)
     {
-        var value = GetValue(attribute);
+        var value = GetValue(attribute, options);
 
         if (value is T typed)
         {
@@ -276,7 +321,7 @@ public static class OnnxHelper
         throw new InvalidCastException($"Attribute '{attribute.Name}' is {value.GetType().Name}, not {typeof(T).Name}");
     }
 
-    public static object GetValue(this AttributeProto attribute)
+    public static object GetValue(this AttributeProto attribute, OnnxModelBaseOptions options)
     {
         return attribute.Type switch
         {
@@ -284,17 +329,17 @@ public static class OnnxHelper
             AttributeProto.Types.AttributeType.Int => attribute.I,
             AttributeProto.Types.AttributeType.String => attribute.S.ToStringUtf8(),
 
-            AttributeProto.Types.AttributeType.Tensor => FromProto(attribute.T),
-            AttributeProto.Types.AttributeType.Graph => new OnnxGraph(attribute.G),
-            AttributeProto.Types.AttributeType.SparseTensor => FromProto(attribute.SparseTensor),
+            AttributeProto.Types.AttributeType.Tensor => FromProto(attribute.T, options),
+            AttributeProto.Types.AttributeType.Graph => new OnnxGraph(attribute.G, options),
+            AttributeProto.Types.AttributeType.SparseTensor => FromProto(attribute.SparseTensor, options),
 
             AttributeProto.Types.AttributeType.Floats => attribute.Floats.ToArray(),
             AttributeProto.Types.AttributeType.Ints => attribute.Ints.ToArray(),
             AttributeProto.Types.AttributeType.Strings => attribute.Strings.Select(x => x.ToStringUtf8()).ToArray(),
 
-            AttributeProto.Types.AttributeType.Tensors => attribute.Tensors.Select(x => FromProto(x)).ToArray(),
-            AttributeProto.Types.AttributeType.Graphs => attribute.Graphs.Select(x => new OnnxGraph(x)).ToArray(),
-            AttributeProto.Types.AttributeType.SparseTensors => attribute.SparseTensors.Select(x => FromProto(x)).ToArray(),
+            AttributeProto.Types.AttributeType.Tensors => attribute.Tensors.Select(x => FromProto(x, options)).ToArray(),
+            AttributeProto.Types.AttributeType.Graphs => attribute.Graphs.Select(x => new OnnxGraph(x, options)).ToArray(),
+            AttributeProto.Types.AttributeType.SparseTensors => attribute.SparseTensors.Select(x => FromProto(x, options)).ToArray(),
 
             _ => throw new NotImplementedException($"Unsupported attribute type {attribute.Type}")
         };

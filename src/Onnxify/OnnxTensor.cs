@@ -8,12 +8,12 @@ public abstract class OnnxTensor : IOnnxGraphEdge
     public abstract Type DataType { get; }
     internal abstract TensorProto ToProto();
 
-    internal static OnnxTensor<T> FromProto<T>(TensorProto tensor)
+    internal static OnnxTensor<T> FromProto<T>(TensorProto tensor, OnnxModelBaseOptions options)
     {
         var name = tensor.Name;
         var dataLocation = FromProto(tensor.DataLocation);
         var shape = tensor.Dims.ToArray();
-        var value = OnnxHelper.GetValue<T>(tensor);
+        var value = OnnxHelper.GetValue<T>(tensor, options);
 
         return new OnnxTensor<T>(
             name: name,

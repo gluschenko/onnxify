@@ -278,6 +278,8 @@ namespace Onnxify.SourceGenerator
 
                     internal static {{className}} {{className}}FromProto(NodeProto node, OnnxGraph graph)
                     {
+                        var options = graph.GetOptions();
+                        
                         if (node.OpType != "{{op.Name}}")
                         {
                             throw new InvalidOperationException($"Node type is not valid '{node.OpType}' != '{{op.Name}}'");
@@ -291,7 +293,7 @@ namespace Onnxify.SourceGenerator
                             .Select(x => graph.GetValue(x) ?? throw new InvalidOperationException($"Missing value '{x}'"))
                             .ToArray();
 
-                        var attributes = node.Attribute.ToDictionary(x => x.Name, x => x.GetValue());
+                        var attributes = node.Attribute.ToDictionary(x => x.Name, x => x.GetValue(options));
 
                         var op = new {{className}}(
                             name: node.Name,
