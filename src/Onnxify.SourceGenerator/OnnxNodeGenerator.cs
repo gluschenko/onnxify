@@ -115,9 +115,9 @@ namespace Onnxify.SourceGenerator
                     if (x.Option != FormalParameterOption.Optional)
                     {
                         nodeFields.AppendLine($$"""
-                                public {{MapType(x.Type)}} {{InputName(x.Name)}}
+                                public {{MapType(x.Types)}} {{InputName(x.Name)}}
                                 {
-                                    get => ({{MapType(x.Type)}})Inputs[{{i}}];
+                                    get => ({{MapType(x.Types)}})Inputs[{{i}}];
                                     set => SetInput({{i}}, value);
                                 }
                         """);
@@ -125,9 +125,9 @@ namespace Onnxify.SourceGenerator
                     else
                     {
                         nodeFields.AppendLine($$"""
-                                public {{MapType(x.Type)}}? {{InputName(x.Name)}}
+                                public {{MapType(x.Types)}}? {{InputName(x.Name)}}
                                 {
-                                    get => Inputs.Count > {{i}} ? ({{MapType(x.Type)}})Inputs[{{i}}] : null;
+                                    get => Inputs.Count > {{i}} ? ({{MapType(x.Types)}})Inputs[{{i}}] : null;
                                     set => SetOptionalInput({{i}}, value);
                                 }
                         """);
@@ -141,9 +141,9 @@ namespace Onnxify.SourceGenerator
                     if (x.Option != FormalParameterOption.Optional)
                     {
                         nodeFields.AppendLine($$"""
-                                public {{MapType(x.Type)}} {{OutputName(x.Name)}}
+                                public {{MapType(x.Types)}} {{OutputName(x.Name)}}
                                 {
-                                    get => ({{MapType(x.Type)}})Outputs[{{i}}];
+                                    get => ({{MapType(x.Types)}})Outputs[{{i}}];
                                     set => SetOutput({{i}}, value);
                                 }
                         """);
@@ -151,10 +151,38 @@ namespace Onnxify.SourceGenerator
                     else
                     {
                         nodeFields.AppendLine($$"""
-                                public {{MapType(x.Type)}}? {{OutputName(x.Name)}}
+                                public {{MapType(x.Types)}}? {{OutputName(x.Name)}}
                                 {
-                                    get => Output.Count > {{i}} ? ({{MapType(x.Type)}})Outputs[{{i}}] : null;
+                                    get => Outputs.Count > {{i}} && Outputs[{{i}}] is {{MapType(x.Types)}} x ? x : null;
                                     set => SetOptionalOutput({{i}}, value);
+                                }
+                        """);
+                    }
+                }
+
+                for (var i = 0; i < op.Attributes.Count(); i++)
+                {
+                    var x = op.Attributes[i];
+
+                    var type = FromProto((AttributeType)x.Type);
+
+                    if (x.Required)
+                    {
+                        nodeFields.AppendLine($$"""
+                                public {{type}} {{AttributeName(x.Name)}}
+                                {
+                                    get => GetAttribute<{{type}}>("{{x.Name}}");
+                                    set => SetAttribute<{{type}}>("{{x.Name}}", value);
+                                }
+                        """);
+                    }
+                    else
+                    {
+                        nodeFields.AppendLine($$"""
+                                public {{type}}? {{AttributeName(x.Name)}}
+                                {
+                                    get => GetAttribute<{{type}}>("{{x.Name}}");
+                                    set => SetAttribute<{{type}}?>("{{x.Name}}", value);
                                 }
                         """);
                     }
@@ -183,41 +211,36 @@ namespace Onnxify.SourceGenerator
                         ) { }
 
                         {{nodeFields.ToString().Trim()}}
-
-                        public long[]? Strides
-                        {
-                            get => GetAttribute<long[]>("strides");
-                            set => SetAttribute("strides", value);
-                        }
-
-                        public long[]? Pads
-                        {
-                            get => GetAttribute<long[]>("pads");
-                            set => SetAttribute("pads", value);
-                        }
-
-                        public long[]? Dilations
-                        {
-                            get => GetAttribute<long[]>("dilations");
-                            set => SetAttribute("dilations", value);
-                        }
-
-                        public long Group
-                        {
-                            get => GetAttribute<long?>("group") ?? 1;
-                            set => SetAttribute("group", value);
-                        }
-
-                        public string AutoPad
-                        {
-                            get => GetAttribute<string>("auto_pad") ?? "NOTSET";
-                            set => SetAttribute("auto_pad", value);
-                        }
                     }
+                """);
 
+                if (op.Outputs.Count() > 1)
+                {
+                    classes.AppendLine($$""""
+                        public class {{className}}Output
+                        {
+                            {{GetFields(op.Outputs, x => OutputName(x))}}
+                        }
+                    """");
+                }
+
+                var extensionMethodReturnType = op.Outputs.Count <= 1 
+                    ? "IOnnxGraphEdge" 
+                    : $"{className}Output";
+
+                var extensionMethodReturnValue = op.Outputs.Count <= 1 
+                    ? string.Join(", ", op.Outputs.Select(x => $"op.{OutputName(x.Name)}")) 
+                    : $$"""
+                    new {{className}}Output 
+                    { 
+                        {{string.Join(", ", op.Outputs.Select(x => $"{OutputName(x.Name)} = op.{OutputName(x.Name)}"))}} 
+                    }
+                    """;
+
+                classes.AppendLine($$"""
                     public static class {{className}}Extensions
                     {
-                        public static IOnnxGraphEdge {{className}}(
+                        public static {{extensionMethodReturnType}} {{className}}(
                             this OnnxGraph graph,
                             string name,
                             {{className}}InputOptions options
@@ -236,13 +259,13 @@ namespace Onnxify.SourceGenerator
                                     {{string.Join(", ", list1)}}
                                 }
                             );
-
+                
                             graph.AddNode(op);
-
-                            return {{string.Join(", ", op.Outputs.Select(x => $"op.{OutputName(x.Name)}"))}};
+                
+                            return {{extensionMethodReturnValue}};
                         }
-
-                        public static IOnnxGraphEdge {{className}}(
+                
+                        public static {{extensionMethodReturnType}} {{className}}(
                             this OnnxGraph graph,
                             string name,
                             {{className}}InputOutputOptions options
@@ -252,13 +275,12 @@ namespace Onnxify.SourceGenerator
                                 name: name,
                                 options: options
                             );
-
+                
                             graph.AddNode(op);
-
-                            return {{string.Join(", ", op.Outputs.Select(x => $"op.{OutputName(x.Name)}"))}};
+                
+                            return {{extensionMethodReturnValue}};
                         }
                     }
-
                 """);
             }
 
@@ -294,7 +316,7 @@ namespace Onnxify.SourceGenerator
                 var nullable = x.Option == FormalParameterOption.Optional ? "?" : "";
 
                 sb.AppendLine($$"""
-                        public{{required}}{{MapType(x.Type)}}{{nullable}} {{onName(x.Name)}} { get; init; }
+                        public{{required}}{{MapType(x.Types)}}{{nullable}} {{onName(x.Name)}} { get; init; }
                 """);
             }
 
@@ -393,18 +415,41 @@ namespace Onnxify.SourceGenerator
             return prefix + p;
         }
 
+        public static string MapType(string[] types)
+        {
+            /*if (types.Length == 1)
+            {
+                return MapType(types[0]);
+            }*/
+
+            if (types.All(x => x.StartsWith("tensor")))
+            {
+                return "IOnnxGraphEdge"; // TODO: OnnxTensor??
+            }
+
+            throw new NotSupportedException($"Unsupported ONNX type: {string.Join(", ", types)}");
+        }
+
         public static string MapType(string type)
         {
             return type switch
             {
-                "T" => "IOnnxGraphEdge",
-                "Tind" => "IOnnxGraphEdge",
-                "T1" => "IOnnxGraphEdge",
-                "tensor(int64)" => "OnnxTensor<long>",
-                "tensor(int32)" => "OnnxTensor<int>",
+                "tensor(uint32)" => "OnnxTensor<bool>",
                 "tensor(float)" => "OnnxTensor<float>",
+                "tensor(uint8)" => "OnnxTensor<byte>",
+                "tensor(uint16)" => "OnnxTensor<ushort>",
+                "tensor(int64)" => "OnnxTensor<long>",
+                "tensor(uint64)" => "OnnxTensor<ulong>",
+                "tensor(int16)" => "OnnxTensor<short>",
+                "tensor(int8)" => "OnnxTensor<sbyte>",
+                "tensor(int32)" => "OnnxTensor<int>",
+                "tensor(bfloat16)" => "OnnxTensor<BFloat16>",
+                "tensor(float16)" => "OnnxTensor<Half>",
                 "tensor(double)" => "OnnxTensor<double>",
+                "tensor(string)" => "OnnxTensor<string>",
                 "tensor(bool)" => "OnnxTensor<bool>",
+                "tensor(complex64)" => "OnnxTensor<Complex64>",
+                "tensor(complex128)" => "OnnxTensor<Complex>",
 
                 _ => throw new NotSupportedException($"Unsupported ONNX type: {type}")
             };

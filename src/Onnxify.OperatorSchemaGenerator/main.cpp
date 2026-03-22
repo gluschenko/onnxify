@@ -28,7 +28,9 @@ int main()
             schema.Name() != "GlobalAveragePool" &&
             schema.Name() != "Reshape" &&
             schema.Name() != "Gemm" &&
-            schema.Name() != "Unsqueeze"
+            schema.Name() != "Unsqueeze" &&
+            schema.Name() != "MaxPool" &&
+            schema.Name() != "Relu"
         ) {
             continue;
         }
@@ -50,6 +52,13 @@ int main()
             x["name"] = input.GetName();
             x["type"] = input.GetTypeStr();
             x["option"] = (int)input.GetOption();
+            x["description"] = input.GetDescription();
+
+            x["types"] = json::array();
+            for (const auto& type : input.GetTypes())
+            {
+                x["types"].push_back(*type);
+            }
 
             op["inputs"].push_back(x);
         }
@@ -64,6 +73,13 @@ int main()
             x["name"] = output.GetName();
             x["type"] = output.GetTypeStr();
             x["option"] = (int)output.GetOption();
+            x["description"] = output.GetDescription();
+
+            x["types"] = json::array();
+            for (const auto& type : output.GetTypes())
+            {
+                x["types"].push_back(*type);
+            }
 
             op["outputs"].push_back(x);
         }

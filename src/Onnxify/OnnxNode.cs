@@ -192,6 +192,25 @@ public class OnnxNode : IOnnxGraphNode
         _outputs.Add(value);
     }
 
+    protected void SetOptionalOutput(int index, IOnnxGraphEdge? value)
+    {
+        if (index < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
+
+        if (index < _outputs.Count)
+        {
+            var existing = _outputs[index];
+            _outputs.Remove(existing);
+        }
+
+        if (value != null)
+        {
+            _outputs.Add(value);
+        }
+    }
+
     protected T? GetAttribute<T>(string name)
     {
         if (name == null)
@@ -214,7 +233,7 @@ public class OnnxNode : IOnnxGraphNode
         return default(T?);
     }
 
-    protected void SetAttribute<T>(string name, T? value) where T : notnull
+    protected void SetAttribute<T>(string name, T? value)
     {
         if (name == null)
         {
@@ -227,7 +246,7 @@ public class OnnxNode : IOnnxGraphNode
             return;
         }
 
-        _attributes[name] = new OnnxAttribute<T>(name, value);
+        _attributes[name] = new OnnxAttribute<T>(name, (T)value);
     }
 
     protected void LoadAttributes(NodeProto node)

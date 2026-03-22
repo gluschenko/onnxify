@@ -52,11 +52,17 @@ namespace Onnxify.SourceGenerator.Models
         [JsonPropertyName("name")]
         public required string Name { get; set; }
 
+        [JsonPropertyName("description")]
+        public string? Description { get; set; }
+
         [JsonPropertyName("option")]
         public required FormalParameterOption Option { get; set; }
 
         [JsonPropertyName("type")]
         public required string Type { get; set; }
+
+        [JsonPropertyName("types")]
+        public required string[] Types { get; set; }
     }
 
     /// <summary>
@@ -106,33 +112,4 @@ namespace Onnxify.SourceGenerator.Models
         NonDifferentiable = 2
     };
 }
-
-/*public static class OperatorHelpers
-{
-    public static string MapAttributeType(AttributeProto.Types.AttributeType type)
-    {
-        return type switch
-        {
-            AttributeProto.Types.AttributeType.Undefined => typeof(object).Name,
-
-            AttributeProto.Types.AttributeType.Float => typeof(float).Name,
-            AttributeProto.Types.AttributeType.Int => typeof(long).Name,
-            AttributeProto.Types.AttributeType.String => typeof(string).Name,
-
-            AttributeProto.Types.AttributeType.Tensor => nameof(TensorProto),
-            AttributeProto.Types.AttributeType.Graph => nameof(GraphProto),
-            AttributeProto.Types.AttributeType.SparseTensor => nameof(SparseTensorProto),
-
-            AttributeProto.Types.AttributeType.Floats => $"{typeof(float).Name}[]",
-            AttributeProto.Types.AttributeType.Ints => $"{typeof(long).Name}[]",
-            AttributeProto.Types.AttributeType.Strings => $"{typeof(string).Name}[]",
-
-            AttributeProto.Types.AttributeType.Tensors => $"{nameof(TensorProto)}[]",
-            AttributeProto.Types.AttributeType.Graphs => $"{nameof(GraphProto)}[]",
-            AttributeProto.Types.AttributeType.SparseTensors => $"{nameof(SparseTensorProto)}[]",
-
-            _ => throw new NotSupportedException($"Unsupported AttributeType: {type}")
-        };
-    }
-}*/
 

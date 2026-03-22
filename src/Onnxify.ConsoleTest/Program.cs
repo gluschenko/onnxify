@@ -43,16 +43,14 @@ namespace Onnxify.ConsoleTest
             );
 
             var conv1_in = model.Graph.AddEdge("conv1_in");
-            var conv1_out = model.Graph.AddEdge("conv1_out");
 
             var conv = model.Graph.Conv(
                 name: "conv1",
-                options: new ConvInputOutputOptions
+                options: new ConvInputOptions
                 {
                     X = conv1_in,
                     W = conv1_w,
                     B = conv1_b,
-                    Y = conv1_out
                 }
             );
 
@@ -111,23 +109,9 @@ namespace Onnxify.ConsoleTest
                 value: new float[1000]
             );
 
-            // var conv1_out = model.Graph.AddEdge("conv1_out");
-
-            /*
-            model.Graph.AddNode(
+            var conv1 = model.Graph.Conv(
                 name: "conv1",
-                opType: "Conv",
-                domain: "",
-                docString: "",
-                inputs: [input, conv1_w, conv1_b],
-                outputs: [conv1_out],
-                attributes: []
-            );
-            */
-
-            var conv1 = model.Graph.ConvTest(
-                name: "conv1",
-                options: new ConvTestInputOptions
+                options: new ConvInputOptions
                 {
                     X = input,
                     W = conv1_w,
@@ -135,32 +119,25 @@ namespace Onnxify.ConsoleTest
                 }
             );
 
-            var relu1_out = model.Graph.AddEdge("relu1_out");
-
-            model.Graph.AddNode(
+            var relu1 = model.Graph.Relu(
                 name: "relu1",
-                opType: "Relu",
-                domain: "",
-                docString: "",
-                inputs: [conv1],
-                outputs: [relu1_out],
-                attributes: []
+                options: new ReluInputOptions
+                {
+                    X = conv1
+                }
             );
 
-            var pool1_out = model.Graph.AddEdge("pool1_out");
-
-            model.Graph.AddNode(
+            var pool1 = model.Graph.MaxPool(
                 name: "pool1",
-                opType: "MaxPool",
-                domain: "",
-                docString: "",
-                inputs: [relu1_out],
-                outputs: [pool1_out],
-                attributes: [
-                    new OnnxAttribute<long[]>("kernel_shape", [2, 2]),
-                    new OnnxAttribute<long[]>("strides", [2, 2]),
-                ]
+                options: new MaxPoolInputOptions
+                {
+                    X = relu1,
+                    KernelShape = [2, 2],
+                    Strides = [2, 2]
+                }
             );
+
+            // var flatten = model.Graph.Flatten
 
             var flat_out = model.Graph.AddEdge("flat_out");
 
@@ -169,7 +146,7 @@ namespace Onnxify.ConsoleTest
                 opType: "Flatten",
                 domain: "",
                 docString: "",
-                inputs: [pool1_out],
+                inputs: [pool1.Y],
                 outputs: [flat_out],
                 attributes: []
             );
@@ -304,34 +281,35 @@ public sealed class ConvTest : OnnxNode
         set => SetOutput(0, value);
     }
 
-    public long[]? Strides
+    public string? AutoPad
     {
-        get => GetAttribute<long[]>("strides");
-        set => SetAttribute("strides", value);
+        get => GetAttribute<string>("auto_pad");
+        set => SetAttribute<string>("auto_pad", value);
     }
-
-    public long[]? Pads
-    {
-        get => GetAttribute<long[]>("pads");
-        set => SetAttribute("pads", value);
-    }
-
     public long[]? Dilations
     {
         get => GetAttribute<long[]>("dilations");
-        set => SetAttribute("dilations", value);
+        set => SetAttribute<long[]>("dilations", value);
     }
-
-    public long Group
+    public long? Group
     {
-        get => GetAttribute<long?>("group") ?? 1;
-        set => SetAttribute("group", value);
+        get => GetAttribute<long>("group");
+        set => SetAttribute<long?>("group", value);
     }
-
-    public string AutoPad
+    public long[]? KernelShape
     {
-        get => GetAttribute<string>("auto_pad") ?? "NOTSET";
-        set => SetAttribute("auto_pad", value);
+        get => GetAttribute<long[]>("kernel_shape");
+        set => SetAttribute<long[]>("kernel_shape", value);
+    }
+    public long[]? Pads
+    {
+        get => GetAttribute<long[]>("pads");
+        set => SetAttribute<long[]>("pads", value);
+    }
+    public long[]? Strides
+    {
+        get => GetAttribute<long[]>("strides");
+        set => SetAttribute<long[]>("strides", value);
     }
 
     internal static ConvTest FromProto(NodeProto node, OnnxGraph graph)
