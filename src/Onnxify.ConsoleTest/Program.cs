@@ -254,57 +254,113 @@ public sealed class ConvTest : OnnxNode
 
     public IOnnxGraphEdge X
     {
-        get => Inputs[0];
+        get => (IOnnxGraphEdge)Inputs[0];
         set => SetInput(0, value);
     }
-
     public IOnnxGraphEdge W
     {
-        get => Inputs[1];
+        get => (IOnnxGraphEdge)Inputs[1];
         set => SetInput(1, value);
     }
-
     public IOnnxGraphEdge? B
     {
-        get => Inputs.Count > 2 ? Inputs[2] : null;
+        get => Inputs.Count > 2 ? (IOnnxGraphEdge)Inputs[2] : null;
         set => SetOptionalInput(2, value);
     }
-
     public IOnnxGraphEdge Y
     {
-        get => Outputs[0];
+        get => (IOnnxGraphEdge)Outputs[0];
         set => SetOutput(0, value);
     }
-
     public string? AutoPad
     {
-        get => GetAttribute<string>("auto_pad");
-        set => SetAttribute<string>("auto_pad", value);
+        get => HasAttribute("auto_pad") ? GetAttribute<string>("auto_pad") : null;
+        set
+        {
+            if (value is not null)
+            {
+                SetAttribute<string>("auto_pad", (string)value);
+            }
+            else
+            {
+                RemoveAttribute("auto_pad");
+            }
+        }
     }
     public long[]? Dilations
     {
-        get => GetAttribute<long[]>("dilations");
-        set => SetAttribute<long[]>("dilations", value);
+        get => HasAttribute("dilations") ? GetAttribute<long[]>("dilations") : null;
+        set
+        {
+            if (value is not null)
+            {
+                SetAttribute<long[]>("dilations", (long[])value);
+            }
+            else
+            {
+                RemoveAttribute("dilations");
+            }
+        }
     }
     public long? Group
     {
-        get => GetAttribute<long>("group");
-        set => SetAttribute<long?>("group", value);
+        get => HasAttribute("group") ? GetAttribute<long>("group") : null;
+        set
+        {
+            if (value is not null)
+            {
+                SetAttribute<long>("group", (long)value);
+            }
+            else
+            {
+                RemoveAttribute("group");
+            }
+        }
     }
     public long[]? KernelShape
     {
-        get => GetAttribute<long[]>("kernel_shape");
-        set => SetAttribute<long[]>("kernel_shape", value);
+        get => HasAttribute("kernel_shape") ? GetAttribute<long[]>("kernel_shape") : null;
+        set
+        {
+            if (value is not null)
+            {
+                SetAttribute<long[]>("kernel_shape", (long[])value);
+            }
+            else
+            {
+                RemoveAttribute("kernel_shape");
+            }
+        }
     }
     public long[]? Pads
     {
-        get => GetAttribute<long[]>("pads");
-        set => SetAttribute<long[]>("pads", value);
+        get => HasAttribute("pads") ? GetAttribute<long[]>("pads") : null;
+        set
+        {
+            if (value is not null)
+            {
+                SetAttribute<long[]>("pads", (long[])value);
+            }
+            else
+            {
+                RemoveAttribute("pads");
+            }
+        }
     }
     public long[]? Strides
     {
-        get => GetAttribute<long[]>("strides");
-        set => SetAttribute<long[]>("strides", value);
+        get => HasAttribute("strides") ? GetAttribute<long[]>("strides") : null;
+        set
+        {
+            if (value is not null)
+            {
+                SetAttribute<long[]>("strides", (long[])value);
+            }
+            else
+            {
+                RemoveAttribute("strides");
+            }
+        }
     }
 
     internal static ConvTest FromProto(NodeProto node, OnnxGraph graph)

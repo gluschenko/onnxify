@@ -211,7 +211,17 @@ public class OnnxNode : IOnnxGraphNode
         }
     }
 
-    protected T? GetAttribute<T>(string name)
+    protected bool HasAttribute(string name)
+    {
+        if (name == null)
+        {
+            throw new ArgumentNullException(nameof(name));
+        }
+
+        return _attributes.Contains(name);
+    }
+
+    protected T GetAttribute<T>(string name) where T : notnull
     {
         if (name == null)
         {
@@ -227,26 +237,36 @@ public class OnnxNode : IOnnxGraphNode
                 return t;
             }
 
-            return (T?)Convert.ChangeType(value, typeof(T));
+            return (T)Convert.ChangeType(value, typeof(T));
         }
 
-        return default(T?);
+        throw new InvalidOperationException($"No attribute with name '{name}'");
     }
 
-    protected void SetAttribute<T>(string name, T? value)
+    protected void SetAttribute<T>(string name, T value) where T : notnull
     {
         if (name == null)
         {
             throw new ArgumentNullException(nameof(name));
         }
 
-        if (value == null)
+        _attributes[name] = new OnnxAttribute<T>(name, (T)value);
+    }
+
+    protected bool RemoveAttribute(string name)
+    {
+        if (name == null)
         {
-            _attributes.Remove(name);
-            return;
+            throw new ArgumentNullException(nameof(name));
         }
 
-        _attributes[name] = new OnnxAttribute<T>(name, (T)value);
+        if (_attributes.Contains(name))
+        {
+            _attributes.Remove(name);
+            return true;
+        }
+
+        return false;
     }
 
     protected void LoadAttributes(NodeProto node)
@@ -265,3 +285,4 @@ public class OnnxNode : IOnnxGraphNode
         }
     }
 }
+

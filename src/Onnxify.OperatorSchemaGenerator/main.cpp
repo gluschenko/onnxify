@@ -19,23 +19,6 @@ int main()
 
     for (const auto& schema : schemas)
     {
-        if (
-            schema.Name() != "Conv" && 
-            schema.Name() != "Clip" && 
-            schema.Name() != "Add" && 
-            schema.Name() != "Shape" &&
-            schema.Name() != "Gather" &&
-            schema.Name() != "Flatten" &&
-            schema.Name() != "GlobalAveragePool" &&
-            schema.Name() != "Reshape" &&
-            schema.Name() != "Gemm" &&
-            schema.Name() != "Unsqueeze" &&
-            schema.Name() != "MaxPool" &&
-            schema.Name() != "Relu"
-        ) {
-            continue;
-        }
-
         json op;
 
         op["name"] = schema.Name();

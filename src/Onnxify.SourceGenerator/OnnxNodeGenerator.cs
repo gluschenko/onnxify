@@ -9,10 +9,12 @@ namespace Onnxify.SourceGenerator
     [Generator]
     public class OnnxNodeGenerator : IIncrementalGenerator
     {
-        private readonly static HashSet<string> _reservedFieldNames =
-        [
-            "Shape",
-        ];
+        private readonly static HashSet<string> _reservedFieldNames = [];
+        private readonly static Dictionary<string, string> _aliasFieldNames = new() 
+        {
+            ["Inputs"] = "In",
+            ["Outputs"] = "Out",
+        };
 
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
@@ -63,7 +65,11 @@ namespace Onnxify.SourceGenerator
                     )
                 );
 
+                _reservedFieldNames.Clear();
                 var className = $"{op.Name}";
+                _reservedFieldNames.Add(className);
+                _reservedFieldNames.Add("Inputs");
+                _reservedFieldNames.Add("Outputs");
 
                 var list1 = new List<string>();
 
@@ -181,8 +187,17 @@ namespace Onnxify.SourceGenerator
                         nodeFields.AppendLine($$"""
                                 public {{type}}? {{AttributeName(x.Name)}}
                                 {
-                                    get => GetAttribute<{{type}}>("{{x.Name}}");
-                                    set => SetAttribute<{{type}}?>("{{x.Name}}", value);
+                                    get => HasAttribute("{{x.Name}}") ? GetAttribute<{{type}}>("{{x.Name}}") : null;
+                                    set {
+                                        if (value is not null)
+                                        {
+                                            SetAttribute<{{type}}>("{{x.Name}}", ({{type}})value);
+                                        }
+                                        else
+                                        {
+                                            RemoveAttribute("{{x.Name}}");
+                                        }
+                                    }
                                 }
                         """);
                     }
@@ -236,10 +251,10 @@ namespace Onnxify.SourceGenerator
                 var extensionMethodReturnValue = op.Outputs.Count <= 1 
                     ? string.Join(", ", op.Outputs.Select(x => $"op.{OutputName(x.Name)}")) 
                     : $$"""
-                    new {{className}}Output 
-                    { 
-                        {{string.Join(", ", op.Outputs.Select(x => $"{OutputName(x.Name)} = op.{OutputName(x.Name)}"))}} 
-                    }
+                                new {{className}}Output 
+                                { 
+                                    {{string.Join(", ", op.Outputs.Select(x => $"{OutputName(x.Name)} = op.{OutputName(x.Name)}"))}} 
+                                }
                     """;
 
                 classes.AppendLine($$"""
@@ -319,7 +334,7 @@ namespace Onnxify.SourceGenerator
 
             foreach (var x in items)
             {
-                var required = x.Option == FormalParameterOption.Single ? " required " : " ";
+                var required = x.Option == FormalParameterOption.Optional ? " " : " required ";
                 var nullable = x.Option == FormalParameterOption.Optional ? "?" : "";
 
                 sb.AppendLine($$"""
@@ -372,6 +387,11 @@ namespace Onnxify.SourceGenerator
         {
             var p = PascalCase(name);
 
+            if (_aliasFieldNames.TryGetValue(p, out var alias))
+            {
+                p = alias;
+            }
+
             if (_reservedFieldNames.Contains(p))
             {
                 prefix = "Input";
@@ -389,6 +409,11 @@ namespace Onnxify.SourceGenerator
         public static string OutputName(string name, string prefix = "")
         {
             var p = PascalCase(name);
+
+            if (_aliasFieldNames.TryGetValue(p, out var alias))
+            {
+                p = alias;
+            }
 
             if (_reservedFieldNames.Contains(p))
             {
@@ -408,6 +433,11 @@ namespace Onnxify.SourceGenerator
         {
             var p = PascalCase(name);
 
+            if (_aliasFieldNames.TryGetValue(p, out var alias))
+            {
+                p = alias;
+            }
+
             if (_reservedFieldNames.Contains(p))
             {
                 prefix = "Attribute";
@@ -424,10 +454,12 @@ namespace Onnxify.SourceGenerator
 
         public static string MapType(string[] types)
         {
-            /*if (types.Length == 1)
+            return "IOnnxGraphEdge";
+
+            if (types.Length == 1)
             {
                 return MapType(types[0]);
-            }*/
+            }
 
             if (types.All(x => x.StartsWith("tensor")))
             {
