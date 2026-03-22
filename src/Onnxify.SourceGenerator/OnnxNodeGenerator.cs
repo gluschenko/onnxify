@@ -71,12 +71,6 @@ namespace Onnxify.SourceGenerator
                 _reservedFieldNames.Add("Inputs");
                 _reservedFieldNames.Add("Outputs");
 
-                var list1 = new List<string>();
-
-                list1.AddRange(op.Inputs.Select(x => $"{InputName(x.Name)} = options.{InputName(x.Name)}"));
-                list1.AddRange(op.Attributes.Select(x => $"{AttributeName(x.Name)} = options.{AttributeName(x.Name)}"));
-                list1.AddRange(op.Outputs.Select(x => $"{OutputName(x.Name)} = edge{OutputName(x.Name)}"));
-
                 var optionsInputs = op.Inputs.Select(x => $"options.{InputName(x.Name)}").ToArray();
                 var optionsOutputs = op.Outputs.Select(x => $"options.{OutputName(x.Name)}").ToArray();
                 var optionsAttributes = op.Attributes
@@ -245,6 +239,50 @@ namespace Onnxify.SourceGenerator
                         /// </summary>
                 """;
 
+                var list1 = new List<string>();
+
+                list1.AddRange(op.Inputs.Select(x => $"{InputName(x.Name)} = options.{InputName(x.Name)}"));
+                list1.AddRange(op.Attributes.Select(x => $"{AttributeName(x.Name)} = options.{AttributeName(x.Name)}"));
+                list1.AddRange(op.Outputs.Select(x => $"{OutputName(x.Name)} = edge{OutputName(x.Name)}"));
+
+                var list2 = new List<string>();
+
+                list2.AddRange(op.Inputs.Select((x, i) =>
+                {
+                    if (x.Option != FormalParameterOption.Optional)
+                    {
+                        return $"{InputName(x.Name)} = inputs[{i}]";
+                    }
+                    else
+                    {
+                        return $"{InputName(x.Name)} = inputs.Length > {i} ? inputs[{i}] : null";
+                    }
+                }));
+                list2.AddRange(op.Attributes.Select(x =>
+                {
+                    var type = FromProto((AttributeType)x.Type);
+
+                    if (x.Required)
+                    {
+                        return $"{AttributeName(x.Name)} = ({type})(attributes.GetValueOrDefault(\"{x.Name}\") ?? throw new InvalidOperationException($\"Missing value '{x.Name}'\"))";
+                    }
+                    else
+                    {
+                        return $"{AttributeName(x.Name)} = ({type}?)attributes.GetValueOrDefault(\"{x.Name}\")";
+                    }
+                }));
+                list2.AddRange(op.Outputs.Select((x, i) =>
+                {
+                    if (x.Option != FormalParameterOption.Optional)
+                    {
+                        return $"{OutputName(x.Name)} = outputs[{i}]";
+                    }
+                    else
+                    {
+                        return $"{OutputName(x.Name)} = outputs.Length > {i} ? outputs[{i}] : null";
+                    }
+                }));
+
                 classes.AppendLine($$"""
                     {{comment}}
                     public class {{className}} : OnnxNode
@@ -263,6 +301,29 @@ namespace Onnxify.SourceGenerator
                         ) { }
 
                         {{nodeFields.ToString().Trim()}}
+
+                        internal static {{className}} {{className}}FromProto(NodeProto node, OnnxGraph graph)
+                        {
+                            var inputs = node.Input
+                                .Select(x => graph.GetValue(x) ?? throw new InvalidOperationException($"Missing value '{x}'"))
+                                .ToArray();
+
+                            var outputs = node.Output
+                                .Select(x => graph.GetValue(x) ?? throw new InvalidOperationException($"Missing value '{x}'"))
+                                .ToArray();
+
+                            var attributes = node.Attribute.ToDictionary(x => x.Name, x => x.GetValue());
+
+                            var op = new {{className}}(
+                                name: node.Name,
+                                options: new {{className}}InputOutputOptions
+                                {
+                                    {{string.Join(",\n", list2)}},
+                                }
+                            );
+
+                            return op;
+                        }
                     }
                 """);
 
@@ -285,7 +346,7 @@ namespace Onnxify.SourceGenerator
                     : $$"""
                                 new {{className}}Output 
                                 { 
-                                    {{string.Join(", ", op.Outputs.Select(x => $"{OutputName(x.Name)} = op.{OutputName(x.Name)}"))}} 
+                                    {{string.Join(",\n", op.Outputs.Select(x => $"{OutputName(x.Name)} = op.{OutputName(x.Name)}"))}} 
                                 }
                     """;
 
@@ -309,7 +370,7 @@ namespace Onnxify.SourceGenerator
                                 name: name,
                                 options: new {{className}}InputOutputOptions
                                 {
-                                    {{string.Join(", ", list1)}}
+                                    {{string.Join(",\n", list1)}}
                                 }
                             );
                 

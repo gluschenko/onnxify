@@ -276,7 +276,7 @@ public static class OnnxHelper
         throw new InvalidCastException($"Attribute '{attribute.Name}' is {value.GetType().Name}, not {typeof(T).Name}");
     }
 
-    internal static object GetValue(this AttributeProto attribute)
+    public static object GetValue(this AttributeProto attribute)
     {
         return attribute.Type switch
         {

@@ -363,7 +363,7 @@ public sealed class ConvTest : OnnxNode
         }
     }
 
-    internal static ConvTest FromProto(NodeProto node, OnnxGraph graph)
+    internal static Conv FromProto(NodeProto node, OnnxGraph graph)
     {
         var inputs = node.Input
             .Select(x => graph.GetValue(x) ?? throw new InvalidOperationException($"Missing value '{x}'"))
@@ -373,20 +373,21 @@ public sealed class ConvTest : OnnxNode
             .Select(x => graph.GetValue(x) ?? throw new InvalidOperationException($"Missing value '{x}'"))
             .ToArray();
 
-        var conv = new ConvTest(
+        var attributes = node.Attribute.ToDictionary(x => x.Name, x => x.GetValue());
+
+        var op = new Conv(
             name: node.Name,
-            options: new ConvTestInputOutputOptions
+            options: new ConvInputOutputOptions
             {
                 X = inputs[0],
                 W = inputs[1],
                 B = inputs.Length > 2 ? inputs[2] : null,
                 Y = outputs[0],
+                AutoPad = (string?)attributes.GetValueOrDefault("auto_pad"),
             }
         );
 
-        conv.LoadAttributes(node);
-
-        return conv;
+        return op;
     }
 }
 

@@ -133,15 +133,8 @@ public class OnnxNode : IOnnxGraphNode
 
     protected void SetInput(int index, IOnnxGraphEdge value)
     {
-        if (value == null)
-        {
-            throw new ArgumentNullException(nameof(value));
-        }
-
-        if (index < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(index));
-        }
+        ArgumentNullException.ThrowIfNull(value);
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
 
         if (index < _inputs.Count)
         {
@@ -154,10 +147,7 @@ public class OnnxNode : IOnnxGraphNode
 
     protected void SetOptionalInput(int index, IOnnxGraphEdge? value)
     {
-        if (index < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(index));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
 
         if (index < _inputs.Count)
         {
@@ -173,15 +163,8 @@ public class OnnxNode : IOnnxGraphNode
 
     protected void SetOutput(int index, IOnnxGraphEdge value)
     {
-        if (value == null)
-        {
-            throw new ArgumentNullException(nameof(value));
-        }
-
-        if (index < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(index));
-        }
+        ArgumentNullException.ThrowIfNull(value);
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
 
         if (index < _outputs.Count)
         {
@@ -194,10 +177,7 @@ public class OnnxNode : IOnnxGraphNode
 
     protected void SetOptionalOutput(int index, IOnnxGraphEdge? value)
     {
-        if (index < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(index));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
 
         if (index < _outputs.Count)
         {
@@ -213,20 +193,13 @@ public class OnnxNode : IOnnxGraphNode
 
     protected bool HasAttribute(string name)
     {
-        if (name == null)
-        {
-            throw new ArgumentNullException(nameof(name));
-        }
-
+        ArgumentNullException.ThrowIfNull(name);
         return _attributes.Contains(name);
     }
 
     protected T GetAttribute<T>(string name) where T : notnull
     {
-        if (name == null)
-        {
-            throw new ArgumentNullException(nameof(name));
-        }
+        ArgumentNullException.ThrowIfNull(name);
 
         if (_attributes.TryGetValue(name, out var attr))
         {
@@ -245,44 +218,14 @@ public class OnnxNode : IOnnxGraphNode
 
     protected void SetAttribute<T>(string name, T value) where T : notnull
     {
-        if (name == null)
-        {
-            throw new ArgumentNullException(nameof(name));
-        }
-
+        ArgumentNullException.ThrowIfNull(name);
         _attributes[name] = new OnnxAttribute<T>(name, (T)value);
     }
 
     protected bool RemoveAttribute(string name)
     {
-        if (name == null)
-        {
-            throw new ArgumentNullException(nameof(name));
-        }
-
-        if (_attributes.Contains(name))
-        {
-            _attributes.Remove(name);
-            return true;
-        }
-
-        return false;
-    }
-
-    protected void LoadAttributes(NodeProto node)
-    {
-        if (node == null)
-        {
-            throw new ArgumentNullException(nameof(node));
-        }
-
-        _attributes.Clear();
-
-        foreach (var attr in node.Attribute)
-        {
-            var value = OnnxHelper.FromProto(attr);
-            _attributes.Add(value);
-        }
+        ArgumentNullException.ThrowIfNull(name);
+        return _attributes.Remove(name);
     }
 }
 
