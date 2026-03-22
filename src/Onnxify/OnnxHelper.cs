@@ -190,7 +190,9 @@ public static class OnnxHelper
             var buffer = new byte[length];
             fs.ReadExactly(buffer);
 
-            return ConvertRaw(buffer, type);
+            var data = ConvertRaw(buffer, type);
+
+            return data;
         }
 
         if (tensor.RawData.Length > 0)

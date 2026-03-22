@@ -1,4 +1,5 @@
 ﻿using Onnx;
+using static Onnx.TypeProto.Types;
 
 namespace Onnxify;
 
@@ -88,7 +89,10 @@ public class OnnxTensor<T> : OnnxTensor
         newTensor.DataType = (int)OnnxHelper.GetDataType(DataType);
         newTensor.DataLocation = ToProto(DataLocation);
         newTensor.Dims.Set(Shape);
-        
+
+        newTensor.DataLocation = TensorProto.Types.DataLocation.Default;
+        newTensor.ExternalData.Clear();
+
         var data = Value.ToArray();
         newTensor.SetValue(data, Shape);
 

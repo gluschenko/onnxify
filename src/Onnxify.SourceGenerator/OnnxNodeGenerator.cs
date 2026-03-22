@@ -480,6 +480,7 @@ namespace Onnxify.SourceGenerator
             /// </para>
             /// <para>
             /// Allowed types: {{string.Join(", ", x.Types.Select(x => MapType(x))).Comment()}}
+            /// Type: {{x.Option}}
             /// </para>
             /// </summary>
             """;
