@@ -450,7 +450,7 @@ namespace Onnxify.SourceGenerator
 
                 sb.AppendLine($$"""
                 {{GetAttributeComment(x)}}
-                public{{required}}{{type}}{{nullable}} {{AttributeName(x.Name)}} { get; set; }
+                public{{required}}{{type}}{{nullable}} {{AttributeName(x.Name)}} { get; init; }{{(x.Default is not null ? $" = ({type}){JsonSerializer.Serialize(x.Default)};" : "")}}
                 """);
             }
 
@@ -495,6 +495,7 @@ namespace Onnxify.SourceGenerator
             /// </para>
             /// <para>
             /// Allowed types: {{string.Join(", ", [type]).Comment()}}
+            /// Default: {{(x.Default is not null ? JsonSerializer.Serialize(x.Default) : "<null>")}}
             /// </para>
             /// </summary>
             """;

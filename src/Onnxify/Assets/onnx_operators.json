@@ -27,6 +27,7 @@
                     "type": 1
                 },
                 {
+                    "default": "forward",
                     "description": "Specify if the RNN is forward, reverse, or bidirectional. Must be one of forward (default), reverse, or bidirectional.",
                     "name": "direction",
                     "required": false,
@@ -39,12 +40,14 @@
                     "type": 2
                 },
                 {
+                    "default": 0,
                     "description": "Couple the input and forget gates if 1.",
                     "name": "input_forget",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 0,
                     "description": "The shape format of inputs X, initial_h, initial_c and outputs Y, Y_h, Y_c. If 0, the following shapes are expected: X.shape = [seq_length, batch_size, input_size], Y.shape = [seq_length, num_directions, batch_size, hidden_size], initial_h.shape = Y_h.shape = initial_c.shape = Y_c.shape = [num_directions, batch_size, hidden_size]. If 1, the following shapes are expected: X.shape = [batch_size, seq_length, input_size], Y.shape = [batch_size, seq_length, num_directions, hidden_size], initial_h.shape = Y_h.shape = initial_c.shape = Y_c.shape = [num_directions, batch_size, hidden_size].",
                     "name": "layout",
                     "required": false,
@@ -322,18 +325,21 @@
         {
             "attributes": [
                 {
+                    "default": 9.999999747378752e-06,
                     "description": "The epsilon value to use to avoid division by zero.",
                     "name": "epsilon",
                     "required": false,
                     "type": 1
                 },
                 {
+                    "default": 0.8999999761581421,
                     "description": "Factor used in computing the running mean and variance.e.g., running_mean = running_mean * momentum + mean * (1 - momentum).",
                     "name": "momentum",
                     "required": false,
                     "type": 1
                 },
                 {
+                    "default": 0,
                     "description": "If set to true, it indicates BatchNormalization is being used for training, and outputs 1, 2, 3, and 4 would be populated.",
                     "name": "training_mode",
                     "required": false,
@@ -649,18 +655,21 @@
         {
             "attributes": [
                 {
+                    "default": "NOTSET",
                     "description": "auto_pad must be either NOTSET, SAME_UPPER, SAME_LOWER or VALID. Where default value is NOTSET, which means explicit padding is used. SAME_UPPER or SAME_LOWER mean pad the input so that `output_shape[i] = ceil(input_shape[i] / strides[i])` for each axis `i`. The padding is split between the two sides equally or almost equally (depending on whether it is even or odd). In case the padding is an odd number, the extra padding is added at the end for SAME_UPPER and at the beginning for SAME_LOWER.",
                     "name": "auto_pad",
                     "required": false,
                     "type": 3
                 },
                 {
+                    "default": 0,
                     "description": "Whether to use ceil or floor (default) to compute the output shape.",
                     "name": "ceil_mode",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 0,
                     "description": "Whether include pad pixels when calculating values for the edges. Default is 0, doesn't count include pad.",
                     "name": "count_include_pad",
                     "required": false,
@@ -757,18 +766,21 @@
         {
             "attributes": [
                 {
+                    "default": 9.999999747378752e-05,
                     "description": "Scaling parameter.",
                     "name": "alpha",
                     "required": false,
                     "type": 1
                 },
                 {
+                    "default": 0.75,
                     "description": "The exponent.",
                     "name": "beta",
                     "required": false,
                     "type": 1
                 },
                 {
+                    "default": 1.0,
                     "name": "bias",
                     "required": false,
                     "type": 1
@@ -816,18 +828,21 @@
         {
             "attributes": [
                 {
+                    "default": 0,
                     "description": "The axis in which to compute the arg indices. Accepted range is [-r, r-1] where r = rank(data).",
                     "name": "axis",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 1,
                     "description": "Keep the reduced dimension or not, default 1 mean keep reduced dimension.",
                     "name": "keepdims",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 0,
                     "description": "Whether to select the last index or the first index if the {name} appears in multiple indices, default is False (first index).",
                     "name": "select_last_index",
                     "required": false,
@@ -875,36 +890,42 @@
         {
             "attributes": [
                 {
+                    "default": "half_pixel",
                     "description": "\nThis attribute describes how to transform the coordinate in the resized tensor to the coordinate in the original tensor. <br/>\n\nThe coordinate of each dimension is transformed individually. Let's describe a case using axis x as an example.\nDenote x_resized as the coordinate of axis x in the resized tensor, x_original as the coordinate of axis x in the original tensor, length_original as the length of the original tensor in axis x, length_resized as the length of the resized tensor in axis x, roi_x = (start_x, end_x) of the axis x in input \"roi\", scale = length_resized / length_original, <br/>\n\nif coordinate_transformation_mode is \"half_pixel\", <br/>\nx_original = (x_resized + 0.5) / scale - 0.5, <br/>\n\nif coordinate_transformation_mode is \"pytorch_half_pixel\", <br/>\nx_original = length_resized > 1 ? (x_resized + 0.5) / scale - 0.5 : 0, <br/>\n\nif coordinate_transformation_mode is \"align_corners\", <br/>\nx_original = x_resized * (length_original - 1) / (length_resized - 1), <br/>\n\nif coordinate_transformation_mode is \"asymmetric\", <br/>\nx_original = x_resized / scale, <br/>\n\nif coordinate_transformation_mode is \"tf_crop_and_resize\", <br/>\nx_original = length_resized > 1 ? start_x * (length_original - 1) + x_resized * (end_x - start_x) * (length_original - 1) / (length_resized - 1) : 0.5 * (start_x + end_x) * (length_original - 1).",
                     "name": "coordinate_transformation_mode",
                     "required": false,
                     "type": 3
                 },
                 {
+                    "default": -0.75,
                     "description": "The coefficient 'a' used in cubic interpolation. Two common choice are -0.5 (in some cases of TensorFlow) and -0.75 (in PyTorch). Check out Equation (4) in https://ieeexplore.ieee.org/document/1163711 for the details. This attribute is valid only if \"mode\" is \"cubic\".",
                     "name": "cubic_coeff_a",
                     "required": false,
                     "type": 1
                 },
                 {
+                    "default": 0,
                     "description": "If set to 1, the weight of sampling locations outside the tensor will be set to 0 and the weight will be renormalized so that their sum is 1.0. The default value is 0.",
                     "name": "exclude_outside",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 0.0,
                     "description": "When coordinate_transformation_mode is \"tf_crop_and_resize\" and x_original is outside the range [0, length_original - 1], this value is used as the corresponding output value. Default is 0.0f.",
                     "name": "extrapolation_value",
                     "required": false,
                     "type": 1
                 },
                 {
+                    "default": "nearest",
                     "description": "Three interpolation modes: nearest (default), linear and cubic. The \"linear\" mode includes linear interpolation for 1D tensor and N-linear interpolation for N-D tensor (for example, bilinear interpolation for 2D tensor). The \"cubic\" mode includes cubic interpolation for 1D tensor and N-cubic interpolation for N-D tensor (for example, bicubic interpolation for 2D tensor).",
                     "name": "mode",
                     "required": false,
                     "type": 3
                 },
                 {
+                    "default": "round_prefer_floor",
                     "description": "Four modes: round_prefer_floor (default, as known as round half down), round_prefer_ceil (as known as round half up), floor, ceil. Only used by nearest interpolation. It indicates how to get \"nearest\" pixel in input tensor from x_original, so this attribute is valid only if \"mode\" is \"nearest\".",
                     "name": "nearest_mode",
                     "required": false,
@@ -1182,18 +1203,21 @@
         {
             "attributes": [
                 {
+                    "default": 0,
                     "description": "The axis in which to compute the arg indices. Accepted range is [-r, r-1] where r = rank(data).",
                     "name": "axis",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 1,
                     "description": "Keep the reduced dimension or not, default 1 mean keep reduced dimension.",
                     "name": "keepdims",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 0,
                     "description": "Whether to select the last index or the first index if the {name} appears in multiple indices, default is False (first index).",
                     "name": "select_last_index",
                     "required": false,
@@ -1241,18 +1265,21 @@
         {
             "attributes": [
                 {
+                    "default": "TO_FLOAT",
                     "description": "A string indicating the desired element type of the output tensor, one of 'TO_FLOAT', 'TO_STRING', 'TO_INT64'.",
                     "name": "cast_to",
                     "required": false,
                     "type": 3
                 },
                 {
+                    "default": "DENSE",
                     "description": "Indicates whether to only output as many values as are in the input (dense), or position the input based on using the key of the map as the index of the output (sparse).<br>One of 'DENSE', 'SPARSE'.",
                     "name": "map_form",
                     "required": false,
                     "type": 3
                 },
                 {
+                    "default": 1,
                     "description": "If the value of map_form is 'SPARSE,' this attribute indicates the total length of the output tensor.",
                     "name": "max_map",
                     "required": false,
@@ -1398,12 +1425,14 @@
         {
             "attributes": [
                 {
+                    "default": 1,
                     "description": "(Optional) Specify which axis is batch axis. Must be one of 1 (default), or 0.",
                     "name": "batch_axis",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 0,
                     "description": "(Optional) Specify which axis is time axis. Must be one of 0 (default), or 1.",
                     "name": "time_axis",
                     "required": false,
@@ -1518,6 +1547,7 @@
                     "type": 2
                 },
                 {
+                    "default": "DCR",
                     "description": "DCR (default) for depth-column-row order re-arrangement. Use CRD for column-row-depth order.",
                     "name": "mode",
                     "required": false,
@@ -1687,6 +1717,10 @@
                     "type": 6
                 },
                 {
+                    "default": [
+                        "Tanh",
+                        "Tanh"
+                    ],
                     "description": "One (or two if bidirectional) activation function for input gate. The activation function must be one of the activation functions specified above. Optional: Default `Tanh` if not specified.",
                     "name": "activations",
                     "required": false,
@@ -1699,6 +1733,7 @@
                     "type": 1
                 },
                 {
+                    "default": "forward",
                     "description": "Specify if the RNN is forward, reverse, or bidirectional. Must be one of forward (default), reverse, or bidirectional.",
                     "name": "direction",
                     "required": false,
@@ -1711,6 +1746,7 @@
                     "type": 2
                 },
                 {
+                    "default": 0,
                     "description": "The shape format of inputs X, initial_h and outputs Y, Y_h. If 0, the following shapes are expected: X.shape = [seq_length, batch_size, input_size], Y.shape = [seq_length, num_directions, batch_size, hidden_size], initial_h.shape = Y_h.shape = [num_directions, batch_size, hidden_size]. If 1, the following shapes are expected: X.shape = [batch_size, seq_length, input_size], Y.shape = [batch_size, seq_length, num_directions, hidden_size], initial_h.shape = Y_h.shape = [batch_size, num_directions, hidden_size].",
                     "name": "layout",
                     "required": false,
@@ -1964,6 +2000,7 @@
         {
             "attributes": [
                 {
+                    "default": "NOTSET",
                     "description": "auto_pad must be either NOTSET, SAME_UPPER, SAME_LOWER or VALID. Where default value is NOTSET, which means explicit padding is used. SAME_UPPER or SAME_LOWER mean pad the input so that `output_shape[i] = ceil(input_shape[i] / strides[i])` for each axis `i`. The padding is split between the two sides equally or almost equally (depending on whether it is even or odd). In case the padding is an odd number, the extra padding is added at the end for SAME_UPPER and at the beginning for SAME_LOWER.",
                     "name": "auto_pad",
                     "required": false,
@@ -1976,6 +2013,7 @@
                     "type": 7
                 },
                 {
+                    "default": 2,
                     "description": "p value of the Lp norm used to pool over the input data.",
                     "name": "p",
                     "required": false,
@@ -2028,6 +2066,7 @@
         {
             "attributes": [
                 {
+                    "default": "NOTSET",
                     "description": "auto_pad must be either NOTSET, SAME_UPPER, SAME_LOWER or VALID. Where default value is NOTSET, which means explicit padding is used. SAME_UPPER or SAME_LOWER mean pad the input so that `output_shape[i] = ceil(input_shape[i] / strides[i])` for each axis `i`. The padding is split between the two sides equally or almost equally (depending on whether it is even or odd). In case the padding is an odd number, the extra padding is added at the end for SAME_UPPER and at the beginning for SAME_LOWER.",
                     "name": "auto_pad",
                     "required": false,
@@ -2040,6 +2079,7 @@
                     "type": 7
                 },
                 {
+                    "default": 1,
                     "description": "number of groups input channels and output channels are divided into.",
                     "name": "group",
                     "required": false,
@@ -2149,6 +2189,7 @@
         {
             "attributes": [
                 {
+                    "default": 0,
                     "description": "Which axis to gather on. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(data).",
                     "name": "axis",
                     "required": false,
@@ -2225,6 +2266,7 @@
         {
             "attributes": [
                 {
+                    "default": "NOTSET",
                     "description": "auto_pad must be either NOTSET, SAME_UPPER, SAME_LOWER or VALID. Where default value is NOTSET, which means explicit padding is used. SAME_UPPER or SAME_LOWER mean pad the input so that `output_shape[i] = input_shape[i] * strides[i]` for each axis `i`. The padding is split between the two sides equally or almost equally (depending on whether it is even or odd). In case the padding is an odd number, the extra padding is added at the end for SAME_UPPER and at the beginning for SAME_LOWER.",
                     "name": "auto_pad",
                     "required": false,
@@ -2237,6 +2279,7 @@
                     "type": 7
                 },
                 {
+                    "default": 1,
                     "description": "number of groups input channels and output channels are divided into.",
                     "name": "group",
                     "required": false,
@@ -2400,6 +2443,7 @@
         {
             "attributes": [
                 {
+                    "default": 0.009999999776482582,
                     "description": "Coefficient of leakage.",
                     "name": "alpha",
                     "required": false,
@@ -2440,6 +2484,7 @@
         {
             "attributes": [
                 {
+                    "default": 1.0,
                     "description": "Coefficient of ELU.",
                     "name": "alpha",
                     "required": false,
@@ -2513,6 +2558,7 @@
         {
             "attributes": [
                 {
+                    "default": 0,
                     "description": "Which axis to gather on. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(data).",
                     "name": "axis",
                     "required": false,
@@ -2589,24 +2635,28 @@
         {
             "attributes": [
                 {
+                    "default": 1.0,
                     "description": "Scalar multiplier for the product of input tensors A * B.",
                     "name": "alpha",
                     "required": false,
                     "type": 1
                 },
                 {
+                    "default": 1.0,
                     "description": "Scalar multiplier for input tensor C.",
                     "name": "beta",
                     "required": false,
                     "type": 1
                 },
                 {
+                    "default": 0,
                     "description": "Whether A should be transposed",
                     "name": "transA",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 0,
                     "description": "Whether B should be transposed",
                     "name": "transB",
                     "required": false,
@@ -2689,12 +2739,14 @@
         {
             "attributes": [
                 {
+                    "default": "NOTSET",
                     "description": "auto_pad must be either NOTSET, SAME_UPPER, SAME_LOWER or VALID. Where default value is NOTSET, which means explicit padding is used. SAME_UPPER or SAME_LOWER mean pad the input so that `output_shape[i] = ceil(input_shape[i] / strides[i])` for each axis `i`. The padding is split between the two sides equally or almost equally (depending on whether it is even or odd). In case the padding is an odd number, the extra padding is added at the end for SAME_UPPER and at the beginning for SAME_LOWER.",
                     "name": "auto_pad",
                     "required": false,
                     "type": 3
                 },
                 {
+                    "default": 0,
                     "description": "Whether to use ceil or floor (default) to compute the output shape.",
                     "name": "ceil_mode",
                     "required": false,
@@ -2719,6 +2771,7 @@
                     "type": 7
                 },
                 {
+                    "default": 0,
                     "description": "The storage order of the tensor. 0 is row major, and 1 is column major.",
                     "name": "storage_order",
                     "required": false,
@@ -2908,6 +2961,7 @@
         {
             "attributes": [
                 {
+                    "default": 1,
                     "description": "Indicate up to which input dimensions (exclusive) should be flattened to the outer dimension of the output. The value for axis must be in the range [-r, r], where r is the rank of the input tensor. Negative value means counting dimensions from the back. When axis = 0, the shape of the output tensor is (1, (d_0 X d_1 ... d_n), where the shape of the input tensor is (d_0, d_1, ... d_n). ",
                     "name": "axis",
                     "required": false,
@@ -3033,6 +3087,7 @@
                     "type": 1
                 },
                 {
+                    "default": "forward",
                     "description": "Specify if the RNN is forward, reverse, or bidirectional. Must be one of forward (default), reverse, or bidirectional.",
                     "name": "direction",
                     "required": false,
@@ -3045,12 +3100,14 @@
                     "type": 2
                 },
                 {
+                    "default": 0,
                     "description": "The shape format of inputs X, initial_h and outputs Y, Y_h. If 0, the following shapes are expected: X.shape = [seq_length, batch_size, input_size], Y.shape = [seq_length, num_directions, batch_size, hidden_size], initial_h.shape = Y_h.shape = [num_directions, batch_size, hidden_size]. If 1, the following shapes are expected: X.shape = [batch_size, seq_length, input_size], Y.shape = [batch_size, seq_length, num_directions, hidden_size], initial_h.shape = Y_h.shape = [batch_size, num_directions, hidden_size].",
                     "name": "layout",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 0,
                     "description": "When computing the output of the hidden gate, apply the linear transformation before multiplying by the output of the reset gate.",
                     "name": "linear_before_reset",
                     "required": false,
@@ -3155,6 +3212,7 @@
         {
             "attributes": [
                 {
+                    "default": 0,
                     "description": "Which axis to scatter on. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(data).",
                     "name": "axis",
                     "required": false,
@@ -3255,6 +3313,7 @@
         {
             "attributes": [
                 {
+                    "default": 2,
                     "description": "p value of the Lp norm used to pool over the input data.",
                     "name": "p",
                     "required": false,
@@ -3355,12 +3414,14 @@
         {
             "attributes": [
                 {
+                    "default": 0.20000000298023224,
                     "description": "Value of alpha.",
                     "name": "alpha",
                     "required": false,
                     "type": 1
                 },
                 {
+                    "default": 0.5,
                     "description": "Value of beta.",
                     "name": "beta",
                     "required": false,
@@ -3401,12 +3462,14 @@
         {
             "attributes": [
                 {
+                    "default": 1.6732631921768188,
                     "description": "Coefficient of SELU default to 1.67326319217681884765625 (i.e., float32 approximation of 1.6732632423543772848170429916717).",
                     "name": "alpha",
                     "required": false,
                     "type": 1
                 },
                 {
+                    "default": 1.0507010221481323,
                     "description": "Coefficient of SELU default to 1.05070102214813232421875 (i.e., float32 approximation of 1.0507009873554804934193349852946).",
                     "name": "gamma",
                     "required": false,
@@ -3447,6 +3510,7 @@
         {
             "attributes": [
                 {
+                    "default": -1,
                     "description": "\nDescribes the dimension Hardmax will be performed on.\nNegative value means counting dimensions\nfrom the back. Accepted range is [-r, r-1] where r = rank(input).,\n",
                     "name": "axis",
                     "required": false,
@@ -3611,6 +3675,7 @@
         {
             "attributes": [
                 {
+                    "default": 9.999999747378752e-06,
                     "description": "The epsilon value to use to avoid division by zero.",
                     "name": "epsilon",
                     "required": false,
@@ -3739,6 +3804,7 @@
                     "type": 2
                 },
                 {
+                    "default": 0,
                     "description": "(Optional) Index of the diagonal to be populated with ones. Default is 0. If T2 is the output, this op sets T2[i, i+k] = 1. k = 0 populates the main diagonal, k > 0 populates an upper diagonal,  and k < 0 populates a lower diagonal.",
                     "name": "k",
                     "required": false,
@@ -3797,18 +3863,21 @@
         {
             "attributes": [
                 {
+                    "default": 1,
                     "description": "The data type for the elements of the output tensor. Default is TensorProto::FLOAT.",
                     "name": "dtype",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 0.0,
                     "description": "The mean of the normal distribution.",
                     "name": "mean",
                     "required": false,
                     "type": 1
                 },
                 {
+                    "default": 1.0,
                     "description": "The standard deviation of the normal distribution.",
                     "name": "scale",
                     "required": false,
@@ -4039,6 +4108,7 @@
         {
             "attributes": [
                 {
+                    "default": -1,
                     "description": "\nDescribes the dimension LogSoftmax will be performed on.\nNegative value means counting dimensions\nfrom the back. Accepted range is [-r, r-1] where r = rank(input).,\n",
                     "name": "axis",
                     "required": false,
@@ -4193,12 +4263,14 @@
         {
             "attributes": [
                 {
+                    "default": -1,
                     "description": "The axis on which to apply normalization, -1 mean last axis.",
                     "name": "axis",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 2,
                     "description": "The order of the normalization, only 1 or 2 are supported.",
                     "name": "p",
                     "required": false,
@@ -4304,6 +4376,7 @@
                     "type": 7
                 },
                 {
+                    "default": 1,
                     "description": "Keep the reduced dimension or not, default 1 mean keep reduced dimension.",
                     "name": "keepdims",
                     "required": false,
@@ -4411,6 +4484,7 @@
                     "type": 7
                 },
                 {
+                    "default": 1.0,
                     "description": "Multiplicative spatial scale factor to translate ROI coordinates from their input scale to the scale used when pooling.",
                     "name": "spatial_scale",
                     "required": false,
@@ -4500,6 +4574,7 @@
         {
             "attributes": [
                 {
+                    "default": "constant",
                     "description": "Supported modes: `constant`(default), `reflect`, `edge`",
                     "name": "mode",
                     "required": false,
@@ -4605,12 +4680,14 @@
                     "type": 2
                 },
                 {
+                    "default": 1.0,
                     "description": "Upper boundary of the output values.",
                     "name": "high",
                     "required": false,
                     "type": 1
                 },
                 {
+                    "default": 0.0,
                     "description": "Lower boundary of the output values.",
                     "name": "low",
                     "required": false,
@@ -4768,12 +4845,14 @@
                     "type": 2
                 },
                 {
+                    "default": 0.0,
                     "description": "The mean of the normal distribution.",
                     "name": "mean",
                     "required": false,
                     "type": 1
                 },
                 {
+                    "default": 1.0,
                     "description": "The standard deviation of the normal distribution.",
                     "name": "scale",
                     "required": false,
@@ -4832,6 +4911,7 @@
         {
             "attributes": [
                 {
+                    "default": -1,
                     "description": "(Optional) Axis along which one-hot representation in added. Default: axis=-1. axis=-1 means that the additional dimension will be inserted as the innermost/last dimension in the output tensor. Negative value means counting dimensions from the back. Accepted range is [-r-1, r] where r = rank(indices).",
                     "name": "axis",
                     "required": false,
@@ -4934,18 +5014,21 @@
         {
             "attributes": [
                 {
+                    "default": 1,
                     "description": "The data type for the elements of the output tensor. If not specified, default is TensorProto::FLOAT.",
                     "name": "dtype",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 1.0,
                     "description": "Upper boundary of the output values.",
                     "name": "high",
                     "required": false,
                     "type": 1
                 },
                 {
+                    "default": 0.0,
                     "description": "Lower boundary of the output values.",
                     "name": "low",
                     "required": false,
@@ -4992,6 +5075,7 @@
                     "type": 2
                 },
                 {
+                    "default": 0,
                     "description": "Insert and concatenate on a new axis or not, default 0 means do not insert new axis.",
                     "name": "new_axis",
                     "required": false,
@@ -5062,6 +5146,7 @@
                     "type": 7
                 },
                 {
+                    "default": 1,
                     "description": "Keep the reduced dimension or not, default 1 mean keep reduced dimension.",
                     "name": "keepdims",
                     "required": false,
@@ -5118,6 +5203,7 @@
                     "type": 7
                 },
                 {
+                    "default": 1,
                     "description": "Keep the reduced dimension or not, default 1 mean keep reduced dimension.",
                     "name": "keepdims",
                     "required": false,
@@ -5174,6 +5260,7 @@
                     "type": 7
                 },
                 {
+                    "default": 1,
                     "description": "Keep the reduced dimension or not, default 1 mean keep reduced dimension.",
                     "name": "keepdims",
                     "required": false,
@@ -5230,6 +5317,7 @@
                     "type": 7
                 },
                 {
+                    "default": 1,
                     "description": "Keep the reduced dimension or not, default 1 mean keep reduced dimension.",
                     "name": "keepdims",
                     "required": false,
@@ -5296,6 +5384,7 @@
                     "type": 8
                 },
                 {
+                    "default": 1,
                     "description": "If true and category is not present, will return all zeros; if false and a category if not found, the operator will fail.",
                     "name": "zeros",
                     "required": false,
@@ -5374,6 +5463,7 @@
                     "type": 7
                 },
                 {
+                    "default": 1,
                     "description": "Keep the reduced dimension or not, default 1 mean keep reduced dimension.",
                     "name": "keepdims",
                     "required": false,
@@ -5430,6 +5520,7 @@
                     "type": 7
                 },
                 {
+                    "default": 1,
                     "description": "Keep the reduced dimension or not, default 1 mean keep reduced dimension.",
                     "name": "keepdims",
                     "required": false,
@@ -5484,6 +5575,7 @@
         {
             "attributes": [
                 {
+                    "default": "SUM",
                     "description": "Defines how to aggregate leaf values within a target. <br>One of 'AVERAGE,' 'SUM,' 'MIN,' 'MAX.'",
                     "name": "aggregate_function",
                     "required": false,
@@ -5556,6 +5648,7 @@
                     "type": 6
                 },
                 {
+                    "default": "NONE",
                     "description": "Indicates the transform to apply to the score. <br>One of 'NONE,' 'SOFTMAX,' 'LOGISTIC,' 'SOFTMAX_ZERO,' or 'PROBIT'",
                     "name": "post_transform",
                     "required": false,
@@ -5625,6 +5718,7 @@
                     "type": 7
                 },
                 {
+                    "default": 1,
                     "description": "Keep the reduced dimension or not, default 1 mean keep reduced dimension.",
                     "name": "keepdims",
                     "required": false,
@@ -5675,12 +5769,14 @@
         {
             "attributes": [
                 {
+                    "default": 1,
                     "description": "Keep the reduced dimension or not, default 1 mean keep reduced dimension.",
                     "name": "keepdims",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 0,
                     "description": "Defines behaviour if 'axes' is empty. Default behaviour with 'false' is to reduce all axes. When axes is empty and this attribute is set to true, input tensor will not be reduced,and the output tensor would be equivalent to input tensor.",
                     "name": "noop_with_empty_axes",
                     "required": false,
@@ -5746,6 +5842,7 @@
                     "type": 7
                 },
                 {
+                    "default": 1,
                     "description": "Keep the reduced dimension or not, default 1 mean keep reduced dimension.",
                     "name": "keepdims",
                     "required": false,
@@ -5839,6 +5936,7 @@
         {
             "attributes": [
                 {
+                    "default": 0,
                     "description": "(Optional) By default, when any value in the 'shape' input is equal to zero the corresponding dimension value is copied from the input tensor dynamically. allowzero=1 indicates that if any value in the 'shape' input is set to zero, the zero value is honored, similar to NumPy.",
                     "name": "allowzero",
                     "required": false,
@@ -5964,6 +6062,7 @@
                     "type": 2
                 },
                 {
+                    "default": "mean",
                     "description": "Type of reduction to apply to loss: none, sum, mean(default). 'none': no reduction will be applied, 'sum': the output will be summed. 'mean': the sum of the output will be divided by the number of elements in the output.",
                     "name": "reduction",
                     "required": false,
@@ -6119,6 +6218,7 @@
         {
             "attributes": [
                 {
+                    "default": -1,
                     "description": "\nDescribes the dimension Softmax will be performed on.\nNegative value means counting dimensions\nfrom the back. Accepted range is [-r, r-1] where r = rank(input).,\n",
                     "name": "axis",
                     "required": false,
@@ -6379,6 +6479,7 @@
         {
             "attributes": [
                 {
+                    "default": 0,
                     "description": "Which axis to split on. A negative value means counting dimensions from the back. Accepted range is [-rank, rank-1] where r = rank(input).",
                     "name": "axis",
                     "required": false,
@@ -6466,12 +6567,14 @@
                     "type": 7
                 },
                 {
+                    "default": 0.0,
                     "description": "A value that needs replacing.",
                     "name": "replaced_value_float",
                     "required": false,
                     "type": 1
                 },
                 {
+                    "default": 0,
                     "description": "A value that needs replacing.",
                     "name": "replaced_value_int64",
                     "required": false,
@@ -6617,18 +6720,21 @@
         {
             "attributes": [
                 {
+                    "default": -1,
                     "description": "Dimension on which to do the sort. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(input).",
                     "name": "axis",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 1,
                     "description": "Whether to return the top-K largest or smallest elements.",
                     "name": "largest",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 1,
                     "description": "Whether to return the elements in sorted order.",
                     "name": "sorted",
                     "required": false,
@@ -6809,12 +6915,14 @@
         {
             "attributes": [
                 {
+                    "default": 0.0,
                     "description": "The bias value added to output. Default is 0.",
                     "name": "bias",
                     "required": false,
                     "type": 1
                 },
                 {
+                    "default": 0.5,
                     "description": "The lambd value for the Shrink formulation. Default is 0.5.",
                     "name": "lambd",
                     "required": false,
@@ -7040,6 +7148,7 @@
         {
             "attributes": [
                 {
+                    "default": "nearest",
                     "description": "Two interpolation modes: nearest (default), and linear (including bilinear, trilinear, etc)",
                     "name": "mode",
                     "required": false,
@@ -7136,12 +7245,14 @@
                     "type": 6
                 },
                 {
+                    "default": "LINEAR",
                     "description": "The kernel type, one of 'LINEAR,' 'POLY,' 'RBF,' 'SIGMOID'.",
                     "name": "kernel_type",
                     "required": false,
                     "type": 3
                 },
                 {
+                    "default": "NONE",
                     "description": "Indicates the transform to apply to the score. <br>One of 'NONE,' 'SOFTMAX,' 'LOGISTIC,' 'SOFTMAX_ZERO,' or 'PROBIT'",
                     "name": "post_transform",
                     "required": false,
@@ -7454,12 +7565,14 @@
         {
             "attributes": [
                 {
+                    "default": 6,
                     "description": "(Optional) The data type for the elements of the output tensor, if not specified, we will use int32.",
                     "name": "dtype",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 1,
                     "description": "Number of times to sample.",
                     "name": "sample_size",
                     "required": false,
@@ -7789,6 +7902,7 @@
         {
             "attributes": [
                 {
+                    "default": 0,
                     "description": "Which axis to scatter on. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(data).",
                     "name": "axis",
                     "required": false,
@@ -8018,6 +8132,7 @@
         {
             "attributes": [
                 {
+                    "default": 0,
                     "description": "Integer indicate the format of the box data. The default is 0. 0 - the box data is supplied as [y1, x1, y2, x2] where (y1, x1) and (y2, x2) are the coordinates of any diagonal pair of box corners and the coordinates can be provided as normalized (i.e., lying in the interval [0, 1]) or absolute. Mostly used for TF models. 1 - the box data is supplied as [x_center, y_center, width, height]. Mostly used for Pytorch models.",
                     "name": "center_point_box",
                     "required": false,
@@ -8358,6 +8473,11 @@
         {
             "attributes": [
                 {
+                    "default": [
+                        0,
+                        2,
+                        3
+                    ],
                     "description": "A list of integers, along which to reduce. The default is to caculate along axes [0,2,3] for calculating mean and variance along each channel. Two variables with the same C-coordinate are associated with the same mean and variance.",
                     "name": "axes",
                     "required": false,
@@ -8400,12 +8520,14 @@
         {
             "attributes": [
                 {
+                    "default": "NONE",
                     "description": "string enum that cases output to be lowercased/uppercases/unchanged. Valid values are \"LOWER\", \"UPPER\", \"NONE\". Default is \"NONE\"",
                     "name": "case_change_action",
                     "required": false,
                     "type": 3
                 },
                 {
+                    "default": 0,
                     "description": "Boolean. Whether the identification of stop words in X is case-sensitive. Default is false",
                     "name": "is_case_sensitive",
                     "required": false,
@@ -8454,6 +8576,7 @@
         {
             "attributes": [
                 {
+                    "default": 0,
                     "description": "Whether the operator should behave like fmod (default=0 meaning it will do integer mods); Set this to 1 to force fmod treatment",
                     "name": "fmod",
                     "required": false,
@@ -8532,6 +8655,7 @@
         {
             "attributes": [
                 {
+                    "default": 1.0,
                     "description": "Threshold value",
                     "name": "alpha",
                     "required": false,
@@ -8730,6 +8854,7 @@
         {
             "attributes": [
                 {
+                    "default": "NOTSET",
                     "description": "auto_pad must be either NOTSET, SAME_UPPER, SAME_LOWER or VALID. Where default value is NOTSET, which means explicit padding is used. SAME_UPPER or SAME_LOWER mean pad the input so that `output_shape[i] = ceil(input_shape[i] / strides[i])` for each axis `i`. The padding is split between the two sides equally or almost equally (depending on whether it is even or odd). In case the padding is an odd number, the extra padding is added at the end for SAME_UPPER and at the beginning for SAME_LOWER.",
                     "name": "auto_pad",
                     "required": false,
@@ -8742,6 +8867,7 @@
                     "type": 7
                 },
                 {
+                    "default": 1,
                     "description": "number of groups input channels and output channels are divided into. default is 1.",
                     "name": "group",
                     "required": false,
@@ -8902,6 +9028,7 @@
         {
             "attributes": [
                 {
+                    "default": "NOTSET",
                     "description": "auto_pad must be either NOTSET, SAME_UPPER, SAME_LOWER or VALID. Where default value is NOTSET, which means explicit padding is used. SAME_UPPER or SAME_LOWER mean pad the input so that `output_shape[i] = ceil(input_shape[i] / strides[i])` for each axis `i`. The padding is split between the two sides equally or almost equally (depending on whether it is even or odd). In case the padding is an odd number, the extra padding is added at the end for SAME_UPPER and at the beginning for SAME_LOWER.",
                     "name": "auto_pad",
                     "required": false,
@@ -8914,6 +9041,7 @@
                     "type": 7
                 },
                 {
+                    "default": 1,
                     "description": "number of groups input channels and output channels are divided into. default is 1.",
                     "name": "group",
                     "required": false,
@@ -9046,6 +9174,7 @@
         {
             "attributes": [
                 {
+                    "default": 1,
                     "description": "(Optional) The axis of the quantization dimension of the input tensor. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(input)",
                     "name": "axis",
                     "required": false,
@@ -9103,6 +9232,7 @@
         {
             "attributes": [
                 {
+                    "default": 0,
                     "description": "The number of batch dimensions. The gather of indexing starts from dimension of data[batch_dims:]",
                     "name": "batch_dims",
                     "required": false,
@@ -9178,6 +9308,7 @@
         {
             "attributes": [
                 {
+                    "default": 1,
                     "description": "(Optional) The axis of the dequantizing dimension of the input tensor. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(input)",
                     "name": "axis",
                     "required": false,
@@ -9236,12 +9367,14 @@
         {
             "attributes": [
                 {
+                    "default": 1,
                     "description": "(Optional) Whether map negative infinity to true. Default to 1 so that negative infinity induces true. Set this attribute to 0 if negative infinity should be mapped to false.",
                     "name": "detect_negative",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 1,
                     "description": "(Optional) Whether map positive infinity to true. Default to 1 so that positive infinity induces true. Set this attribute to 0 if positive infinity should be mapped to false.",
                     "name": "detect_positive",
                     "required": false,
@@ -9279,30 +9412,35 @@
         {
             "attributes": [
                 {
+                    "default": "avg",
                     "description": "The pooling method. Two modes are supported: 'avg' and 'max'. Default is 'avg'.",
                     "name": "mode",
                     "required": false,
                     "type": 3
                 },
                 {
+                    "default": 1,
                     "description": "default 1; Pooled output Y's height.",
                     "name": "output_height",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 1,
                     "description": "default 1; Pooled output Y's width.",
                     "name": "output_width",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 0,
                     "description": "Number of sampling points in the interpolation grid used to compute the output value of each pooled output bin. If > 0, then exactly sampling_ratio x sampling_ratio grid points are used. If == 0, then an adaptive number of grid points are used (computed as ceil(roi_width / output_width), and likewise for height). Default is 0.",
                     "name": "sampling_ratio",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 1.0,
                     "description": "Multiplicative spatial scale factor to translate ROI coordinates from their input spatial scale to the scale used when pooling, i.e., spatial scale of the input feature map X relative to the input image. E.g.; default is 1.0f. ",
                     "name": "spatial_scale",
                     "required": false,
@@ -9466,6 +9604,7 @@
                     "type": 2
                 },
                 {
+                    "default": 1,
                     "description": "(Optional) Whether to sort the unique elements in ascending order before returning as output. Must be one of 0, or 1 (default).",
                     "name": "sorted",
                     "required": false,
@@ -9557,12 +9696,14 @@
         {
             "attributes": [
                 {
+                    "default": 0,
                     "description": "If set to 1 will return exclusive sum in which the top element is not included. In other terms, if set to 1, the j-th output element would be the sum of the first (j-1) elements. Otherwise, it would be the sum of the first j elements.",
                     "name": "exclusive",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 0,
                     "description": "If set to 1 will perform the sums in reverse direction.",
                     "name": "reverse",
                     "required": false,
@@ -10212,12 +10353,14 @@
         {
             "attributes": [
                 {
+                    "default": 0,
                     "description": "Which axis to split on. A negative value means counting dimensions from the back. Accepted range is [-rank, rank-1].",
                     "name": "axis",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 1,
                     "description": "Keep the split dimension or not. Default 1, which means we keep split dimension. If input 'split' is specified, this attribute is ignored.",
                     "name": "keepdims",
                     "required": false,
@@ -10354,6 +10497,7 @@
                     "type": 2
                 },
                 {
+                    "default": "mean",
                     "description": "Type of reduction to apply to loss: none, sum, mean (default). 'none': the output is the loss for each sample. 'sum': the output will be summed. 'mean': the sum of the output will be divided by the sum of applied weights.",
                     "name": "reduction",
                     "required": false,
@@ -10415,6 +10559,7 @@
         {
             "attributes": [
                 {
+                    "default": 1.0,
                     "description": "The Alpha value in Celu formula which control the shape of the unit. The default value is 1.0.",
                     "name": "alpha",
                     "required": false,
@@ -10567,6 +10712,7 @@
         {
             "attributes": [
                 {
+                    "default": 1,
                     "description": "Boolean. Indicates whether upper or lower part of matrix is retained. Default is true.",
                     "name": "upper",
                     "required": false,
@@ -10721,6 +10867,7 @@
         {
             "attributes": [
                 {
+                    "default": 0.0,
                     "description": "Values greater than this are mapped to 1, others to 0.",
                     "name": "threshold",
                     "required": false,
@@ -10775,12 +10922,14 @@
                     "type": 8
                 },
                 {
+                    "default": -1,
                     "description": "An integer to use when an input string value is not found in the map.<br>One and only one of the 'default_*' attributes must be defined.",
                     "name": "default_int64",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": "_Unused",
                     "description": "A string to use when an input integer value is not found in the map.<br>One and only one of the 'default_*' attributes must be defined.",
                     "name": "default_string",
                     "required": false,
@@ -10908,18 +11057,21 @@
         {
             "attributes": [
                 {
+                    "default": -0.0,
                     "description": "A float.",
                     "name": "default_float",
                     "required": false,
                     "type": 1
                 },
                 {
+                    "default": -1,
                     "description": "An integer.",
                     "name": "default_int64",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": "_Unused",
                     "description": "A string.",
                     "name": "default_string",
                     "required": false,
@@ -11020,12 +11172,14 @@
                     "type": 6
                 },
                 {
+                    "default": 0,
                     "description": "Indicates whether to do OvR or multinomial (0=OvR is the default).",
                     "name": "multi_class",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": "NONE",
                     "description": "Indicates the transform to apply to the scores vector.<br>One of 'NONE,' 'SOFTMAX,' 'LOGISTIC,' 'SOFTMAX_ZERO,' or 'PROBIT'",
                     "name": "post_transform",
                     "required": false,
@@ -11087,12 +11241,14 @@
                     "type": 6
                 },
                 {
+                    "default": "NONE",
                     "description": "Indicates the transform to apply to the regression output vector.<br>One of 'NONE,' 'SOFTMAX,' 'LOGISTIC,' 'SOFTMAX_ZERO,' or 'PROBIT'",
                     "name": "post_transform",
                     "required": false,
                     "type": 3
                 },
                 {
+                    "default": 1,
                     "description": "The total number of regression targets, 1 if not defined.",
                     "name": "targets",
                     "required": false,
@@ -11132,6 +11288,7 @@
         {
             "attributes": [
                 {
+                    "default": "MAX",
                     "description": "One of 'MAX,' 'L1,' 'L2'",
                     "name": "norm",
                     "required": false,
@@ -11183,24 +11340,28 @@
                     "type": 6
                 },
                 {
+                    "default": "LINEAR",
                     "description": "The kernel type, one of 'LINEAR,' 'POLY,' 'RBF,' 'SIGMOID'.",
                     "name": "kernel_type",
                     "required": false,
                     "type": 3
                 },
                 {
+                    "default": 0,
                     "description": "The number of support vectors.",
                     "name": "n_supports",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": 0,
                     "description": "Flag indicating whether the regression is a one-class SVM or not.",
                     "name": "one_class",
                     "required": false,
                     "type": 2
                 },
                 {
+                    "default": "NONE",
                     "description": "Indicates the transform to apply to the score. <br>One of 'NONE,' 'SOFTMAX,' 'LOGISTIC,' 'SOFTMAX_ZERO,' or 'PROBIT.'",
                     "name": "post_transform",
                     "required": false,
@@ -11392,6 +11553,7 @@
                     "type": 6
                 },
                 {
+                    "default": "NONE",
                     "description": "Indicates the transform to apply to the score. <br> One of 'NONE,' 'SOFTMAX,' 'LOGISTIC,' 'SOFTMAX_ZERO,' or 'PROBIT.'",
                     "name": "post_transform",
                     "required": false,
@@ -11548,18 +11710,21 @@
         {
             "attributes": [
                 {
+                    "default": 0.0,
                     "description": "The decay factor of learning rate after one update.The effective learning rate is computed by r = R / (1 + T * decay_factor). Default to 0 so that increasing update counts doesn't reduce the learning rate.",
                     "name": "decay_factor",
                     "required": false,
                     "type": 1
                 },
                 {
+                    "default": 9.999999974752427e-07,
                     "description": "Small scalar to avoid dividing by zero.",
                     "name": "epsilon",
                     "required": false,
                     "type": 1
                 },
                 {
+                    "default": 0.0,
                     "description": "Regularization coefficient in 0.5 * norm_coefficient * ||X||_2^2. Default to 0, which means no regularization.",
                     "name": "norm_coefficient",
                     "required": false,
@@ -11617,30 +11782,35 @@
         {
             "attributes": [
                 {
+                    "default": 0.8999999761581421,
                     "description": "Coefficient of previously accumulated gradient in running average. Default to 0.9.",
                     "name": "alpha",
                     "required": false,
                     "type": 1
                 },
                 {
+                    "default": 0.9990000128746033,
                     "description": "Coefficient of previously accumulated squared-gradient in running average. Default to 0.999.",
                     "name": "beta",
                     "required": false,
                     "type": 1
                 },
                 {
+                    "default": 9.999999974752427e-07,
                     "description": "Small scalar to avoid dividing by zero.",
                     "name": "epsilon",
                     "required": false,
                     "type": 1
                 },
                 {
+                    "default": 0.0,
                     "description": "Regularization coefficient of 0.5 * norm_coefficient * ||X||_2^2. Default to 0, which means no regularization.",
                     "name": "norm_coefficient",
                     "required": false,
                     "type": 1
                 },
                 {
+                    "default": 0.0,
                     "description": "Regularization coefficient of 0.5 * norm_coefficient * ||X||_2^2. Default to 0, which means no regularization.",
                     "name": "norm_coefficient_post",
                     "required": false,

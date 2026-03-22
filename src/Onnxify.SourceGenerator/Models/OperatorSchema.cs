@@ -45,6 +45,9 @@ namespace Onnxify.SourceGenerator.Models
 
         [JsonPropertyName("type")]
         public required int Type { get; set; }
+
+        [JsonPropertyName("default")]
+        public object? Default { get; set; }
     }
 
     public sealed class OperatorParameter

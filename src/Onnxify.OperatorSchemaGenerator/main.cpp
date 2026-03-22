@@ -6,6 +6,8 @@
 #include <nlohmann/json.hpp>
 #include <nlohmann/json_fwd.hpp>
 #include <filesystem>
+#include <algorithm>
+#include <onnx-ml.pb.h>
 
 using namespace std;
 using json = nlohmann::json;
@@ -100,6 +102,84 @@ int main()
             if (!attr.second.description.empty())
             {
                 x["description"] = attr.second.description;
+            }
+
+            const ONNX_NAMESPACE::AttributeProto& def = attr.second.default_value;
+            const auto type = def.type();
+
+            switch (type)
+            {
+            case ONNX_NAMESPACE::AttributeProto::INT:
+                x["default"] = def.i();
+                break;
+
+            case ONNX_NAMESPACE::AttributeProto::FLOAT:
+                x["default"] = def.f();
+                break;
+
+            case ONNX_NAMESPACE::AttributeProto::STRING:
+                x["default"] = def.s();
+                break;
+
+            case ONNX_NAMESPACE::AttributeProto::INTS:
+            {
+                json arr = json::array();
+                for (auto v : def.ints())
+                {
+                    arr.push_back(v);
+                }
+                x["default"] = arr;
+                break;
+            }
+
+            case ONNX_NAMESPACE::AttributeProto::FLOATS:
+            {
+                json arr = json::array();
+                for (auto v : def.floats())
+                {
+                    arr.push_back(v);
+                }
+                x["default"] = arr;
+                break;
+            }
+
+            case ONNX_NAMESPACE::AttributeProto::STRINGS:
+            {
+                json arr = json::array();
+                for (const auto& v : def.strings())
+                {
+                    arr.push_back(v);
+                }
+                x["default"] = arr;
+                break;
+            }
+
+            case ONNX_NAMESPACE::AttributeProto::TENSOR:
+                x["default"] = "<TENSOR>";
+                break;
+
+            case ONNX_NAMESPACE::AttributeProto::TENSORS:
+                x["default"] = "<TENSORS>";
+                break;
+
+            case ONNX_NAMESPACE::AttributeProto::GRAPH:
+                x["default"] = "<GRAPH>";
+                break;
+
+            case ONNX_NAMESPACE::AttributeProto::GRAPHS:
+                x["default"] = "<GRAPHS>";
+                break;
+
+            case ONNX_NAMESPACE::AttributeProto::SPARSE_TENSOR:
+                x["default"] = "<SPARSE_TENSOR>";
+                break;
+
+            case ONNX_NAMESPACE::AttributeProto::SPARSE_TENSORS:
+                x["default"] = "<SPARSE_TENSORS>";
+                break;
+
+            default:
+                break;
             }
 
             op["attributes"].push_back(x);
