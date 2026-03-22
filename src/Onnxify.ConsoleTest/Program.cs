@@ -21,6 +21,8 @@ namespace Onnxify.ConsoleTest
             Test0();
             Test1();
             Test2();
+            Test3();
+            Test4();
 
             Console.WriteLine("Press any key to pay respect...");
             Console.ReadKey();
@@ -161,7 +163,7 @@ namespace Onnxify.ConsoleTest
             return;
         }
 
-        static void B()
+        static void Test3()
         {
             Console.WriteLine("B");
 
@@ -179,7 +181,16 @@ namespace Onnxify.ConsoleTest
             {
                 model.WriteTo(fs);
             }
+        }
 
+        static void Test4()
+        {
+            var model = new AlexNet("alexnet", 10);
+            var onnxModel = model.Onnxify();
+
+            var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "alexnet__test.onnx");
+            onnxModel.Save(outputPath, true);
+            return;
         }
     }
 }
