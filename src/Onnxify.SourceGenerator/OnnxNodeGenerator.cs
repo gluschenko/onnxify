@@ -118,6 +118,17 @@ namespace Onnxify.SourceGenerator
                 {
                     var x = op.Inputs[i];
 
+                    nodeFields.AppendLine($$"""
+                            /// <summary>
+                            /// <para>
+                            /// {{x.Name}}: {{(x.Description ?? "").Trim().Replace("\n", $"\n    /// ").Replace("<", "&lt;").Replace(">", "&gt;")}}
+                            /// </para>
+                            /// <para>
+                            /// Allowed types: {{string.Join(", ", x.Types)}}
+                            /// </para>
+                            /// </summary>
+                    """);
+
                     if (x.Option != FormalParameterOption.Optional)
                     {
                         nodeFields.AppendLine($$"""
@@ -143,6 +154,17 @@ namespace Onnxify.SourceGenerator
                 for (var i = 0; i < op.Outputs.Count(); i++)
                 {
                     var x = op.Outputs[i];
+
+                    nodeFields.AppendLine($$"""
+                            /// <summary>
+                            /// <para>
+                            /// {{x.Name}}: {{(x.Description ?? "").Trim().Replace("\n", $"\n    /// ").Replace("<", "&lt;").Replace(">", "&gt;")}}
+                            /// </para>
+                            /// <para>
+                            /// Allowed types: {{string.Join(", ", x.Types)}}
+                            /// </para>
+                            /// </summary>
+                    """);
 
                     if (x.Option != FormalParameterOption.Optional)
                     {
@@ -171,6 +193,17 @@ namespace Onnxify.SourceGenerator
                     var x = op.Attributes[i];
 
                     var type = FromProto((AttributeType)x.Type);
+
+                    nodeFields.AppendLine($$"""
+                            /// <summary>
+                            /// <para>
+                            /// {{x.Name}}: {{(x.Description ?? "").Trim().Replace("\n", $"\n    /// ").Replace("<", "&lt;").Replace(">", "&gt;")}}
+                            /// </para>
+                            /// <para>
+                            /// Allowed types: {{string.Join(", ", [type])}}
+                            /// </para>
+                            /// </summary>
+                    """);
 
                     if (x.Required)
                     {
@@ -204,13 +237,12 @@ namespace Onnxify.SourceGenerator
                 }
 
                 var comment = $$"""
-                    /// <summary>
-                    /// {{op.Name}} operator:
-                    /// <para>
-                    /// {{(op.Doc ?? "").Trim().Replace("\n", $"\n    /// ")}}
-                    /// </para>
-                    /// </summary>
-
+                        /// <summary>
+                        /// {{op.Name}} operator:
+                        /// <para>
+                        /// {{(op.Doc ?? "").Trim().Replace("\n", $"\n    /// ").Replace("<", "&lt;").Replace(">", "&gt;")}}
+                        /// </para>
+                        /// </summary>
                 """;
 
                 classes.AppendLine($$"""
@@ -269,7 +301,7 @@ namespace Onnxify.SourceGenerator
                         {
                             {{string.Join("\n            ", (
                                 op.Outputs.Select(x => (
-                                    $"var edge{OutputName(x.Name)} = graph.AddEdge(name + \"_{x.Name}\");"
+                                    $"var edge{OutputName(x.Name)} = graph.AddEdge(name + \"_output_{x.Name.ToLower()}\");"
                                 )))
                             )}}
                             
@@ -338,6 +370,14 @@ namespace Onnxify.SourceGenerator
                 var nullable = x.Option == FormalParameterOption.Optional ? "?" : "";
 
                 sb.AppendLine($$"""
+                        /// <summary>
+                        /// <para>
+                        /// {{x.Name}}: {{(x.Description ?? "").Trim().Replace("\n", $"\n    /// ").Replace("<", "&lt;").Replace(">", "&gt;")}}
+                        /// </para>
+                        /// <para>
+                        /// Allowed types: {{string.Join(", ", x.Types)}}
+                        /// </para>
+                        /// </summary>
                         public{{required}}{{MapType(x.Types)}}{{nullable}} {{onName(x.Name)}} { get; init; }
                 """);
             }
@@ -354,9 +394,18 @@ namespace Onnxify.SourceGenerator
                 var required = x.Required ? " required " : " ";
                 var nullable = x.Required ? "" : "?";
                 var typeEnum = (AttributeType)x.Type;
+                var type = FromProto(typeEnum);
 
                 sb.AppendLine($$"""
-                        public{{required}}{{FromProto(typeEnum)}}{{nullable}} {{AttributeName(x.Name)}} { get; set; }
+                        /// <summary>
+                        /// <para>
+                        /// {{x.Name}}: {{(x.Description ?? "").Trim().Replace("\n", $"\n    /// ").Replace("<", "&lt;").Replace(">", "&gt;")}}
+                        /// </para>
+                        /// <para>
+                        /// Allowed types: {{string.Join(", ", [type])}}
+                        /// </para>
+                        /// </summary>
+                        public{{required}}{{type}}{{nullable}} {{AttributeName(x.Name)}} { get; set; }
                 """);
             }
 
