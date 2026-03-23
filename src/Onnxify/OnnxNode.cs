@@ -1,5 +1,6 @@
 ﻿using Onnx;
 using Onnxify.Data;
+using System.Collections.ObjectModel;
 
 namespace Onnxify;
 
@@ -194,6 +195,76 @@ public class OnnxNode : IOnnxGraphNode
         }
 
         if (value != null)
+        {
+            _outputs.Add(value);
+        }
+    }
+
+    protected IReadOnlyList<IOnnxGraphEdge> GetVariadicInputs(int startIndex)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(startIndex);
+
+        if (startIndex >= _inputs.Count)
+        {
+            return Array.Empty<IOnnxGraphEdge>();
+        }
+
+        return new ReadOnlyCollection<IOnnxGraphEdge>(_inputs.Skip(startIndex).ToArray());
+    }
+
+    protected void SetVariadicInputs(int startIndex, IEnumerable<IOnnxGraphEdge> values)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(startIndex);
+        ArgumentNullException.ThrowIfNull(values);
+
+        var newValues = values.ToArray();
+
+        if (newValues.Any(x => x is null))
+        {
+            throw new ArgumentException("Variadic inputs cannot contain null values.", nameof(values));
+        }
+
+        while (_inputs.Count > startIndex)
+        {
+            _inputs.Remove(_inputs[startIndex]);
+        }
+
+        foreach (var value in newValues)
+        {
+            _inputs.Add(value);
+        }
+    }
+
+    protected IReadOnlyList<IOnnxGraphEdge> GetVariadicOutputs(int startIndex)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(startIndex);
+
+        if (startIndex >= _outputs.Count)
+        {
+            return Array.Empty<IOnnxGraphEdge>();
+        }
+
+        return new ReadOnlyCollection<IOnnxGraphEdge>(_outputs.Skip(startIndex).ToArray());
+    }
+
+    protected void SetVariadicOutputs(int startIndex, IEnumerable<IOnnxGraphEdge> values)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(startIndex);
+        ArgumentNullException.ThrowIfNull(values);
+
+        var newValues = values.ToArray();
+
+        if (newValues.Any(x => x is null))
+        {
+            throw new ArgumentException("Variadic outputs cannot contain null values.", nameof(values));
+        }
+
+        while (_outputs.Count > startIndex)
+        {
+            _outputs.Remove(_outputs[startIndex]);
+        }
+
+        foreach (var value in newValues)
         {
             _outputs.Add(value);
         }

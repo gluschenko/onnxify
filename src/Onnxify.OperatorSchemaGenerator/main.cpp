@@ -38,6 +38,7 @@ int main()
             x["name"] = input.GetName();
             x["type"] = input.GetTypeStr();
             x["option"] = (int)input.GetOption();
+            x["minArity"] = input.GetMinArity();
             x["description"] = input.GetDescription();
 
             std::vector<std::string> types;
@@ -68,6 +69,7 @@ int main()
             x["name"] = output.GetName();
             x["type"] = output.GetTypeStr();
             x["option"] = (int)output.GetOption();
+            x["minArity"] = output.GetMinArity();
             x["description"] = output.GetDescription();
 
             std::vector<std::string> types;

@@ -61,6 +61,9 @@ namespace Onnxify.SourceGenerator.Models
         [JsonPropertyName("option")]
         public required FormalParameterOption Option { get; set; }
 
+        [JsonPropertyName("minArity")]
+        public int MinArity { get; set; } = 1;
+
         [JsonPropertyName("type")]
         public required string Type { get; set; }
 

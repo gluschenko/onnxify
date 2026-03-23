@@ -59,6 +59,7 @@
             "inputs": [
                 {
                     "description": "The input sequences packed (and potentially padded) into one 3-D tensor with the shape of `[seq_length, batch_size, input_size]`.",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -70,6 +71,7 @@
                 },
                 {
                     "description": "The weight tensor for the gates. Concatenation of `W[iofc]` and `WB[iofc]` (if bidirectional) along dimension 0. The tensor has shape `[num_directions, 4*hidden_size, input_size]`.",
+                    "minArity": 1,
                     "name": "W",
                     "option": 0,
                     "type": "T",
@@ -81,6 +83,7 @@
                 },
                 {
                     "description": "The recurrence weight tensor. Concatenation of `R[iofc]` and `RB[iofc]` (if bidirectional) along dimension 0. This tensor has shape `[num_directions, 4*hidden_size, hidden_size]`.",
+                    "minArity": 1,
                     "name": "R",
                     "option": 0,
                     "type": "T",
@@ -92,6 +95,7 @@
                 },
                 {
                     "description": "The bias tensor for input gate. Concatenation of `[Wb[iofc], Rb[iofc]]`, and `[WBb[iofc], RBb[iofc]]` (if bidirectional) along dimension 0. This tensor has shape `[num_directions, 8*hidden_size]`. Optional: If not specified - assumed to be 0.",
+                    "minArity": 1,
                     "name": "B",
                     "option": 1,
                     "type": "T",
@@ -103,6 +107,7 @@
                 },
                 {
                     "description": "Optional tensor specifying lengths of the sequences in a batch. If not specified - assumed all sequences in the batch to have length `seq_length`. It has shape `[batch_size]`.",
+                    "minArity": 1,
                     "name": "sequence_lens",
                     "option": 1,
                     "type": "T1",
@@ -112,6 +117,7 @@
                 },
                 {
                     "description": "Optional initial value of the hidden. If not specified - assumed to be 0. It has shape `[num_directions, batch_size, hidden_size]`.",
+                    "minArity": 1,
                     "name": "initial_h",
                     "option": 1,
                     "type": "T",
@@ -123,6 +129,7 @@
                 },
                 {
                     "description": "Optional initial value of the cell. If not specified - assumed to be 0. It has shape `[num_directions, batch_size, hidden_size]`.",
+                    "minArity": 1,
                     "name": "initial_c",
                     "option": 1,
                     "type": "T",
@@ -134,6 +141,7 @@
                 },
                 {
                     "description": "The weight tensor for peepholes. Concatenation of `P[iof]` and `PB[iof]` (if bidirectional) along dimension 0. It has shape `[num_directions, 3*hidde_size]`. Optional: If not specified - assumed to be 0.",
+                    "minArity": 1,
                     "name": "P",
                     "option": 1,
                     "type": "T",
@@ -148,6 +156,7 @@
             "outputs": [
                 {
                     "description": "A tensor that concats all the intermediate output values of the hidden. It has shape `[seq_length, num_directions, batch_size, hidden_size]`. ",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 1,
                     "type": "T",
@@ -159,6 +168,7 @@
                 },
                 {
                     "description": "The last output value of the hidden. It has shape `[num_directions, batch_size, hidden_size]`.",
+                    "minArity": 1,
                     "name": "Y_h",
                     "option": 1,
                     "type": "T",
@@ -170,6 +180,7 @@
                 },
                 {
                     "description": "The last output value of the cell. It has shape `[num_directions, batch_size, hidden_size]`.",
+                    "minArity": 1,
                     "name": "Y_c",
                     "option": 1,
                     "type": "T",
@@ -189,6 +200,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "V",
@@ -231,6 +243,7 @@
             "outputs": [
                 {
                     "description": "Tensor to copy input into.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "V",
@@ -278,6 +291,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -301,6 +315,7 @@
             "outputs": [
                 {
                     "description": "Output tensor",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -351,6 +366,7 @@
             "inputs": [
                 {
                     "description": "Input data tensor from the previous operator; dimensions are in the form of (N x C x D1 x D2 ... Dn), where N is the batch size, C is the number of channels. Statistics are computed for every channel of C over N and D1 to Dn dimensions. For image data, input dimensions become (N x C x H x W). The op also accepts single dimension input of size N in which case C is assumed to be 1",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -363,6 +379,7 @@
                 },
                 {
                     "description": "Scale tensor of shape (C).",
+                    "minArity": 1,
                     "name": "scale",
                     "option": 0,
                     "type": "T",
@@ -375,6 +392,7 @@
                 },
                 {
                     "description": "Bias tensor of shape (C).",
+                    "minArity": 1,
                     "name": "B",
                     "option": 0,
                     "type": "T",
@@ -387,6 +405,7 @@
                 },
                 {
                     "description": "running (training) or estimated (testing) mean tensor of shape (C).",
+                    "minArity": 1,
                     "name": "input_mean",
                     "option": 0,
                     "type": "U",
@@ -399,6 +418,7 @@
                 },
                 {
                     "description": "running (training) or estimated (testing) variance tensor of shape (C).",
+                    "minArity": 1,
                     "name": "input_var",
                     "option": 0,
                     "type": "U",
@@ -414,6 +434,7 @@
             "outputs": [
                 {
                     "description": "The output tensor of the same shape as X",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -426,6 +447,7 @@
                 },
                 {
                     "description": "The running mean after the BatchNormalization operator.",
+                    "minArity": 1,
                     "name": "running_mean",
                     "option": 1,
                     "type": "U",
@@ -438,6 +460,7 @@
                 },
                 {
                     "description": "The running variance after the BatchNormalization operator. This op uses the population size (N) for calculating variance, and not the sample size N-1.",
+                    "minArity": 1,
                     "name": "running_var",
                     "option": 1,
                     "type": "U",
@@ -458,6 +481,7 @@
             "inputs": [
                 {
                     "description": "List of tensors for mean.",
+                    "minArity": 1,
                     "name": "data_0",
                     "option": 2,
                     "type": "T",
@@ -473,6 +497,7 @@
             "outputs": [
                 {
                     "description": "Output tensor.",
+                    "minArity": 1,
                     "name": "mean",
                     "option": 0,
                     "type": "T",
@@ -493,6 +518,7 @@
             "inputs": [
                 {
                     "description": "First operand.",
+                    "minArity": 1,
                     "name": "A",
                     "option": 0,
                     "type": "T",
@@ -513,6 +539,7 @@
                 },
                 {
                     "description": "Second operand.",
+                    "minArity": 1,
                     "name": "B",
                     "option": 0,
                     "type": "T",
@@ -536,6 +563,7 @@
             "outputs": [
                 {
                     "description": "Result, has same element type as two inputs",
+                    "minArity": 1,
                     "name": "C",
                     "option": 0,
                     "type": "T",
@@ -564,6 +592,7 @@
             "inputs": [
                 {
                     "description": "Input data tensor from the previous operator; dimensions for image case are (N x C x H x W), where N is the batch size, C is the number of channels, and H and W are the height and the width of the data. For non image case, the dimensions are in the form of (N x C x D1 x D2 ... Dn), where N is the batch size.",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -578,6 +607,7 @@
             "outputs": [
                 {
                     "description": "Output data tensor from pooling across the input tensor. The output tensor has the same rank as the input. The first two dimensions of output shape are the same as the input (N x C), while the other dimensions are all 1.",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -604,6 +634,7 @@
             "inputs": [
                 {
                     "description": "Input tensor to be cast.",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T1",
@@ -629,6 +660,7 @@
             "outputs": [
                 {
                     "description": "Output tensor with the same shape as input with type specified by the 'to' argument",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T2",
@@ -699,6 +731,7 @@
             "inputs": [
                 {
                     "description": "Input data tensor from the previous operator; dimensions for image case are (N x C x H x W), where N is the batch size, C is the number of channels, and H and W are the height and the width of the data. For non image case, the dimensions are in the form of (N x C x D1 x D2 ... Dn), where N is the batch size. Optionally, if dimension denotation is in effect, the operation expects the input data tensor to arrive with the dimension denotation of [DATA_BATCH, DATA_CHANNEL, DATA_FEATURE, DATA_FEATURE ...].",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -713,6 +746,7 @@
             "outputs": [
                 {
                     "description": "Output data tensor from average or max pooling across the input tensor. Dimensions will vary based on various kernel, stride, and pad sizes. Floor value of the dimension is used",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -732,6 +766,7 @@
             "inputs": [
                 {
                     "description": "First input operand for the logical operator.",
+                    "minArity": 1,
                     "name": "A",
                     "option": 0,
                     "type": "T",
@@ -741,6 +776,7 @@
                 },
                 {
                     "description": "Second input operand for the logical operator.",
+                    "minArity": 1,
                     "name": "B",
                     "option": 0,
                     "type": "T",
@@ -753,6 +789,7 @@
             "outputs": [
                 {
                     "description": "Result tensor.",
+                    "minArity": 1,
                     "name": "C",
                     "option": 0,
                     "type": "T1",
@@ -797,6 +834,7 @@
             "inputs": [
                 {
                     "description": "Input data tensor from the previous operator; dimensions for image case are (N x C x H x W), where N is the batch size, C is the number of channels, and H and W are the height and the width of the data. For non image case, the dimensions are in the form of (N x C x D1 x D2 ... Dn), where N is the batch size. Optionally, if dimension denotation is in effect, the operation expects the input data tensor to arrive with the dimension denotation of [DATA_BATCH, DATA_CHANNEL, DATA_FEATURE, DATA_FEATURE ...].",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -812,6 +850,7 @@
             "outputs": [
                 {
                     "description": "Output tensor, which has the shape and type as input tensor",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -854,6 +893,7 @@
             "inputs": [
                 {
                     "description": "An input tensor.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -877,6 +917,7 @@
             "outputs": [
                 {
                     "description": "Reduced output tensor with integer data type.",
+                    "minArity": 1,
                     "name": "reduced",
                     "option": 0,
                     "type": "tensor(int64)",
@@ -937,6 +978,7 @@
             "inputs": [
                 {
                     "description": "N-D tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T1",
@@ -961,6 +1003,7 @@
                 },
                 {
                     "description": "1-D tensor given as [start1, ..., startN, end1, ..., endN], where N is the rank of X. The RoIs' coordinates are normalized in the coordinate system of the input image. It only takes effect when coordinate_transformation_mode is \"tf_crop_and_resize\"",
+                    "minArity": 1,
                     "name": "roi",
                     "option": 1,
                     "type": "T2",
@@ -972,6 +1015,7 @@
                 },
                 {
                     "description": "The scale array along each dimension. It takes value greater than 0. If it's less than 1, it's sampling down, otherwise, it's upsampling. The number of elements of 'scales' should be the same as the rank of input 'X'. One of 'scales' and 'sizes' MUST be specified and it is an error if both are specified. If 'sizes' is needed, the user can use an empty string as the name of 'scales' in this operator's input list.",
+                    "minArity": 1,
                     "name": "scales",
                     "option": 1,
                     "type": "tensor(float)",
@@ -981,6 +1025,7 @@
                 },
                 {
                     "description": "The size of the output tensor. The number of elements of 'sizes' should be the same as the rank of input 'X'. Only one of 'scales' and 'sizes' can be specified.",
+                    "minArity": 1,
                     "name": "sizes",
                     "option": 1,
                     "type": "tensor(int64)",
@@ -993,6 +1038,7 @@
             "outputs": [
                 {
                     "description": "N-D tensor after resizing",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T1",
@@ -1025,6 +1071,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -1049,6 +1096,7 @@
                 },
                 {
                     "description": "A 1-D tensor indicates the shape you want to expand to, following the broadcast rule",
+                    "minArity": 1,
                     "name": "shape",
                     "option": 0,
                     "type": "tensor(int64)",
@@ -1061,6 +1109,7 @@
             "outputs": [
                 {
                     "description": "Output tensor",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -1093,6 +1142,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -1112,6 +1162,7 @@
             "outputs": [
                 {
                     "description": "Output tensor",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -1136,6 +1187,7 @@
             "inputs": [
                 {
                     "description": "First operand.",
+                    "minArity": 1,
                     "name": "A",
                     "option": 0,
                     "type": "T",
@@ -1156,6 +1208,7 @@
                 },
                 {
                     "description": "Second operand.",
+                    "minArity": 1,
                     "name": "B",
                     "option": 0,
                     "type": "T",
@@ -1179,6 +1232,7 @@
             "outputs": [
                 {
                     "description": "Result, has same element type as two inputs",
+                    "minArity": 1,
                     "name": "C",
                     "option": 0,
                     "type": "T",
@@ -1229,6 +1283,7 @@
             "inputs": [
                 {
                     "description": "An input tensor.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -1252,6 +1307,7 @@
             "outputs": [
                 {
                     "description": "Reduced output tensor with integer data type.",
+                    "minArity": 1,
                     "name": "reduced",
                     "option": 0,
                     "type": "tensor(int64)",
@@ -1291,6 +1347,7 @@
             "inputs": [
                 {
                     "description": "The input map that is to be cast to a tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T1",
@@ -1304,6 +1361,7 @@
             "outputs": [
                 {
                     "description": "A tensor representing the same data as the input map, ordered by their keys",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T2",
@@ -1323,6 +1381,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -1338,6 +1397,7 @@
             "outputs": [
                 {
                     "description": "The exponential of the input tensor computed element-wise",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -1358,6 +1418,7 @@
             "inputs": [
                 {
                     "description": "First operand.",
+                    "minArity": 1,
                     "name": "A",
                     "option": 0,
                     "type": "T",
@@ -1378,6 +1439,7 @@
                 },
                 {
                     "description": "Second operand.",
+                    "minArity": 1,
                     "name": "B",
                     "option": 0,
                     "type": "T",
@@ -1401,6 +1463,7 @@
             "outputs": [
                 {
                     "description": "Result, has same element type as two inputs",
+                    "minArity": 1,
                     "name": "C",
                     "option": 0,
                     "type": "T",
@@ -1444,6 +1507,7 @@
             "inputs": [
                 {
                     "description": "Tensor of rank r >= 2.",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -1467,6 +1531,7 @@
                 },
                 {
                     "description": "Tensor specifying lengths of the sequences in a batch. It has shape `[batch_size]`.",
+                    "minArity": 1,
                     "name": "sequence_lens",
                     "option": 0,
                     "type": "tensor(int64)",
@@ -1479,6 +1544,7 @@
             "outputs": [
                 {
                     "description": "Tensor with same shape of input.",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -1510,6 +1576,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -1525,6 +1592,7 @@
             "outputs": [
                 {
                     "description": "Output tensor",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -1559,6 +1627,7 @@
             "inputs": [
                 {
                     "description": "Input tensor of [N,C,H,W], where N is the batch axis, C is the channel or depth, H is the height and W is the width.",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -1586,6 +1655,7 @@
             "outputs": [
                 {
                     "description": "Output tensor of [N, C/(blocksize * blocksize), H * blocksize, W * blocksize].",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -1618,6 +1688,7 @@
             "inputs": [
                 {
                     "description": "Input tensor whose elements to be clipped",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -1638,6 +1709,7 @@
                 },
                 {
                     "description": "Minimum value, under which element is replaced by min. It must be a scalar(tensor of empty shape).",
+                    "minArity": 1,
                     "name": "min",
                     "option": 1,
                     "type": "T",
@@ -1658,6 +1730,7 @@
                 },
                 {
                     "description": "Maximum value, above which element is replaced by max. It must be a scalar(tensor of empty shape).",
+                    "minArity": 1,
                     "name": "max",
                     "option": 1,
                     "type": "T",
@@ -1681,6 +1754,7 @@
             "outputs": [
                 {
                     "description": "Output tensor with clipped input elements",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -1758,6 +1832,7 @@
             "inputs": [
                 {
                     "description": "The input sequences packed (and potentially padded) into one 3-D tensor with the shape of `[seq_length, batch_size, input_size]`.",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -1769,6 +1844,7 @@
                 },
                 {
                     "description": "The weight tensor for input gate. Concatenation of `Wi` and `WBi` (if bidirectional). The tensor has shape `[num_directions, hidden_size, input_size]`.",
+                    "minArity": 1,
                     "name": "W",
                     "option": 0,
                     "type": "T",
@@ -1780,6 +1856,7 @@
                 },
                 {
                     "description": "The recurrence weight tensor. Concatenation of `Ri` and `RBi` (if bidirectional). The tensor has shape `[num_directions, hidden_size, hidden_size]`.",
+                    "minArity": 1,
                     "name": "R",
                     "option": 0,
                     "type": "T",
@@ -1791,6 +1868,7 @@
                 },
                 {
                     "description": "The bias tensor for input gate. Concatenation of `[Wbi, Rbi]` and `[WBbi, RBbi]` (if bidirectional). The tensor has shape `[num_directions, 2*hidden_size]`. Optional: If not specified - assumed to be 0.",
+                    "minArity": 1,
                     "name": "B",
                     "option": 1,
                     "type": "T",
@@ -1802,6 +1880,7 @@
                 },
                 {
                     "description": "Optional tensor specifying lengths of the sequences in a batch. If not specified - assumed all sequences in the batch to have length `seq_length`. It has shape `[batch_size]`.",
+                    "minArity": 1,
                     "name": "sequence_lens",
                     "option": 1,
                     "type": "T1",
@@ -1811,6 +1890,7 @@
                 },
                 {
                     "description": "Optional initial value of the hidden. If not specified - assumed to be 0. It has shape `[num_directions, batch_size, hidden_size]`.",
+                    "minArity": 1,
                     "name": "initial_h",
                     "option": 1,
                     "type": "T",
@@ -1825,6 +1905,7 @@
             "outputs": [
                 {
                     "description": "A tensor that concats all the intermediate output values of the hidden. It has shape `[seq_length, num_directions, batch_size, hidden_size]`. ",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 1,
                     "type": "T",
@@ -1836,6 +1917,7 @@
                 },
                 {
                     "description": "The last output value of the hidden. It has shape `[num_directions, batch_size, hidden_size]`.",
+                    "minArity": 1,
                     "name": "Y_h",
                     "option": 1,
                     "type": "T",
@@ -1862,6 +1944,7 @@
             "inputs": [
                 {
                     "description": "List of tensors for concatenation",
+                    "minArity": 1,
                     "name": "inputs",
                     "option": 2,
                     "type": "T",
@@ -1889,6 +1972,7 @@
             "outputs": [
                 {
                     "description": "Concatenated tensor",
+                    "minArity": 1,
                     "name": "concat_result",
                     "option": 0,
                     "type": "T",
@@ -1972,6 +2056,7 @@
             "outputs": [
                 {
                     "description": "Output tensor containing the same value of the provided tensor.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -2037,6 +2122,7 @@
             "inputs": [
                 {
                     "description": "Input data tensor from the previous operator; dimensions for image case are (N x C x H x W), where N is the batch size, C is the number of channels, and H and W are the height and the width of the data. For non image case, the dimensions are in the form of (N x C x D1 x D2 ... Dn), where N is the batch size.",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -2051,6 +2137,7 @@
             "outputs": [
                 {
                     "description": "Output data tensor from Lp pooling across the input tensor. Dimensions will vary based on various kernel, stride, and pad sizes.",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -2109,6 +2196,7 @@
             "inputs": [
                 {
                     "description": "Input data tensor from previous layer; has size (N x C x H x W), where N is the batch size, C is the number of channels, and H and W are the height and width. Note that this is for the 2D image. Otherwise the size is (N x C x D1 x D2 ... x Dn). Optionally, if dimension denotation is in effect, the operation expects input data tensor to arrive with the dimension denotation of [DATA_BATCH, DATA_CHANNEL, DATA_FEATURE, DATA_FEATURE ...].",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -2120,6 +2208,7 @@
                 },
                 {
                     "description": "The weight tensor that will be used in the convolutions; has size (M x C/group x kH x kW), where C is the number of channels, and kH and kW are the height and width of the kernel, and M is the number of feature maps. For more than 2 dimensions, the kernel shape will be (M x C/group x k1 x k2 x ... x kn), where (k1 x k2 x ... kn) is the dimension of the kernel. Optionally, if dimension denotation is in effect, the operation expects the weight tensor to arrive with the dimension denotation of [FILTER_OUT_CHANNEL, FILTER_IN_CHANNEL, FILTER_SPATIAL, FILTER_SPATIAL ...]. X.shape[1] == (W.shape[1] * group) == C (assuming zero based indices for the shape array). Or in other words FILTER_IN_CHANNEL should be equal to DATA_CHANNEL. ",
+                    "minArity": 1,
                     "name": "W",
                     "option": 0,
                     "type": "T",
@@ -2131,6 +2220,7 @@
                 },
                 {
                     "description": "Optional 1D bias to be added to the convolution, has size of M.",
+                    "minArity": 1,
                     "name": "B",
                     "option": 1,
                     "type": "T",
@@ -2145,6 +2235,7 @@
             "outputs": [
                 {
                     "description": "Output data tensor that contains the result of the convolution. The output dimensions are functions of the kernel size, stride size, and pad lengths.",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -2164,6 +2255,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -2176,6 +2268,7 @@
             "outputs": [
                 {
                     "description": "Output tensor",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -2201,6 +2294,7 @@
             "inputs": [
                 {
                     "description": "Tensor of rank r >= 1.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -2225,6 +2319,7 @@
                 },
                 {
                     "description": "Tensor of int32/int64 indices, of any rank q. All index values are expected to be within bounds [-s, s-1] along axis of size s. It is an error if any of the index values are out of bounds.",
+                    "minArity": 1,
                     "name": "indices",
                     "option": 0,
                     "type": "Tind",
@@ -2238,6 +2333,7 @@
             "outputs": [
                 {
                     "description": "Tensor of rank q + (r - 1).",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -2321,6 +2417,7 @@
             "inputs": [
                 {
                     "description": "Input data tensor from previous layer; has size (N x C x H x W), where N is the batch size, C is the number of channels, and H and W are the height and width. Note that this is for the 2D image. Otherwise the size is (N x C x D1 x D2 ... x Dn)",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -2332,6 +2429,7 @@
                 },
                 {
                     "description": "The weight tensor that will be used in the convolutions; has size (C x M/group x kH x kW), where C is the number of channels, and kH and kW are the height and width of the kernel, and M is the number of feature maps. For more than 2 dimensions, the weight shape will be (C x M/group x k1 x k2 x ... x kn), where (k1 x k2 x ... x kn) is the dimension of the kernel. The number of channels in the output should be equal to W.shape[1] * group (assuming zero based indices of the shape array)",
+                    "minArity": 1,
                     "name": "W",
                     "option": 0,
                     "type": "T",
@@ -2343,6 +2441,7 @@
                 },
                 {
                     "description": "Optional 1D bias to be added to the convolution, has size of M.",
+                    "minArity": 1,
                     "name": "B",
                     "option": 1,
                     "type": "T",
@@ -2357,6 +2456,7 @@
             "outputs": [
                 {
                     "description": "Output data tensor that contains the result of the convolution. The output dimensions are functions of the kernel size, stride size, pad lengths and group count. The number of channels in the output should be equal to W.shape[1] * group (assuming zero based indices of the shape array)",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -2383,6 +2483,7 @@
             "inputs": [
                 {
                     "description": "The input data as Tensor.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -2395,6 +2496,7 @@
                 },
                 {
                     "description": "The ratio of random dropout, with value in [0, 1). If this input was not set, or if it was set to 0, the output would be a simple copy of the input. If it's non-zero, output will be a random dropout of the scaled input, which is typically the case during training. It is an optional value, if not specified it will default to 0.5.",
+                    "minArity": 1,
                     "name": "ratio",
                     "option": 1,
                     "type": "T1",
@@ -2406,6 +2508,7 @@
                 },
                 {
                     "description": "If set to true then it indicates dropout is being used for training. It is an optional value hence unless specified explicitly, it is false. If it is false, ratio is ignored and the operation mimics inference mode where nothing will be dropped from the input data and if mask is requested as output it will contain all ones.",
+                    "minArity": 1,
                     "name": "training_mode",
                     "option": 1,
                     "type": "T2",
@@ -2418,6 +2521,7 @@
             "outputs": [
                 {
                     "description": "The output.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -2430,6 +2534,7 @@
                 },
                 {
                     "description": "The output mask.",
+                    "minArity": 1,
                     "name": "mask",
                     "option": 1,
                     "type": "T2",
@@ -2455,6 +2560,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -2469,6 +2575,7 @@
             "outputs": [
                 {
                     "description": "Output tensor",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -2496,6 +2603,7 @@
             "inputs": [
                 {
                     "description": "1D input tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -2510,6 +2618,7 @@
             "outputs": [
                 {
                     "description": "1D output tensor",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -2529,6 +2638,7 @@
             "inputs": [
                 {
                     "description": "Input data tensor from the previous operator; dimensions for image case are (N x C x H x W), where N is the batch size, C is the number of channels, and H and W are the height and the width of the data. For non image case, the dimensions are in the form of (N x C x D1 x D2 ... Dn), where N is the batch size.",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -2543,6 +2653,7 @@
             "outputs": [
                 {
                     "description": "Output data tensor from pooling across the input tensor. The output tensor has the same rank as the input. The first two dimensions of output shape are the same as the input (N x C), while the other dimensions are all 1.",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -2570,6 +2681,7 @@
             "inputs": [
                 {
                     "description": "Tensor of rank r >= 1.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -2594,6 +2706,7 @@
                 },
                 {
                     "description": "Tensor of int32/int64 indices, with the same rank r as the input. All index values are expected to be within bounds [-s, s-1] along axis of size s. It is an error if any of the index values are out of bounds.",
+                    "minArity": 1,
                     "name": "indices",
                     "option": 0,
                     "type": "Tind",
@@ -2607,6 +2720,7 @@
             "outputs": [
                 {
                     "description": "Tensor of the same shape as indices.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -2668,6 +2782,7 @@
             "inputs": [
                 {
                     "description": "Input tensor A. The shape of A should be (M, K) if transA is 0, or (K, M) if transA is non-zero.",
+                    "minArity": 1,
                     "name": "A",
                     "option": 0,
                     "type": "T",
@@ -2684,6 +2799,7 @@
                 },
                 {
                     "description": "Input tensor B. The shape of B should be (K, N) if transB is 0, or (N, K) if transB is non-zero.",
+                    "minArity": 1,
                     "name": "B",
                     "option": 0,
                     "type": "T",
@@ -2700,6 +2816,7 @@
                 },
                 {
                     "description": "Optional input tensor C. If not specified, the computation is done as if C is a scalar 0. The shape of C should be unidirectional broadcastable to (M, N).",
+                    "minArity": 1,
                     "name": "C",
                     "option": 1,
                     "type": "T",
@@ -2719,6 +2836,7 @@
             "outputs": [
                 {
                     "description": "Output tensor of shape (M, N).",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -2789,6 +2907,7 @@
             "inputs": [
                 {
                     "description": "Input data tensor from the previous operator; dimensions for image case are (N x C x H x W), where N is the batch size, C is the number of channels, and H and W are the height and the width of the data. For non image case, the dimensions are in the form of (N x C x D1 x D2 ... Dn), where N is the batch size. Optionally, if dimension denotation is in effect, the operation expects the input data tensor to arrive with the dimension denotation of [DATA_BATCH, DATA_CHANNEL, DATA_FEATURE, DATA_FEATURE ...].",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -2805,6 +2924,7 @@
             "outputs": [
                 {
                     "description": "Output data tensor from average or max pooling across the input tensor. Dimensions will vary based on various kernel, stride, and pad sizes. Floor value of the dimension is used",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -2818,6 +2938,7 @@
                 },
                 {
                     "description": "Indices tensor from max pooling across the input tensor. The dimensions of indices are the same as output tensor. The values in indices of are the indices of the selected values during pooling. The indices are computed as flatten 1-D tensor, and the indices do not consider padding. So the values in indices are in [0, N x C x D1 x ... x Dn).",
+                    "minArity": 1,
                     "name": "Indices",
                     "option": 1,
                     "type": "I",
@@ -2835,6 +2956,7 @@
             "inputs": [
                 {
                     "description": "First input operand for the logical operator.",
+                    "minArity": 1,
                     "name": "A",
                     "option": 0,
                     "type": "T",
@@ -2856,6 +2978,7 @@
                 },
                 {
                     "description": "Second input operand for the logical operator.",
+                    "minArity": 1,
                     "name": "B",
                     "option": 0,
                     "type": "T",
@@ -2880,6 +3003,7 @@
             "outputs": [
                 {
                     "description": "Result tensor.",
+                    "minArity": 1,
                     "name": "C",
                     "option": 0,
                     "type": "T1",
@@ -2897,6 +3021,7 @@
             "inputs": [
                 {
                     "description": "Input tensor of any shape.",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -2921,6 +3046,7 @@
                 },
                 {
                     "description": "1D int64 tensor of the same length as input's dimension number, includes numbers of repeated copies along input's dimensions.",
+                    "minArity": 1,
                     "name": "repeats",
                     "option": 0,
                     "type": "T1",
@@ -2933,6 +3059,7 @@
             "outputs": [
                 {
                     "description": "Output tensor of the same dimension and type as tensor input. output_dim[i] = input_dim[i] * repeats[i]",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -2973,6 +3100,7 @@
             "inputs": [
                 {
                     "description": "A tensor of rank >= axis.",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -3000,6 +3128,7 @@
             "outputs": [
                 {
                     "description": "A 2D tensor with the contents of the input tensor, with input dimensions up to axis flattened to the outer dimension of the output and remaining input dimensions flattened into the inner dimension of the output.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -3032,6 +3161,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -3047,6 +3177,7 @@
             "outputs": [
                 {
                     "description": "Output tensor",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -3119,6 +3250,7 @@
             "inputs": [
                 {
                     "description": "The input sequences packed (and potentially padded) into one 3-D tensor with the shape of `[seq_length, batch_size, input_size]`.",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -3130,6 +3262,7 @@
                 },
                 {
                     "description": "The weight tensor for the gates. Concatenation of `W[zrh]` and `WB[zrh]` (if bidirectional) along dimension 0. This tensor has shape `[num_directions, 3*hidden_size, input_size]`.",
+                    "minArity": 1,
                     "name": "W",
                     "option": 0,
                     "type": "T",
@@ -3141,6 +3274,7 @@
                 },
                 {
                     "description": "The recurrence weight tensor. Concatenation of `R[zrh]` and `RB[zrh]` (if bidirectional) along dimension 0. This tensor has shape `[num_directions, 3*hidden_size, hidden_size]`.",
+                    "minArity": 1,
                     "name": "R",
                     "option": 0,
                     "type": "T",
@@ -3152,6 +3286,7 @@
                 },
                 {
                     "description": "The bias tensor for the gates. Concatenation of `[Wb[zrh], Rb[zrh]]` and `[WBb[zrh], RBb[zrh]]` (if bidirectional) along dimension 0. This tensor has shape `[num_directions, 6*hidden_size]`. Optional: If not specified - assumed to be 0",
+                    "minArity": 1,
                     "name": "B",
                     "option": 1,
                     "type": "T",
@@ -3163,6 +3298,7 @@
                 },
                 {
                     "description": "Optional tensor specifying lengths of the sequences in a batch. If not specified - assumed all sequences in the batch to have length `seq_length`. It has shape `[batch_size]`.",
+                    "minArity": 1,
                     "name": "sequence_lens",
                     "option": 1,
                     "type": "T1",
@@ -3172,6 +3308,7 @@
                 },
                 {
                     "description": "Optional initial value of the hidden. If not specified - assumed to be 0. It has shape `[num_directions, batch_size, hidden_size]`.",
+                    "minArity": 1,
                     "name": "initial_h",
                     "option": 1,
                     "type": "T",
@@ -3186,6 +3323,7 @@
             "outputs": [
                 {
                     "description": "A tensor that concats all the intermediate output values of the hidden. It has shape `[seq_length, num_directions, batch_size, hidden_size]`. ",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 1,
                     "type": "T",
@@ -3197,6 +3335,7 @@
                 },
                 {
                     "description": "The last output value of the hidden. It has shape `[num_directions, batch_size, hidden_size]`.",
+                    "minArity": 1,
                     "name": "Y_h",
                     "option": 1,
                     "type": "T",
@@ -3224,6 +3363,7 @@
             "inputs": [
                 {
                     "description": "Tensor of rank r >= 1.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -3248,6 +3388,7 @@
                 },
                 {
                     "description": "Tensor of int32/int64 indices, of r >= 1 (same rank as input). All index values are expected to be within bounds [-s, s-1] along axis of size s. It is an error if any of the index values are out of bounds.",
+                    "minArity": 1,
                     "name": "indices",
                     "option": 0,
                     "type": "Tind",
@@ -3258,6 +3399,7 @@
                 },
                 {
                     "description": "Tensor of rank r >=1 (same rank and shape as indices)",
+                    "minArity": 1,
                     "name": "updates",
                     "option": 0,
                     "type": "T",
@@ -3285,6 +3427,7 @@
             "outputs": [
                 {
                     "description": "Tensor of rank r >= 1 (same rank as input).",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -3325,6 +3468,7 @@
             "inputs": [
                 {
                     "description": "Input data tensor from the previous operator; dimensions for image case are (N x C x H x W), where N is the batch size, C is the number of channels, and H and W are the height and the width of the data. For non image case, the dimensions are in the form of (N x C x D1 x D2 ... Dn), where N is the batch size.",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -3339,6 +3483,7 @@
             "outputs": [
                 {
                     "description": "Output data tensor from pooling across the input tensor. The output tensor has the same rank as the input. The first two dimensions of output shape are the same as the input (N x C), while the other dimensions are all 1.",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -3358,6 +3503,7 @@
             "inputs": [
                 {
                     "description": "First input operand for the logical operator.",
+                    "minArity": 1,
                     "name": "A",
                     "option": 0,
                     "type": "T",
@@ -3378,6 +3524,7 @@
                 },
                 {
                     "description": "Second input operand for the logical operator.",
+                    "minArity": 1,
                     "name": "B",
                     "option": 0,
                     "type": "T",
@@ -3401,6 +3548,7 @@
             "outputs": [
                 {
                     "description": "Result tensor.",
+                    "minArity": 1,
                     "name": "C",
                     "option": 0,
                     "type": "T1",
@@ -3433,6 +3581,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -3447,6 +3596,7 @@
             "outputs": [
                 {
                     "description": "Output tensor",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -3481,6 +3631,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -3495,6 +3646,7 @@
             "outputs": [
                 {
                     "description": "Output tensor",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -3522,6 +3674,7 @@
             "inputs": [
                 {
                     "description": "The input tensor that's coerced into a 2D matrix of size (NxD) as described above.",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -3537,6 +3690,7 @@
             "outputs": [
                 {
                     "description": "The output values with the same shape as input tensor (the original size without coercion).",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -3570,6 +3724,7 @@
             "inputs": [
                 {
                     "description": "Condition for the if",
+                    "minArity": 1,
                     "name": "cond",
                     "option": 0,
                     "type": "B",
@@ -3582,6 +3737,7 @@
             "outputs": [
                 {
                     "description": "Values that are live-out to the enclosing scope. The return values in the `then_branch` and `else_branch` must be of the same data type. The `then_branch` and `else_branch` may produce tensors with the same element type and different shapes. If corresponding outputs from the then-branch and the else-branch have static shapes S1 and S2, then the shape of the corresponding output variable of the if-node (if present) must be compatible with both S1 and S2 as it represents the union of both possible shapes.For example, if in a model file, the the first output of `then_branch` is typed float tensor with shape [2] and the first output of `else_branch` is another float tensor with shape [3], If's first output should have (a) no shape set, or (b) a shape of rank 1 with neither `dim_value` nor `dim_param` set, or (c) a shape of rank 1 with a unique `dim_param`. In contrast, the first output cannot have the shape [2] since [2] and [3] are not compatible.",
+                    "minArity": 1,
                     "name": "outputs",
                     "option": 2,
                     "type": "V",
@@ -3628,6 +3784,7 @@
             "inputs": [
                 {
                     "description": "List of tensors for min.",
+                    "minArity": 1,
                     "name": "data_0",
                     "option": 2,
                     "type": "T",
@@ -3651,6 +3808,7 @@
             "outputs": [
                 {
                     "description": "Output tensor.",
+                    "minArity": 1,
                     "name": "min",
                     "option": 0,
                     "type": "T",
@@ -3687,6 +3845,7 @@
             "inputs": [
                 {
                     "description": "Input data tensor from the previous operator; dimensions for image case are (N x C x H x W), where N is the batch size, C is the number of channels, and H and W are the height and the width of the data. For non image case, the dimensions are in the form of (N x C x D1 x D2 ... Dn), where N is the batch size.",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -3698,6 +3857,7 @@
                 },
                 {
                     "description": "The input 1-dimensional scale tensor of size C.",
+                    "minArity": 1,
                     "name": "scale",
                     "option": 0,
                     "type": "T",
@@ -3709,6 +3869,7 @@
                 },
                 {
                     "description": "The input 1-dimensional bias tensor of size C.",
+                    "minArity": 1,
                     "name": "B",
                     "option": 0,
                     "type": "T",
@@ -3723,6 +3884,7 @@
             "outputs": [
                 {
                     "description": "The output tensor of the same shape as input.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -3742,6 +3904,7 @@
             "inputs": [
                 {
                     "description": "First input operand for the logical operator.",
+                    "minArity": 1,
                     "name": "A",
                     "option": 0,
                     "type": "T",
@@ -3762,6 +3925,7 @@
                 },
                 {
                     "description": "Second input operand for the logical operator.",
+                    "minArity": 1,
                     "name": "B",
                     "option": 0,
                     "type": "T",
@@ -3785,6 +3949,7 @@
             "outputs": [
                 {
                     "description": "Result tensor.",
+                    "minArity": 1,
                     "name": "C",
                     "option": 0,
                     "type": "T1",
@@ -3816,6 +3981,7 @@
             "inputs": [
                 {
                     "description": "2D input tensor to copy shape, and optionally, type information from.",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T1",
@@ -3839,6 +4005,7 @@
             "outputs": [
                 {
                     "description": "Output tensor, same shape as input tensor T1.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T2",
@@ -3903,6 +4070,7 @@
             "outputs": [
                 {
                     "description": "Output tensor of random values drawn from normal distribution",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -3922,6 +4090,7 @@
             "inputs": [
                 {
                     "description": "Tensor of data to extract slices from.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -3946,6 +4115,7 @@
                 },
                 {
                     "description": "1-D tensor of starting indices of corresponding axis in `axes`",
+                    "minArity": 1,
                     "name": "starts",
                     "option": 0,
                     "type": "Tind",
@@ -3956,6 +4126,7 @@
                 },
                 {
                     "description": "1-D tensor of ending indices (exclusive) of corresponding axis in `axes`",
+                    "minArity": 1,
                     "name": "ends",
                     "option": 0,
                     "type": "Tind",
@@ -3966,6 +4137,7 @@
                 },
                 {
                     "description": "1-D tensor of axes that `starts` and `ends` apply to. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(data).",
+                    "minArity": 1,
                     "name": "axes",
                     "option": 1,
                     "type": "Tind",
@@ -3976,6 +4148,7 @@
                 },
                 {
                     "description": "1-D tensor of slice step of corresponding axis in `axes`. Negative value means slicing backward. 'steps' cannot be 0. Defaults to 1.",
+                    "minArity": 1,
                     "name": "steps",
                     "option": 1,
                     "type": "Tind",
@@ -3989,6 +4162,7 @@
             "outputs": [
                 {
                     "description": "Sliced data tensor.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -4021,6 +4195,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -4036,6 +4211,7 @@
                 },
                 {
                     "description": "Slope tensor. The shape of slope can be smaller then first input X; if so, its shape must be unidirectional broadcastable to X",
+                    "minArity": 1,
                     "name": "slope",
                     "option": 0,
                     "type": "T",
@@ -4054,6 +4230,7 @@
             "outputs": [
                 {
                     "description": "Output tensor (same size as X)",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -4077,6 +4254,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -4092,6 +4270,7 @@
             "outputs": [
                 {
                     "description": "The natural log of the input tensor computed element-wise",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -4120,6 +4299,7 @@
             "inputs": [
                 {
                     "description": "The input tensor that's coerced into a 2D matrix of size (NxD) as described above.",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -4135,6 +4315,7 @@
             "outputs": [
                 {
                     "description": "The output values with the same shape as input tensor (the original size without coercion).",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -4162,6 +4343,7 @@
             "inputs": [
                 {
                     "description": "A maximum trip-count for the loop specified at runtime. Optional. Pass empty string to skip.",
+                    "minArity": 1,
                     "name": "M",
                     "option": 1,
                     "type": "I",
@@ -4171,6 +4353,7 @@
                 },
                 {
                     "description": "A boolean termination condition. Optional. Pass empty string to skip.",
+                    "minArity": 1,
                     "name": "cond",
                     "option": 1,
                     "type": "B",
@@ -4180,6 +4363,7 @@
                 },
                 {
                     "description": "The initial values of any loop-carried dependencies (values that change across loop iterations)",
+                    "minArity": 0,
                     "name": "v_initial",
                     "option": 2,
                     "type": "V",
@@ -4221,6 +4405,7 @@
             "outputs": [
                 {
                     "description": "Final N loop carried dependency values then K scan_outputs. Scan outputs must be Tensors.",
+                    "minArity": 1,
                     "name": "v_final_and_scan_outputs",
                     "option": 2,
                     "type": "V",
@@ -4282,6 +4467,7 @@
             "inputs": [
                 {
                     "description": "Input matrix",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -4296,6 +4482,7 @@
             "outputs": [
                 {
                     "description": "Matrix after normalization",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -4315,6 +4502,7 @@
             "inputs": [
                 {
                     "description": "N-dimensional matrix A",
+                    "minArity": 1,
                     "name": "A",
                     "option": 0,
                     "type": "T",
@@ -4331,6 +4519,7 @@
                 },
                 {
                     "description": "N-dimensional matrix B",
+                    "minArity": 1,
                     "name": "B",
                     "option": 0,
                     "type": "T",
@@ -4350,6 +4539,7 @@
             "outputs": [
                 {
                     "description": "Matrix multiply results from A * B",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -4388,6 +4578,7 @@
             "inputs": [
                 {
                     "description": "An input tensor.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -4407,6 +4598,7 @@
             "outputs": [
                 {
                     "description": "Reduced output tensor.",
+                    "minArity": 1,
                     "name": "reduced",
                     "option": 0,
                     "type": "T",
@@ -4431,6 +4623,7 @@
             "inputs": [
                 {
                     "description": "List of tensors for max.",
+                    "minArity": 1,
                     "name": "data_0",
                     "option": 2,
                     "type": "T",
@@ -4454,6 +4647,7 @@
             "outputs": [
                 {
                     "description": "Output tensor.",
+                    "minArity": 1,
                     "name": "max",
                     "option": 0,
                     "type": "T",
@@ -4496,6 +4690,7 @@
             "inputs": [
                 {
                     "description": "Input data tensor from the previous operator; dimensions for image case are (N x C x H x W), where N is the batch size, C is the number of channels, and H and W are the height and the width of the data.",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -4507,6 +4702,7 @@
                 },
                 {
                     "description": "RoIs (Regions of Interest) to pool over. Should be a 2-D tensor of shape (num_rois, 5) given as [[batch_id, x1, y1, x2, y2], ...].",
+                    "minArity": 1,
                     "name": "rois",
                     "option": 0,
                     "type": "T",
@@ -4521,6 +4717,7 @@
             "outputs": [
                 {
                     "description": "RoI pooled output 4-D tensor of shape (num_rois, channels, pooled_shape[0], pooled_shape[1]).",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -4540,6 +4737,7 @@
             "inputs": [
                 {
                     "description": "First input operand for the logical operator.",
+                    "minArity": 1,
                     "name": "A",
                     "option": 0,
                     "type": "T",
@@ -4549,6 +4747,7 @@
                 },
                 {
                     "description": "Second input operand for the logical operator.",
+                    "minArity": 1,
                     "name": "B",
                     "option": 0,
                     "type": "T",
@@ -4561,6 +4760,7 @@
             "outputs": [
                 {
                     "description": "Result tensor.",
+                    "minArity": 1,
                     "name": "C",
                     "option": 0,
                     "type": "T1",
@@ -4586,6 +4786,7 @@
             "inputs": [
                 {
                     "description": "Input tensor.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -4610,6 +4811,7 @@
                 },
                 {
                     "description": "Tensor of integers indicating the number of padding elements to add or remove (if negative) at the beginning and end of each axis. For 2D input tensor, it is the number of pixels. `pads` should be a 1D tensor of shape [2 * input_rank]. `pads` format should be: [x1_begin, x2_begin,...,x1_end, x2_end,...], where xi_begin is the number of pad values added at the beginning of axis `i` and xi_end, the number of pad values added at the end of axis `i`.",
+                    "minArity": 1,
                     "name": "pads",
                     "option": 0,
                     "type": "tensor(int64)",
@@ -4619,6 +4821,7 @@
                 },
                 {
                     "description": "(Optional) A scalar value to be used if the mode chosen is `constant` (by default it is 0, empty string or False).",
+                    "minArity": 1,
                     "name": "constant_value",
                     "option": 1,
                     "type": "T",
@@ -4646,6 +4849,7 @@
             "outputs": [
                 {
                     "description": "Tensor after padding.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -4705,6 +4909,7 @@
             "inputs": [
                 {
                     "description": "Input tensor to copy shape and optionally type information from.",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T1",
@@ -4731,6 +4936,7 @@
             "outputs": [
                 {
                     "description": "Output tensor of random values drawn from uniform distribution",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T2",
@@ -4750,6 +4956,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -4765,6 +4972,7 @@
             "outputs": [
                 {
                     "description": "Output tensor",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -4785,6 +4993,7 @@
             "inputs": [
                 {
                     "description": "First operand, base of the exponent.",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -4799,6 +5008,7 @@
                 },
                 {
                     "description": "Second operand, power of the exponent.",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T1",
@@ -4821,6 +5031,7 @@
             "outputs": [
                 {
                     "description": "Output tensor",
+                    "minArity": 1,
                     "name": "Z",
                     "option": 0,
                     "type": "T",
@@ -4870,6 +5081,7 @@
             "inputs": [
                 {
                     "description": "Input tensor to copy shape and optionally type information from.",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T1",
@@ -4896,6 +5108,7 @@
             "outputs": [
                 {
                     "description": "Output tensor of random values drawn from normal distribution",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T2",
@@ -4923,6 +5136,7 @@
             "inputs": [
                 {
                     "description": "Input tensor containing indices. Any entries in the 'indices' input tensor with values outside the range [-depth, depth-1] will result in one-hot representation with all 'off_value' values in the output tensor.In case 'indices' is of non-integer type, the values will be casted to int64 before use.",
+                    "minArity": 1,
                     "name": "indices",
                     "option": 0,
                     "type": "T1",
@@ -4942,6 +5156,7 @@
                 },
                 {
                     "description": "Scalar specifying the number of classes in one-hot tensor. This is also the size of the one-hot dimension (specified by 'axis' attribute) added on in the output tensor. The values in the 'indices' input tensor are expected to be in the range [-depth, depth-1]. In case 'depth' is of non-integer type, it will be casted to int64 before use.",
+                    "minArity": 1,
                     "name": "depth",
                     "option": 0,
                     "type": "T2",
@@ -4961,6 +5176,7 @@
                 },
                 {
                     "description": "Rank 1 tensor containing exactly two elements, in the format [off_value, on_value], where 'on_value' is the value used for filling locations specified in 'indices' input tensor, and 'off_value' is the value used for filling locations other than those specified in 'indices' input tensor. ",
+                    "minArity": 1,
                     "name": "values",
                     "option": 0,
                     "type": "T3",
@@ -4987,6 +5203,7 @@
             "outputs": [
                 {
                     "description": "Tensor of rank one greater than input tensor 'indices', i.e. rank(output) = rank(indices) + 1. The data type for the elements of the output tensor is the same as the type of input 'values' is used.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T3",
@@ -5054,6 +5271,7 @@
             "outputs": [
                 {
                     "description": "Output tensor of random values drawn from uniform distribution",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -5087,6 +5305,7 @@
             "inputs": [
                 {
                     "description": "Sequence of tensors for concatenation",
+                    "minArity": 1,
                     "name": "input_sequence",
                     "option": 0,
                     "type": "S",
@@ -5113,6 +5332,7 @@
             "outputs": [
                 {
                     "description": "Concatenated tensor",
+                    "minArity": 1,
                     "name": "concat_result",
                     "option": 0,
                     "type": "T",
@@ -5158,6 +5378,7 @@
             "inputs": [
                 {
                     "description": "An input tensor.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -5177,6 +5398,7 @@
             "outputs": [
                 {
                     "description": "Reduced output tensor.",
+                    "minArity": 1,
                     "name": "reduced",
                     "option": 0,
                     "type": "T",
@@ -5215,6 +5437,7 @@
             "inputs": [
                 {
                     "description": "An input tensor.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -5234,6 +5457,7 @@
             "outputs": [
                 {
                     "description": "Reduced output tensor.",
+                    "minArity": 1,
                     "name": "reduced",
                     "option": 0,
                     "type": "T",
@@ -5272,6 +5496,7 @@
             "inputs": [
                 {
                     "description": "An input tensor.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -5291,6 +5516,7 @@
             "outputs": [
                 {
                     "description": "Reduced output tensor.",
+                    "minArity": 1,
                     "name": "reduced",
                     "option": 0,
                     "type": "T",
@@ -5329,6 +5555,7 @@
             "inputs": [
                 {
                     "description": "An input tensor.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -5350,6 +5577,7 @@
             "outputs": [
                 {
                     "description": "Reduced output tensor.",
+                    "minArity": 1,
                     "name": "reduced",
                     "option": 0,
                     "type": "T",
@@ -5396,6 +5624,7 @@
             "inputs": [
                 {
                     "description": "Data to be encoded.",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -5412,6 +5641,7 @@
             "outputs": [
                 {
                     "description": "Encoded output data, having one more dimension than X.",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "tensor(float)",
@@ -5429,6 +5659,7 @@
             "inputs": [
                 {
                     "description": "input",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T1",
@@ -5444,6 +5675,7 @@
             "outputs": [
                 {
                     "description": "output",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T2",
@@ -5475,6 +5707,7 @@
             "inputs": [
                 {
                     "description": "An input tensor.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -5494,6 +5727,7 @@
             "outputs": [
                 {
                     "description": "Reduced output tensor.",
+                    "minArity": 1,
                     "name": "reduced",
                     "option": 0,
                     "type": "T",
@@ -5532,6 +5766,7 @@
             "inputs": [
                 {
                     "description": "An input tensor.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -5553,6 +5788,7 @@
             "outputs": [
                 {
                     "description": "Reduced output tensor.",
+                    "minArity": 1,
                     "name": "reduced",
                     "option": 0,
                     "type": "T",
@@ -5684,6 +5920,7 @@
             "inputs": [
                 {
                     "description": "Input of shape [N,F]",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -5699,6 +5936,7 @@
             "outputs": [
                 {
                     "description": "N classes",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "tensor(float)",
@@ -5730,6 +5968,7 @@
             "inputs": [
                 {
                     "description": "An input tensor.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -5749,6 +5988,7 @@
             "outputs": [
                 {
                     "description": "Reduced output tensor.",
+                    "minArity": 1,
                     "name": "reduced",
                     "option": 0,
                     "type": "T",
@@ -5788,6 +6028,7 @@
             "inputs": [
                 {
                     "description": "An input tensor.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -5804,6 +6045,7 @@
                 },
                 {
                     "description": "Optional input list of integers, along which to reduce. The default is to reduce over all the dimensions of the input tensor if 'noop_with_empty_axes' is false, else act as an Identity op when 'noop_with_empty_axes' is true. Accepted range is [-r, r-1] where r = rank(data).",
+                    "minArity": 1,
                     "name": "axes",
                     "option": 1,
                     "type": "tensor(int64)",
@@ -5816,6 +6058,7 @@
             "outputs": [
                 {
                     "description": "Reduced output tensor.",
+                    "minArity": 1,
                     "name": "reduced",
                     "option": 0,
                     "type": "T",
@@ -5854,6 +6097,7 @@
             "inputs": [
                 {
                     "description": "An input tensor.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -5873,6 +6117,7 @@
             "outputs": [
                 {
                     "description": "Reduced output tensor.",
+                    "minArity": 1,
                     "name": "reduced",
                     "option": 0,
                     "type": "T",
@@ -5897,6 +6142,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -5916,6 +6162,7 @@
             "outputs": [
                 {
                     "description": "Output tensor",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -5948,6 +6195,7 @@
             "inputs": [
                 {
                     "description": "An input tensor.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -5972,6 +6220,7 @@
                 },
                 {
                     "description": "Specified shape for output.",
+                    "minArity": 1,
                     "name": "shape",
                     "option": 0,
                     "type": "tensor(int64)",
@@ -5984,6 +6233,7 @@
             "outputs": [
                 {
                     "description": "Reshaped data.",
+                    "minArity": 1,
                     "name": "reshaped",
                     "option": 0,
                     "type": "T",
@@ -6016,6 +6266,7 @@
             "inputs": [
                 {
                     "description": "An input tensor.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -6043,6 +6294,7 @@
             "outputs": [
                 {
                     "description": "Shape of the input tensor",
+                    "minArity": 1,
                     "name": "shape",
                     "option": 0,
                     "type": "T1",
@@ -6074,6 +6326,7 @@
             "inputs": [
                 {
                     "description": "The predicted outputs with shape [batch_size, class_size], or [batch_size, class_size, D1, D2 , ..., Dk], where K is the number of dimensions.",
+                    "minArity": 1,
                     "name": "scores",
                     "option": 0,
                     "type": "T",
@@ -6086,6 +6339,7 @@
                 },
                 {
                     "description": "The ground truth output tensor, with shape [batch_size], or [batch_size, D1, D2, ..., Dk], where K is the number of dimensions. Labels element value shall be in range of [0, C). If ignore_index is specified, it may have a value outside [0, C) and the label values should either be in the range [0, C) or have the value ignore_index.",
+                    "minArity": 1,
                     "name": "labels",
                     "option": 0,
                     "type": "Tind",
@@ -6096,6 +6350,7 @@
                 },
                 {
                     "description": "A manual rescaling weight given to each class. If given, it has to be a 1D Tensor assigning weight to each of the classes. Otherwise, it is treated as if having all ones.",
+                    "minArity": 1,
                     "name": "weights",
                     "option": 1,
                     "type": "T",
@@ -6111,6 +6366,7 @@
             "outputs": [
                 {
                     "description": "Weighted loss float Tensor. If reduction is 'none', this has the shape of [batch_size], or [batch_size, D1, D2, ..., Dk] in case of K-dimensional loss. Otherwise, it is a scalar.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -6123,6 +6379,7 @@
                 },
                 {
                     "description": "Log probability tensor. If the output of softmax is prob, its value is log(prob).",
+                    "minArity": 1,
                     "name": "log_prob",
                     "option": 1,
                     "type": "T",
@@ -6143,6 +6400,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -6158,6 +6416,7 @@
             "outputs": [
                 {
                     "description": "Output tensor",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -6178,6 +6437,7 @@
             "inputs": [
                 {
                     "description": "An input tensor.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -6205,6 +6465,7 @@
             "outputs": [
                 {
                     "description": "Total number of elements of the input tensor",
+                    "minArity": 1,
                     "name": "size",
                     "option": 0,
                     "type": "T1",
@@ -6230,6 +6491,7 @@
             "inputs": [
                 {
                     "description": "The input tensor that's coerced into a 2D matrix of size (NxD) as described above.",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -6245,6 +6507,7 @@
             "outputs": [
                 {
                     "description": "The output values with the same shape as input tensor (the original size without coercion).",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -6265,6 +6528,7 @@
             "inputs": [
                 {
                     "description": "1D input tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -6279,6 +6543,7 @@
             "outputs": [
                 {
                     "description": "1D input tensor",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -6298,6 +6563,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -6312,6 +6578,7 @@
             "outputs": [
                 {
                     "description": "The softsign (x/(1+|x|)) values of the input tensor computed element-wise",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -6338,6 +6605,7 @@
             "inputs": [
                 {
                     "description": "Input tensor of [N,C,H,W], where N is the batch axis, C is the channel or depth, H is the height and W is the width.",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -6365,6 +6633,7 @@
             "outputs": [
                 {
                     "description": "Output tensor of [N, C * blocksize * blocksize, H/blocksize, W/blocksize].",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -6452,6 +6721,7 @@
             "inputs": [
                 {
                     "description": "Input for n-gram extraction",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -6466,6 +6736,7 @@
             "outputs": [
                 {
                     "description": "Ngram results",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T1",
@@ -6491,6 +6762,7 @@
             "inputs": [
                 {
                     "description": "The tensor to split",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -6515,6 +6787,7 @@
                 },
                 {
                     "description": "Optional length of each output. Values should be >= 0.Sum of the values must be equal to the dim value at 'axis' specified.",
+                    "minArity": 1,
                     "name": "split",
                     "option": 1,
                     "type": "tensor(int64)",
@@ -6527,6 +6800,7 @@
             "outputs": [
                 {
                     "description": "One or more outputs forming list of tensors after splitting",
+                    "minArity": 1,
                     "name": "outputs",
                     "option": 2,
                     "type": "T",
@@ -6586,6 +6860,7 @@
             "inputs": [
                 {
                     "description": "Data to be processed.",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -6601,6 +6876,7 @@
             "outputs": [
                 {
                     "description": "Imputed output data",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -6621,6 +6897,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -6636,6 +6913,7 @@
             "outputs": [
                 {
                     "description": "Output tensor",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -6656,6 +6934,7 @@
             "inputs": [
                 {
                     "description": "Tensors with at least max(dims) dimensions.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -6680,6 +6959,7 @@
                 },
                 {
                     "description": "List of integers indicating the dimensions to squeeze. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(data).",
+                    "minArity": 1,
                     "name": "axes",
                     "option": 1,
                     "type": "tensor(int64)",
@@ -6692,6 +6972,7 @@
             "outputs": [
                 {
                     "description": "Reshaped tensor with same data as input.",
+                    "minArity": 1,
                     "name": "squeezed",
                     "option": 0,
                     "type": "T",
@@ -6746,6 +7027,7 @@
             "inputs": [
                 {
                     "description": "Tensor of shape [a_1, a_2, ..., a_n, r]",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -6765,6 +7047,7 @@
                 },
                 {
                     "description": "A 1-D tensor containing a single positive value corresponding to the number of top elements to retrieve",
+                    "minArity": 1,
                     "name": "K",
                     "option": 0,
                     "type": "tensor(int64)",
@@ -6777,6 +7060,7 @@
             "outputs": [
                 {
                     "description": "Tensor of shape [a_1, a_2, ..., a_{axis-1}, k, a_{axis+1}, ... a_n] containing top K values from the input tensor",
+                    "minArity": 1,
                     "name": "Values",
                     "option": 0,
                     "type": "T",
@@ -6796,6 +7080,7 @@
                 },
                 {
                     "description": "Tensor of shape [a_1, a_2, ..., a_{axis-1}, k, a_{axis+1}, ... a_n] containing the corresponding input tensor indices for the top K values.",
+                    "minArity": 1,
                     "name": "Indices",
                     "option": 0,
                     "type": "I",
@@ -6813,6 +7098,7 @@
             "inputs": [
                 {
                     "description": "First operand.",
+                    "minArity": 1,
                     "name": "A",
                     "option": 0,
                     "type": "T",
@@ -6833,6 +7119,7 @@
                 },
                 {
                     "description": "Second operand.",
+                    "minArity": 1,
                     "name": "B",
                     "option": 0,
                     "type": "T",
@@ -6856,6 +7143,7 @@
             "outputs": [
                 {
                     "description": "Result, has same element type as two inputs",
+                    "minArity": 1,
                     "name": "C",
                     "option": 0,
                     "type": "T",
@@ -6884,6 +7172,7 @@
             "inputs": [
                 {
                     "description": "List of tensors for sum.",
+                    "minArity": 1,
                     "name": "data_0",
                     "option": 2,
                     "type": "T",
@@ -6899,6 +7188,7 @@
             "outputs": [
                 {
                     "description": "Output tensor.",
+                    "minArity": 1,
                     "name": "sum",
                     "option": 0,
                     "type": "T",
@@ -6934,6 +7224,7 @@
             "inputs": [
                 {
                     "description": "The input data as Tensor.",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -6956,6 +7247,7 @@
             "outputs": [
                 {
                     "description": "The output.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -6983,6 +7275,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -6998,6 +7291,7 @@
             "outputs": [
                 {
                     "description": "The hyperbolic tangent values of the input tensor computed element-wise",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -7025,6 +7319,7 @@
             "inputs": [
                 {
                     "description": "An input tensor.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -7052,6 +7347,7 @@
             "outputs": [
                 {
                     "description": "Transposed output.",
+                    "minArity": 1,
                     "name": "transposed",
                     "option": 0,
                     "type": "T",
@@ -7084,6 +7380,7 @@
             "inputs": [
                 {
                     "description": "Original tensor",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -7108,6 +7405,7 @@
                 },
                 {
                     "description": "List of integers indicating the dimensions to be inserted. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(expanded).",
+                    "minArity": 1,
                     "name": "axes",
                     "option": 0,
                     "type": "tensor(int64)",
@@ -7120,6 +7418,7 @@
             "outputs": [
                 {
                     "description": "Reshaped tensor with same data as input.",
+                    "minArity": 1,
                     "name": "expanded",
                     "option": 0,
                     "type": "T",
@@ -7160,6 +7459,7 @@
             "inputs": [
                 {
                     "description": "N-D tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -7183,6 +7483,7 @@
                 },
                 {
                     "description": "The scale array along each dimension. It takes value greater than or equal to 1. The number of elements of 'scales' should be the same as the rank of input 'X'.",
+                    "minArity": 1,
                     "name": "scales",
                     "option": 0,
                     "type": "tensor(float)",
@@ -7195,6 +7496,7 @@
             "outputs": [
                 {
                     "description": "N-D tensor after resizing",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -7291,6 +7593,7 @@
             "inputs": [
                 {
                     "description": "Data to be classified.",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T1",
@@ -7306,6 +7609,7 @@
             "outputs": [
                 {
                     "description": "Classification outputs (one class per example).",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T2",
@@ -7316,6 +7620,7 @@
                 },
                 {
                     "description": "Class scores (one per class per example), if prob_a and prob_b are provided they are probabilities for each class, otherwise they are raw scores.",
+                    "minArity": 1,
                     "name": "Z",
                     "option": 0,
                     "type": "tensor(float)",
@@ -7333,6 +7638,7 @@
             "inputs": [
                 {
                     "description": "First input operand for the logical operator.",
+                    "minArity": 1,
                     "name": "A",
                     "option": 0,
                     "type": "T",
@@ -7342,6 +7648,7 @@
                 },
                 {
                     "description": "Second input operand for the logical operator.",
+                    "minArity": 1,
                     "name": "B",
                     "option": 0,
                     "type": "T",
@@ -7354,6 +7661,7 @@
             "outputs": [
                 {
                     "description": "Result tensor.",
+                    "minArity": 1,
                     "name": "C",
                     "option": 0,
                     "type": "T1",
@@ -7371,6 +7679,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -7385,6 +7694,7 @@
             "outputs": [
                 {
                     "description": "The arccosine of the input tensor computed element-wise",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -7404,6 +7714,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -7418,6 +7729,7 @@
             "outputs": [
                 {
                     "description": "The arcsine of the input tensor computed element-wise",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -7437,6 +7749,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -7451,6 +7764,7 @@
             "outputs": [
                 {
                     "description": "The arctangent of the input tensor computed element-wise",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -7470,6 +7784,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -7484,6 +7799,7 @@
             "outputs": [
                 {
                     "description": "The cosine of the input tensor computed element-wise",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -7503,6 +7819,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -7517,6 +7834,7 @@
             "outputs": [
                 {
                     "description": "The sine of the input tensor computed element-wise",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -7536,6 +7854,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -7550,6 +7869,7 @@
             "outputs": [
                 {
                     "description": "The tangent of the input tensor computed element-wise",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -7590,6 +7910,7 @@
             "inputs": [
                 {
                     "description": "Input tensor with shape [batch_size, class_size], where class_size is the number of all possible outcomes. Each value along the axis zero represents the unnormalized log-probability of each corresponding outcome in a batch.",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T1",
@@ -7604,6 +7925,7 @@
             "outputs": [
                 {
                     "description": "Output tensor with shape [batch_size, sample_size], where sample_size is the number of times to sample. Each value along the axis zero represents the outcome of the corresponding sample in a batch.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T2",
@@ -7659,6 +7981,7 @@
             "inputs": [
                 {
                     "description": "Initial values of the loop's N state variables followed by M scan_inputs",
+                    "minArity": 1,
                     "name": "initial_state_and_scan_inputs",
                     "option": 2,
                     "type": "V",
@@ -7685,6 +8008,7 @@
             "outputs": [
                 {
                     "description": "Final values of the loop's N state variables followed by K scan_outputs",
+                    "minArity": 1,
                     "name": "final_state_and_scan_outputs",
                     "option": 2,
                     "type": "V",
@@ -7723,6 +8047,7 @@
             "inputs": [
                 {
                     "description": "Tensor of rank r >= 1.",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -7746,6 +8071,7 @@
                 },
                 {
                     "description": "Rank 1 tensor of booleans to indicate which slices or data elements to be selected. Its length can be less than the input length along the axis or the flattened input size if axis is not specified. In such cases data slices or elements exceeding the condition length are discarded.",
+                    "minArity": 1,
                     "name": "condition",
                     "option": 0,
                     "type": "T1",
@@ -7758,6 +8084,7 @@
             "outputs": [
                 {
                     "description": "Tensor of rank r if axis is specified. Otherwise output is a Tensor of rank 1.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -7796,6 +8123,7 @@
             "inputs": [
                 {
                     "description": "1D tensor. The shape of the expected output tensor. If empty tensor is given, the output would be a scalar. All values must be >= 0.",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T1",
@@ -7808,6 +8136,7 @@
             "outputs": [
                 {
                     "description": "Output tensor of shape specified by 'input'.If attribute 'value' is specified, the value and datatype of the output tensor is taken from 'value'.If attribute 'value' is not specified, the value in the output defaults to 0, and the datatype defaults to float32.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T2",
@@ -7855,6 +8184,7 @@
             "inputs": [
                 {
                     "description": "Input data tensor that has to be unpooled. This tensor is typically the first output of the MaxPool op.Dimensions for image case are (N x C x H x W), where N is the batch size, C is the number of channels, and H and W are the height and the width of the data. For non-image case, the dimensions are in the form of (N x C x D1 x D2 ... Dn), where N is the batch size. Optionally, if dimension denotation is in effect, the operation expects the input data tensor to arrive with the dimension denotation of [DATA_BATCH, DATA_CHANNEL, DATA_FEATURE, DATA_FEATURE ...].",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T1",
@@ -7866,6 +8196,7 @@
                 },
                 {
                     "description": "Input data tensor containing the indices corresponding to elements in the first input tensor X.This tensor is typically the second output of the MaxPool op.Dimensions must be the same as input tensor X. The indices are linear, i.e. computed considering the tensor as flattened 1-D tensor, assuming row-major storage. Also, the linear indices should not consider padding. So the values in indices are in the range [0, N x C x D1 x ... x Dn).",
+                    "minArity": 1,
                     "name": "I",
                     "option": 0,
                     "type": "T2",
@@ -7875,6 +8206,7 @@
                 },
                 {
                     "description": "The shape of the output can be explicitly set which will cause pads values to be auto generated. If 'output_shape' is specified, 'pads' values are ignored.",
+                    "minArity": 1,
                     "name": "output_shape",
                     "option": 1,
                     "type": "T2",
@@ -7887,6 +8219,7 @@
             "outputs": [
                 {
                     "description": "Output data tensor that contains the result of the unpooling.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T1",
@@ -7914,6 +8247,7 @@
             "inputs": [
                 {
                     "description": "Tensor of rank r >= 1.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -7937,6 +8271,7 @@
                 },
                 {
                     "description": "Tensor of int32/int64 indices, of r >= 1 (same rank as input). All index values are expected to be within bounds [-s, s-1] along axis of size s. It is an error if any of the index values are out of bounds.",
+                    "minArity": 1,
                     "name": "indices",
                     "option": 0,
                     "type": "Tind",
@@ -7947,6 +8282,7 @@
                 },
                 {
                     "description": "Tensor of rank r >=1 (same rank and shape as indices)",
+                    "minArity": 1,
                     "name": "updates",
                     "option": 0,
                     "type": "T",
@@ -7973,6 +8309,7 @@
             "outputs": [
                 {
                     "description": "Tensor of rank r >= 1 (same rank as input).",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -8004,6 +8341,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -8018,6 +8356,7 @@
             "outputs": [
                 {
                     "description": "The hyperbolic sine values of the input tensor computed element-wise",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -8037,6 +8376,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -8051,6 +8391,7 @@
             "outputs": [
                 {
                     "description": "The hyperbolic cosine values of the input tensor computed element-wise",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -8070,6 +8411,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -8084,6 +8426,7 @@
             "outputs": [
                 {
                     "description": "The hyperbolic arcsine values of the input tensor computed element-wise",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -8103,6 +8446,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -8117,6 +8461,7 @@
             "outputs": [
                 {
                     "description": "The hyperbolic arccosine values of the input tensor computed element-wise",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -8144,6 +8489,7 @@
             "inputs": [
                 {
                     "description": "An input tensor with shape [num_batches, spatial_dimension, 4]. The single box data format is indicated by center_point_box.",
+                    "minArity": 1,
                     "name": "boxes",
                     "option": 0,
                     "type": "tensor(float)",
@@ -8153,6 +8499,7 @@
                 },
                 {
                     "description": "An input tensor with shape [num_batches, num_classes, spatial_dimension]",
+                    "minArity": 1,
                     "name": "scores",
                     "option": 0,
                     "type": "tensor(float)",
@@ -8162,6 +8509,7 @@
                 },
                 {
                     "description": "Integer representing the maximum number of boxes to be selected per batch per class. It is a scalar. Default to 0, which means no output.",
+                    "minArity": 1,
                     "name": "max_output_boxes_per_class",
                     "option": 1,
                     "type": "tensor(int64)",
@@ -8171,6 +8519,7 @@
                 },
                 {
                     "description": "Float representing the threshold for deciding whether boxes overlap too much with respect to IOU. It is scalar. Value range [0, 1]. Default to 0.",
+                    "minArity": 1,
                     "name": "iou_threshold",
                     "option": 1,
                     "type": "tensor(float)",
@@ -8180,6 +8529,7 @@
                 },
                 {
                     "description": "Float representing the threshold for deciding when to remove boxes based on score. It is a scalar.",
+                    "minArity": 1,
                     "name": "score_threshold",
                     "option": 1,
                     "type": "tensor(float)",
@@ -8192,6 +8542,7 @@
             "outputs": [
                 {
                     "description": "selected indices from the boxes tensor. [num_selected_indices, 3], the selected index format is [batch_index, class_index, box_index].",
+                    "minArity": 1,
                     "name": "selected_indices",
                     "option": 0,
                     "type": "tensor(int64)",
@@ -8209,6 +8560,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -8223,6 +8575,7 @@
             "outputs": [
                 {
                     "description": "The hyperbolic arctangent values of the input tensor computed element-wise",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -8242,6 +8595,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -8265,6 +8619,7 @@
             "outputs": [
                 {
                     "description": "The sign of the input tensor computed element-wise. It has the same shape and type of the input.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -8293,6 +8648,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -8316,6 +8672,7 @@
             "outputs": [
                 {
                     "description": "The error function of the input tensor computed element-wise. It has the same shape and type of the input.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -8344,6 +8701,7 @@
             "inputs": [
                 {
                     "description": "When True (nonzero), yield X, otherwise yield Y",
+                    "minArity": 1,
                     "name": "condition",
                     "option": 0,
                     "type": "B",
@@ -8353,6 +8711,7 @@
                 },
                 {
                     "description": "values selected at indices where condition is True",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -8376,6 +8735,7 @@
                 },
                 {
                     "description": "values selected at indices where condition is False",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -8402,6 +8762,7 @@
             "outputs": [
                 {
                     "description": "Tensor of shape equal to the broadcasted shape of condition, X, and Y.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -8433,6 +8794,7 @@
             "inputs": [
                 {
                     "description": "input",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -8460,6 +8822,7 @@
             "outputs": [
                 {
                     "description": "output",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "tensor(int64)",
@@ -8489,6 +8852,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -8504,6 +8868,7 @@
             "outputs": [
                 {
                     "description": "Output tensor",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -8551,6 +8916,7 @@
             "inputs": [
                 {
                     "description": "UTF-8 strings to normalize",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "tensor(string)",
@@ -8563,6 +8929,7 @@
             "outputs": [
                 {
                     "description": "UTF-8 Normalized strings",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "tensor(string)",
@@ -8588,6 +8955,7 @@
             "inputs": [
                 {
                     "description": "Dividend tensor",
+                    "minArity": 1,
                     "name": "A",
                     "option": 0,
                     "type": "T",
@@ -8608,6 +8976,7 @@
                 },
                 {
                     "description": "Divisor tensor",
+                    "minArity": 1,
                     "name": "B",
                     "option": 0,
                     "type": "T",
@@ -8631,6 +9000,7 @@
             "outputs": [
                 {
                     "description": "Remainder tensor",
+                    "minArity": 1,
                     "name": "C",
                     "option": 0,
                     "type": "T",
@@ -8667,6 +9037,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -8681,6 +9052,7 @@
             "outputs": [
                 {
                     "description": "Output tensor",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -8700,6 +9072,7 @@
             "inputs": [
                 {
                     "description": "N-dimensional matrix A",
+                    "minArity": 1,
                     "name": "A",
                     "option": 0,
                     "type": "T1",
@@ -8710,6 +9083,7 @@
                 },
                 {
                     "description": "N-dimensional matrix B",
+                    "minArity": 1,
                     "name": "B",
                     "option": 0,
                     "type": "T2",
@@ -8720,6 +9094,7 @@
                 },
                 {
                     "description": "Zero point tensor for input 'A'. It's optional and default value is 0. It could be a scalar or a 1-D tensor, which means a per-tensor or per-row quantization. If it's a 1-D tensor, its number of elements should be equal to the number of rows of input 'A'.",
+                    "minArity": 1,
                     "name": "a_zero_point",
                     "option": 1,
                     "type": "T1",
@@ -8730,6 +9105,7 @@
                 },
                 {
                     "description": "Zero point tensor for input 'B'. It's optional and default value is 0.  It could be a scalar or a 1-D tensor, which means a per-tensor or per-column quantization. If it's a 1-D tensor, its number of elements should be equal to the number of columns of input 'B'.",
+                    "minArity": 1,
                     "name": "b_zero_point",
                     "option": 1,
                     "type": "T2",
@@ -8743,6 +9119,7 @@
             "outputs": [
                 {
                     "description": "Matrix multiply results from A * B",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T3",
@@ -8760,6 +9137,7 @@
             "inputs": [
                 {
                     "description": "N-dimensional quantized matrix a",
+                    "minArity": 1,
                     "name": "a",
                     "option": 0,
                     "type": "T1",
@@ -8770,6 +9148,7 @@
                 },
                 {
                     "description": "scale of quantized input a",
+                    "minArity": 1,
                     "name": "a_scale",
                     "option": 0,
                     "type": "tensor(float)",
@@ -8779,6 +9158,7 @@
                 },
                 {
                     "description": "zero point of quantized input a",
+                    "minArity": 1,
                     "name": "a_zero_point",
                     "option": 0,
                     "type": "T1",
@@ -8789,6 +9169,7 @@
                 },
                 {
                     "description": "N-dimensional quantized matrix b",
+                    "minArity": 1,
                     "name": "b",
                     "option": 0,
                     "type": "T2",
@@ -8799,6 +9180,7 @@
                 },
                 {
                     "description": "scale of quantized input b",
+                    "minArity": 1,
                     "name": "b_scale",
                     "option": 0,
                     "type": "tensor(float)",
@@ -8808,6 +9190,7 @@
                 },
                 {
                     "description": "zero point of quantized input b",
+                    "minArity": 1,
                     "name": "b_zero_point",
                     "option": 0,
                     "type": "T2",
@@ -8818,6 +9201,7 @@
                 },
                 {
                     "description": "scale of quantized output y",
+                    "minArity": 1,
                     "name": "y_scale",
                     "option": 0,
                     "type": "tensor(float)",
@@ -8827,6 +9211,7 @@
                 },
                 {
                     "description": "zero point of quantized output y",
+                    "minArity": 1,
                     "name": "y_zero_point",
                     "option": 0,
                     "type": "T3",
@@ -8840,6 +9225,7 @@
             "outputs": [
                 {
                     "description": "Quantized matrix multiply results from a * b",
+                    "minArity": 1,
                     "name": "y",
                     "option": 0,
                     "type": "T3",
@@ -8897,6 +9283,7 @@
             "inputs": [
                 {
                     "description": "Input data tensor from previous layer; has size (N x C x H x W), where N is the batch size, C is the number of channels, and H and W are the height and width. Note that this is for the 2D image. Otherwise the size is (N x C x D1 x D2 ... x Dn). Optionally, if dimension denotation is in effect, the operation expects input data tensor to arrive with the dimension denotation of [DATA_BATCH, DATA_CHANNEL, DATA_FEATURE, DATA_FEATURE ...].",
+                    "minArity": 1,
                     "name": "x",
                     "option": 0,
                     "type": "T1",
@@ -8907,6 +9294,7 @@
                 },
                 {
                     "description": "The weight tensor that will be used in the convolutions; has size (M x C/group x kH x kW), where C is the number of channels, and kH and kW are the height and width of the kernel, and M is the number of feature maps. For more than 2 dimensions, the kernel shape will be (M x C/group x k1 x k2 x ... x kn), where (k1 x k2 x ... kn) is the dimension of the kernel. Optionally, if dimension denotation is in effect, the operation expects the weight tensor to arrive with the dimension denotation of [FILTER_OUT_CHANNEL, FILTER_IN_CHANNEL, FILTER_SPATIAL, FILTER_SPATIAL ...]. X.shape[1] == (W.shape[1] * group) == C (assuming zero based indices for the shape array). Or in other words FILTER_IN_CHANNEL should be equal to DATA_CHANNEL. ",
+                    "minArity": 1,
                     "name": "w",
                     "option": 0,
                     "type": "T2",
@@ -8917,6 +9305,7 @@
                 },
                 {
                     "description": "Zero point tensor for input 'x'. It's optional and default value is 0. It's a scalar, which means a per-tensor/layer quantization.",
+                    "minArity": 1,
                     "name": "x_zero_point",
                     "option": 1,
                     "type": "T1",
@@ -8927,6 +9316,7 @@
                 },
                 {
                     "description": "Zero point tensor for input 'w'. It's optional and default value is 0.  It could be a scalar or a 1-D tensor, which means a per-tensor/layer or per output channel quantization. If it's a 1-D tensor, its number of elements should be equal to the number of output channels (M)",
+                    "minArity": 1,
                     "name": "w_zero_point",
                     "option": 1,
                     "type": "T2",
@@ -8940,6 +9330,7 @@
             "outputs": [
                 {
                     "description": "Output data tensor that contains the result of the convolution. The output dimensions are functions of the kernel size, stride size, and pad lengths.",
+                    "minArity": 1,
                     "name": "y",
                     "option": 0,
                     "type": "T3",
@@ -8982,6 +9373,7 @@
             "inputs": [
                 {
                     "description": "The learning rate.",
+                    "minArity": 1,
                     "name": "R",
                     "option": 0,
                     "type": "T1",
@@ -8992,6 +9384,7 @@
                 },
                 {
                     "description": "Update count of \"X\". It should be a scalar.",
+                    "minArity": 1,
                     "name": "T",
                     "option": 0,
                     "type": "T2",
@@ -9001,6 +9394,7 @@
                 },
                 {
                     "description": "It sequentially contains the current values of optimized tensors, then their gradient tensors, and finally their momentum tensors. For example, if two tensors \"X_1\" and \"X_2\" are optimized, The expected input list would be [\"X_1\", \"X_2\", gradient of \"X_1\", gradient of \"X_2\", momentum of \"X_1\", momentum of \"X_2\"].",
+                    "minArity": 1,
                     "name": "inputs",
                     "option": 2,
                     "type": "T3",
@@ -9014,6 +9408,7 @@
             "outputs": [
                 {
                     "description": "It sequentially contains the new values of optimized tensors and then the new values of their momentum tensors. For example, if two tensors \"X_1\" and \"X_2\" are optimized, the output list would be [new value of \"X_1,\" new value of \"X_2\" new momentum of \"X_1\", new momentum of \"X_2\"].",
+                    "minArity": 1,
                     "name": "outputs",
                     "option": 2,
                     "type": "T3",
@@ -9071,6 +9466,7 @@
             "inputs": [
                 {
                     "description": "Input data tensor from previous layer; has size (N x C x H x W), where N is the batch size, C is the number of channels, and H and W are the height and width. Note that this is for the 2D image. Otherwise the size is (N x C x D1 x D2 ... x Dn). Optionally, if dimension denotation is in effect, the operation expects input data tensor to arrive with the dimension denotation of [DATA_BATCH, DATA_CHANNEL, DATA_FEATURE, DATA_FEATURE ...].",
+                    "minArity": 1,
                     "name": "x",
                     "option": 0,
                     "type": "T1",
@@ -9081,6 +9477,7 @@
                 },
                 {
                     "description": "Scale tensor for input 'x'. It's a scalar, which means a per-tensor/layer quantization.",
+                    "minArity": 1,
                     "name": "x_scale",
                     "option": 0,
                     "type": "tensor(float)",
@@ -9090,6 +9487,7 @@
                 },
                 {
                     "description": "Zero point tensor for input 'x'. It's a scalar, which means a per-tensor/layer quantization.",
+                    "minArity": 1,
                     "name": "x_zero_point",
                     "option": 0,
                     "type": "T1",
@@ -9100,6 +9498,7 @@
                 },
                 {
                     "description": "The weight tensor that will be used in the convolutions; has size (M x C/group x kH x kW), where C is the number of channels, and kH and kW are the height and width of the kernel, and M is the number of feature maps. For more than 2 dimensions, the kernel shape will be (M x C/group x k1 x k2 x ... x kn), where (k1 x k2 x ... kn) is the dimension of the kernel. Optionally, if dimension denotation is in effect, the operation expects the weight tensor to arrive with the dimension denotation of [FILTER_OUT_CHANNEL, FILTER_IN_CHANNEL, FILTER_SPATIAL, FILTER_SPATIAL ...]. X.shape[1] == (W.shape[1] * group) == C (assuming zero based indices for the shape array). Or in other words FILTER_IN_CHANNEL should be equal to DATA_CHANNEL. ",
+                    "minArity": 1,
                     "name": "w",
                     "option": 0,
                     "type": "T2",
@@ -9110,6 +9509,7 @@
                 },
                 {
                     "description": "Scale tensor for input 'w'. It could be a scalar or a 1-D tensor, which means a per-tensor/layer or per output channel quantization. If it's a 1-D tensor, its number of elements should be equal to the number of output channels (M).",
+                    "minArity": 1,
                     "name": "w_scale",
                     "option": 0,
                     "type": "tensor(float)",
@@ -9119,6 +9519,7 @@
                 },
                 {
                     "description": "Zero point tensor for input 'w'. It could be a scalar or a 1-D tensor, which means a per-tensor/layer or per output channel quantization. If it's a 1-D tensor, its number of elements should be equal to the number of output channels (M).",
+                    "minArity": 1,
                     "name": "w_zero_point",
                     "option": 0,
                     "type": "T2",
@@ -9129,6 +9530,7 @@
                 },
                 {
                     "description": "Scale tensor for output 'y'. It's a scalar, which means a per-tensor/layer quantization.",
+                    "minArity": 1,
                     "name": "y_scale",
                     "option": 0,
                     "type": "tensor(float)",
@@ -9138,6 +9540,7 @@
                 },
                 {
                     "description": "Zero point tensor for output 'y'. It's a scalar, which means a per-tensor/layer quantization.",
+                    "minArity": 1,
                     "name": "y_zero_point",
                     "option": 0,
                     "type": "T3",
@@ -9148,6 +9551,7 @@
                 },
                 {
                     "description": "Optional 1D bias to be added to the convolution, has size of M. Bias must be quantized using scale = x_scale * w_scale and zero_point = 0",
+                    "minArity": 1,
                     "name": "B",
                     "option": 1,
                     "type": "T4",
@@ -9160,6 +9564,7 @@
             "outputs": [
                 {
                     "description": "Output data tensor that contains the result of the convolution. The output dimensions are functions of the kernel size, stride size, and pad lengths.",
+                    "minArity": 1,
                     "name": "y",
                     "option": 0,
                     "type": "T3",
@@ -9186,6 +9591,7 @@
             "inputs": [
                 {
                     "description": "N-D full precision Input tensor to be quantized.",
+                    "minArity": 1,
                     "name": "x",
                     "option": 0,
                     "type": "T1",
@@ -9196,6 +9602,7 @@
                 },
                 {
                     "description": "Scale for doing quantization to get 'y'. It can be a scalar, which means per-tensor/layer quantization, or a 1-D Tensor for per-axis quantization.",
+                    "minArity": 1,
                     "name": "y_scale",
                     "option": 0,
                     "type": "tensor(float)",
@@ -9205,6 +9612,7 @@
                 },
                 {
                     "description": "Zero point for doing quantization to get 'y'. It can be a scalar, which means a per-tensor/layer quantization, or a 1-D tensor for per-axis quantization. Default value is uint8 typed 0 if it's not specified.",
+                    "minArity": 1,
                     "name": "y_zero_point",
                     "option": 1,
                     "type": "T2",
@@ -9218,6 +9626,7 @@
             "outputs": [
                 {
                     "description": "N-D quantized output tensor. It has same shape as input 'x'.",
+                    "minArity": 1,
                     "name": "y",
                     "option": 0,
                     "type": "T2",
@@ -9244,6 +9653,7 @@
             "inputs": [
                 {
                     "description": "Tensor of rank r >= 1.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -9268,6 +9678,7 @@
                 },
                 {
                     "description": "Tensor of rank q >= 1. All index values are expected to be within bounds [-s, s-1] along axis of size s. It is an error if any of the index values are out of bounds.",
+                    "minArity": 1,
                     "name": "indices",
                     "option": 0,
                     "type": "tensor(int64)",
@@ -9280,6 +9691,7 @@
             "outputs": [
                 {
                     "description": "Tensor of rank q + r - indices_shape[-1] - 1.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -9320,6 +9732,7 @@
             "inputs": [
                 {
                     "description": "N-D quantized input tensor to be de-quantized.",
+                    "minArity": 1,
                     "name": "x",
                     "option": 0,
                     "type": "T",
@@ -9331,6 +9744,7 @@
                 },
                 {
                     "description": "Scale for input 'x'. It can be a scalar, which means a per-tensor/layer dequantization, or a 1-D tensor for per-axis dequantization.",
+                    "minArity": 1,
                     "name": "x_scale",
                     "option": 0,
                     "type": "tensor(float)",
@@ -9340,6 +9754,7 @@
                 },
                 {
                     "description": "Zero point for input 'x'. It can be a scalar, which means a per-tensor/layer dequantization, or a 1-D tensor for per-axis dequantization. It's optional. 0 is the default value when it's not specified.",
+                    "minArity": 1,
                     "name": "x_zero_point",
                     "option": 1,
                     "type": "T",
@@ -9354,6 +9769,7 @@
             "outputs": [
                 {
                     "description": "N-D full precision output tensor. It has same shape as input 'x'.",
+                    "minArity": 1,
                     "name": "y",
                     "option": 0,
                     "type": "tensor(float)",
@@ -9386,6 +9802,7 @@
             "inputs": [
                 {
                     "description": "input",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T1",
@@ -9399,6 +9816,7 @@
             "outputs": [
                 {
                     "description": "output",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T2",
@@ -9452,6 +9870,7 @@
             "inputs": [
                 {
                     "description": "Input data tensor from the previous operator; 4-D feature map of shape (N, C, H, W), where N is the batch size, C is the number of channels, and H and W are the height and the width of the data.",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T1",
@@ -9463,6 +9882,7 @@
                 },
                 {
                     "description": "RoIs (Regions of Interest) to pool over; rois is 2-D input of shape (num_rois, 4) given as [[x1, y1, x2, y2], ...]. The RoIs' coordinates are in the coordinate system of the input image. Each coordinate set has a 1:1 correspondence with the 'batch_indices' input.",
+                    "minArity": 1,
                     "name": "rois",
                     "option": 0,
                     "type": "T1",
@@ -9474,6 +9894,7 @@
                 },
                 {
                     "description": "1-D tensor of shape (num_rois,) with each element denoting the index of the corresponding image in the batch.",
+                    "minArity": 1,
                     "name": "batch_indices",
                     "option": 0,
                     "type": "T2",
@@ -9486,6 +9907,7 @@
             "outputs": [
                 {
                     "description": "RoI pooled output, 4-D tensor of shape (num_rois, C, output_height, output_width). The r-th batch element Y[r-1] is a pooled feature map corresponding to the r-th RoI X[r-1].",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T1",
@@ -9505,6 +9927,7 @@
             "inputs": [
                 {
                     "description": "Input sequence.",
+                    "minArity": 1,
                     "name": "input_sequence",
                     "option": 0,
                     "type": "S",
@@ -9531,6 +9954,7 @@
             "outputs": [
                 {
                     "description": "Length of input sequence. It must be a scalar(tensor of empty shape).",
+                    "minArity": 1,
                     "name": "length",
                     "option": 0,
                     "type": "I",
@@ -9555,6 +9979,7 @@
             "inputs": [
                 {
                     "description": "First operand, input to be shifted.",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -9567,6 +9992,7 @@
                 },
                 {
                     "description": "Second operand, amounts of shift.",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -9582,6 +10008,7 @@
             "outputs": [
                 {
                     "description": "Output tensor",
+                    "minArity": 1,
                     "name": "Z",
                     "option": 0,
                     "type": "T",
@@ -9616,6 +10043,7 @@
             "inputs": [
                 {
                     "description": "A N-D input tensor that is to be processed.",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -9642,6 +10070,7 @@
             "outputs": [
                 {
                     "description": "A tensor of the same type as 'X' containing all the unique values or subtensors sliced along a provided 'axis' in 'X', either sorted or maintained in the same order they occur in input 'X'",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -9665,6 +10094,7 @@
                 },
                 {
                     "description": "A 1-D INT64 tensor containing indices of 'Y' elements' first occurance in 'X'. When 'axis' is provided, it contains indices to subtensors in input 'X' on the 'axis'. When 'axis' is not provided, it contains indices to values in the flattened input tensor. ",
+                    "minArity": 1,
                     "name": "indices",
                     "option": 1,
                     "type": "tensor(int64)",
@@ -9674,6 +10104,7 @@
                 },
                 {
                     "description": "A 1-D INT64 tensor containing, for elements of 'X', its corresponding indices in 'Y'. When 'axis' is provided, it contains indices to subtensors in output 'Y' on the 'axis'. When 'axis' is not provided, it contains indices to values in output 'Y'. ",
+                    "minArity": 1,
                     "name": "inverse_indices",
                     "option": 1,
                     "type": "tensor(int64)",
@@ -9683,6 +10114,7 @@
                 },
                 {
                     "description": "A 1-D INT64 tensor containing the count of each element of 'Y' in input 'X'",
+                    "minArity": 1,
                     "name": "counts",
                     "option": 1,
                     "type": "tensor(int64)",
@@ -9715,6 +10147,7 @@
             "inputs": [
                 {
                     "description": "An input tensor that is to be processed.",
+                    "minArity": 1,
                     "name": "x",
                     "option": 0,
                     "type": "T",
@@ -9731,6 +10164,7 @@
                 },
                 {
                     "description": "A 0-D tensor. Must be in the range [-rank(x), rank(x)-1]. Negative value means counting dimensions from the back.",
+                    "minArity": 1,
                     "name": "axis",
                     "option": 0,
                     "type": "T2",
@@ -9744,6 +10178,7 @@
             "outputs": [
                 {
                     "description": "Output tensor of the same type as 'x' with cumulative sums of the x's elements",
+                    "minArity": 1,
                     "name": "y",
                     "option": 0,
                     "type": "T",
@@ -9768,6 +10203,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -9782,6 +10218,7 @@
             "outputs": [
                 {
                     "description": "Output tensor",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -9801,6 +10238,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "x",
                     "option": 0,
                     "type": "T1",
@@ -9813,6 +10251,7 @@
             "outputs": [
                 {
                     "description": "Quantized output tensor",
+                    "minArity": 1,
                     "name": "y",
                     "option": 0,
                     "type": "T2",
@@ -9822,6 +10261,7 @@
                 },
                 {
                     "description": "Output scale. It's a scalar, which means a per-tensor/layer quantization.",
+                    "minArity": 1,
                     "name": "y_scale",
                     "option": 0,
                     "type": "tensor(float)",
@@ -9831,6 +10271,7 @@
                 },
                 {
                     "description": "Output zero point. It's a scalar, which means a per-tensor/layer quantization.",
+                    "minArity": 1,
                     "name": "y_zero_point",
                     "option": 0,
                     "type": "T2",
@@ -9848,6 +10289,7 @@
             "inputs": [
                 {
                     "description": "Scalar. First entry for the range of output values.",
+                    "minArity": 1,
                     "name": "start",
                     "option": 0,
                     "type": "T",
@@ -9861,6 +10303,7 @@
                 },
                 {
                     "description": "Scalar. Exclusive upper limit for the range of output values.",
+                    "minArity": 1,
                     "name": "limit",
                     "option": 0,
                     "type": "T",
@@ -9874,6 +10317,7 @@
                 },
                 {
                     "description": "Scalar. Value to step by.",
+                    "minArity": 1,
                     "name": "delta",
                     "option": 0,
                     "type": "T",
@@ -9890,6 +10334,7 @@
             "outputs": [
                 {
                     "description": "A 1-D tensor with same type as the inputs containing generated range of values.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -9911,6 +10356,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -9925,6 +10371,7 @@
             "outputs": [
                 {
                     "description": "Output tensor",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -9944,6 +10391,7 @@
             "inputs": [
                 {
                     "description": "Tensor of rank r >= 1.",
+                    "minArity": 1,
                     "name": "data",
                     "option": 0,
                     "type": "T",
@@ -9968,6 +10416,7 @@
                 },
                 {
                     "description": "Tensor of rank q >= 1.",
+                    "minArity": 1,
                     "name": "indices",
                     "option": 0,
                     "type": "tensor(int64)",
@@ -9977,6 +10426,7 @@
                 },
                 {
                     "description": "Tensor of rank q + r - indices_shape[-1] - 1.",
+                    "minArity": 1,
                     "name": "updates",
                     "option": 0,
                     "type": "T",
@@ -10004,6 +10454,7 @@
             "outputs": [
                 {
                     "description": "Tensor of rank r >= 1.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -10045,6 +10496,7 @@
             "outputs": [
                 {
                     "description": "Empty sequence.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "S",
@@ -10076,6 +10528,7 @@
             "inputs": [
                 {
                     "description": "Tensors.",
+                    "minArity": 1,
                     "name": "inputs",
                     "option": 2,
                     "type": "T",
@@ -10102,6 +10555,7 @@
             "outputs": [
                 {
                     "description": "Sequence enclosing the input tensors.",
+                    "minArity": 1,
                     "name": "output_sequence",
                     "option": 0,
                     "type": "S",
@@ -10133,6 +10587,7 @@
             "inputs": [
                 {
                     "description": "Input sequence.",
+                    "minArity": 1,
                     "name": "input_sequence",
                     "option": 0,
                     "type": "S",
@@ -10156,6 +10611,7 @@
                 },
                 {
                     "description": "Input tensor to be inserted into the input sequence.",
+                    "minArity": 1,
                     "name": "tensor",
                     "option": 0,
                     "type": "T",
@@ -10179,6 +10635,7 @@
                 },
                 {
                     "description": "Position in the sequence where the new tensor is inserted. It is optional and default is to insert to the back of the sequence. Negative value means counting positions from the back. Accepted range in `[-n, n]`, where `n` is the number of tensors in 'input_sequence'. It is an error if any of the index values are out of bounds. It must be a scalar(tensor of empty shape).",
+                    "minArity": 1,
                     "name": "position",
                     "option": 1,
                     "type": "I",
@@ -10192,6 +10649,7 @@
             "outputs": [
                 {
                     "description": "Output sequence that contains the inserted tensor at given position.",
+                    "minArity": 1,
                     "name": "output_sequence",
                     "option": 0,
                     "type": "S",
@@ -10223,6 +10681,7 @@
             "inputs": [
                 {
                     "description": "Input sequence.",
+                    "minArity": 1,
                     "name": "input_sequence",
                     "option": 0,
                     "type": "S",
@@ -10246,6 +10705,7 @@
                 },
                 {
                     "description": "Position of the tensor in the sequence. Negative value means counting positions from the back. Accepted range in `[-n, n - 1]`, where `n` is the number of tensors in 'input_sequence'. It is an error if any of the index values are out of bounds. It must be a scalar(tensor of empty shape).",
+                    "minArity": 1,
                     "name": "position",
                     "option": 0,
                     "type": "I",
@@ -10259,6 +10719,7 @@
             "outputs": [
                 {
                     "description": "Output tensor at the specified position in the input sequence.",
+                    "minArity": 1,
                     "name": "tensor",
                     "option": 0,
                     "type": "T",
@@ -10290,6 +10751,7 @@
             "inputs": [
                 {
                     "description": "Input sequence.",
+                    "minArity": 1,
                     "name": "input_sequence",
                     "option": 0,
                     "type": "S",
@@ -10313,6 +10775,7 @@
                 },
                 {
                     "description": "Position of the tensor in the sequence. Negative value means counting positions from the back. Accepted range in `[-n, n - 1]`, where `n` is the number of tensors in 'input_sequence'. It is an error if any of the index values are out of bounds. It must be a scalar(tensor of empty shape).",
+                    "minArity": 1,
                     "name": "position",
                     "option": 1,
                     "type": "I",
@@ -10326,6 +10789,7 @@
             "outputs": [
                 {
                     "description": "Output sequence that has the tensor at the specified position removed.",
+                    "minArity": 1,
                     "name": "output_sequence",
                     "option": 0,
                     "type": "S",
@@ -10372,6 +10836,7 @@
             "inputs": [
                 {
                     "description": "The tensor to split",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -10395,6 +10860,7 @@
                 },
                 {
                     "description": "Length of each output. It can be either a scalar(tensor of empty shape), or a 1-D tensor. All values must be >= 0. ",
+                    "minArity": 1,
                     "name": "split",
                     "option": 1,
                     "type": "I",
@@ -10408,6 +10874,7 @@
             "outputs": [
                 {
                     "description": "One or more outputs forming a sequence of tensors after splitting",
+                    "minArity": 1,
                     "name": "output_sequence",
                     "option": 0,
                     "type": "S",
@@ -10446,6 +10913,7 @@
             "inputs": [
                 {
                     "description": "Operands",
+                    "minArity": 1,
                     "name": "Inputs",
                     "option": 2,
                     "type": "T",
@@ -10468,6 +10936,7 @@
             "outputs": [
                 {
                     "description": "Output tensor",
+                    "minArity": 1,
                     "name": "Output",
                     "option": 0,
                     "type": "T",
@@ -10509,6 +10978,7 @@
             "inputs": [
                 {
                     "description": "Input tensor of shape (N, C) or (N, C, d1, d2, ..., dk).",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -10520,6 +10990,7 @@
                 },
                 {
                     "description": "Target tensor of shape (N) or (N, d1, d2, ..., dk). Target element value shall be in range of [0, C). If ignore_index is specified, it may have a value outside [0, C) and the target values should either be in the range [0, C) or have the value ignore_index.",
+                    "minArity": 1,
                     "name": "target",
                     "option": 0,
                     "type": "Tind",
@@ -10530,6 +11001,7 @@
                 },
                 {
                     "description": "Optional rescaling weight tensor. If given, it has to be a tensor of size C. Otherwise, it is treated as if having all ones.",
+                    "minArity": 1,
                     "name": "weight",
                     "option": 1,
                     "type": "T",
@@ -10544,6 +11016,7 @@
             "outputs": [
                 {
                     "description": "The negative log likelihood loss",
+                    "minArity": 1,
                     "name": "loss",
                     "option": 0,
                     "type": "T",
@@ -10571,6 +11044,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -10583,6 +11057,7 @@
             "outputs": [
                 {
                     "description": "Output tensor",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -10600,6 +11075,7 @@
             "inputs": [
                 {
                     "description": "First input operand for the logical operator.",
+                    "minArity": 1,
                     "name": "A",
                     "option": 0,
                     "type": "T",
@@ -10619,6 +11095,7 @@
                 },
                 {
                     "description": "Second input operand for the logical operator.",
+                    "minArity": 1,
                     "name": "B",
                     "option": 0,
                     "type": "T",
@@ -10641,6 +11118,7 @@
             "outputs": [
                 {
                     "description": "Result tensor.",
+                    "minArity": 1,
                     "name": "C",
                     "option": 0,
                     "type": "T1",
@@ -10658,6 +11136,7 @@
             "inputs": [
                 {
                     "description": "First input operand for the logical operator.",
+                    "minArity": 1,
                     "name": "A",
                     "option": 0,
                     "type": "T",
@@ -10677,6 +11156,7 @@
                 },
                 {
                     "description": "Second input operand for the logical operator.",
+                    "minArity": 1,
                     "name": "B",
                     "option": 0,
                     "type": "T",
@@ -10699,6 +11179,7 @@
             "outputs": [
                 {
                     "description": "Result tensor.",
+                    "minArity": 1,
                     "name": "C",
                     "option": 0,
                     "type": "T1",
@@ -10724,6 +11205,7 @@
             "inputs": [
                 {
                     "description": "Input tensor of rank 2 or higher.",
+                    "minArity": 1,
                     "name": "input",
                     "option": 0,
                     "type": "T",
@@ -10748,6 +11230,7 @@
                 },
                 {
                     "description": "A 0-D tensor containing a single value corresponding to the number diagonals above or below the main diagonal to exclude or include. Default value is 0 if it's not specified.",
+                    "minArity": 1,
                     "name": "k",
                     "option": 1,
                     "type": "tensor(int64)",
@@ -10760,6 +11243,7 @@
             "outputs": [
                 {
                     "description": "Output tensor of the same type and shape as the input tensor.",
+                    "minArity": 1,
                     "name": "output",
                     "option": 0,
                     "type": "T",
@@ -10792,6 +11276,7 @@
             "inputs": [
                 {
                     "description": "Input tensor",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -10806,6 +11291,7 @@
             "outputs": [
                 {
                     "description": "Output tensor",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -10825,6 +11311,7 @@
             "inputs": [
                 {
                     "description": "Data to be selected",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -10838,6 +11325,7 @@
                 },
                 {
                     "description": "The indices, based on 0 as the first index of any dimension.",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "tensor(int64)",
@@ -10850,6 +11338,7 @@
             "outputs": [
                 {
                     "description": "Selected output data as an array",
+                    "minArity": 1,
                     "name": "Z",
                     "option": 0,
                     "type": "T",
@@ -10879,6 +11368,7 @@
             "inputs": [
                 {
                     "description": "Data to be binarized",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -10894,6 +11384,7 @@
             "outputs": [
                 {
                     "description": "Binarized output data",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T",
@@ -10941,6 +11432,7 @@
             "inputs": [
                 {
                     "description": "Input data",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T1",
@@ -10954,6 +11446,7 @@
             "outputs": [
                 {
                     "description": "Output data. If strings are input, the output values are integers, and vice versa.",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T2",
@@ -10985,6 +11478,7 @@
             "inputs": [
                 {
                     "description": "A dictionary.",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T1",
@@ -11002,6 +11496,7 @@
             "outputs": [
                 {
                     "description": "A 1-D tensor holding values from the input dictionary.",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T2",
@@ -11029,6 +11524,7 @@
             "inputs": [
                 {
                     "description": "An ordered collection of tensors, all with the same element type.",
+                    "minArity": 1,
                     "name": "X",
                     "option": 2,
                     "type": "T1",
@@ -11044,6 +11540,7 @@
             "outputs": [
                 {
                     "description": "The output array, elements ordered as the inputs.",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "tensor(float)",
@@ -11119,6 +11616,7 @@
             "inputs": [
                 {
                     "description": "Input data. It can be either tensor or scalar.",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T1",
@@ -11133,6 +11631,7 @@
             "outputs": [
                 {
                     "description": "Output data.",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T2",
@@ -11191,6 +11690,7 @@
             "inputs": [
                 {
                     "description": "Data to be classified.",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T1",
@@ -11206,6 +11706,7 @@
             "outputs": [
                 {
                     "description": "Classification outputs (one class per example).",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T2",
@@ -11216,6 +11717,7 @@
                 },
                 {
                     "description": "Classification scores ([N,E] - one score for each class and example",
+                    "minArity": 1,
                     "name": "Z",
                     "option": 0,
                     "type": "tensor(float)",
@@ -11260,6 +11762,7 @@
             "inputs": [
                 {
                     "description": "Data to be regressed.",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -11275,6 +11778,7 @@
             "outputs": [
                 {
                     "description": "Regression outputs (one per target, per example).",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "tensor(float)",
@@ -11300,6 +11804,7 @@
             "inputs": [
                 {
                     "description": "Data to be encoded, a tensor of shape [N,C] or [C]",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -11315,6 +11820,7 @@
             "outputs": [
                 {
                     "description": "Encoded output data",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "tensor(float)",
@@ -11384,6 +11890,7 @@
             "inputs": [
                 {
                     "description": "Data to be regressed.",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -11399,6 +11906,7 @@
             "outputs": [
                 {
                     "description": "Regression outputs (one score per target per example).",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "tensor(float)",
@@ -11429,6 +11937,7 @@
             "inputs": [
                 {
                     "description": "Data to be scaled.",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T",
@@ -11444,6 +11953,7 @@
             "outputs": [
                 {
                     "description": "Scaled output data.",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "tensor(float)",
@@ -11565,6 +12075,7 @@
             "inputs": [
                 {
                     "description": "Input of shape [N,F]",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "T1",
@@ -11580,6 +12091,7 @@
             "outputs": [
                 {
                     "description": "N, Top class for each point",
+                    "minArity": 1,
                     "name": "Y",
                     "option": 0,
                     "type": "T2",
@@ -11590,6 +12102,7 @@
                 },
                 {
                     "description": "The class score for each class, for each point, a tensor of shape [N,E].",
+                    "minArity": 1,
                     "name": "Z",
                     "option": 0,
                     "type": "tensor(float)",
@@ -11620,6 +12133,7 @@
             "inputs": [
                 {
                     "description": "The input values",
+                    "minArity": 1,
                     "name": "X",
                     "option": 0,
                     "type": "tensor(float)",
@@ -11632,6 +12146,7 @@
             "outputs": [
                 {
                     "description": "The output map",
+                    "minArity": 1,
                     "name": "Z",
                     "option": 0,
                     "type": "T",
@@ -11669,6 +12184,7 @@
             "inputs": [
                 {
                     "description": "The values fed into graph identified by the attributes. The i-th input is the value of the i-th tensor specified in the concatenated list of the attribute \"xs\" and the attribute  \"zs\". For example, if xs=[\"A\", \"B\"] and zs=[\"C\"], the first input is used as the value of symbol \"A\" and the 3rd input is substituted for all the occurrences of \"C\".",
+                    "minArity": 1,
                     "name": "Inputs",
                     "option": 2,
                     "type": "T1",
@@ -11695,6 +12211,7 @@
             "outputs": [
                 {
                     "description": "The gradient of the tensor specified by the attribute \"y\" with respect to each of tensors specified in the attribute \"xs\". The i-th output is the gradient of \"y\" with respect to the i-th tensor specified in the attribute \"xs\".",
+                    "minArity": 1,
                     "name": "Outputs",
                     "option": 2,
                     "type": "T2",
@@ -11736,6 +12253,7 @@
             "inputs": [
                 {
                     "description": "The initial learning rate.",
+                    "minArity": 1,
                     "name": "R",
                     "option": 0,
                     "type": "T1",
@@ -11746,6 +12264,7 @@
                 },
                 {
                     "description": "The update count of \"X\". It should be a scalar.",
+                    "minArity": 1,
                     "name": "T",
                     "option": 0,
                     "type": "T2",
@@ -11755,6 +12274,7 @@
                 },
                 {
                     "description": "The current values of optimized tensors, followed by their respective gradients, followed by their respective accumulated squared gradients.For example, if two tensor \"X_1\" and \"X_2\" are optimized, The input list would be [\"X_1\", \"X_2\", gradient of \"X_1\", gradient of \"X_2\", accumulated squared gradient of \"X_1\", accumulated squared gradient of \"X_2\"].",
+                    "minArity": 1,
                     "name": "inputs",
                     "option": 2,
                     "type": "T3",
@@ -11768,6 +12288,7 @@
             "outputs": [
                 {
                     "description": "Updated values of optimized tensors, followed by their updated values of accumulated squared gradients. For example, if two tensor \"X_1\" and \"X_2\" are optimized, the output list would be [new value of \"X_1,\" new value of \"X_2\" new accumulated squared gradient of \"X_1\", new accumulated squared gradient of \"X_2\"].",
+                    "minArity": 1,
                     "name": "outputs",
                     "option": 2,
                     "type": "T3",
@@ -11822,6 +12343,7 @@
             "inputs": [
                 {
                     "description": "The initial learning rate.",
+                    "minArity": 1,
                     "name": "R",
                     "option": 0,
                     "type": "T1",
@@ -11832,6 +12354,7 @@
                 },
                 {
                     "description": "The update count of \"X\". It should be a scalar.",
+                    "minArity": 1,
                     "name": "T",
                     "option": 0,
                     "type": "T2",
@@ -11841,6 +12364,7 @@
                 },
                 {
                     "description": "The tensors to be optimized, followed by their respective gradients, followed by their respective accumulated gradients (aka momentum), followed by their respective accumulated squared gradients. For example, to optimize tensors \"X_1\" and \"X_2,\", the input list would be [\"X_1\", \"X_2\", gradient of \"X_1\", gradient of \"X_2\", accumulated gradient of \"X_1\", accumulated gradient of \"X_2\", accumulated squared gradient of \"X_1\", accumulated squared gradient of \"X_2\"].",
+                    "minArity": 1,
                     "name": "inputs",
                     "option": 2,
                     "type": "T3",
@@ -11854,6 +12378,7 @@
             "outputs": [
                 {
                     "description": "New values of optimized tensors, followed by their respective new accumulated gradients, followed by their respective new accumulated squared gradients. For example, if two tensors \"X_1\" and \"X_2\" are optimized, the outputs list would be [new value of \"X_1\", new value of \"X_2\", new accumulated gradient of \"X_1\", new accumulated gradient of \"X_2\", new accumulated squared gradient of \"X_1\", new accumulated squared gradient of \"X_2\"].",
+                    "minArity": 1,
                     "name": "outputs",
                     "option": 2,
                     "type": "T3",

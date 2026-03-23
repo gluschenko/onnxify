@@ -149,6 +149,68 @@ public sealed class OnnxModelTests
             }
         }
     }
+
+    [Fact]
+    public void Save_AndLoad_RoundTripsVariadicInputsAndOutputs()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            Opset = 13,
+        });
+
+        var left = model.Graph.AddInput("left", OnnxTensorType.Create<float>([1, 2]));
+        var right = model.Graph.AddInput("right", OnnxTensorType.Create<float>([1, 2]));
+        var concatEdge = model.Graph.AddEdge("concat_edge");
+
+        var concat = new Concat("concat", new ConcatInputOutputOptions
+        {
+            In = [left, right],
+            Axis = 0,
+            ConcatResult = concatEdge,
+        });
+
+        model.Graph.AddNode(concat);
+
+        var splitInput = model.Graph.AddInput("split_input", OnnxTensorType.Create<float>([2, 2]));
+        var splitLeft = model.Graph.AddEdge("split_left");
+        var splitRight = model.Graph.AddEdge("split_right");
+
+        var splitOutputs = model.Graph.Split("split", new SplitInputOutputOptions
+        {
+            Input = splitInput,
+            Axis = 0,
+            Out = [splitLeft, splitRight],
+        });
+
+        Assert.Equal(["left", "right"], concat.In.Select(x => x.Name).ToArray());
+        Assert.Equal("concat_edge", concat.ConcatResult.Name);
+        Assert.Equal(["split_left", "split_right"], splitOutputs.Select(x => x.Name).ToArray());
+
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+
+        try
+        {
+            model.Save(path);
+            var loaded = OnnxModel.FromFile(path);
+
+            Assert.Equal(2, loaded.Graph.Nodes.Count);
+
+            var loadedConcat = Assert.IsType<Concat>(loaded.Graph.Nodes[0]);
+            Assert.Equal(["left", "right"], loadedConcat.In.Select(x => x.Name).ToArray());
+            Assert.Equal("concat_edge", loadedConcat.ConcatResult.Name);
+
+            var loadedSplit = Assert.IsType<Split>(loaded.Graph.Nodes[1]);
+            Assert.Equal("split_input", loadedSplit.Input.Name);
+            Assert.Equal(["split_left", "split_right"], loadedSplit.Out.Select(x => x.Name).ToArray());
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
 }
 
 public sealed class OnnxGraphTests
