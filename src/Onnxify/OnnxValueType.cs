@@ -69,11 +69,11 @@ public abstract class OnnxValueType
 public sealed class OnnxTensorType : OnnxValueType
 {
     public Type Type { get; }
-    public OnnxTensorShape Shape { get; }
+    public OnnxTensorShape? Shape { get; }
 
     public OnnxTensorType(
         Type type,
-        OnnxTensorShape shape,
+        OnnxTensorShape? shape,
         string denotation
     ) : base(denotation)
     {
@@ -101,7 +101,7 @@ public sealed class OnnxTensorType : OnnxValueType
         proto.TensorType = new TypeProto.Types.Tensor
         {
             ElemType = (int)OnnxHelper.GetDataType(Type),
-            Shape = Shape.ToProto(),
+            Shape = Shape?.ToProto(),
         };
 
         return proto;
@@ -127,8 +127,13 @@ public class OnnxTensorShape
         return new OnnxTensorShape(shape.Select(x => new OnnxDimension<string>(x)).ToArray());
     }
 
-    internal static OnnxTensorShape FromProto(TensorShapeProto proto)
+    internal static OnnxTensorShape? FromProto(TensorShapeProto? proto)
     {
+        if (proto is null)
+        {
+            return null;
+        }
+
         var dimentions = proto.Dim.Select(x => OnnxDimension.FromProto(x)).ToArray();
         return new OnnxTensorShape(dimentions);
     }

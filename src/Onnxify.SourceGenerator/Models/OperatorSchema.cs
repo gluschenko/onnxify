@@ -62,7 +62,7 @@ namespace Onnxify.SourceGenerator.Models
         public required FormalParameterOption Option { get; set; }
 
         [JsonPropertyName("minArity")]
-        public int MinArity { get; set; } = 1;
+        public required int MinArity { get; set; }
 
         [JsonPropertyName("type")]
         public required string Type { get; set; }

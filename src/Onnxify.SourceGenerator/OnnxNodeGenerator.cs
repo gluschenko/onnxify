@@ -835,9 +835,12 @@ public static class MarkdownHelper
     public static string ToXmlDoc(this string text)
     {
         if (string.IsNullOrWhiteSpace(text))
+        {
             return string.Empty;
+        }
 
         var blocks = new List<string>();
+
         text = _codeBlockRegex.Replace(text, m =>
         {
             var content = Escape(m.Groups[1].Value.Trim());
@@ -858,6 +861,7 @@ public static class MarkdownHelper
             text = text.Replace($"@@CODEBLOCK_{i}@@", blocks[i]);
         }
 
+        // 5. Параграфы
         var paragraphs = text
             .Split(new[] { "\r\n\r\n", "\n\n" }, StringSplitOptions.RemoveEmptyEntries)
             .Select(p => $"<para>{p.Trim()}</para>");
