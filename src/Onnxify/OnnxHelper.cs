@@ -581,7 +581,7 @@ public static class OnnxHelper
 
     private static ByteString Pack<T>(T[] data) where T : struct
     {
-        var span = System.Runtime.InteropServices.MemoryMarshal.AsBytes(data.AsSpan());
+        var span = MemoryMarshal.AsBytes(data.AsSpan());
         return ByteString.CopyFrom(span.ToArray());
     }
 
@@ -589,7 +589,7 @@ public static class OnnxHelper
     {
         var buffer = new byte[data.Length * 2];
 
-        for (int i = 0; i < data.Length; i++)
+        for (var i = 0; i < data.Length; i++)
         {
             ushort bits = BitConverter.HalfToUInt16Bits(data[i]);
             buffer[i * 2] = (byte)(bits & 0xFF);
@@ -603,7 +603,7 @@ public static class OnnxHelper
     {
         var buffer = new byte[data.Length * 2];
 
-        for (int i = 0; i < data.Length; i++)
+        for (var i = 0; i < data.Length; i++)
         {
             uint bits = (uint)BitConverter.SingleToInt32Bits(data[i].ToSingle());
             ushort bf = (ushort)(bits >> 16);
@@ -619,10 +619,10 @@ public static class OnnxHelper
     {
         var buffer = new float[data.Length * 2];
 
-        for (int i = 0; i < data.Length; i++)
+        for (var i = 0; i < data.Length; i++)
         {
-            buffer[i * 2] = (float)data[i].Real;
-            buffer[i * 2 + 1] = (float)data[i].Imaginary;
+            buffer[i * 2] = data[i].Real;
+            buffer[i * 2 + 1] = data[i].Imaginary;
         }
 
         return Pack(buffer);
@@ -632,7 +632,7 @@ public static class OnnxHelper
     {
         var buffer = new double[data.Length * 2];
 
-        for (int i = 0; i < data.Length; i++)
+        for (var i = 0; i < data.Length; i++)
         {
             buffer[i * 2] = data[i].Real;
             buffer[i * 2 + 1] = data[i].Imaginary;

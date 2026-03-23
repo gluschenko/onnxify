@@ -593,25 +593,38 @@ namespace Onnxify.SourceGenerator
         {
             return $$"""
             /// <summary>
-            /// {{op.Name}} operator:
-            /// <para>
+            /// <b>{{op.Name}} (operator):</b>
+            /// 
+            /// <para>Domain: {{op.Domain ?? "ai.onnx"}}</para>
+            /// <para>Since version: {{op.SinceVersion}}</para>
+            /// 
             /// {{(op.Doc ?? "").Comment()}}
-            /// </para>
             /// </summary>
             """;
         }
 
         public static string GetParameterComment(OperatorParameter x)
         {
+            var allowedTypes = x.Types
+                .Select(x =>
+                {
+                    var type = MapType(x).Replace("<", "{").Replace(">", "}");
+                    var name = MapType(x).Replace("<", "&lt;").Replace(">", "&gt;");
+
+                    return $"<see cref=\"{type}\">{name}</see>";
+                })
+                .ToArray();
+
+            var allowedTypeString = string.Join(", ", allowedTypes);
+
             return $$"""
             /// <summary>
-            /// <para>
-            /// {{x.Name}}: {{(x.Description ?? "").Comment()}}
-            /// </para>
-            /// <para>
-            /// Allowed types: {{string.Join(", ", x.Types.Select(x => MapType(x))).Comment()}}
-            /// Type: {{x.Option}}
-            /// </para>
+            /// <b>{{x.Name}} (parameter):</b>
+            /// 
+            /// {{(x.Description ?? "").Comment()}}
+            /// 
+            /// <para>Allowed types: {{allowedTypeString}}</para>
+            /// <para>Type: {{x.Option}}</para>
             /// </summary>
             """;
         }
@@ -619,17 +632,28 @@ namespace Onnxify.SourceGenerator
         public static string GetAttributeComment(OperatorAttribute x)
         {
             var typeEnum = (AttributeType)x.Type;
-            var type = FromProto(typeEnum);
+            string[] types = [FromProto(typeEnum)];
+
+            var allowedTypes = types
+                .Select(x =>
+                {
+                    var type = MapType(x).Replace("<", "{").Replace(">", "}");
+                    var name = MapType(x).Replace("<", "&lt;").Replace(">", "&gt;");
+
+                    return $"<see cref=\"{type}\">{name}</see>";
+                })
+                .ToArray();
+
+            var allowedTypeString = string.Join(", ", allowedTypes);
 
             return $$"""
             /// <summary>
-            /// <para>
-            /// {{x.Name}}: {{(x.Description ?? "").Comment()}}
-            /// </para>
-            /// <para>
-            /// Allowed types: {{string.Join(", ", [type]).Comment()}}
-            /// Default: {{(x.Default is not null ? JsonSerializer.Serialize(x.Default) : "<null>")}}
-            /// </para>
+            /// <b>{{x.Name}} (attribute):</b>
+            /// 
+            /// {{(x.Description ?? "").Comment()}}
+            /// 
+            /// <para>Allowed types: {{allowedTypeString}}</para>
+            /// <para>Default: {{(x.Default is not null ? JsonSerializer.Serialize(x.Default) : "[null]")}}</para>
             /// </summary>
             """;
         }
@@ -851,22 +875,23 @@ public static class MarkdownHelper
         text = _inlineCodeRegex.Replace(text, m =>
         {
             var content = Escape(m.Groups[1].Value);
-            return $"<c>{content}</c>";
+            blocks.Add($"<c>{content}</c>");
+            return $"@@CODEBLOCK_{blocks.Count - 1}@@";
         });
 
         text = Escape(text);
 
-        for (int i = 0; i < blocks.Count; i++)
+        for (var i = 0; i < blocks.Count; i++)
         {
             text = text.Replace($"@@CODEBLOCK_{i}@@", blocks[i]);
         }
 
         // 5. Параграфы
         var paragraphs = text
-            .Split(new[] { "\r\n\r\n", "\n\n" }, StringSplitOptions.RemoveEmptyEntries)
-            .Select(p => $"<para>{p.Trim()}</para>");
+            .Split(["\r\n\r\n", "\n\n"], StringSplitOptions.RemoveEmptyEntries)
+            .ToArray();
 
-        return string.Join("\n", paragraphs);
+        return string.Join("\n", paragraphs.Length > 1 ? paragraphs.Select(x => $"<para>\n{x.Trim()}\n</para>") : paragraphs);
     }
 
     private static string Escape(string text)
