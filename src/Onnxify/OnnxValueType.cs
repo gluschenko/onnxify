@@ -81,13 +81,25 @@ public sealed class OnnxTensorType : OnnxValueType
         Shape = shape;
     }
 
-    public static OnnxTensorType Create<T>(long[] shape, string denotation = "")
+    public static OnnxTensorType Create<T>(IEnumerable<OnnxDimension> shape, string denotation = "")
     {
         var tensorShape = OnnxTensorShape.Create(shape);
         var type = typeof(T);
         var result = new OnnxTensorType(
             type: type,
             shape: tensorShape,
+            denotation: denotation
+        );
+
+        return result;
+    }
+    
+    public static OnnxTensorType Create<T>(string denotation = "")
+    {
+        var type = typeof(T);
+        var result = new OnnxTensorType(
+            type: type,
+            shape: null,
             denotation: denotation
         );
 
@@ -115,6 +127,11 @@ public class OnnxTensorShape
     public OnnxTensorShape(IEnumerable<OnnxDimension> dimentions)
     {
         Dimensions = dimentions.ToImmutableArray();
+    }
+
+    public static OnnxTensorShape Create(IEnumerable<OnnxDimension> dimensions)
+    {
+        return new OnnxTensorShape(dimensions);
     }
 
     public static OnnxTensorShape Create(IEnumerable<long> shape)
@@ -148,6 +165,8 @@ public class OnnxTensorShape
 
 public abstract class OnnxDimension
 {
+    public abstract object GetValue();
+
     internal abstract TensorShapeProto.Types.Dimension ToProto();
     internal static OnnxDimension FromProto(TensorShapeProto.Types.Dimension x)
     {
@@ -158,11 +177,19 @@ public abstract class OnnxDimension
             _ => throw new NotImplementedException($"Not implemented for '{x.ValueCase}'"),
         };
     }
+
+    public static implicit operator OnnxDimension(long value) => new OnnxDimension<long>(value);
+    public static implicit operator OnnxDimension(string value) => new OnnxDimension<string>(value);
 }
 
 public class OnnxDimension<T> : OnnxDimension where T : notnull
 {
     public T Value { get; }
+
+    public override object GetValue()
+    {
+        return Value;
+    }
 
     public OnnxDimension(T value)
     {

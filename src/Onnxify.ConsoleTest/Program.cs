@@ -2,6 +2,7 @@
 using System.Text;
 using Google.Protobuf;
 using Onnx;
+using static TorchSharp.torch.nn;
 
 namespace Onnxify.ConsoleTest
 {
@@ -193,15 +194,151 @@ namespace Onnxify.ConsoleTest
 
         static void Test5()
         {
-            var inputModelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "real_esrgan_x4plus-onnx-float", "real_esrgan_x4plus.onnx");
-            var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "real_esrgan_x4plus-onnx-float", "real_esrgan_x4plus___.onnx");
+            var inputModelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "gemma-3-270m", "model_q4f16.onnx");
+            // var inputModelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "bvlcalexnet-12-qdq.onnx");
             var model = OnnxModel.FromFile(inputModelPath);
 
-            var text = model.ToString();
+            /*
+            var node = model.Graph.Nodes.First();
+            model.Graph.AddNode(
+                name: node.Name,
+                opType: node.OpType,
+                domain: node.Domain,
+                docString: node.DocString,
+                inputs: [],
+                outputs: [],
+                attributes: []
+            );
+            */
+
+            string GetOnnxTensorType(OnnxTensorType t)
+            {
+                if (t.Shape is null)
+                {
+                    return $"OnnxTensorType.Create<{t.Type.Name}>(\"{t.Denotation}\")";
+                }
+
+                var values = t.Shape.Dimensions
+                    .Select(x =>
+                    {
+                        return x.GetValue() switch
+                        {
+                            long n => n.ToString(),
+                            string s => $"\"{s}\"",
+                            _ => throw new NotImplementedException($"Not implemented for '${x.GetValue()}'"),
+                        };
+                    })
+                    .ToArray();
+
+                return $"OnnxTensorType.Create<{t.Type.Name}>([{string.Join(", ", values)}], \"{t.Denotation}\")";
+            }
+
+            var flow = new StringBuilder();
+
+            var edges = new Dictionary<IOnnxGraphEdge, string>();
+
+            string GetEdgeName(IOnnxGraphEdge edge)
+            {
+                if (edges.TryGetValue(edge, out var name))
+                {
+                    return name;
+                }
+                else
+                {
+                    name = edge.Name.Replace(".", "_").Replace("/", "_");
+
+                    while (true)
+                    {
+                        if (!edges.Values.Contains(name))
+                        {
+                            edges.Add(edge, name);
+                            break;
+                        }
+
+                        name += "_";
+                    }
+
+                    return name;
+                }
+            }
+
+            foreach (var input in model.Graph.Inputs)
+            {
+                var type = input.Type switch
+                {
+                    OnnxTensorType t => GetOnnxTensorType(t),
+                    _ => throw new NotImplementedException($"Not implemented for '${input.Type}'"),
+                };
+
+                flow.AppendLine($$"""
+                var {{GetEdgeName(input)}} = model.Graph.AddInput(
+                    name: "{{input.Name}}",
+                    type: {{type}}
+                );
+
+                """);
+            }
+
+            foreach (var output in model.Graph.Outputs)
+            {
+                var type = output.Type switch
+                {
+                    OnnxTensorType t => GetOnnxTensorType(t),
+                    _ => throw new NotImplementedException($"Not implemented for '${output.Type}'"),
+                };
+
+                flow.AppendLine($$"""
+                var {{GetEdgeName(output)}} = model.Graph.AddOutput(
+                    name: "{{output.Name}}",
+                    type: {{type}}
+                );
+
+                """);
+            }
+
+            foreach (var node in model.Graph.Nodes)
+            {
+                flow.AppendLine($$"""
+                model.Graph.AddNode(
+                    name: "{{node.Name}}",
+                    opType: "{{node.OpType}}",
+                    domain: "{{node.Domain}}",
+                    docString: "{{node.DocString}}",
+                    inputs: [{{string.Join(", ", node.Inputs.Select(GetEdgeName))}}],
+                    outputs: [{{string.Join(", ", node.Outputs.Select(GetEdgeName))}}],
+                    attributes: []
+                );
+
+                """);
+            }
+
+            var text = $$"""
+            using System;
+
+            public class Program
+            {
+                public static void Main()
+                {
+                    var model = OnnxModel.Create(new OnnxModelCreationOptions());
+                    
+                    {{flow.ToString().Indent(2)}}
+                }
+            }
+            """;
             Console.WriteLine(text);
 
-            model.Save(outputPath, true);
             return;
         }
     }
+
+    public static class TextHelper
+    {
+        public static string Indent(this string text, int tabs)
+        {
+            var indent = new string(' ', tabs * 4);
+            return text.Trim().Replace("\n", $"\n{indent}").Trim();
+        }
+    }
+
 }
+
