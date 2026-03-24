@@ -347,7 +347,7 @@ namespace Onnxify.SourceGenerator
                     ) : base(
                         name: name,
                         opType: "{{op.Name}}",
-                        domain: "",
+                        domain: "{{op.Domain}}",
                         docString: "",
                         inputs: CreateInputs(options),
                         outputs: CreateOutputs(options),

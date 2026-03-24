@@ -10,6 +10,16 @@ The repository currently contains:
 - `Onnxify.TorchSharp`: a placeholder project for future TorchSharp integration
 - `third_party/onnx`: ONNX protocol definitions used to generate protobuf C# classes
 
+## Master plan
+
+- `Onnxify`
+- `Onnxify.TorchSharp`
+- `Onnxify.CodeGen`
+- `Onnxify.Safetensors`
+- `Onnxify.GGUF`
+- `Onnxify.TFLite`
+- `Onnxify.Runtime.LiteRT`
+
 ## Status
 
 This project is in an early stage.
