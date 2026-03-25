@@ -777,7 +777,7 @@ namespace Onnxify.SourceGenerator
 
                 AttributeType.Tensor => "OnnxTensor",
                 AttributeType.Graph => "OnnxGraph",
-                AttributeType.SparseTensor => "OnnxSparseTensorBase",
+                AttributeType.SparseTensor => "OnnxSparseTensor",
 
                 AttributeType.Floats => "float[]",
                 AttributeType.Ints => "long[]",
@@ -785,7 +785,10 @@ namespace Onnxify.SourceGenerator
 
                 AttributeType.Tensors => "OnnxTensor[]",
                 AttributeType.Graphs => "OnnxGraph[]",
-                AttributeType.SparseTensors => "OnnxSparseTensorBase[]",
+                AttributeType.SparseTensors => "OnnxSparseTensor[]",
+
+                AttributeType.TypeProto => "OnnxValueType",
+                AttributeType.TypeProtos => "OnnxValueType[]",
 
                 _ => throw new NotImplementedException($"Not implemented for '{attributeType}'"),
             };
@@ -842,6 +845,8 @@ public enum AttributeType
     Tensors = 9,
     Graphs = 10,
     SparseTensors = 12,
+    TypeProto = 13,
+    TypeProtos = 14,
 }
 
 public static class MarkdownHelper

@@ -9,6 +9,23 @@ public abstract class OnnxValue : IOnnxGraphEdge
 
     internal abstract ValueInfoProto ToProto();
 
+    internal static OnnxValue FromProto(ValueInfoProto proto)
+    {
+        var type = proto.Type.ValueCase;
+
+        return type switch
+        {
+            TypeProto.ValueOneofCase.TensorType => FromProto<OnnxTensorType>(proto),
+            TypeProto.ValueOneofCase.SequenceType => throw new NotImplementedException("TODO"),
+            TypeProto.ValueOneofCase.MapType => throw new NotImplementedException("TODO"),
+            TypeProto.ValueOneofCase.SparseTensorType => throw new NotImplementedException("TODO"),
+            TypeProto.ValueOneofCase.OpaqueType => throw new NotImplementedException("TODO"),
+            TypeProto.ValueOneofCase.OptionalType => throw new NotImplementedException("TODO"),
+            TypeProto.ValueOneofCase.None => throw new NotImplementedException($"Not implemented for '{type}'"),
+            _ => throw new NotImplementedException($"Not implemented for '{type}'"),
+        };
+    }
+
     internal static OnnxValue<T> FromProto<T>(ValueInfoProto valueInfo) where T : OnnxValueType
     {
         var name = valueInfo.Name;
