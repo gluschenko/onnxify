@@ -1,45 +1,56 @@
-﻿# CMakeList.txt : CMake project for Onnxify.OperatorSchemaGenerator, include source and define
-# project specific logic here.
-#
+﻿cmake_minimum_required(VERSION 3.18)
 
-set(CMAKE_POLICY_VERSION_MINIMUM 3.10)
+project(Onnxify.OperatorSchemaGenerator LANGUAGES CXX)
 
-set(PROTOBUF_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/protobuf)
-set(ONNX_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/onnx)
-set(JSON_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/json)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
-# protobuf
-set(protobuf_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(protobuf_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(ONNXRUNTIME_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/onnxruntime")
 
-add_subdirectory(${PROTOBUF_ROOT} ${CMAKE_BINARY_DIR}/protobuf-build)
+set(onnxruntime_MINIMAL_BUILD OFF CACHE BOOL "" FORCE)
+set(onnxruntime_DISABLE_CONTRIB_OPS ON CACHE BOOL "" FORCE)
+set(onnxruntime_DISABLE_ML_OPS ON CACHE BOOL "" FORCE)
 
-set(Protobuf_DIR ${CMAKE_BINARY_DIR}/protobuf-build)
+set(onnxruntime_ENABLE_TRAINING_OPS OFF CACHE BOOL "" FORCE)
+set(onnxruntime_ENABLE_TRAINING OFF CACHE BOOL "" FORCE)
 
-# onnx
-set(ONNX_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(ONNX_USE_PROTOBUF_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(onnxruntime_USE_FULL_PROTOBUF ON CACHE BOOL "" FORCE)
+set(ONNX_DISABLE_DOC_STRINGS OFF CACHE BOOL "" FORCE)
+set(__ONNX_NO_DOC_STRINGS OFF CACHE BOOL "" FORCE)
 
-add_compile_options(/wd4018 /wd4834)
+set(onnxruntime_BUILD_UNIT_TESTS OFF CACHE BOOL "" FORCE)
+set(onnxruntime_BUILD_SHARED_LIB OFF CACHE BOOL "" FORCE)
+set(onnxruntime_ENABLE_PYTHON OFF CACHE BOOL "" FORCE)
+set(onnxruntime_BUILD_CSHARP OFF CACHE BOOL "" FORCE)
+set(onnxruntime_BUILD_JAVA OFF CACHE BOOL "" FORCE)
+set(onnxruntime_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
+set(onnxruntime_RUN_ONNX_TESTS OFF CACHE BOOL "" FORCE)
+set(onnxruntime_DEV_MODE OFF CACHE BOOL "" FORCE)
+set(onnxruntime_ENABLE_LAZY_TENSOR OFF CACHE BOOL "" FORCE)
 
-add_subdirectory(${ONNX_ROOT} ${CMAKE_BINARY_DIR}/onnx-build)
+add_subdirectory(${ONNXRUNTIME_ROOT}/cmake 
+                 ${CMAKE_BINARY_DIR}/onnxruntime-build 
+                 EXCLUDE_FROM_ALL)
 
-#json
-add_subdirectory(${JSON_ROOT} ${CMAKE_BINARY_DIR}/json-build)
+add_executable(Onnxify.OperatorSchemaGenerator main.cpp)
 
-# Add source to this project's executable.
-add_executable (Onnxify.OperatorSchemaGenerator "main.cpp"   )
-
-if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET Onnxify.OperatorSchemaGenerator PROPERTY CXX_STANDARD 20)
-endif()
-
-target_link_libraries(Onnxify.OperatorSchemaGenerator PRIVATE onnx nlohmann_json::nlohmann_json)
+target_link_libraries(Onnxify.OperatorSchemaGenerator PRIVATE onnxruntime nlohmann_json::nlohmann_json)
 
 target_include_directories(Onnxify.OperatorSchemaGenerator PRIVATE
-    ${ONNX_ROOT}
-    ${CMAKE_BINARY_DIR}/onnx-build
-    ${CMAKE_BINARY_DIR}/onnx-build/onnx
+    ${ONNXRUNTIME_ROOT}/include/onnxruntime
+    ${CMAKE_BINARY_DIR}/onnxruntime-build/external/onnx
+    ${CMAKE_BINARY_DIR}/_deps/nlohmann_json-src/include
 )
 
-# TODO: Add tests and install targets if needed.
+target_link_libraries(Onnxify.OperatorSchemaGenerator PRIVATE 
+    onnx
+    onnx_proto
+    protobuf::libprotobuf
+)
+
+if(MSVC)
+    target_link_libraries(Onnxify.OperatorSchemaGenerator PRIVATE protobuf::libprotobuf)
+    target_link_options(Onnxify.OperatorSchemaGenerator PRIVATE /WHOLEARCHIVE:onnx)
+endif()

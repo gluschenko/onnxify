@@ -94,13 +94,14 @@ public class OnnxNode : IOnnxGraphNode
 
     internal static OnnxNode FromProto(NodeProto node, OnnxGraph graph)
     {
-        var options = graph.GetOptions();
         var typedNode = OnnxNodeHelper.TryFromProto(node, graph);
 
         if (typedNode is not null)
         {
             return typedNode;
         }
+
+        var options = graph.GetOptions();
 
         var name = node.Name;
         var opType = node.OpType;

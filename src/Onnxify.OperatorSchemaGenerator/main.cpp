@@ -1,5 +1,4 @@
-﻿#include <onnx/defs/schema.h>
-#include <string>
+﻿#include <string>
 #include <vector>
 #include <iostream>
 #include <fstream>
@@ -7,13 +6,26 @@
 #include <nlohmann/json_fwd.hpp>
 #include <filesystem>
 #include <algorithm>
-#include <onnx-ml.pb.h>
+#include <onnx/defs/schema.h>
+#include <core/session/onnxruntime_c_api.h>
 
 using namespace std;
 using json = nlohmann::json;
+using namespace onnx;
 
 int main()
 {
+    const OrtApi* ort = OrtGetApiBase()->GetApi(ORT_API_VERSION);
+
+    OrtEnv* env = nullptr;
+    OrtStatus* st = ort->CreateEnv(ORT_LOGGING_LEVEL_WARNING, "schema_dump", &env);
+    if (st != nullptr) {
+        const char* msg = ort->GetErrorMessage(st);
+        std::cerr << "CreateEnv failed: " << (msg ? msg : "") << "\n";
+        ort->ReleaseStatus(st);
+        return 1;
+    }
+
     json root;
     root["operators"] = json::array();
 
@@ -23,10 +35,12 @@ int main()
     {
         json op;
 
+        const char* doc = schema.doc();
+
         op["name"] = schema.Name();
         op["sinceVersion"] = schema.SinceVersion();
         op["domain"] = schema.domain();
-        op["doc"] = schema.doc();
+        op["doc"] = doc != nullptr ? schema.doc() : "";
 
         // inputs
         op["inputs"] = json::array();
@@ -202,4 +216,3 @@ int main()
     
     return 0;
 }
-
