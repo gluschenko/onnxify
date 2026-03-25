@@ -229,19 +229,158 @@ public static class OnnxHelper
             TensorProto.Types.DataType.Complex64 => ConvertComplex64(span),
             TensorProto.Types.DataType.Complex128 => ConvertComplex128(span),
 
-            TensorProto.Types.DataType.Float8E4M3Fn => throw new Exception("TODO"),
-            TensorProto.Types.DataType.Float8E4M3Fnuz => throw new Exception("TODO"),
-            TensorProto.Types.DataType.Float8E5M2 => throw new Exception("TODO"),
-            TensorProto.Types.DataType.Float8E5M2Fnuz => throw new Exception("TODO"),
-            TensorProto.Types.DataType.Float4E2M1 => throw new Exception("TODO"),
-            TensorProto.Types.DataType.Float8E8M0 => throw new Exception("TODO"),
-            TensorProto.Types.DataType.Uint4 => throw new Exception("TODO"),
-            TensorProto.Types.DataType.Int4 => throw new Exception("TODO"),
-            TensorProto.Types.DataType.Uint2 => throw new Exception("TODO"),
-            TensorProto.Types.DataType.Int2 => throw new Exception("TODO"),
+            TensorProto.Types.DataType.Float8E4M3Fn => ConvertFloat8E4M3FN(span),
+            TensorProto.Types.DataType.Float8E4M3Fnuz => ConvertFloat8E4M3FNUZ(span),
+            TensorProto.Types.DataType.Float8E5M2 => ConvertFloat8E5M2(span),
+            TensorProto.Types.DataType.Float8E5M2Fnuz => ConvertFloat8E5M2FNUZ(span),
+            TensorProto.Types.DataType.Float4E2M1 => ConvertFloat4(span),
+            TensorProto.Types.DataType.Float8E8M0 => ConvertFloat8E8M0(span),
+            TensorProto.Types.DataType.Uint4 => ConvertUInt4(span),
+            TensorProto.Types.DataType.Int4 => ConvertInt4(span),
+            TensorProto.Types.DataType.Uint2 => ConvertUInt2(span),
+            TensorProto.Types.DataType.Int2 => ConvertInt2(span),
 
             _ => throw new NotImplementedException($"Unsupported raw tensor type {type}")
         };
+    }
+
+    internal static Float8E4M3FN[] ConvertFloat8E4M3FN(ReadOnlySpan<byte> span)
+    {
+        var result = new Float8E4M3FN[span.Length];
+        for (int i = 0; i < span.Length; i++)
+        {
+            result[i] = new Float8E4M3FN(span[i]);
+        }
+
+        return result;
+    }
+
+    internal static Float8E4M3FNUZ[] ConvertFloat8E4M3FNUZ(ReadOnlySpan<byte> span)
+    {
+        var result = new Float8E4M3FNUZ[span.Length];
+        for (int i = 0; i < span.Length; i++)
+        {
+            result[i] = new Float8E4M3FNUZ(span[i]);
+        }
+
+        return result;
+    }
+
+    internal static Float8E5M2[] ConvertFloat8E5M2(ReadOnlySpan<byte> span)
+    {
+        var result = new Float8E5M2[span.Length];
+        for (int i = 0; i < span.Length; i++)
+        {
+            result[i] = new Float8E5M2(span[i]);
+        }
+
+        return result;
+    }
+
+    internal static Float8E5M2FNUZ[] ConvertFloat8E5M2FNUZ(ReadOnlySpan<byte> span)
+    {
+        var result = new Float8E5M2FNUZ[span.Length];
+        for (int i = 0; i < span.Length; i++)
+        {
+            result[i] = new Float8E5M2FNUZ(span[i]);
+        }
+
+        return result;
+    }
+
+    internal static Float8E8M0[] ConvertFloat8E8M0(ReadOnlySpan<byte> span)
+    {
+        var result = new Float8E8M0[span.Length];
+        for (int i = 0; i < span.Length; i++)
+        {
+            result[i] = new Float8E8M0(span[i]);
+        }
+
+        return result;
+    }
+
+    internal static Float4E2M1[] ConvertFloat4(ReadOnlySpan<byte> span)
+    {
+        var result = new Float4E2M1[span.Length * 2];
+
+        int j = 0;
+        for (int i = 0; i < span.Length; i++)
+        {
+            byte b = span[i];
+
+            result[j++] = new Float4E2M1((byte)(b & 0x0F));       // low nibble
+            result[j++] = new Float4E2M1((byte)(b >> 4));         // high nibble
+        }
+
+        return result;
+    }
+
+    internal static UInt4[] ConvertUInt4(ReadOnlySpan<byte> span)
+    {
+        var result = new UInt4[span.Length * 2];
+
+        int j = 0;
+        for (int i = 0; i < span.Length; i++)
+        {
+            byte b = span[i];
+
+            result[j++] = new UInt4((byte)(b & 0x0F));
+            result[j++] = new UInt4((byte)(b >> 4));
+        }
+
+        return result;
+    }
+
+    internal static Int4[] ConvertInt4(ReadOnlySpan<byte> span)
+    {
+        var result = new Int4[span.Length * 2];
+
+        int j = 0;
+        for (int i = 0; i < span.Length; i++)
+        {
+            byte b = span[i];
+
+            result[j++] = new Int4((sbyte)(b & 0x0F));
+            result[j++] = new Int4((sbyte)(b >> 4));
+        }
+
+        return result;
+    }
+
+    internal static UInt2[] ConvertUInt2(ReadOnlySpan<byte> span)
+    {
+        var result = new UInt2[span.Length * 4];
+
+        int j = 0;
+        for (int i = 0; i < span.Length; i++)
+        {
+            byte b = span[i];
+
+            result[j++] = new UInt2((byte)(b & 0x03));
+            result[j++] = new UInt2((byte)((b >> 2) & 0x03));
+            result[j++] = new UInt2((byte)((b >> 4) & 0x03));
+            result[j++] = new UInt2((byte)((b >> 6) & 0x03));
+        }
+
+        return result;
+    }
+
+    internal static Int2[] ConvertInt2(ReadOnlySpan<byte> span)
+    {
+        var result = new Int2[span.Length * 4];
+
+        int j = 0;
+        for (int i = 0; i < span.Length; i++)
+        {
+            byte b = span[i];
+
+            result[j++] = new Int2((sbyte)(b & 0x03));
+            result[j++] = new Int2((sbyte)((b >> 2) & 0x03));
+            result[j++] = new Int2((sbyte)((b >> 4) & 0x03));
+            result[j++] = new Int2((sbyte)((b >> 6) & 0x03));
+        }
+
+        return result;
     }
 
     internal static IEnumerable<T> GetValue<T>(this TensorProto tensor, OnnxModelBaseOptions options)

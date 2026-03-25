@@ -746,20 +746,36 @@ namespace Onnxify.SourceGenerator
         {
             return type switch
             {
-                "tensor(uint32)" => "OnnxTensor<bool>",
-                "tensor(float)" => "OnnxTensor<float>",
+                "tensor(int8)" => "OnnxTensor<sbyte>",
                 "tensor(uint8)" => "OnnxTensor<byte>",
+                "tensor(int16)" => "OnnxTensor<short>",
                 "tensor(uint16)" => "OnnxTensor<ushort>",
+                "tensor(int32)" => "OnnxTensor<int>",
+                "tensor(uint32)" => "OnnxTensor<uint>",
                 "tensor(int64)" => "OnnxTensor<long>",
                 "tensor(uint64)" => "OnnxTensor<ulong>",
-                "tensor(int16)" => "OnnxTensor<short>",
-                "tensor(int8)" => "OnnxTensor<sbyte>",
-                "tensor(int32)" => "OnnxTensor<int>",
-                "tensor(bfloat16)" => "OnnxTensor<BFloat16>",
-                "tensor(float16)" => "OnnxTensor<Half>",
+
+                "tensor(float)" => "OnnxTensor<float>",
                 "tensor(double)" => "OnnxTensor<double>",
-                "tensor(string)" => "OnnxTensor<string>",
+                "tensor(float16)" => "OnnxTensor<Half>",
+                "tensor(bfloat16)" => "OnnxTensor<BFloat16>",
+
+                "tensor(float8e4m3fn)" => "OnnxTensor<Float8E4M3FN>",
+                "tensor(float8e4m3fnuz)" => "OnnxTensor<Float8E4M3FNUZ>",
+                "tensor(float8e5m2)" => "OnnxTensor<Float8E5M2>",
+                "tensor(float8e5m2fnuz)" => "OnnxTensor<Float8E5M2FNUZ>",
+                "tensor(float8e8m0)" => "OnnxTensor<Float8E8M0>",
+
+                "tensor(float4e2m1)" => "OnnxTensor<Float4E2M1>",
+
+                "tensor(uint4)" => "OnnxTensor<UInt4>",
+                "tensor(int4)" => "OnnxTensor<Int4>",
+                "tensor(uint2)" => "OnnxTensor<UInt2>",
+                "tensor(int2)" => "OnnxTensor<Int2>",
+
                 "tensor(bool)" => "OnnxTensor<bool>",
+                "tensor(string)" => "OnnxTensor<string>",
+
                 "tensor(complex64)" => "OnnxTensor<Complex64>",
                 "tensor(complex128)" => "OnnxTensor<Complex>",
 

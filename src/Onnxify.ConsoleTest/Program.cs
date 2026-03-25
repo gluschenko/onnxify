@@ -245,7 +245,17 @@ namespace Onnxify.ConsoleTest
                 }
                 else
                 {
-                    name = edge.Name.Replace(".", "_").Replace("/", "_");
+                    name = edge.Name
+                        .Replace(".", "_")
+                        .Replace("/", "_")
+                        .Replace("-", "_")
+                        .Replace("+", "_")
+                        .Replace(" ", "_");
+
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        name = $"{edge.GetType().Name}_{edges.Count}";
+                    }
 
                     while (true)
                     {
@@ -304,8 +314,12 @@ namespace Onnxify.ConsoleTest
                     opType: "{{node.OpType}}",
                     domain: "{{node.Domain}}",
                     docString: "{{node.DocString}}",
-                    inputs: [{{string.Join(", ", node.Inputs.Select(GetEdgeName))}}],
-                    outputs: [{{string.Join(", ", node.Outputs.Select(GetEdgeName))}}],
+                    inputs: [
+                        {{string.Join(",\n", node.Inputs.Select(GetEdgeName)).Indent(2)}}
+                    ],
+                    outputs: [
+                        {{string.Join(",\n", node.Outputs.Select(GetEdgeName)).Indent(2)}}
+                    ],
                     attributes: []
                 );
 
