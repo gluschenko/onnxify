@@ -35,17 +35,17 @@ public class OnnxGraph
 
         foreach (var value in graph.ValueInfo)
         {
-            _placeholders.Add(OnnxHelper.FromProto(value));
+            _placeholders.Add(OnnxValue.FromProto(value));
         }
 
         foreach (var input in graph.Input)
         {
-            _inputs.Add(OnnxHelper.FromProto(input));
+            _inputs.Add(OnnxValue.FromProto(input));
         }
 
         foreach (var output in graph.Output)
         {
-            _outputs.Add(OnnxHelper.FromProto(output));
+            _outputs.Add(OnnxValue.FromProto(output));
         }
 
         foreach (var node in graph.Node)
