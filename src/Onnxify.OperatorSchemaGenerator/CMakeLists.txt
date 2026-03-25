@@ -10,10 +10,10 @@ set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 set(ONNXRUNTIME_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/onnxruntime")
 
 set(onnxruntime_MINIMAL_BUILD OFF CACHE BOOL "" FORCE)
-set(onnxruntime_DISABLE_CONTRIB_OPS ON CACHE BOOL "" FORCE)
+set(onnxruntime_DISABLE_CONTRIB_OPS OFF CACHE BOOL "" FORCE)
 set(onnxruntime_DISABLE_ML_OPS OFF CACHE BOOL "" FORCE)
 
-set(onnxruntime_ENABLE_TRAINING_OPS OFF CACHE BOOL "" FORCE)
+set(onnxruntime_ENABLE_TRAINING_OPS ON CACHE BOOL "" FORCE)
 set(onnxruntime_ENABLE_TRAINING OFF CACHE BOOL "" FORCE)
 
 set(onnxruntime_USE_FULL_PROTOBUF ON CACHE BOOL "" FORCE)
@@ -36,21 +36,20 @@ add_subdirectory(${ONNXRUNTIME_ROOT}/cmake
 
 add_executable(Onnxify.OperatorSchemaGenerator main.cpp)
 
-target_link_libraries(Onnxify.OperatorSchemaGenerator PRIVATE onnxruntime nlohmann_json::nlohmann_json)
-
 target_include_directories(Onnxify.OperatorSchemaGenerator PRIVATE
     ${ONNXRUNTIME_ROOT}/include/onnxruntime
     ${CMAKE_BINARY_DIR}/onnxruntime-build/external/onnx
     ${CMAKE_BINARY_DIR}/_deps/nlohmann_json-src/include
 )
 
-target_link_libraries(Onnxify.OperatorSchemaGenerator PRIVATE 
+target_link_libraries(Onnxify.OperatorSchemaGenerator PRIVATE
+    onnxruntime
     onnx
     onnx_proto
     protobuf::libprotobuf
+    nlohmann_json::nlohmann_json
 )
 
 if(MSVC)
-    target_link_libraries(Onnxify.OperatorSchemaGenerator PRIVATE protobuf::libprotobuf)
     target_link_options(Onnxify.OperatorSchemaGenerator PRIVATE /WHOLEARCHIVE:onnx)
 endif()
