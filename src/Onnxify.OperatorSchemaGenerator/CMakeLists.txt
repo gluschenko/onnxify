@@ -11,7 +11,7 @@ set(ONNXRUNTIME_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/onnxruntime"
 
 set(onnxruntime_MINIMAL_BUILD OFF CACHE BOOL "" FORCE)
 set(onnxruntime_DISABLE_CONTRIB_OPS ON CACHE BOOL "" FORCE)
-set(onnxruntime_DISABLE_ML_OPS ON CACHE BOOL "" FORCE)
+set(onnxruntime_DISABLE_ML_OPS OFF CACHE BOOL "" FORCE)
 
 set(onnxruntime_ENABLE_TRAINING_OPS OFF CACHE BOOL "" FORCE)
 set(onnxruntime_ENABLE_TRAINING OFF CACHE BOOL "" FORCE)
