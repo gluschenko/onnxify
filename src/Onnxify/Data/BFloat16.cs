@@ -16,3 +16,4 @@ public readonly struct BFloat16
         return BitConverter.Int32BitsToSingle((int)bits);
     }
 }
+
