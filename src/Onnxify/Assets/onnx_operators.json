@@ -3,10 +3,28 @@
         {
             "attributes": [
                 {
+                    "description": "Optional scaling values used by some activation functions. The values are consumed in the order of activation functions, for example (f, g, h) in LSTM. Default values are the same as of corresponding ONNX operators.For example with LeakyRelu, the default alpha is 0.01.",
+                    "name": "activation_alpha",
+                    "required": false,
+                    "type": 6
+                },
+                {
+                    "description": "Optional scaling values used by some activation functions. The values are consumed in the order of activation functions, for example (f, g, h) in LSTM. Default values are the same as of corresponding ONNX operators.",
+                    "name": "activation_beta",
+                    "required": false,
+                    "type": 6
+                },
+                {
                     "description": "A list of 3 (or 6 if bidirectional) activation functions for input, output, forget, cell, and hidden. The activation functions must be one of the activation functions specified above. Optional: See the equations for default if not specified.",
                     "name": "activations",
                     "required": false,
                     "type": 8
+                },
+                {
+                    "description": "Cell clip threshold. Clipping bounds the elements of a tensor in the range of [-threshold, +threshold] and is applied to the input of activations. No clip if not specified.",
+                    "name": "clip",
+                    "required": false,
+                    "type": 1
                 },
                 {
                     "default": "forward",
@@ -16,9 +34,8 @@
                     "type": 3
                 },
                 {
-                    "default": 0,
-                    "description": "The shape format of inputs X, initial_h, initial_c and outputs Y, Y_h, Y_c. If 0, the following shapes are expected: X.shape = [seq_length, batch_size, input_size], Y.shape = [seq_length, num_directions, batch_size, hidden_size], initial_h.shape = Y_h.shape = initial_c.shape = Y_c.shape = [num_directions, batch_size, hidden_size]. If 1, the following shapes are expected: X.shape = [batch_size, seq_length, input_size], Y.shape = [batch_size, seq_length, num_directions, hidden_size], initial_h.shape = Y_h.shape = initial_c.shape = Y_c.shape = [batch_size, num_directions, hidden_size].",
-                    "name": "layout",
+                    "description": "Number of neurons in the hidden layer",
+                    "name": "hidden_size",
                     "required": false,
                     "type": 2
                 },
@@ -30,28 +47,11 @@
                     "type": 2
                 },
                 {
-                    "description": "Number of neurons in the hidden layer",
-                    "name": "hidden_size",
+                    "default": 0,
+                    "description": "The shape format of inputs X, initial_h, initial_c and outputs Y, Y_h, Y_c. If 0, the following shapes are expected: X.shape = [seq_length, batch_size, input_size], Y.shape = [seq_length, num_directions, batch_size, hidden_size], initial_h.shape = Y_h.shape = initial_c.shape = Y_c.shape = [num_directions, batch_size, hidden_size]. If 1, the following shapes are expected: X.shape = [batch_size, seq_length, input_size], Y.shape = [batch_size, seq_length, num_directions, hidden_size], initial_h.shape = Y_h.shape = initial_c.shape = Y_c.shape = [batch_size, num_directions, hidden_size].",
+                    "name": "layout",
                     "required": false,
                     "type": 2
-                },
-                {
-                    "description": "Cell clip threshold. Clipping bounds the elements of a tensor in the range of [-threshold, +threshold] and is applied to the input of activations. No clip if not specified.",
-                    "name": "clip",
-                    "required": false,
-                    "type": 1
-                },
-                {
-                    "description": "Optional scaling values used by some activation functions. The values are consumed in the order of activation functions, for example (f, g, h) in LSTM. Default values are the same as of corresponding ONNX operators.For example with LeakyRelu, the default alpha is 0.01.",
-                    "name": "activation_alpha",
-                    "required": false,
-                    "type": 6
-                },
-                {
-                    "description": "Optional scaling values used by some activation functions. The values are consumed in the order of activation functions, for example (f, g, h) in LSTM. Default values are the same as of corresponding ONNX operators.",
-                    "name": "activation_beta",
-                    "required": false,
-                    "type": 6
                 }
             ],
             "doc": "\nComputes an one-layer LSTM. This operator is usually supported via some\ncustom implementation such as CuDNN.\n\nNotations:\n\n* `X` - input tensor\n* `i` - input gate\n* `o` - output gate\n* `f` - forget gate\n* `c` - cell gate\n* `t` - time step (t-1 means previous time step)\n* `W[iofc]` - W parameter weight matrix for input, output, forget, and cell gates\n* `R[iofc]` - R recurrence weight matrix for input, output, forget, and cell gates\n* `Wb[iofc]` - W bias vectors for input, output, forget, and cell gates\n* `Rb[iofc]` - R bias vectors for input, output, forget, and cell gates\n* `P[iof]`  - P peephole weight vector for input, output, and forget gates\n* `WB[iofc]` - W parameter weight matrix for backward input, output, forget, and cell gates\n* `RB[iofc]` - R recurrence weight matrix for backward input, output, forget, and cell gates\n* `WBb[iofc]` - W bias vectors for backward input, output, forget, and cell gates\n* `RBb[iofc]` - R bias vectors for backward input, output, forget, and cell gates\n* `PB[iof]`  - P peephole weight vector for backward input, output, and forget gates\n* `H` - Hidden state\n* `num_directions` - 2 if direction == bidirectional else 1\n\nActivation functions:\n\n* Relu(x)                - max(0, x)\n* Tanh(x)                - (1 - e^{-2x})/(1 + e^{-2x})\n* Sigmoid(x)             - 1/(1 + e^{-x})\n\nNOTE: Below are optional\n\n* Affine(x)              - alpha*x + beta\n* LeakyRelu(x)           - x if x >= 0 else alpha * x\n* ThresholdedRelu(x)     - x if x >= alpha else 0\n* ScaledTanh(x)          - alpha*Tanh(beta*x)\n* HardSigmoid(x)         - min(max(alpha*x + beta, 0), 1)\n* Elu(x)                 - x if x >= 0 else alpha*(e^x - 1)\n* Softsign(x)            - x/(1 + |x|)\n* Softplus(x)            - log(1 + e^x)\n\nEquations (Default: f=Sigmoid, g=Tanh, h=Tanh):\n\n* it = f(Xt*(Wi^T) + Ht-1*(Ri^T) + Pi (.) Ct-1 + Wbi + Rbi)\n* ft = f(Xt*(Wf^T) + Ht-1*(Rf^T) + Pf (.) Ct-1 + Wbf + Rbf)\n* ct = g(Xt*(Wc^T) + Ht-1*(Rc^T) + Wbc + Rbc)\n* Ct = ft (.) Ct-1 + it (.) ct\n* ot = f(Xt*(Wo^T) + Ht-1*(Ro^T) + Po (.) Ct + Wbo + Rbo)\n* Ht = ot (.) h(Ct)\nThis operator has **optional** inputs/outputs. See [the doc](IR.md) for more details about the representation of optional arguments. An empty string may be used in the place of an actual argument's name to indicate a missing argument. Trailing optional arguments (those not followed by an argument that is present) may also be simply omitted.\n",
@@ -715,6 +715,13 @@
         {
             "attributes": [
                 {
+                    "default": "up",
+                    "description": "Rounding mode for conversion to float8e8m0. It only applies to casting to float8e8m0 and is `up` by default. `up`: round to nearest value away from zero, `down`: round to nearest value towards zero, `nearest`: round to nearest value and ties round up.",
+                    "name": "round_mode",
+                    "required": false,
+                    "type": 3
+                },
+                {
                     "default": 1,
                     "description": "The parameter defines how the conversion behaves if an input value is out of range of the destination type. It only applies for float 8 conversion (float8e4m3fn, float8e4m3fnuz, float8e5m2, float8e5m2fnuz, float8e8m0). It is true by default. All cases are fully described in the tables inserted in the operator description.",
                     "name": "saturate",
@@ -726,13 +733,6 @@
                     "name": "to",
                     "required": true,
                     "type": 2
-                },
-                {
-                    "default": "up",
-                    "description": "Rounding mode for conversion to float8e8m0. It only applies to casting to float8e8m0 and is `up` by default. `up`: round to nearest value away from zero, `down`: round to nearest value towards zero, `nearest`: round to nearest value and ties round up.",
-                    "name": "round_mode",
-                    "required": false,
-                    "type": 3
                 }
             ],
             "doc": "\nThe operator casts the elements of a given input tensor to a data type\nspecified by the 'to' argument and returns an output tensor of the same size in\nthe converted type. The 'to' argument must be one of the data types specified\nin the 'DataType' enum field in the TensorProto message.\n\nCasting from string tensor in plain (e.g., \"3.14\" and \"1000\") and scientific numeric representations\n(e.g., \"1e-5\" and \"1E8\") to float types is supported. For example, converting string \"100.5\" to an integer may\nyield result 100. There are some string literals reserved for special floating-point values;\n\"+INF\" (and \"INF\"), \"-INF\", and \"NaN\" are positive infinity, negative infinity, and not-a-number, respectively.\nAny string which can exactly match \"+INF\" in a case-insensitive way would be mapped to positive infinite. Similarly,\nthis case-insensitive rule is applied to \"INF\" and \"NaN\". When casting from numeric tensors\nto string tensors, plain floating-point representation (such as \"314.15926\") would be used.\nConverting non-numerical-literal string such as \"Hello World!\" is an undefined behavior. Cases\nof converting string representing floating-point arithmetic value, such as \"2.718\", to INT is an undefined behavior.\n\nConversion from a numerical type to any numerical type is always allowed.\nUser must be aware of precision loss and value change caused by range difference between two types.\nFor example, a 64-bit float 3.1415926459 may be round to a 32-bit float 3.141592. Similarly, converting\nan integer 36 to Boolean may produce 1 because we truncate bits which can't be stored in the targeted type.\n\nIn more detail, the conversion among numerical types should follow these rules\nif the destination type is not a float 8 type.\n\n* Casting from floating point to:\n  * floating point: +/- infinity if OOR (out of range).\n  * fixed point: undefined if OOR.\n  * bool: +/- 0.0 to False; all else to True.\n* Casting from fixed point to:\n  * floating point: +/- infinity if OOR. (+ infinity in the case of uint)\n  * fixed point: when OOR, discard higher bits and reinterpret (with respect to two's complement representation for\n    signed types). For example, 200 (int16) -> -56 (int8).\n  * bool: zero to False; nonzero to True.\n* Casting from bool to:\n  * floating point: `{1.0, 0.0}`.\n  * fixed point: `{1, 0}`.\n  * bool: no change.\n\nFloat 8 types (E4M3FN, E4M3FNUZ, E5M2, E5M2FNUZ) were introduced to speed up the training of\ndeep models. By default the conversion of a float *x* obeys\nto the following rules. `[x]` means the value rounded to\nthe target mantissa width.\n\n| x                 | E4M3FN   | E4M3FNUZ | E5M2     | E5M2FNUZ |\n| ----------------- | -------- | -------- | -------- | -------- |\n| 0                 | 0        | 0        | 0        | 0        |\n| -0                | -0       | 0        | -0       | 0        |\n| NaN               | NaN      | NaN      | NaN      | NaN      |\n| Inf               | FLT_MAX  | FLT_MAX  | FLT_MAX  | FLT_MAX  |\n| -Inf              | -FLT_MAX | -FLT_MAX | -FLT_MAX | -FLT_MAX |\n| \\[x\\] > FLT_MAX   | FLT_MAX  | FLT_MAX  | FLT_MAX  | FLT_MAX  |\n| \\[x\\] \\< -FLT_MAX | -FLT_MAX | -FLT_MAX | -FLT_MAX | -FLT_MAX |\n| else              | RNE      | RNE      | RNE      | RNE      |\n\nThe behavior changes if the parameter 'saturate' is set to False.\nThe rules then become:\n\n| x                 | E4M3FN | E4M3FNUZ | E5M2 | E5M2FNUZ |\n| ----------------- | ------ | -------- | ---- | -------- |\n| 0                 | 0      | 0        | 0    | 0        |\n| -0                | -0     | 0        | -0   | 0        |\n| NaN               | NaN    | NaN      | NaN  | NaN      |\n| -NaN              | -NaN   | NaN      | -NaN | NaN      |\n| Inf               | NaN    | NaN      | Inf  | NaN      |\n| -Inf              | -NaN   | NaN      | -Inf | NaN      |\n| \\[x\\] > FLT_MAX   | NaN    | NaN      | Inf  | NaN      |\n| \\[x\\] \\< -FLT_MAX | NaN    | NaN      | -Inf | NaN      |\n| else              | RNE    | RNE      | RNE  | RNE      |\n\nFLOAT8E8M0 type was introduced to enable [Microscaling (MX) formats](https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf).\nWhen casting to FLOAT8E8M0, the rounding behavior can be specified using the `round_mode` and `saturate` attributes.\nThe current CUDA behavior is to round up and saturate. Casting negative values to FLOAT8E8M0 gives undefined behavior.\nThe following table describes the casting behavior of special values to FLOAT8E8M0 in the two most common cases.\n\n| x                 | saturate + up | non-saturate + nearest |\n| ----------------- | ------------- | ---------------------  |\n| 0                 | 0             | NaN                    |\n| -0                | Unspecified   | Unspecified            |\n| NaN               | NaN           | NaN                    |\n| Inf               | E8M0_MAX      | NaN                    |\n| x > E8M0_MAX      | E8M0_MAX      | NaN                    |\n| x \\< E8M0_MIN     | E8M0_MIN      | NaN                    |\n| x \\< 0            | Unspecified   | Unspecified            |\n",
@@ -813,10 +813,18 @@
         {
             "attributes": [
                 {
-                    "description": "The size of the kernel along each axis.",
-                    "name": "kernel_shape",
-                    "required": true,
-                    "type": 7
+                    "default": "NOTSET",
+                    "description": "auto_pad must be either NOTSET, SAME_UPPER, SAME_LOWER or VALID. Where default value is NOTSET, which means explicit padding is used. SAME_UPPER or SAME_LOWER mean pad the input so that `output_shape[i] = ceil(input_shape[i] / strides[i])` for each axis `i`. The padding is split between the two sides equally or almost equally (depending on whether it is even or odd). In case the padding is an odd number, the extra padding is added at the end for SAME_UPPER and at the beginning for SAME_LOWER.",
+                    "name": "auto_pad",
+                    "required": false,
+                    "type": 3
+                },
+                {
+                    "default": 0,
+                    "description": "Whether to use ceil or floor (default) to compute the output shape.",
+                    "name": "ceil_mode",
+                    "required": false,
+                    "type": 2
                 },
                 {
                     "default": 0,
@@ -826,23 +834,16 @@
                     "type": 2
                 },
                 {
-                    "description": "Stride along each spatial axis. If not present, the stride defaults to 1 along each spatial axis.",
-                    "name": "strides",
-                    "required": false,
-                    "type": 7
-                },
-                {
                     "description": "Dilation value along each spatial axis of filter. If not present, the dilation defaults to 1 along each spatial axis.",
                     "name": "dilations",
                     "required": false,
                     "type": 7
                 },
                 {
-                    "default": "NOTSET",
-                    "description": "auto_pad must be either NOTSET, SAME_UPPER, SAME_LOWER or VALID. Where default value is NOTSET, which means explicit padding is used. SAME_UPPER or SAME_LOWER mean pad the input so that `output_shape[i] = ceil(input_shape[i] / strides[i])` for each axis `i`. The padding is split between the two sides equally or almost equally (depending on whether it is even or odd). In case the padding is an odd number, the extra padding is added at the end for SAME_UPPER and at the beginning for SAME_LOWER.",
-                    "name": "auto_pad",
-                    "required": false,
-                    "type": 3
+                    "description": "The size of the kernel along each axis.",
+                    "name": "kernel_shape",
+                    "required": true,
+                    "type": 7
                 },
                 {
                     "description": "Padding for the beginning and ending along each spatial axis, it can take any value greater than or equal to 0. The value represent the number of pixels added to the beginning and end part of the corresponding axis. `pads` format should be as follow [x1_begin, x2_begin...x1_end, x2_end,...], where xi_begin the number of pixels added at the beginning of axis `i` and xi_end, the number of pixels added at the end of axis `i`. This attribute cannot be used simultaneously with auto_pad attribute. If not present, the padding defaults to 0 along start and end of each spatial axis.",
@@ -851,11 +852,10 @@
                     "type": 7
                 },
                 {
-                    "default": 0,
-                    "description": "Whether to use ceil or floor (default) to compute the output shape.",
-                    "name": "ceil_mode",
+                    "description": "Stride along each spatial axis. If not present, the stride defaults to 1 along each spatial axis.",
+                    "name": "strides",
                     "required": false,
-                    "type": 2
+                    "type": 7
                 }
             ],
             "doc": "\n AveragePool consumes an input tensor X and applies average pooling across\n the tensor according to kernel sizes, stride sizes, and pad lengths.\n average pooling consisting of computing the average on all values of a\n subset of the input tensor according to the kernel size and downsampling the\n data into the output tensor Y for further processing. The output spatial shape is calculated differently\n depending on whether explicit padding is used, where pads is employed, or auto padding is used, where auto_pad is utilized.\n With explicit padding (https://pytorch.org/docs/stable/generated/torch.nn.MaxPool2d.html?highlight=maxpool#torch.nn.MaxPool2d):\n ```\n output_spatial_shape[i] = floor((input_spatial_shape[i] + pad_shape[i] - dilation[i] * (kernel_shape[i] - 1) - 1) / strides_spatial_shape[i] + 1)\n ```\n or\n ```\n output_spatial_shape[i] = ceil((input_spatial_shape[i] + pad_shape[i] - dilation[i] * (kernel_shape[i] - 1) - 1) / strides_spatial_shape[i] + 1)\n ```\n if ceil_mode is enabled. `pad_shape[i]` is the sum of pads along axis `i`. Sliding windows that would start in the right padded region are ignored.\n\n `auto_pad` is a DEPRECATED attribute. If you are using them currently, the output spatial shape will be following when ceil_mode is enabled:\n ```\n VALID: output_spatial_shape[i] = ceil((input_spatial_shape[i] - ((kernel_spatial_shape[i] - 1) * dilations[i] + 1) + 1) / strides_spatial_shape[i])\n SAME_UPPER or SAME_LOWER: output_spatial_shape[i] = ceil(input_spatial_shape[i] / strides_spatial_shape[i])\n ```\n or when ceil_mode is disabled (https://www.tensorflow.org/api_docs/python/tf/keras/layers/AveragePooling2D):\n ```\n VALID: output_spatial_shape[i] = floor((input_spatial_shape[i] - ((kernel_spatial_shape[i] - 1) * dilations[i] + 1)) / strides_spatial_shape[i]) + 1\n SAME_UPPER or SAME_LOWER: output_spatial_shape[i] = floor((input_spatial_shape[i] - 1) / strides_spatial_shape[i]) + 1\n ```\n And pad shape will be following if `SAME_UPPER` or `SAME_LOWER`:\n ```\n pad_shape[i] = (output_spatial_shape[i] - 1) * strides_spatial_shape[i] + ((kernel_spatial_shape[i] - 1) * dilations[i] + 1) - input_spatial_shape[i]\n ```\n The output of each pooling window is divided by the number of elements (exclude pad when attribute count_include_pad is zero).\n ",
@@ -937,18 +937,6 @@
         {
             "attributes": [
                 {
-                    "description": "The number of channels to sum over",
-                    "name": "size",
-                    "required": true,
-                    "type": 2
-                },
-                {
-                    "default": 1.0,
-                    "name": "bias",
-                    "required": false,
-                    "type": 1
-                },
-                {
                     "default": 9.999999747378752e-05,
                     "description": "Scaling parameter.",
                     "name": "alpha",
@@ -961,6 +949,18 @@
                     "name": "beta",
                     "required": false,
                     "type": 1
+                },
+                {
+                    "default": 1.0,
+                    "name": "bias",
+                    "required": false,
+                    "type": 1
+                },
+                {
+                    "description": "The number of channels to sum over",
+                    "name": "size",
+                    "required": true,
+                    "type": 2
                 }
             ],
             "doc": "\nLocal Response Normalization proposed in the [AlexNet paper](https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf).\nIt normalizes over local input regions.\nThe local region is defined across the channels. For an element `X[n, c, d1, ..., dk]` in a tensor\nof shape `(N x C x D1 x D2, ..., Dk)`, its region is\n`{X[n, i, d1, ..., dk] | max(0, c - floor((size - 1) / 2)) <= i <= min(C - 1, c + ceil((size - 1) / 2))}`.\n\n`square_sum[n, c, d1, ..., dk] = sum(X[n, i, d1, ..., dk] ^ 2)`,\nwhere `max(0, c - floor((size - 1) / 2)) <= i <= min(C - 1, c + ceil((size - 1) / 2))`.\n\n`Y[n, c, d1, ..., dk] = X[n, c, d1, ..., dk] / (bias + alpha / size * square_sum[n, c, d1, ..., dk] ) ^ beta`\n",
@@ -1110,9 +1110,22 @@
         {
             "attributes": [
                 {
-                    "default": "nearest",
-                    "description": "Three interpolation modes: \"nearest\" (default), \"linear\" and \"cubic\". The \"linear\" mode includes linear interpolation for 1D tensor and N-linear interpolation for N-D tensor (for example, bilinear interpolation for 2D tensor). The \"cubic\" mode includes cubic interpolation for 1D tensor and N-cubic interpolation for N-D tensor (for example, bicubic interpolation for 2D tensor).",
-                    "name": "mode",
+                    "default": 0,
+                    "description": "If set to 1, \"linear\" and \"cubic\" interpolation modes will use an antialiasing filter when downscaling. Antialiasing is achieved by stretching the resampling filter by a factor max(1, 1 / scale), which means that when downsampling, more input pixels contribute to an output pixel.",
+                    "name": "antialias",
+                    "required": false,
+                    "type": 2
+                },
+                {
+                    "description": "If provided, it specifies a subset of axes that 'roi', 'scales' and 'sizes' refer to. If not provided, all axes are assumed [0, 1, ..., r-1], where r = rank(data). Non-specified dimensions are interpreted as non-resizable. Negative value means counting dimensions from the back. Accepted range is [-r, r-1], where r = rank(data). Behavior is undefined if an axis is repeated.",
+                    "name": "axes",
+                    "required": false,
+                    "type": 7
+                },
+                {
+                    "default": "half_pixel",
+                    "description": "\nThis attribute describes how to transform the coordinate in the resized tensor to the coordinate in the original tensor.\n\nThe coordinate of each dimension is transformed individually. Let's describe a case using axis x as an example.\nDenote `x_resized` as the coordinate of axis x in the resized tensor,\n `x_original` as the coordinate of axis x in the original tensor,\n `length_original` as the length of the original tensor in axis x,\n `length_resized` as the length of the resized tensor in axis x,\n `scale = length_resized / length_original`,\n `output_width` the target length on the axis x which can be a fractional number when it is calculated out of a scale factor,\n and `output_width_int` the effective output width as an integer.\n\nif coordinate_transformation_mode is `\"half_pixel\"`,\n```\nx_original = (x_resized + 0.5) / scale - 0.5\n```\n\nif coordinate_transformation_mode is `\"half_pixel_symmetric\"`,\n```\nadjustment = output_width_int / output_width\ncenter = input_width / 2\noffset = center * (1 - adjustment)\nx_ori = offset + (x + 0.5) / scale - 0.5\n```\n\nif coordinate_transformation_mode is `\"pytorch_half_pixel\"`,\n```\nx_original = length_resized > 1 ? (x_resized + 0.5) / scale - 0.5 : 0\n```\n\nif coordinate_transformation_mode is `\"align_corners\"`,\n```\nx_original = x_resized * (length_original - 1) / (length_resized - 1)\n```\n\nif coordinate_transformation_mode is `\"asymmetric\"`,\n```\nx_original = x_resized / scale\n```\n\nif coordinate_transformation_mode is `\"tf_crop_and_resize\"`,\n```\nx_original = length_resized > 1 ? start_x * (length_original - 1) + x_resized * (end_x - start_x) * (length_original - 1) / (length_resized - 1) : 0.5 * (start_x + end_x) * (length_original - 1)\n```\n.",
+                    "name": "coordinate_transformation_mode",
                     "required": false,
                     "type": 3
                 },
@@ -1124,30 +1137,9 @@
                     "type": 1
                 },
                 {
-                    "default": "half_pixel",
-                    "description": "\nThis attribute describes how to transform the coordinate in the resized tensor to the coordinate in the original tensor.\n\nThe coordinate of each dimension is transformed individually. Let's describe a case using axis x as an example.\nDenote `x_resized` as the coordinate of axis x in the resized tensor,\n `x_original` as the coordinate of axis x in the original tensor,\n `length_original` as the length of the original tensor in axis x,\n `length_resized` as the length of the resized tensor in axis x,\n `scale = length_resized / length_original`,\n `output_width` the target length on the axis x which can be a fractional number when it is calculated out of a scale factor,\n and `output_width_int` the effective output width as an integer.\n\nif coordinate_transformation_mode is `\"half_pixel\"`,\n```\nx_original = (x_resized + 0.5) / scale - 0.5\n```\n\nif coordinate_transformation_mode is `\"half_pixel_symmetric\"`,\n```\nadjustment = output_width_int / output_width\ncenter = input_width / 2\noffset = center * (1 - adjustment)\nx_ori = offset + (x + 0.5) / scale - 0.5\n```\n\nif coordinate_transformation_mode is `\"pytorch_half_pixel\"`,\n```\nx_original = length_resized > 1 ? (x_resized + 0.5) / scale - 0.5 : 0\n```\n\nif coordinate_transformation_mode is `\"align_corners\"`,\n```\nx_original = x_resized * (length_original - 1) / (length_resized - 1)\n```\n\nif coordinate_transformation_mode is `\"asymmetric\"`,\n```\nx_original = x_resized / scale\n```\n\nif coordinate_transformation_mode is `\"tf_crop_and_resize\"`,\n```\nx_original = length_resized > 1 ? start_x * (length_original - 1) + x_resized * (end_x - start_x) * (length_original - 1) / (length_resized - 1) : 0.5 * (start_x + end_x) * (length_original - 1)\n```\n.",
-                    "name": "coordinate_transformation_mode",
-                    "required": false,
-                    "type": 3
-                },
-                {
                     "default": 0,
                     "description": "If set to 1, the weight of sampling locations outside the tensor will be set to 0 and the weight will be renormalized so that their sum is 1.0. The default value is 0.",
                     "name": "exclude_outside",
-                    "required": false,
-                    "type": 2
-                },
-                {
-                    "default": "round_prefer_floor",
-                    "description": "Four modes: \"round_prefer_floor\" (default, as known as round half down), \"round_prefer_ceil\" (as known as round half up), \"floor\", \"ceil\". Only used by nearest interpolation. It indicates how to get \"nearest\" pixel in input tensor from x_original, so this attribute is valid only if \"mode\" is \"nearest\".",
-                    "name": "nearest_mode",
-                    "required": false,
-                    "type": 3
-                },
-                {
-                    "default": 0,
-                    "description": "If set to 1, \"linear\" and \"cubic\" interpolation modes will use an antialiasing filter when downscaling. Antialiasing is achieved by stretching the resampling filter by a factor max(1, 1 / scale), which means that when downsampling, more input pixels contribute to an output pixel.",
-                    "name": "antialias",
                     "required": false,
                     "type": 2
                 },
@@ -1159,15 +1151,23 @@
                     "type": 1
                 },
                 {
-                    "description": "If provided, it specifies a subset of axes that 'roi', 'scales' and 'sizes' refer to. If not provided, all axes are assumed [0, 1, ..., r-1], where r = rank(data). Non-specified dimensions are interpreted as non-resizable. Negative value means counting dimensions from the back. Accepted range is [-r, r-1], where r = rank(data). Behavior is undefined if an axis is repeated.",
-                    "name": "axes",
-                    "required": false,
-                    "type": 7
-                },
-                {
                     "default": "stretch",
                     "description": "\nThis attribute describes how to interpret the `sizes` input with regard to keeping the original aspect ratio of the input, and it is not applicable when\nthe `scales` input is used.\n\nGiven a set of `sizes`, associated with a subset of `axes` (explicitly provided or default), and assuming `d = axes[i]`, with `i` being the index of the provided `sizes`.\n\nIf `keep_aspect_ratio_policy` is `\"stretch\"`, the original aspect ratio is disregarded, and the input is resized to the specified size:\n`out_size[d] = sizes[i]`\n\nIf `keep_aspect_ratio_policy` is `\"not_larger\"`, the sizes are adjusted so that no extent of the output is larger than the specified size, while keeping the original aspect ratio:\n```\nscale = Min(sizes[i] / in_size[d])\nout_size[d] = round_int(scale * in_size[d])\n```\n\nIf `keep_aspect_ratio_policy` is `\"not_smaller\"`, the sizes are adjusted so that no extent of the output is smaller than the specified size, while keeping the original aspect ratio:\n```\nscale = Max(sizes[i] / in_size[d])\nout_size[d] = round_int(scale * in_size[d])\n```\n\nFor non-resizable axes (those not specified in `axes`), the output size will be equal to the input size.\n\nNote: `round_int` stands for computing the nearest integer value, rounding halfway cases up.",
                     "name": "keep_aspect_ratio_policy",
+                    "required": false,
+                    "type": 3
+                },
+                {
+                    "default": "nearest",
+                    "description": "Three interpolation modes: \"nearest\" (default), \"linear\" and \"cubic\". The \"linear\" mode includes linear interpolation for 1D tensor and N-linear interpolation for N-D tensor (for example, bilinear interpolation for 2D tensor). The \"cubic\" mode includes cubic interpolation for 1D tensor and N-cubic interpolation for N-D tensor (for example, bicubic interpolation for 2D tensor).",
+                    "name": "mode",
+                    "required": false,
+                    "type": 3
+                },
+                {
+                    "default": "round_prefer_floor",
+                    "description": "Four modes: \"round_prefer_floor\" (default, as known as round half down), \"round_prefer_ceil\" (as known as round half up), \"floor\", \"ceil\". Only used by nearest interpolation. It indicates how to get \"nearest\" pixel in input tensor from x_original, so this attribute is valid only if \"mode\" is \"nearest\".",
+                    "name": "nearest_mode",
                     "required": false,
                     "type": 3
                 }
@@ -1676,16 +1676,16 @@
         {
             "attributes": [
                 {
-                    "default": 0,
-                    "description": "(Optional) Specify which axis is time axis. Must be one of 0 (default), or 1.",
-                    "name": "time_axis",
+                    "default": 1,
+                    "description": "(Optional) Specify which axis is batch axis. Must be one of 1 (default), or 0.",
+                    "name": "batch_axis",
                     "required": false,
                     "type": 2
                 },
                 {
-                    "default": 1,
-                    "description": "(Optional) Specify which axis is batch axis. Must be one of 1 (default), or 0.",
-                    "name": "batch_axis",
+                    "default": 0,
+                    "description": "(Optional) Specify which axis is time axis. Must be one of 0 (default), or 1.",
+                    "name": "time_axis",
                     "required": false,
                     "type": 2
                 }
@@ -1967,42 +1967,6 @@
         {
             "attributes": [
                 {
-                    "default": [
-                        "Tanh",
-                        "Tanh"
-                    ],
-                    "description": "One (or two if bidirectional) activation function for input gate. The activation function must be one of the activation functions specified above. Optional: Default `Tanh` if not specified.",
-                    "name": "activations",
-                    "required": false,
-                    "type": 8
-                },
-                {
-                    "default": "forward",
-                    "description": "Specify if the RNN is forward, reverse, or bidirectional. Must be one of forward (default), reverse, or bidirectional.",
-                    "name": "direction",
-                    "required": false,
-                    "type": 3
-                },
-                {
-                    "default": 0,
-                    "description": "The shape format of inputs X, initial_h and outputs Y, Y_h. If 0, the following shapes are expected: X.shape = [seq_length, batch_size, input_size], Y.shape = [seq_length, num_directions, batch_size, hidden_size], initial_h.shape = Y_h.shape = [num_directions, batch_size, hidden_size]. If 1, the following shapes are expected: X.shape = [batch_size, seq_length, input_size], Y.shape = [batch_size, seq_length, num_directions, hidden_size], initial_h.shape = Y_h.shape = [batch_size, num_directions, hidden_size].",
-                    "name": "layout",
-                    "required": false,
-                    "type": 2
-                },
-                {
-                    "description": "Number of neurons in the hidden layer",
-                    "name": "hidden_size",
-                    "required": false,
-                    "type": 2
-                },
-                {
-                    "description": "Cell clip threshold. Clipping bounds the elements of a tensor in the range of [-threshold, +threshold] and is applied to the input of activations. No clip if not specified.",
-                    "name": "clip",
-                    "required": false,
-                    "type": 1
-                },
-                {
                     "description": "Optional scaling values used by some activation functions. The values are consumed in the order of activation functions, for example (f, g, h) in LSTM. Default values are the same as of corresponding ONNX operators.For example with LeakyRelu, the default alpha is 0.01.",
                     "name": "activation_alpha",
                     "required": false,
@@ -2013,6 +1977,42 @@
                     "name": "activation_beta",
                     "required": false,
                     "type": 6
+                },
+                {
+                    "default": [
+                        "Tanh",
+                        "Tanh"
+                    ],
+                    "description": "One (or two if bidirectional) activation function for input gate. The activation function must be one of the activation functions specified above. Optional: Default `Tanh` if not specified.",
+                    "name": "activations",
+                    "required": false,
+                    "type": 8
+                },
+                {
+                    "description": "Cell clip threshold. Clipping bounds the elements of a tensor in the range of [-threshold, +threshold] and is applied to the input of activations. No clip if not specified.",
+                    "name": "clip",
+                    "required": false,
+                    "type": 1
+                },
+                {
+                    "default": "forward",
+                    "description": "Specify if the RNN is forward, reverse, or bidirectional. Must be one of forward (default), reverse, or bidirectional.",
+                    "name": "direction",
+                    "required": false,
+                    "type": 3
+                },
+                {
+                    "description": "Number of neurons in the hidden layer",
+                    "name": "hidden_size",
+                    "required": false,
+                    "type": 2
+                },
+                {
+                    "default": 0,
+                    "description": "The shape format of inputs X, initial_h and outputs Y, Y_h. If 0, the following shapes are expected: X.shape = [seq_length, batch_size, input_size], Y.shape = [seq_length, num_directions, batch_size, hidden_size], initial_h.shape = Y_h.shape = [num_directions, batch_size, hidden_size]. If 1, the following shapes are expected: X.shape = [batch_size, seq_length, input_size], Y.shape = [batch_size, seq_length, num_directions, hidden_size], initial_h.shape = Y_h.shape = [batch_size, num_directions, hidden_size].",
+                    "name": "layout",
+                    "required": false,
+                    "type": 2
                 }
             ],
             "doc": "\nComputes an one-layer simple RNN. This operator is usually supported\nvia some custom implementation such as CuDNN.\n\nNotations:\n\n* `X` - input tensor\n* `i` - input gate\n* `t` - time step (t-1 means previous time step)\n* `Wi` - W parameter weight matrix for input gate\n* `Ri` - R recurrence weight matrix for input gate\n* `Wbi` - W parameter bias vector for input gate\n* `Rbi` - R parameter bias vector for input gate\n* `WBi` - W parameter weight matrix for backward input gate\n* `RBi` - R recurrence weight matrix for backward input gate\n* `WBbi` - WR bias vectors for backward input gate\n* `RBbi` - RR bias vectors for backward input gate\n* `H` - Hidden state\n* `num_directions` - 2 if direction == bidirectional else 1\n\nActivation functions:\n\n* Relu(x)                - max(0, x)\n* Tanh(x)                - (1 - e^{-2x})/(1 + e^{-2x})\n* Sigmoid(x)             - 1/(1 + e^{-x})\n\nNOTE: Below are optional\n\n* Affine(x)              - alpha*x + beta\n* LeakyRelu(x)           - x if x >= 0 else alpha * x\n* ThresholdedRelu(x)     - x if x >= alpha else 0\n* ScaledTanh(x)          - alpha*Tanh(beta*x)\n* HardSigmoid(x)         - min(max(alpha*x + beta, 0), 1)\n* Elu(x)                 - x if x >= 0 else alpha*(e^x - 1)\n* Softsign(x)            - x/(1 + |x|)\n* Softplus(x)            - log(1 + e^x)\n\nEquations (Default: f=Tanh):\n\n* Ht = f(Xt*(Wi^T) + Ht-1*(Ri^T) + Wbi + Rbi)\nThis operator has **optional** inputs/outputs. See [the doc](IR.md) for more details about the representation of optional arguments. An empty string may be used in the place of an actual argument's name to indicate a missing argument. Trailing optional arguments (those not followed by an argument that is present) may also be simply omitted.\n",
@@ -2196,28 +2196,22 @@
         {
             "attributes": [
                 {
-                    "description": "The value for the elements of the output tensor.",
-                    "name": "value",
-                    "required": false,
-                    "type": 4
-                },
-                {
-                    "description": "The value for the sole element for the scalar, UTF-8 string, output tensor.",
-                    "name": "value_string",
-                    "required": false,
-                    "type": 3
-                },
-                {
                     "description": "The value for the elements of the output tensor in sparse format.",
                     "name": "sparse_value",
                     "required": false,
                     "type": 11
                 },
                 {
-                    "description": "The value for the sole element for the scalar, int64, output tensor.",
-                    "name": "value_int",
+                    "description": "The value for the elements of the output tensor.",
+                    "name": "value",
                     "required": false,
-                    "type": 2
+                    "type": 4
+                },
+                {
+                    "description": "The value for the sole element for the scalar, float32, output tensor.",
+                    "name": "value_float",
+                    "required": false,
+                    "type": 1
                 },
                 {
                     "description": "The values for the elements for the 1D, float32, output tensor.",
@@ -2226,16 +2220,22 @@
                     "type": 6
                 },
                 {
+                    "description": "The value for the sole element for the scalar, int64, output tensor.",
+                    "name": "value_int",
+                    "required": false,
+                    "type": 2
+                },
+                {
                     "description": "The values for the elements for the 1D, int64, output tensor.",
                     "name": "value_ints",
                     "required": false,
                     "type": 7
                 },
                 {
-                    "description": "The value for the sole element for the scalar, float32, output tensor.",
-                    "name": "value_float",
+                    "description": "The value for the sole element for the scalar, UTF-8 string, output tensor.",
+                    "name": "value_string",
                     "required": false,
-                    "type": 1
+                    "type": 3
                 },
                 {
                     "description": "The values for the elements for the 1D, UTF-8 string, output tensor.",
@@ -2290,23 +2290,18 @@
         {
             "attributes": [
                 {
-                    "description": "The size of the kernel along each axis.",
-                    "name": "kernel_shape",
-                    "required": true,
-                    "type": 7
-                },
-                {
-                    "description": "Stride along each spatial axis. If not present, the stride defaults to 1 along each spatial axis.",
-                    "name": "strides",
-                    "required": false,
-                    "type": 7
-                },
-                {
                     "default": "NOTSET",
                     "description": "auto_pad must be either NOTSET, SAME_UPPER, SAME_LOWER or VALID. Where default value is NOTSET, which means explicit padding is used. SAME_UPPER or SAME_LOWER mean pad the input so that `output_shape[i] = ceil(input_shape[i] / strides[i])` for each axis `i`. The padding is split between the two sides equally or almost equally (depending on whether it is even or odd). In case the padding is an odd number, the extra padding is added at the end for SAME_UPPER and at the beginning for SAME_LOWER.",
                     "name": "auto_pad",
                     "required": false,
                     "type": 3
+                },
+                {
+                    "default": 0,
+                    "description": "Whether to use ceil or floor (default) to compute the output shape.",
+                    "name": "ceil_mode",
+                    "required": false,
+                    "type": 2
                 },
                 {
                     "description": "dilation value along each spatial axis of the filter. If not present, the dilation defaults is 1 along each spatial axis.",
@@ -2315,9 +2310,9 @@
                     "type": 7
                 },
                 {
-                    "description": "Padding for the beginning and ending along each spatial axis, it can take any value greater than or equal to 0. The value represent the number of pixels added to the beginning and end part of the corresponding axis. `pads` format should be as follow [x1_begin, x2_begin...x1_end, x2_end,...], where xi_begin the number of pixels added at the beginning of axis `i` and xi_end, the number of pixels added at the end of axis `i`. This attribute cannot be used simultaneously with auto_pad attribute. If not present, the padding defaults to 0 along start and end of each spatial axis.",
-                    "name": "pads",
-                    "required": false,
+                    "description": "The size of the kernel along each axis.",
+                    "name": "kernel_shape",
+                    "required": true,
                     "type": 7
                 },
                 {
@@ -2328,11 +2323,16 @@
                     "type": 2
                 },
                 {
-                    "default": 0,
-                    "description": "Whether to use ceil or floor (default) to compute the output shape.",
-                    "name": "ceil_mode",
+                    "description": "Padding for the beginning and ending along each spatial axis, it can take any value greater than or equal to 0. The value represent the number of pixels added to the beginning and end part of the corresponding axis. `pads` format should be as follow [x1_begin, x2_begin...x1_end, x2_end,...], where xi_begin the number of pixels added at the beginning of axis `i` and xi_end, the number of pixels added at the end of axis `i`. This attribute cannot be used simultaneously with auto_pad attribute. If not present, the padding defaults to 0 along start and end of each spatial axis.",
+                    "name": "pads",
                     "required": false,
-                    "type": 2
+                    "type": 7
+                },
+                {
+                    "description": "Stride along each spatial axis. If not present, the stride defaults to 1 along each spatial axis.",
+                    "name": "strides",
+                    "required": false,
+                    "type": 7
                 }
             ],
             "doc": "\n LpPool consumes an input tensor X and applies Lp pooling across\n the tensor according to kernel sizes, stride sizes, and pad lengths.\n Lp pooling consisting of computing the Lp norm on all values of a subset\n of the input tensor according to the kernel size and downsampling the\n data into the output tensor Y for further processing. The output spatial shape will be following:\n ```\n output_spatial_shape[i] = floor((input_spatial_shape[i] + pad_shape[i] - {kernelSpatialShape}) / strides_spatial_shape[i] + 1)\n ```\n or\n ```\n output_spatial_shape[i] = ceil((input_spatial_shape[i] + pad_shape[i] - {kernelSpatialShape}) / strides_spatial_shape[i] + 1)\n ```\n if ceil_mode is enabled `pad_shape[i]` is the sum of pads along axis `i`.\n\n `auto_pad` is a DEPRECATED attribute. If you are using them currently, the output spatial shape will be following:\n ```\n VALID: output_spatial_shape[i] = ceil((input_spatial_shape[i] - {kernelSpatialShape} + 1) / strides_spatial_shape[i])\n SAME_UPPER or SAME_LOWER: output_spatial_shape[i] = ceil(input_spatial_shape[i] / strides_spatial_shape[i])\n ```\n And pad shape will be following if `SAME_UPPER` or `SAME_LOWER`:\n ```\n pad_shape[i] = (output_spatial_shape[i] - 1) * strides_spatial_shape[i] + {kernelSpatialShape} - input_spatial_shape[i]\n ```",
@@ -2373,19 +2373,6 @@
         {
             "attributes": [
                 {
-                    "description": "The shape of the convolution kernel. If not present, should be inferred from input W.",
-                    "name": "kernel_shape",
-                    "required": false,
-                    "type": 7
-                },
-                {
-                    "default": 1,
-                    "description": "number of groups input channels and output channels are divided into.",
-                    "name": "group",
-                    "required": false,
-                    "type": 2
-                },
-                {
                     "default": "NOTSET",
                     "description": "auto_pad must be either NOTSET, SAME_UPPER, SAME_LOWER or VALID. Where default value is NOTSET, which means explicit padding is used. SAME_UPPER or SAME_LOWER mean pad the input so that `output_shape[i] = ceil(input_shape[i] / strides[i])` for each axis `i`. The padding is split between the two sides equally or almost equally (depending on whether it is even or odd). In case the padding is an odd number, the extra padding is added at the end for SAME_UPPER and at the beginning for SAME_LOWER.",
                     "name": "auto_pad",
@@ -2399,14 +2386,27 @@
                     "type": 7
                 },
                 {
-                    "description": "Stride along each spatial axis. If not present, the stride defaults is 1 along each spatial axis.",
-                    "name": "strides",
+                    "default": 1,
+                    "description": "number of groups input channels and output channels are divided into.",
+                    "name": "group",
+                    "required": false,
+                    "type": 2
+                },
+                {
+                    "description": "The shape of the convolution kernel. If not present, should be inferred from input W.",
+                    "name": "kernel_shape",
                     "required": false,
                     "type": 7
                 },
                 {
                     "description": "Padding for the beginning and ending along each spatial axis, it can take any value greater than or equal to 0. The value represent the number of pixels added to the beginning and end part of the corresponding axis. `pads` format should be as follow [x1_begin, x2_begin...x1_end, x2_end,...], where xi_begin the number of pixels added at the beginning of axis `i` and xi_end, the number of pixels added at the end of axis `i`. This attribute cannot be used simultaneously with auto_pad attribute. If not present, the padding defaults to 0 along start and end of each spatial axis.",
                     "name": "pads",
+                    "required": false,
+                    "type": 7
+                },
+                {
+                    "description": "Stride along each spatial axis. If not present, the stride defaults is 1 along each spatial axis.",
+                    "name": "strides",
                     "required": false,
                     "type": 7
                 }
@@ -2586,6 +2586,26 @@
         {
             "attributes": [
                 {
+                    "default": "NOTSET",
+                    "description": "auto_pad must be either NOTSET, SAME_UPPER, SAME_LOWER or VALID. Where default value is NOTSET, which means explicit padding is used. SAME_UPPER or SAME_LOWER mean pad the input so that `output_shape[i] = input_shape[i] * strides[i]` for each axis `i`. The padding is split between the two sides equally or almost equally (depending on whether it is even or odd). In case the padding is an odd number, the extra padding is added at the end for SAME_UPPER and at the beginning for SAME_LOWER.",
+                    "name": "auto_pad",
+                    "required": false,
+                    "type": 3
+                },
+                {
+                    "description": "dilation value along each spatial axis of the filter. If not present, the dilation defaults to 1 along each spatial axis.",
+                    "name": "dilations",
+                    "required": false,
+                    "type": 7
+                },
+                {
+                    "default": 1,
+                    "description": "number of groups input channels and output channels are divided into.",
+                    "name": "group",
+                    "required": false,
+                    "type": 2
+                },
+                {
                     "description": "The shape of the convolution kernel. If not present, should be inferred from input W.",
                     "name": "kernel_shape",
                     "required": false,
@@ -2604,34 +2624,14 @@
                     "type": 7
                 },
                 {
-                    "default": 1,
-                    "description": "number of groups input channels and output channels are divided into.",
-                    "name": "group",
-                    "required": false,
-                    "type": 2
-                },
-                {
-                    "default": "NOTSET",
-                    "description": "auto_pad must be either NOTSET, SAME_UPPER, SAME_LOWER or VALID. Where default value is NOTSET, which means explicit padding is used. SAME_UPPER or SAME_LOWER mean pad the input so that `output_shape[i] = input_shape[i] * strides[i]` for each axis `i`. The padding is split between the two sides equally or almost equally (depending on whether it is even or odd). In case the padding is an odd number, the extra padding is added at the end for SAME_UPPER and at the beginning for SAME_LOWER.",
-                    "name": "auto_pad",
-                    "required": false,
-                    "type": 3
-                },
-                {
-                    "description": "dilation value along each spatial axis of the filter. If not present, the dilation defaults to 1 along each spatial axis.",
-                    "name": "dilations",
+                    "description": "Padding for the beginning and ending along each spatial axis, it can take any value greater than or equal to 0. The value represent the number of pixels added to the beginning and end part of the corresponding axis. `pads` format should be as follow [x1_begin, x2_begin...x1_end, x2_end,...], where xi_begin the number of pixels added at the beginning of axis `i` and xi_end, the number of pixels added at the end of axis `i`. This attribute cannot be used simultaneously with auto_pad attribute. If not present, the padding defaults to 0 along start and end of each spatial axis.",
+                    "name": "pads",
                     "required": false,
                     "type": 7
                 },
                 {
                     "description": "Stride along each spatial axis. If not present, the stride defaults to 1 along each spatial axis.",
                     "name": "strides",
-                    "required": false,
-                    "type": 7
-                },
-                {
-                    "description": "Padding for the beginning and ending along each spatial axis, it can take any value greater than or equal to 0. The value represent the number of pixels added to the beginning and end part of the corresponding axis. `pads` format should be as follow [x1_begin, x2_begin...x1_end, x2_end,...], where xi_begin the number of pixels added at the beginning of axis `i` and xi_end, the number of pixels added at the end of axis `i`. This attribute cannot be used simultaneously with auto_pad attribute. If not present, the padding defaults to 0 along start and end of each spatial axis.",
-                    "name": "pads",
                     "required": false,
                     "type": 7
                 }
@@ -2996,20 +2996,6 @@
         {
             "attributes": [
                 {
-                    "default": 0,
-                    "description": "Whether A should be transposed",
-                    "name": "transA",
-                    "required": false,
-                    "type": 2
-                },
-                {
-                    "default": 0,
-                    "description": "Whether B should be transposed",
-                    "name": "transB",
-                    "required": false,
-                    "type": 2
-                },
-                {
                     "default": 1.0,
                     "description": "Scalar multiplier for the product of input tensors A * B.",
                     "name": "alpha",
@@ -3022,6 +3008,20 @@
                     "name": "beta",
                     "required": false,
                     "type": 1
+                },
+                {
+                    "default": 0,
+                    "description": "Whether A should be transposed",
+                    "name": "transA",
+                    "required": false,
+                    "type": 2
+                },
+                {
+                    "default": 0,
+                    "description": "Whether B should be transposed",
+                    "name": "transB",
+                    "required": false,
+                    "type": 2
                 }
             ],
             "doc": "General Matrix multiplication:\nhttps://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms#Level_3\n\n* A' = transpose(A) if transA else A\n* B' = transpose(B) if transB else B\n\nCompute Y = alpha * A' * B' + beta * C, where input tensor A has shape (M, K) or (K, M),\ninput tensor B has shape (K, N) or (N, K), input tensor C is broadcastable to shape (M, N),\nand output tensor Y has shape (M, N). A will be transposed before doing the\ncomputation if attribute transA is non-zero, same for B and transB.\nThis operator supports **unidirectional broadcasting** (tensor C should be unidirectional broadcastable to tensor A * B); for more details please check [the doc](Broadcasting.md).\nThis operator has **optional** inputs/outputs. See [the doc](IR.md) for more details about the representation of optional arguments. An empty string may be used in the place of an actual argument's name to indicate a missing argument. Trailing optional arguments (those not followed by an argument that is present) may also be simply omitted.\n",
@@ -3104,35 +3104,11 @@
         {
             "attributes": [
                 {
-                    "description": "The size of the kernel along each axis.",
-                    "name": "kernel_shape",
-                    "required": true,
-                    "type": 7
-                },
-                {
-                    "description": "Stride along each spatial axis. If not present, the stride defaults to 1 along each spatial axis.",
-                    "name": "strides",
-                    "required": false,
-                    "type": 7
-                },
-                {
-                    "description": "Dilation value along each spatial axis of filter. If not present, the dilation defaults to 1 along each spatial axis.",
-                    "name": "dilations",
-                    "required": false,
-                    "type": 7
-                },
-                {
                     "default": "NOTSET",
                     "description": "auto_pad must be either NOTSET, SAME_UPPER, SAME_LOWER or VALID. Where default value is NOTSET, which means explicit padding is used. SAME_UPPER or SAME_LOWER mean pad the input so that `output_shape[i] = ceil(input_shape[i] / strides[i])` for each axis `i`. The padding is split between the two sides equally or almost equally (depending on whether it is even or odd). In case the padding is an odd number, the extra padding is added at the end for SAME_UPPER and at the beginning for SAME_LOWER.",
                     "name": "auto_pad",
                     "required": false,
                     "type": 3
-                },
-                {
-                    "description": "Padding for the beginning and ending along each spatial axis, it can take any value greater than or equal to 0. The value represent the number of pixels added to the beginning and end part of the corresponding axis. `pads` format should be as follow [x1_begin, x2_begin...x1_end, x2_end,...], where xi_begin the number of pixels added at the beginning of axis `i` and xi_end, the number of pixels added at the end of axis `i`. This attribute cannot be used simultaneously with auto_pad attribute. If not present, the padding defaults to 0 along start and end of each spatial axis.",
-                    "name": "pads",
-                    "required": false,
-                    "type": 7
                 },
                 {
                     "default": 0,
@@ -3142,11 +3118,35 @@
                     "type": 2
                 },
                 {
+                    "description": "Dilation value along each spatial axis of filter. If not present, the dilation defaults to 1 along each spatial axis.",
+                    "name": "dilations",
+                    "required": false,
+                    "type": 7
+                },
+                {
+                    "description": "The size of the kernel along each axis.",
+                    "name": "kernel_shape",
+                    "required": true,
+                    "type": 7
+                },
+                {
+                    "description": "Padding for the beginning and ending along each spatial axis, it can take any value greater than or equal to 0. The value represent the number of pixels added to the beginning and end part of the corresponding axis. `pads` format should be as follow [x1_begin, x2_begin...x1_end, x2_end,...], where xi_begin the number of pixels added at the beginning of axis `i` and xi_end, the number of pixels added at the end of axis `i`. This attribute cannot be used simultaneously with auto_pad attribute. If not present, the padding defaults to 0 along start and end of each spatial axis.",
+                    "name": "pads",
+                    "required": false,
+                    "type": 7
+                },
+                {
                     "default": 0,
                     "description": "The storage order of the tensor. 0 is row major, and 1 is column major. This attribute is used only to convert an n-tuple index value into a single integer value for producing the second output. ",
                     "name": "storage_order",
                     "required": false,
                     "type": 2
+                },
+                {
+                    "description": "Stride along each spatial axis. If not present, the stride defaults to 1 along each spatial axis.",
+                    "name": "strides",
+                    "required": false,
+                    "type": 7
                 }
             ],
             "doc": "\n MaxPool consumes an input tensor X and applies max pooling across\n the tensor according to kernel sizes, stride sizes, and pad lengths.\n max pooling consisting of computing the max on all values of a\n subset of the input tensor according to the kernel size and downsampling the\n data into the output tensor Y for further processing. The output spatial shape is calculated differently\n depending on whether explicit padding is used, where pads is employed, or auto padding is used, where auto_pad is utilized.\n With explicit padding (https://pytorch.org/docs/stable/generated/torch.nn.MaxPool2d.html?highlight=maxpool#torch.nn.MaxPool2d):\n ```\n output_spatial_shape[i] = floor((input_spatial_shape[i] + pad_shape[i] - dilation[i] * (kernel_shape[i] - 1) - 1) / strides_spatial_shape[i] + 1)\n ```\n or\n ```\n output_spatial_shape[i] = ceil((input_spatial_shape[i] + pad_shape[i] - dilation[i] * (kernel_shape[i] - 1) - 1) / strides_spatial_shape[i] + 1)\n ```\n if ceil_mode is enabled. `pad_shape[i]` is the sum of pads along axis `i`. Sliding windows that would start in the right padded region are ignored.\n\n `auto_pad` is a DEPRECATED attribute. If you are using them currently, the output spatial shape will be following when ceil_mode is enabled:\n ```\n VALID: output_spatial_shape[i] = ceil((input_spatial_shape[i] - ((kernel_spatial_shape[i] - 1) * dilations[i] + 1) + 1) / strides_spatial_shape[i])\n SAME_UPPER or SAME_LOWER: output_spatial_shape[i] = ceil(input_spatial_shape[i] / strides_spatial_shape[i])\n ```\n or when ceil_mode is disabled (https://www.tensorflow.org/api_docs/python/tf/keras/layers/AveragePooling2D):\n ```\n VALID: output_spatial_shape[i] = floor((input_spatial_shape[i] - ((kernel_spatial_shape[i] - 1) * dilations[i] + 1)) / strides_spatial_shape[i]) + 1\n SAME_UPPER or SAME_LOWER: output_spatial_shape[i] = floor((input_spatial_shape[i] - 1) / strides_spatial_shape[i]) + 1\n ```\n And pad shape will be following if `SAME_UPPER` or `SAME_LOWER`:\n ```\n pad_shape[i] = (output_spatial_shape[i] - 1) * strides_spatial_shape[i] + ((kernel_spatial_shape[i] - 1) * dilations[i] + 1) - input_spatial_shape[i]\n ```\n The output of each pooling window is maximum number of elements exclude pad. \n ",
@@ -3275,15 +3275,15 @@
                     "type": 2
                 },
                 {
-                    "default": 0,
-                    "description": "Rotary embedding dimension used to apply partial rotary embeddings.",
-                    "name": "rotary_embedding_dim",
+                    "description": "Number of attention heads. Must be provided when input is a 3D tensor. ",
+                    "name": "num_heads",
                     "required": false,
                     "type": 2
                 },
                 {
-                    "description": "Number of attention heads. Must be provided when input is a 3D tensor. ",
-                    "name": "num_heads",
+                    "default": 0,
+                    "description": "Rotary embedding dimension used to apply partial rotary embeddings.",
+                    "name": "rotary_embedding_dim",
                     "required": false,
                     "type": 2
                 }
@@ -3555,45 +3555,6 @@
         {
             "attributes": [
                 {
-                    "description": "A list of 2 (or 4 if bidirectional) activation functions for update, reset, and hidden gates. The activation functions must be one of the activation functions specified above. Optional: See the equations for default if not specified.",
-                    "name": "activations",
-                    "required": false,
-                    "type": 8
-                },
-                {
-                    "default": 0,
-                    "description": "When computing the output of the hidden gate, apply the linear transformation before multiplying by the output of the reset gate.",
-                    "name": "linear_before_reset",
-                    "required": false,
-                    "type": 2
-                },
-                {
-                    "default": "forward",
-                    "description": "Specify if the RNN is forward, reverse, or bidirectional. Must be one of forward (default), reverse, or bidirectional.",
-                    "name": "direction",
-                    "required": false,
-                    "type": 3
-                },
-                {
-                    "default": 0,
-                    "description": "The shape format of inputs X, initial_h and outputs Y, Y_h. If 0, the following shapes are expected: X.shape = [seq_length, batch_size, input_size], Y.shape = [seq_length, num_directions, batch_size, hidden_size], initial_h.shape = Y_h.shape = [num_directions, batch_size, hidden_size]. If 1, the following shapes are expected: X.shape = [batch_size, seq_length, input_size], Y.shape = [batch_size, seq_length, num_directions, hidden_size], initial_h.shape = Y_h.shape = [batch_size, num_directions, hidden_size].",
-                    "name": "layout",
-                    "required": false,
-                    "type": 2
-                },
-                {
-                    "description": "Number of neurons in the hidden layer",
-                    "name": "hidden_size",
-                    "required": false,
-                    "type": 2
-                },
-                {
-                    "description": "Cell clip threshold. Clipping bounds the elements of a tensor in the range of [-threshold, +threshold] and is applied to the input of activations. No clip if not specified.",
-                    "name": "clip",
-                    "required": false,
-                    "type": 1
-                },
-                {
                     "description": "Optional scaling values used by some activation functions. The values are consumed in the order of activation functions, for example (f, g, h) in LSTM. Default values are the same as of corresponding ONNX operators.For example with LeakyRelu, the default alpha is 0.01.",
                     "name": "activation_alpha",
                     "required": false,
@@ -3604,6 +3565,45 @@
                     "name": "activation_beta",
                     "required": false,
                     "type": 6
+                },
+                {
+                    "description": "A list of 2 (or 4 if bidirectional) activation functions for update, reset, and hidden gates. The activation functions must be one of the activation functions specified above. Optional: See the equations for default if not specified.",
+                    "name": "activations",
+                    "required": false,
+                    "type": 8
+                },
+                {
+                    "description": "Cell clip threshold. Clipping bounds the elements of a tensor in the range of [-threshold, +threshold] and is applied to the input of activations. No clip if not specified.",
+                    "name": "clip",
+                    "required": false,
+                    "type": 1
+                },
+                {
+                    "default": "forward",
+                    "description": "Specify if the RNN is forward, reverse, or bidirectional. Must be one of forward (default), reverse, or bidirectional.",
+                    "name": "direction",
+                    "required": false,
+                    "type": 3
+                },
+                {
+                    "description": "Number of neurons in the hidden layer",
+                    "name": "hidden_size",
+                    "required": false,
+                    "type": 2
+                },
+                {
+                    "default": 0,
+                    "description": "The shape format of inputs X, initial_h and outputs Y, Y_h. If 0, the following shapes are expected: X.shape = [seq_length, batch_size, input_size], Y.shape = [seq_length, num_directions, batch_size, hidden_size], initial_h.shape = Y_h.shape = [num_directions, batch_size, hidden_size]. If 1, the following shapes are expected: X.shape = [batch_size, seq_length, input_size], Y.shape = [batch_size, seq_length, num_directions, hidden_size], initial_h.shape = Y_h.shape = [batch_size, num_directions, hidden_size].",
+                    "name": "layout",
+                    "required": false,
+                    "type": 2
+                },
+                {
+                    "default": 0,
+                    "description": "When computing the output of the hidden gate, apply the linear transformation before multiplying by the output of the reset gate.",
+                    "name": "linear_before_reset",
+                    "required": false,
+                    "type": 2
                 }
             ],
             "doc": "\nComputes an one-layer GRU. This operator is usually supported via some custom\nimplementation such as CuDNN.\n\nNotations:\n\n* `X` - input tensor\n* `z` - update gate\n* `r` - reset gate\n* `h` - hidden gate\n* `t` - time step (t-1 means previous time step)\n* `W[zrh]` - W parameter weight matrix for update, reset, and hidden gates\n* `R[zrh]` - R recurrence weight matrix for update, reset, and hidden gates\n* `Wb[zrh]` - W bias vectors for update, reset, and hidden gates\n* `Rb[zrh]` - R bias vectors for update, reset, and hidden gates\n* `WB[zrh]` - W parameter weight matrix for backward update, reset, and hidden gates\n* `RB[zrh]` - R recurrence weight matrix for backward update, reset, and hidden gates\n* `WBb[zrh]` - W bias vectors for backward update, reset, and hidden gates\n* `RBb[zrh]` - R bias vectors for backward update, reset, and hidden gates\n* `H` - Hidden state\n* `num_directions` - 2 if direction == bidirectional else 1\n\nActivation functions:\n\n* Relu(x)                - max(0, x)\n* Tanh(x)                - (1 - e^{-2x})/(1 + e^{-2x})\n* Sigmoid(x)             - 1/(1 + e^{-x})\n\nNOTE:\n  Below are optional\n\n* Affine(x)              - alpha * x + beta\n* LeakyRelu(x)           - x if x >= 0 else alpha * x\n* ThresholdedRelu(x)     - x if x >= alpha else 0\n* ScaledTanh(x)          - alpha * Tanh(beta * x)\n* HardSigmoid(x)         - min(max(alpha * x + beta, 0), 1)\n* Elu(x)                 - x if x >= 0 else alpha * (e^x - 1)\n* Softsign(x)            - x/(1 + |x|)\n* Softplus(x)            - log(1 + e^x)\n\nEquations (Default: f=Sigmoid, g=Tanh):\n\n* zt = f(Xt*(Wz^T) + Ht-1*(Rz^T) + Wbz + Rbz)\n* rt = f(Xt*(Wr^T) + Ht-1*(Rr^T) + Wbr + Rbr)\n* ht = g(Xt*(Wh^T) + (rt (.) Ht-1)*(Rh^T) + Rbh + Wbh) # default, when linear_before_reset = 0\n* ht = g(Xt*(Wh^T) + (rt (.) (Ht-1*(Rh^T) + Rbh)) + Wbh) # when linear_before_reset != 0\n* Ht = (1 - zt) (.) ht + zt (.) Ht-1\nThis operator has **optional** inputs/outputs. See [the doc](IR.md) for more details about the representation of optional arguments. An empty string may be used in the place of an actual argument's name to indicate a missing argument. Trailing optional arguments (those not followed by an argument that is present) may also be simply omitted.\n",
@@ -4088,14 +4088,14 @@
         {
             "attributes": [
                 {
-                    "description": "Graph to run if condition is true. Has N outputs: values you wish to be live-out to the enclosing scope. The number of outputs must match the number of outputs in the else_branch.",
-                    "name": "then_branch",
+                    "description": "Graph to run if condition is false. Has N outputs: values you wish to be live-out to the enclosing scope. The number of outputs must match the number of outputs in the then_branch.",
+                    "name": "else_branch",
                     "required": true,
                     "type": 5
                 },
                 {
-                    "description": "Graph to run if condition is false. Has N outputs: values you wish to be live-out to the enclosing scope. The number of outputs must match the number of outputs in the then_branch.",
-                    "name": "else_branch",
+                    "description": "Graph to run if condition is true. Has N outputs: values you wish to be live-out to the enclosing scope. The number of outputs must match the number of outputs in the else_branch.",
+                    "name": "then_branch",
                     "required": true,
                     "type": 5
                 }
@@ -4412,15 +4412,15 @@
         {
             "attributes": [
                 {
-                    "default": 0,
-                    "description": "(Optional) Index of the diagonal to be populated with ones. Default is 0. If T2 is the output, this op sets T2[i, i+k] = 1. k = 0 populates the main diagonal, k > 0 populates an upper diagonal,  and k < 0 populates a lower diagonal.",
-                    "name": "k",
+                    "description": "(Optional) The data type for the elements of the output tensor. If not specified, the data type of the input tensor T1 is used.",
+                    "name": "dtype",
                     "required": false,
                     "type": 2
                 },
                 {
-                    "description": "(Optional) The data type for the elements of the output tensor. If not specified, the data type of the input tensor T1 is used.",
-                    "name": "dtype",
+                    "default": 0,
+                    "description": "(Optional) Index of the diagonal to be populated with ones. Default is 0. If T2 is the output, this op sets T2[i, i+k] = 1. k = 0 populates the main diagonal, k > 0 populates an upper diagonal,  and k < 0 populates a lower diagonal.",
+                    "name": "k",
                     "required": false,
                     "type": 2
                 }
@@ -4481,15 +4481,16 @@
         {
             "attributes": [
                 {
+                    "default": 1,
+                    "description": "The data type for the elements of the output tensor. Default is TensorProto::FLOAT.",
+                    "name": "dtype",
+                    "required": false,
+                    "type": 2
+                },
+                {
                     "default": 0.0,
                     "description": "The mean of the normal distribution.",
                     "name": "mean",
-                    "required": false,
-                    "type": 1
-                },
-                {
-                    "description": "(Optional) Seed to the random generator, if not specified we will auto generate one.",
-                    "name": "seed",
                     "required": false,
                     "type": 1
                 },
@@ -4501,11 +4502,10 @@
                     "type": 1
                 },
                 {
-                    "default": 1,
-                    "description": "The data type for the elements of the output tensor. Default is TensorProto::FLOAT.",
-                    "name": "dtype",
+                    "description": "(Optional) Seed to the random generator, if not specified we will auto generate one.",
+                    "name": "seed",
                     "required": false,
-                    "type": 2
+                    "type": 1
                 },
                 {
                     "description": "The shape of the output tensor.",
@@ -5614,11 +5614,10 @@
         {
             "attributes": [
                 {
-                    "default": 0.0,
-                    "description": "Lower boundary of the output values.",
-                    "name": "low",
+                    "description": "(Optional) The data type for the elements of the output tensor, if not specified, we will use the data type of the input tensor.",
+                    "name": "dtype",
                     "required": false,
-                    "type": 1
+                    "type": 2
                 },
                 {
                     "default": 1.0,
@@ -5628,16 +5627,17 @@
                     "type": 1
                 },
                 {
-                    "description": "(Optional) Seed to the random generator, if not specified we will auto generate one.",
-                    "name": "seed",
+                    "default": 0.0,
+                    "description": "Lower boundary of the output values.",
+                    "name": "low",
                     "required": false,
                     "type": 1
                 },
                 {
-                    "description": "(Optional) The data type for the elements of the output tensor, if not specified, we will use the data type of the input tensor.",
-                    "name": "dtype",
+                    "description": "(Optional) Seed to the random generator, if not specified we will auto generate one.",
+                    "name": "seed",
                     "required": false,
-                    "type": 2
+                    "type": 1
                 }
             ],
             "doc": "\nGenerate a tensor with random values drawn from a uniform distribution.\nThe shape of the output tensor is copied from the shape of the input tensor,\nand the parameters of the uniform distribution are specified by `low` and `high`.\n\nThe data type is specified by the 'dtype' argument, or copied from the input tensor if not provided.\nThe 'dtype' argument must be one of the data types specified in the 'DataType' enum field in the\nTensorProto message and be valid as an output type.\n",
@@ -5789,10 +5789,10 @@
         {
             "attributes": [
                 {
-                    "description": "(Optional) Seed to the random generator, if not specified we will auto generate one.",
-                    "name": "seed",
+                    "description": "(Optional) The data type for the elements of the output tensor, if not specified, we will use the data type of the input tensor.",
+                    "name": "dtype",
                     "required": false,
-                    "type": 1
+                    "type": 2
                 },
                 {
                     "default": 0.0,
@@ -5809,10 +5809,10 @@
                     "type": 1
                 },
                 {
-                    "description": "(Optional) The data type for the elements of the output tensor, if not specified, we will use the data type of the input tensor.",
-                    "name": "dtype",
+                    "description": "(Optional) Seed to the random generator, if not specified we will auto generate one.",
+                    "name": "seed",
                     "required": false,
-                    "type": 2
+                    "type": 1
                 }
             ],
             "doc": "\nGenerate a tensor with random values drawn from a normal distribution.\nThe shape of the output tensor is copied from the shape of the input tensor,\nand the parameters of the normal distribution are specified by `mean` and `scale`.\n\nThe data type is specified by the 'dtype' argument, or copied from the input tensor if not provided.\nThe 'dtype' argument must be one of the data types specified in the 'DataType' enum field in the\nTensorProto message, and be valid as an output type.\n",
@@ -6077,11 +6077,11 @@
         {
             "attributes": [
                 {
-                    "default": 0.0,
-                    "description": "Lower boundary of the output values.",
-                    "name": "low",
+                    "default": 1,
+                    "description": "The data type for the elements of the output tensor. If not specified, default is TensorProto::FLOAT.",
+                    "name": "dtype",
                     "required": false,
-                    "type": 1
+                    "type": 2
                 },
                 {
                     "default": 1.0,
@@ -6091,17 +6091,17 @@
                     "type": 1
                 },
                 {
-                    "description": "(Optional) Seed to the random generator, if not specified we will auto generate one.",
-                    "name": "seed",
+                    "default": 0.0,
+                    "description": "Lower boundary of the output values.",
+                    "name": "low",
                     "required": false,
                     "type": 1
                 },
                 {
-                    "default": 1,
-                    "description": "The data type for the elements of the output tensor. If not specified, default is TensorProto::FLOAT.",
-                    "name": "dtype",
+                    "description": "(Optional) Seed to the random generator, if not specified we will auto generate one.",
+                    "name": "seed",
                     "required": false,
-                    "type": 2
+                    "type": 1
                 },
                 {
                     "description": "The shape of the output tensor.",
@@ -6643,15 +6643,15 @@
             "attributes": [
                 {
                     "default": 0,
-                    "description": "If `onesided` is `1` and input is real, only values for `k` in `[0, 1, 2, ..., floor(n_fft/2) + 1]` are returned because the real-to-complex Fourier transform satisfies the conjugate symmetry, i.e., `X[m, k] = X[m, n_fft-k]*`, where `m` denotes \"all other dimensions\" DFT was not applied on. If the input tensor is complex, onesided output is not possible. Value can be `0` or `1`. Default is `0`.",
-                    "name": "onesided",
+                    "description": "Whether to perform the inverse discrete Fourier Transform. Default is 0, which corresponds to `false`.",
+                    "name": "inverse",
                     "required": false,
                     "type": 2
                 },
                 {
                     "default": 0,
-                    "description": "Whether to perform the inverse discrete Fourier Transform. Default is 0, which corresponds to `false`.",
-                    "name": "inverse",
+                    "description": "If `onesided` is `1` and input is real, only values for `k` in `[0, 1, 2, ..., floor(n_fft/2) + 1]` are returned because the real-to-complex Fourier transform satisfies the conjugate symmetry, i.e., `X[m, k] = X[m, n_fft-k]*`, where `m` denotes \"all other dimensions\" DFT was not applied on. If the input tensor is complex, onesided output is not possible. Value can be `0` or `1`. Default is `0`.",
+                    "name": "onesided",
                     "required": false,
                     "type": 2
                 }
@@ -7145,15 +7145,15 @@
         {
             "attributes": [
                 {
-                    "default": 0,
-                    "description": "(Optional) Starting axis for slicing the shape. Default value is 0.Negative value means counting dimensions from the back.",
-                    "name": "start",
+                    "description": "(Optional) Ending axis for slicing the shape. Negative value means counting dimensions from the back. If omitted, sizes of all axes upto (including) the last one will be included.",
+                    "name": "end",
                     "required": false,
                     "type": 2
                 },
                 {
-                    "description": "(Optional) Ending axis for slicing the shape. Negative value means counting dimensions from the back. If omitted, sizes of all axes upto (including) the last one will be included.",
-                    "name": "end",
+                    "default": 0,
+                    "description": "(Optional) Starting axis for slicing the shape. Default value is 0.Negative value means counting dimensions from the back.",
+                    "name": "start",
                     "required": false,
                     "type": 2
                 }
@@ -7322,17 +7322,17 @@
         {
             "attributes": [
                 {
+                    "description": "Specifies a target value that is ignored and does not contribute to the input gradient. It's an optional value.",
+                    "name": "ignore_index",
+                    "required": false,
+                    "type": 2
+                },
+                {
                     "default": "mean",
                     "description": "Type of reduction to apply to loss: none, sum, mean(default). 'none': no reduction will be applied, 'sum': the output will be summed. 'mean': the sum of the output will be divided by the number of elements in the output.",
                     "name": "reduction",
                     "required": false,
                     "type": 3
-                },
-                {
-                    "description": "Specifies a target value that is ignored and does not contribute to the input gradient. It's an optional value.",
-                    "name": "ignore_index",
-                    "required": false,
-                    "type": 2
                 }
             ],
             "doc": "Loss function that measures the softmax cross entropy\nbetween 'scores' and 'labels'.\nThis operator first computes a loss tensor whose shape is identical to the labels input.\nIf the input is 2-D with shape (N, C), the loss tensor may be a N-element vector L = (l_1, l_2, ..., l_N).\nIf the input is N-D tensor with shape (N, C, D1, D2, ..., Dk),\nthe loss tensor L may have (N, D1, D2, ..., Dk) as its shape and L[i,][j_1][j_2]...[j_k] denotes a scalar element in L.\nAfter L is available, this operator can optionally do a reduction operator.\n\n* shape(scores): (N, C) where C is the number of classes, or (N, C, D1, D2,..., Dk),\n  with K >= 1 in case of K-dimensional loss.\n* shape(labels): (N) where each value is 0 <= labels[i] <= C-1, or (N, D1, D2,..., Dk),\n  with K >= 1 in case of K-dimensional loss.\n\nThe loss for one sample, l_i, can calculated as follows:\n```\nl[i][d1][d2]...[dk] = -y[i][c][d1][d2]..[dk], where i is the index of classes.\n```\nor\n```\nl[i][d1][d2]...[dk] = -y[i][c][d1][d2]..[dk] * weights[c], if 'weights' is provided.\n```\n\nloss is zero for the case when label-value equals ignore_index.\n```\nl[i][d1][d2]...[dk]  = 0, when labels[n][d1][d2]...[dk] = ignore_index\n```\n\nwhere:\n```\np = Softmax(scores)\ny = Log(p)\nc = labels[i][d1][d2]...[dk]\n```\n\nFinally, L is optionally reduced:\n\n* If reduction = 'none', the output is L with shape (N, D1, D2, ..., Dk).\n* If reduction = 'sum', the output is scalar: Sum(L).\n* If reduction = 'mean', the output is scalar: ReduceMean(L), or if weight is provided: `ReduceSum(L) / ReduceSum(W)`,\n  where tensor W is of shape `(N, D1, D2, ..., Dk)` and `W[n][d1][d2]...[dk] = weights[labels[i][d1][d2]...[dk]]`.\n",
@@ -7690,20 +7690,14 @@
         {
             "attributes": [
                 {
-                    "description": "List of strings n-grams learned from the training set. Either this or pool_int64s attributes must be present but not both. It's an 1-D tensor starting with the collections of all 1-grams and ending with the collections of n-grams. The i-th element in pool stores the n-gram that should be mapped to coordinate ngram_indexes[i] in the output vector.",
-                    "name": "pool_strings",
-                    "required": false,
-                    "type": 8
-                },
-                {
-                    "description": "The weighting criteria. It can be one of \"TF\" (term frequency), \"IDF\" (inverse document frequency), and \"TFIDF\" (the combination of TF and IDF)",
-                    "name": "mode",
-                    "required": true,
-                    "type": 3
-                },
-                {
                     "description": "Maximum n-gram length. If this value is 3, 3-grams will be used to generate the output.",
                     "name": "max_gram_length",
+                    "required": true,
+                    "type": 2
+                },
+                {
+                    "description": "Maximum number of items (integers/strings) to be skipped when constructing an n-gram from X. If max_skip_count=1, min_gram_length=2, max_gram_length=3, this operator may generate 2-grams with skip_count=0 and skip_count=1, and 3-grams with skip_count=0 and skip_count=1",
+                    "name": "max_skip_count",
                     "required": true,
                     "type": 2
                 },
@@ -7714,16 +7708,22 @@
                     "type": 2
                 },
                 {
-                    "description": "list of int64s (type: AttributeProto::INTS). This list is parallel to the specified 'pool_*' attribute. The i-th element in ngram_indexes indicate the coordinate of the i-th n-gram in the output tensor.",
-                    "name": "ngram_indexes",
+                    "description": "The weighting criteria. It can be one of \"TF\" (term frequency), \"IDF\" (inverse document frequency), and \"TFIDF\" (the combination of TF and IDF)",
+                    "name": "mode",
+                    "required": true,
+                    "type": 3
+                },
+                {
+                    "description": "The starting indexes of 1-grams, 2-grams, and so on in pool. It is useful when determining the boundary between two consecutive collections of n-grams. For example, if ngram_counts is [0, 17, 36], the first index (zero-based) of 1-gram/2-gram/3-gram in pool are 0/17/36. This format is essentially identical to CSR (or CSC) sparse matrix format, and we choose to use this due to its popularity.",
+                    "name": "ngram_counts",
                     "required": true,
                     "type": 7
                 },
                 {
-                    "description": "Maximum number of items (integers/strings) to be skipped when constructing an n-gram from X. If max_skip_count=1, min_gram_length=2, max_gram_length=3, this operator may generate 2-grams with skip_count=0 and skip_count=1, and 3-grams with skip_count=0 and skip_count=1",
-                    "name": "max_skip_count",
+                    "description": "list of int64s (type: AttributeProto::INTS). This list is parallel to the specified 'pool_*' attribute. The i-th element in ngram_indexes indicate the coordinate of the i-th n-gram in the output tensor.",
+                    "name": "ngram_indexes",
                     "required": true,
-                    "type": 2
+                    "type": 7
                 },
                 {
                     "description": "List of int64 n-grams learned from the training set. Either this or pool_strings attributes must be present but not both. It's an 1-D tensor starting with the collections of all 1-grams and ending with the collections of n-grams. The i-th element in pool stores the n-gram that should be mapped to coordinate ngram_indexes[i] in the output vector.",
@@ -7732,10 +7732,10 @@
                     "type": 7
                 },
                 {
-                    "description": "The starting indexes of 1-grams, 2-grams, and so on in pool. It is useful when determining the boundary between two consecutive collections of n-grams. For example, if ngram_counts is [0, 17, 36], the first index (zero-based) of 1-gram/2-gram/3-gram in pool are 0/17/36. This format is essentially identical to CSR (or CSC) sparse matrix format, and we choose to use this due to its popularity.",
-                    "name": "ngram_counts",
-                    "required": true,
-                    "type": 7
+                    "description": "List of strings n-grams learned from the training set. Either this or pool_int64s attributes must be present but not both. It's an 1-D tensor starting with the collections of all 1-grams and ending with the collections of n-grams. The i-th element in pool stores the n-gram that should be mapped to coordinate ngram_indexes[i] in the output vector.",
+                    "name": "pool_strings",
+                    "required": false,
+                    "type": 8
                 },
                 {
                     "description": "list of floats. This attribute stores the weight of each n-gram in pool. The i-th element in weights is the weight of the i-th n-gram in pool. Its length equals to the size of ngram_indexes. By default, weights is an all-one tensor.This attribute is used when mode is \"IDF\" or \"TFIDF\" to scale the associated word counts.",
@@ -8197,16 +8197,16 @@
         {
             "attributes": [
                 {
-                    "default": 0.5,
-                    "description": "The lambd value for the Shrink formulation. Default is 0.5.",
-                    "name": "lambd",
+                    "default": 0.0,
+                    "description": "The bias value added to output. Default is 0.",
+                    "name": "bias",
                     "required": false,
                     "type": 1
                 },
                 {
-                    "default": 0.0,
-                    "description": "The bias value added to output. Default is 0.",
-                    "name": "bias",
+                    "default": 0.5,
+                    "description": "The lambd value for the Shrink formulation. Default is 0.5.",
+                    "name": "lambd",
                     "required": false,
                     "type": 1
                 }
@@ -8819,6 +8819,13 @@
         {
             "attributes": [
                 {
+                    "default": 6,
+                    "description": "(Optional) The data type for the elements of the output tensor, if not specified, we will use int32.",
+                    "name": "dtype",
+                    "required": false,
+                    "type": 2
+                },
+                {
                     "default": 1,
                     "description": "Number of times to sample.",
                     "name": "sample_size",
@@ -8830,13 +8837,6 @@
                     "name": "seed",
                     "required": false,
                     "type": 1
-                },
-                {
-                    "default": 6,
-                    "description": "(Optional) The data type for the elements of the output tensor, if not specified, we will use int32.",
-                    "name": "dtype",
-                    "required": false,
-                    "type": 2
                 }
             ],
             "doc": "\nGenerate a tensor of samples from a multinomial distribution according to the probabilities\nof each of the possible outcomes.\n",
@@ -8924,26 +8924,26 @@
                     "type": 2
                 },
                 {
-                    "description": "An optional list of M flags. The i-th element of the list specifies the direction to be scanned for the i-th scan_input tensor: 0 indicates forward direction and 1 indicates reverse direction. If omitted, all scan_input tensors will be scanned in the forward direction.",
-                    "name": "scan_input_directions",
-                    "required": false,
-                    "type": 7
-                },
-                {
-                    "description": "An optional list of K flags, one for each scan_output. The i-th element of the list specifies whether the i-th scan_output should be constructed by appending or prepending a new value in each iteration: 0 indicates appending and 1 indicates prepending. If omitted, all scan_output tensors will be produced by appending a value in each iteration.",
-                    "name": "scan_output_directions",
-                    "required": false,
-                    "type": 7
-                },
-                {
                     "description": "An optional list of M flags. The i-th element of the list specifies the axis to be scanned (the sequence axis) for the i-th scan_input. If omitted, 0 will be used as the scan axis for every scan_input. Negative value for an axis means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(input).",
                     "name": "scan_input_axes",
                     "required": false,
                     "type": 7
                 },
                 {
+                    "description": "An optional list of M flags. The i-th element of the list specifies the direction to be scanned for the i-th scan_input tensor: 0 indicates forward direction and 1 indicates reverse direction. If omitted, all scan_input tensors will be scanned in the forward direction.",
+                    "name": "scan_input_directions",
+                    "required": false,
+                    "type": 7
+                },
+                {
                     "description": "An optional list of K flags. The i-th element of the list specifies the axis for the i-th scan_output. The scan outputs are accumulated along the specified axis. If omitted, 0 will be used as the scan axis for every scan_output. Negative value for an axis means counting dimensions from the back. Accepted range is [-r, r-1].",
                     "name": "scan_output_axes",
+                    "required": false,
+                    "type": 7
+                },
+                {
+                    "description": "An optional list of K flags, one for each scan_output. The i-th element of the list specifies whether the i-th scan_output should be constructed by appending or prepending a new value in each iteration: 0 indicates appending and 1 indicates prepending. If omitted, all scan_output tensors will be produced by appending a value in each iteration.",
+                    "name": "scan_output_directions",
                     "required": false,
                     "type": 7
                 }
@@ -9172,14 +9172,14 @@
                     "type": 7
                 },
                 {
-                    "description": "Stride along each spatial axis. If not present, the stride defaults to 1 along each spatial axis.",
-                    "name": "strides",
+                    "description": "Padding for the beginning and ending along each spatial axis, it can take any value greater than or equal to 0. The value represent the number of pixels added to the beginning and end part of the corresponding axis. `pads` format should be as follow [x1_begin, x2_begin...x1_end, x2_end,...], where xi_begin the number of pixels added at the beginning of axis `i` and xi_end, the number of pixels added at the end of axis `i`. This attribute cannot be used simultaneously with auto_pad attribute. If not present, the padding defaults to 0 along start and end of each spatial axis.",
+                    "name": "pads",
                     "required": false,
                     "type": 7
                 },
                 {
-                    "description": "Padding for the beginning and ending along each spatial axis, it can take any value greater than or equal to 0. The value represent the number of pixels added to the beginning and end part of the corresponding axis. `pads` format should be as follow [x1_begin, x2_begin...x1_end, x2_end,...], where xi_begin the number of pixels added at the beginning of axis `i` and xi_end, the number of pixels added at the end of axis `i`. This attribute cannot be used simultaneously with auto_pad attribute. If not present, the padding defaults to 0 along start and end of each spatial axis.",
-                    "name": "pads",
+                    "description": "Stride along each spatial axis. If not present, the stride defaults to 1 along each spatial axis.",
+                    "name": "strides",
                     "required": false,
                     "type": 7
                 }
@@ -9903,16 +9903,16 @@
                     "type": 2
                 },
                 {
-                    "description": "List of stop words. If not set, no word would be removed from X.",
-                    "name": "stopwords",
-                    "required": false,
-                    "type": 8
-                },
-                {
                     "description": "Environment dependent string that denotes the locale according to which output strings needs to be upper/lowercased.Default en_US or platform specific equivalent as decided by the implementation.",
                     "name": "locale",
                     "required": false,
                     "type": 3
+                },
+                {
+                    "description": "List of stop words. If not set, no word would be removed from X.",
+                    "name": "stopwords",
+                    "required": false,
+                    "type": 8
                 }
             ],
             "doc": "\nStringNormalization performs string operations for basic cleaning.\nThis operator has only one input (denoted by X) and only one output\n(denoted by Y). This operator first examines the elements in the X,\nand removes elements specified in \"stopwords\" attribute.\nAfter removing stop words, the intermediate result can be further lowercased,\nuppercased, or just returned depending the \"case_change_action\" attribute.\nThis operator only accepts [C]- and [1, C]-tensor.\nIf all elements in X are dropped, the output will be the empty value of string tensor with shape [1]\nif input shape is [C] and shape [1, 1] if input shape is [1, C].\n",
@@ -10276,11 +10276,11 @@
         {
             "attributes": [
                 {
-                    "default": 1,
-                    "description": "number of groups input channels and output channels are divided into. default is 1.",
-                    "name": "group",
+                    "default": "NOTSET",
+                    "description": "auto_pad must be either NOTSET, SAME_UPPER, SAME_LOWER or VALID. Where default value is NOTSET, which means explicit padding is used. SAME_UPPER or SAME_LOWER mean pad the input so that `output_shape[i] = ceil(input_shape[i] / strides[i])` for each axis `i`. The padding is split between the two sides equally or almost equally (depending on whether it is even or odd). In case the padding is an odd number, the extra padding is added at the end for SAME_UPPER and at the beginning for SAME_LOWER.",
+                    "name": "auto_pad",
                     "required": false,
-                    "type": 2
+                    "type": 3
                 },
                 {
                     "description": "dilation value along each spatial axis of the filter. If not present, the dilation defaults to 1 along each axis.",
@@ -10289,11 +10289,11 @@
                     "type": 7
                 },
                 {
-                    "default": "NOTSET",
-                    "description": "auto_pad must be either NOTSET, SAME_UPPER, SAME_LOWER or VALID. Where default value is NOTSET, which means explicit padding is used. SAME_UPPER or SAME_LOWER mean pad the input so that `output_shape[i] = ceil(input_shape[i] / strides[i])` for each axis `i`. The padding is split between the two sides equally or almost equally (depending on whether it is even or odd). In case the padding is an odd number, the extra padding is added at the end for SAME_UPPER and at the beginning for SAME_LOWER.",
-                    "name": "auto_pad",
+                    "default": 1,
+                    "description": "number of groups input channels and output channels are divided into. default is 1.",
+                    "name": "group",
                     "required": false,
-                    "type": 3
+                    "type": 2
                 },
                 {
                     "description": "The shape of the convolution kernel. If not present, should be inferred from input 'w'.",
@@ -10302,14 +10302,14 @@
                     "type": 7
                 },
                 {
-                    "description": "Stride along each spatial axis. If not present, the stride defaults to 1 along each axis.",
-                    "name": "strides",
+                    "description": "Padding for the beginning and ending along each spatial axis, it can take any value greater than or equal to 0.The value represent the number of pixels added to the beginning and end part of the corresponding axis.`pads` format should be as follow [x1_begin, x2_begin...x1_end, x2_end,...], where xi_begin the number ofpixels added at the beginning of axis `i` and xi_end, the number of pixels added at the end of axis `i`.This attribute cannot be used simultaneously with auto_pad attribute. If not present, the padding defaultsto 0 along start and end of each spatial axis.",
+                    "name": "pads",
                     "required": false,
                     "type": 7
                 },
                 {
-                    "description": "Padding for the beginning and ending along each spatial axis, it can take any value greater than or equal to 0.The value represent the number of pixels added to the beginning and end part of the corresponding axis.`pads` format should be as follow [x1_begin, x2_begin...x1_end, x2_end,...], where xi_begin the number ofpixels added at the beginning of axis `i` and xi_end, the number of pixels added at the end of axis `i`.This attribute cannot be used simultaneously with auto_pad attribute. If not present, the padding defaultsto 0 along start and end of each spatial axis.",
-                    "name": "pads",
+                    "description": "Stride along each spatial axis. If not present, the stride defaults to 1 along each axis.",
+                    "name": "strides",
                     "required": false,
                     "type": 7
                 }
@@ -10380,11 +10380,11 @@
         {
             "attributes": [
                 {
-                    "default": 1,
-                    "description": "number of groups input channels and output channels are divided into. default is 1.",
-                    "name": "group",
+                    "default": "NOTSET",
+                    "description": "auto_pad must be either NOTSET, SAME_UPPER, SAME_LOWER or VALID. Where default value is NOTSET, which means explicit padding is used. SAME_UPPER or SAME_LOWER mean pad the input so that `output_shape[i] = ceil(input_shape[i] / strides[i])` for each axis `i`. The padding is split between the two sides equally or almost equally (depending on whether it is even or odd). In case the padding is an odd number, the extra padding is added at the end for SAME_UPPER and at the beginning for SAME_LOWER.",
+                    "name": "auto_pad",
                     "required": false,
-                    "type": 2
+                    "type": 3
                 },
                 {
                     "description": "dilation value along each spatial axis of the filter. If not present, the dilation defaults to 1 along each spatial axis.",
@@ -10393,11 +10393,11 @@
                     "type": 7
                 },
                 {
-                    "default": "NOTSET",
-                    "description": "auto_pad must be either NOTSET, SAME_UPPER, SAME_LOWER or VALID. Where default value is NOTSET, which means explicit padding is used. SAME_UPPER or SAME_LOWER mean pad the input so that `output_shape[i] = ceil(input_shape[i] / strides[i])` for each axis `i`. The padding is split between the two sides equally or almost equally (depending on whether it is even or odd). In case the padding is an odd number, the extra padding is added at the end for SAME_UPPER and at the beginning for SAME_LOWER.",
-                    "name": "auto_pad",
+                    "default": 1,
+                    "description": "number of groups input channels and output channels are divided into. default is 1.",
+                    "name": "group",
                     "required": false,
-                    "type": 3
+                    "type": 2
                 },
                 {
                     "description": "The shape of the convolution kernel. If not present, should be inferred from input 'w'.",
@@ -10406,14 +10406,14 @@
                     "type": 7
                 },
                 {
-                    "description": "Stride along each spatial axis. If not present, the stride defaults to 1 along each spatial axis.",
-                    "name": "strides",
+                    "description": "Padding for the beginning and ending along each spatial axis, it can take any value greater than or equal to 0.The value represent the number of pixels added to the beginning and end part of the corresponding axis.`pads` format should be as follow [x1_begin, x2_begin...x1_end, x2_end,...], where xi_begin the number ofpixels added at the beginning of axis `i` and xi_end, the number of pixels added at the end of axis `i`.This attribute cannot be used simultaneously with auto_pad attribute. If not present, the padding defaultsto 0 along start and end of each spatial axis.",
+                    "name": "pads",
                     "required": false,
                     "type": 7
                 },
                 {
-                    "description": "Padding for the beginning and ending along each spatial axis, it can take any value greater than or equal to 0.The value represent the number of pixels added to the beginning and end part of the corresponding axis.`pads` format should be as follow [x1_begin, x2_begin...x1_end, x2_end,...], where xi_begin the number ofpixels added at the beginning of axis `i` and xi_end, the number of pixels added at the end of axis `i`.This attribute cannot be used simultaneously with auto_pad attribute. If not present, the padding defaultsto 0 along start and end of each spatial axis.",
-                    "name": "pads",
+                    "description": "Stride along each spatial axis. If not present, the stride defaults to 1 along each spatial axis.",
+                    "name": "strides",
                     "required": false,
                     "type": 7
                 }
@@ -10537,13 +10537,6 @@
             "attributes": [
                 {
                     "default": 1,
-                    "description": "The parameter defines how the conversion behaves if an input value is out of range of the destination type. It only applies for float 8 quantization (float8e4m3fn, float8e4m3fnuz, float8e5m2, float8e5m2fnuz). It is true by default. All cases are fully described in two tables inserted in the operator description.",
-                    "name": "saturate",
-                    "required": false,
-                    "type": 2
-                },
-                {
-                    "default": 1,
                     "description": "(Optional) The axis of the dequantizing dimension of the input tensor. Used only for per-axis and blocked quantization. Negative value means counting dimensions from the back. Accepted range is `[-r, r-1]` where `r = rank(input)`. When the rank of the input is 1, per-tensor quantization is applied, rendering the axis unnecessary in this scenario.",
                     "name": "axis",
                     "required": false,
@@ -10558,15 +10551,22 @@
                 },
                 {
                     "default": 0,
+                    "description": "(Optional) The output data type. If not supplied, the output data type is inferred from `y_zero_point` data type (`T3`). If neither `output_dtype` nor `y_zero_point` are supplied, output data type is uint8. If both `output_dtype` and `y_zero_point` are specified, `output_dtype` must be `T3`.",
+                    "name": "output_dtype",
+                    "required": false,
+                    "type": 2
+                },
+                {
+                    "default": 0,
                     "description": "(Optional) The precision of the division operation between `x` and `y_scale`. If not provided, it will be the same as the type of `y_scale`.",
                     "name": "precision",
                     "required": false,
                     "type": 2
                 },
                 {
-                    "default": 0,
-                    "description": "(Optional) The output data type. If not supplied, the output data type is inferred from `y_zero_point` data type (`T3`). If neither `output_dtype` nor `y_zero_point` are supplied, output data type is uint8. If both `output_dtype` and `y_zero_point` are specified, `output_dtype` must be `T3`.",
-                    "name": "output_dtype",
+                    "default": 1,
+                    "description": "The parameter defines how the conversion behaves if an input value is out of range of the destination type. It only applies for float 8 quantization (float8e4m3fn, float8e4m3fnuz, float8e5m2, float8e5m2fnuz). It is true by default. All cases are fully described in two tables inserted in the operator description.",
+                    "name": "saturate",
                     "required": false,
                     "type": 2
                 }
@@ -10890,18 +10890,25 @@
         {
             "attributes": [
                 {
+                    "default": "half_pixel",
+                    "description": "Allowed values are 'half_pixel' and 'output_half_pixel'. Use the value 'half_pixel' to pixel shift the input coordinates by -0.5 (the recommended behavior). Use the value 'output_half_pixel' to omit the pixel shift for the input (use this for a backward-compatible behavior).",
+                    "name": "coordinate_transformation_mode",
+                    "required": false,
+                    "type": 3
+                },
+                {
+                    "default": "avg",
+                    "description": "The pooling method. Two modes are supported: 'avg' and 'max'. Default is 'avg'.",
+                    "name": "mode",
+                    "required": false,
+                    "type": 3
+                },
+                {
                     "default": 1,
                     "description": "default 1; Pooled output Y's height.",
                     "name": "output_height",
                     "required": false,
                     "type": 2
-                },
-                {
-                    "default": 1.0,
-                    "description": "Multiplicative spatial scale factor to translate ROI coordinates from their input spatial scale to the scale used when pooling, i.e., spatial scale of the input feature map X relative to the input image. E.g.; default is 1.0f. ",
-                    "name": "spatial_scale",
-                    "required": false,
-                    "type": 1
                 },
                 {
                     "default": 1,
@@ -10918,18 +10925,11 @@
                     "type": 2
                 },
                 {
-                    "default": "avg",
-                    "description": "The pooling method. Two modes are supported: 'avg' and 'max'. Default is 'avg'.",
-                    "name": "mode",
+                    "default": 1.0,
+                    "description": "Multiplicative spatial scale factor to translate ROI coordinates from their input spatial scale to the scale used when pooling, i.e., spatial scale of the input feature map X relative to the input image. E.g.; default is 1.0f. ",
+                    "name": "spatial_scale",
                     "required": false,
-                    "type": 3
-                },
-                {
-                    "default": "half_pixel",
-                    "description": "Allowed values are 'half_pixel' and 'output_half_pixel'. Use the value 'half_pixel' to pixel shift the input coordinates by -0.5 (the recommended behavior). Use the value 'output_half_pixel' to omit the pixel shift for the input (use this for a backward-compatible behavior).",
-                    "name": "coordinate_transformation_mode",
-                    "required": false,
-                    "type": 3
+                    "type": 1
                 }
             ],
             "doc": "\nRegion of Interest (RoI) align operation described in the\n[Mask R-CNN paper](https://arxiv.org/abs/1703.06870).\nRoiAlign consumes an input tensor X and region of interests (rois)\nto apply pooling across each RoI; it produces a 4-D tensor of shape\n(num_rois, C, output_height, output_width).\n\nRoiAlign is proposed to avoid the misalignment by removing\nquantizations while converting from original image into feature\nmap and from feature map into RoI feature; in each ROI bin,\nthe value of the sampled locations are computed directly\nthrough bilinear interpolation.\n",
@@ -11095,15 +11095,15 @@
         {
             "attributes": [
                 {
-                    "default": 1,
-                    "description": "(Optional) Whether to sort the unique elements in ascending order before returning as output. Must be one of 0, or 1 (default).",
-                    "name": "sorted",
+                    "description": "(Optional) The dimension to apply unique. If not specified, the unique elements of the flattened input are returned. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(input).",
+                    "name": "axis",
                     "required": false,
                     "type": 2
                 },
                 {
-                    "description": "(Optional) The dimension to apply unique. If not specified, the unique elements of the flattened input are returned. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(input).",
-                    "name": "axis",
+                    "default": 1,
+                    "description": "(Optional) Whether to sort the unique elements in ascending order before returning as output. Must be one of 0, or 1 (default).",
+                    "name": "sorted",
                     "required": false,
                     "type": 2
                 }
@@ -11198,16 +11198,16 @@
         {
             "attributes": [
                 {
-                    "description": "(Optional) Seed to the random generator, if not specified we will auto generate one.",
-                    "name": "seed",
-                    "required": false,
-                    "type": 1
-                },
-                {
                     "description": "The data type for the elements of the output tensor. if not specified, we will use the data type of the input tensor.",
                     "name": "dtype",
                     "required": false,
                     "type": 2
+                },
+                {
+                    "description": "(Optional) Seed to the random generator, if not specified we will auto generate one.",
+                    "name": "seed",
+                    "required": false,
+                    "type": 1
                 }
             ],
             "doc": "\nDraws binary random numbers (0 or 1) from a Bernoulli distribution. The input tensor should be a tensor\ncontaining probabilities p (a value in the range [0,1]) to be used for drawing the binary random number,\nwhere an output of 1 is produced with probability p and an output of 0 is produced with probability (1-p).\n\nThis operator is non-deterministic and may not produce the same values in different\nimplementations (even if a seed is specified).\n",
@@ -12103,17 +12103,17 @@
         {
             "attributes": [
                 {
+                    "description": "Specifies a target value that is ignored and does not contribute to the input gradient. It's an optional value.",
+                    "name": "ignore_index",
+                    "required": false,
+                    "type": 2
+                },
+                {
                     "default": "mean",
                     "description": "Type of reduction to apply to loss: none, sum, mean (default). 'none': the output is the loss for each sample. 'sum': the output will be summed. 'mean': the sum of the output will be divided by the sum of applied weights.",
                     "name": "reduction",
                     "required": false,
                     "type": 3
-                },
-                {
-                    "description": "Specifies a target value that is ignored and does not contribute to the input gradient. It's an optional value.",
-                    "name": "ignore_index",
-                    "required": false,
-                    "type": 2
                 }
             ],
             "doc": "\nA NegativeLogLikelihoodLoss operator computes (weighted) negative log likelihood loss.\nIts \"input\" tensor has the shape of (N, C, d1, d2, ..., dk) where k >= 0.\nThe \"input\" tensor contains log-probabilities for input[n, :, d_1, d_2,..., d_k] being in a class of [0, C).\nThe operator's \"target\" input tensor has the shape of (N, d1, d2, ..., dk). It encodes class labels (one of C classes)\nor it may contain a special value (indicated by an attribute ignore_index) for N x d1 x d2 x ... x dk samples.\nThe loss value for input[n, :, d_1, d_2,...d_k] being classified as class c = target[n][d_1][d_2]...[d_k] is computed as:\n\n```\nloss[n][d_1][d_2]...[d_k] = -input[n][c][d_1][d_2]...[d_k].\n```\n\nWhen an optional \"weight\" is provided, the sample loss is calculated as:\n\n```\nloss[n][d_1][d_2]...[d_k] = -input[n][c][d_1][d_2]...[d_k] * weight[c].\n```\n\nloss is zero for the case when target-value equals ignore_index.\n\n```\nloss[n][d_1][d_2]...[d_k] = 0, when target[n][d_1][d_2]...[d_k] = ignore_index\n```\n\nIf \"reduction\" attribute is set to \"none\", the operator's output will be the above loss with shape (N, d1, d2, ..., dk).\nIf \"reduction\" attribute is set to \"mean\" (the default attribute value), the output loss is (weight) averaged:\n\n```\nmean(loss), if \"weight\" is not provided,\n```\n\nor if weight is provided,\n\n```\nsum(loss) / sum(weight[target[n][d_1][d_2]...[d_k]]]), for all samples.\n```\n\nIf \"reduction\" attribute is set to \"sum\", the output is a scalar: `sum(loss)`.\n\nSee also https://pytorch.org/docs/stable/nn.html#torch.nn.NLLLoss.\n\nExample 1:\n\n```\n// negative log likelihood loss, \"none\" reduction\nN, C, d1 = 2, 3, 2\ninput = [[[1.0, 2.0], [2.0, 2.0], [3.0, 2.0]],\n          [[0.0, 1.0], [2.0, 2.0], [1.0, 2]]]\ntarget = [[2, 1], [0, 2]]\n\nloss = np.zeros((N, d1))\nfor n in range(N):\n    for d_1 in range(d1):\n        c = target[n][d_1]\n        loss[n][d_1] = -input[n][c][d_1]\n\n// print(loss)\n// [[-3. -2.]\n//  [-0. -2.]]\n```\n\nExample 2:\n\n```\n// weighted negative log likelihood loss, sum reduction\nN, C, d1 = 2, 3, 2\ninput = [[[1.0, 2.0], [2.0, 2.0], [3.0, 2.0]],\n        [[0.0, 1.0], [2.0, 2.0], [1.0, 2]]]\ntarget = [[2, 1], [0, 2]]\nweight = [0.2, 0.3, 0.1]\nloss = np.zeros((N, d1))\nfor n in range(N):\n    for d_1 in range(d1):\n        c = target[n][d_1]\n        loss[n][d_1] = -input[n][c][d_1] * weight[c]\n\nloss = np.sum(loss)\n// print(loss)\n// -1.1\n```\n\nExample 3:\n\n```\n// weighted negative log likelihood loss, mean reduction\nN, C, d1 = 2, 3, 2\ninput = [[[1.0, 2.0], [2.0, 2.0], [3.0, 2.0]],\n        [[0.0, 1.0], [2.0, 2.0], [1.0, 2]]]\ntarget = [[2, 1], [0, 2]]\nweight = [0.2, 0.3, 0.1]\nloss = np.zeros((N, d1))\nweight_total = 0\nfor n in range(N):\n    for d_1 in range(d1):\n        c = target[n][d_1]\n        loss[n][d_1] = -input[n][c][d_1] * weight[c]\n        weight_total = weight_total + weight[c]\n\nloss = np.sum(loss) / weight_total\n// print(loss)\n// -1.57\n```\n",
@@ -12668,18 +12668,18 @@
         {
             "attributes": [
                 {
-                    "default": 1,
-                    "description": "The parameter defines how the conversion behaves if an input value is out of range of the destination type. It only applies for float 8 conversion (float8e4m3fn, float8e4m3fnuz, float8e5m2, float8e5m2fnuz, float8e8m0). It is true by default. Please refer to operator Cast description for further details.",
-                    "name": "saturate",
-                    "required": false,
-                    "type": 2
-                },
-                {
                     "default": "up",
                     "description": "Rounding mode for conversion to float8e8m0. It only applies to casting to float8e8m0 and is `up` by default. `up`: round to nearest value away from zero, `down`: round to nearest value towards zero, `nearest`: round to nearest value and ties round up. Please refer to operator Cast description for further details.",
                     "name": "round_mode",
                     "required": false,
                     "type": 3
+                },
+                {
+                    "default": 1,
+                    "description": "The parameter defines how the conversion behaves if an input value is out of range of the destination type. It only applies for float 8 conversion (float8e4m3fn, float8e4m3fnuz, float8e5m2, float8e5m2fnuz, float8e8m0). It is true by default. Please refer to operator Cast description for further details.",
+                    "name": "saturate",
+                    "required": false,
+                    "type": 2
                 }
             ],
             "doc": "\nThe operator casts the elements of a given input tensor (the first input) to\nthe same data type as the elements of the second input tensor.\nSee documentation of the Cast operator for further details.\n",
@@ -12793,6 +12793,13 @@
         {
             "attributes": [
                 {
+                    "default": 0,
+                    "description": "If align_corners=1, the extrema (-1 and 1) are considered as referring to the center points of the input's corner pixels (voxels, etc.). If align_corners=0, they are instead considered as referring to the corner points of the input's corner pixels (voxels, etc.), making the sampling more resolution agnostic.",
+                    "name": "align_corners",
+                    "required": false,
+                    "type": 2
+                },
+                {
                     "default": "linear",
                     "description": "Three interpolation modes: linear (default), nearest and cubic. The \"linear\" mode includes linear and N-linear interpolation modes depending on the number of spatial dimensions of the input tensor (i.e. linear for 1 spatial dimension, bilinear for 2 spatial dimensions, etc.). The \"cubic\" mode also includes N-cubic interpolation modes following the same rules. The \"nearest\" mode rounds to the nearest even index when the sampling point falls halfway between two indices.",
                     "name": "mode",
@@ -12805,13 +12812,6 @@
                     "name": "padding_mode",
                     "required": false,
                     "type": 3
-                },
-                {
-                    "default": 0,
-                    "description": "If align_corners=1, the extrema (-1 and 1) are considered as referring to the center points of the input's corner pixels (voxels, etc.). If align_corners=0, they are instead considered as referring to the corner points of the input's corner pixels (voxels, etc.), making the sampling more resolution agnostic.",
-                    "name": "align_corners",
-                    "required": false,
-                    "type": 2
                 }
             ],
             "doc": "\nGiven an input `X` and a flow-field `grid`, computes the output `Y` using `X` values and pixel locations from the `grid`.\nFor spatial input `X` with shape (N, C, H, W), the `grid` will have shape (N, H_out, W_out, 2),\nthe output `Y` will have shape (N, C, H_out, W_out). For volumetric input `X` with shape (N, C, D, H, W),\nthe `grid` will have shape (N, D_out, H_out, W_out, 3), the output `Y` will have shape (N, C, D_out, H_out, W_out).\nMore generally, for an input `X` of rank r+2 with shape (N, C, d1, d2, ..., dr),\nthe `grid` will have shape (N, D1_out, D2_out, ..., Dr_out, r), the output `Y` will have shape (N, C, D1_out, D2_out, ..., Dr_out).\n\nThe tensor `X` contains values at centers of square pixels (voxels, etc) locations such as (n, c, d1_in, d2_in, ..., dr_in).\nThe (n, d1_out, d2_out, ..., dr_out, :) values from the tensor `grid` are the normalized positions for interpolating the values\nat the (n, c, d1_out, d2_out, ..., dr_out) locations from the output tensor `Y` using a specified interpolation method (the mode)\nand a padding mode (for `grid` positions falling outside the 2-dimensional image).\n\nFor example, the values in `grid[n, h_out, w_out, :]` are size-2 vectors specifying normalized positions in the 2-dimensional space of `X`.\nThey are used to interpolate output values of `Y[n, c, h_out, w_out]`.\n\nThe GridSample operator is often used in doing grid generator and sampler in the\n[Spatial Transformer Networks](https://arxiv.org/abs/1506.02025).\nSee also in [torch.nn.functional.grid_sample](https://pytorch.org/docs/stable/generated/torch.nn.functional.grid_sample.html).\n",
@@ -13691,6 +13691,12 @@
         {
             "attributes": [
                 {
+                    "description": "Dilation value along each spatial axis of the kernel. Default is 1 along each axis.",
+                    "name": "dilations",
+                    "required": false,
+                    "type": 7
+                },
+                {
                     "default": 1,
                     "description": "Number of groups the input and output channels, C and oC, are divided into. C and oC must both be divisible by group. Default is 1.",
                     "name": "group",
@@ -13698,8 +13704,8 @@
                     "type": 2
                 },
                 {
-                    "description": "Dilation value along each spatial axis of the kernel. Default is 1 along each axis.",
-                    "name": "dilations",
+                    "description": "Shape of the convolution kernel. If not present, it is inferred from the shape of input W.",
+                    "name": "kernel_shape",
                     "required": false,
                     "type": 7
                 },
@@ -13709,12 +13715,6 @@
                     "name": "offset_group",
                     "required": false,
                     "type": 2
-                },
-                {
-                    "description": "Shape of the convolution kernel. If not present, it is inferred from the shape of input W.",
-                    "name": "kernel_shape",
-                    "required": false,
-                    "type": 7
                 },
                 {
                     "description": "Padding for the beginning and end along each spatial axis. The values represent the number of pixels added to the beginning and end of the corresponding axis and can take any nonnegative value. The format should be as follows: [x1_begin, x2_begin, ..., x1_end, x2_end, ...], where xi_begin is the number of pixels added at the beginning of axis `i` and xi_end is the number of pixels added at the end of axis `i`. Default is 0 along each axis.",
@@ -14057,6 +14057,25 @@
                     "type": 2
                 },
                 {
+                    "description": "Number of heads of key and value. Must be used with 3D inputs of Q, K and V. ",
+                    "name": "kv_num_heads",
+                    "required": false,
+                    "type": 2
+                },
+                {
+                    "description": "Number of heads of query. Must be used with 3D inputs of Q, K and V. ",
+                    "name": "q_num_heads",
+                    "required": false,
+                    "type": 2
+                },
+                {
+                    "default": 0,
+                    "description": "If set to `0`, qk_matmul_output is the output of qk matmul. If set to `1`, qk_matmul_output includes the addition of the attention mask to the output of qk matmul. If set to `2`, qk_matmul_output is the output after the softcap operation. If set to `3`, qk_matmul_output is the output after the softmax operation. Default value is 0.",
+                    "name": "qk_matmul_output_mode",
+                    "required": false,
+                    "type": 2
+                },
+                {
                     "description": "Scaling factor applied to $Q*K^T$. Default value is `1/sqrt(head_size)`. To prevent [numerical overflow](https://tinyurl.com/sudb9s96), scale `Q`, `K` by `sqrt(scale)` before matmul.",
                     "name": "scale",
                     "required": false,
@@ -14070,27 +14089,8 @@
                     "type": 1
                 },
                 {
-                    "description": "Number of heads of key and value. Must be used with 3D inputs of Q, K and V. ",
-                    "name": "kv_num_heads",
-                    "required": false,
-                    "type": 2
-                },
-                {
-                    "description": "Number of heads of query. Must be used with 3D inputs of Q, K and V. ",
-                    "name": "q_num_heads",
-                    "required": false,
-                    "type": 2
-                },
-                {
                     "description": "The floating-point precision used in softmax computation. If softmax precision is not provided, the same precision as the input of softmax (Q and K) is used.",
                     "name": "softmax_precision",
-                    "required": false,
-                    "type": 2
-                },
-                {
-                    "default": 0,
-                    "description": "If set to `0`, qk_matmul_output is the output of qk matmul. If set to `1`, qk_matmul_output includes the addition of the attention mask to the output of qk matmul. If set to `2`, qk_matmul_output is the output after the softcap operation. If set to `3`, qk_matmul_output is the output after the softmax operation. Default value is 0.",
-                    "name": "qk_matmul_output_mode",
                     "required": false,
                     "type": 2
                 }
