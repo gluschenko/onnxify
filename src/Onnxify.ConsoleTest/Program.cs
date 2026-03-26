@@ -2,7 +2,6 @@
 using System.Text;
 using Google.Protobuf;
 using Onnx;
-using static TorchSharp.torch.nn;
 
 namespace Onnxify.ConsoleTest
 {

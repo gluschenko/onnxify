@@ -1,5 +1,6 @@
 ﻿using Onnx;
 using Onnxify.Data;
+using Onnxify.Helpers;
 using System.Collections.ObjectModel;
 
 namespace Onnxify;
