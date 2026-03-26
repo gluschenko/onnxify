@@ -71,23 +71,40 @@ namespace Onnxify.SourceGenerator
                 })
                 .ToArray();
 
+            var rootNamespace = $"{nameof(Onnxify)}";
+            var graphType = $"{rootNamespace}.OnnxGraph";
+
             foreach (var domain in domains) 
             {
-                var classes = new StringBuilder();
+                var domainClasses = new StringBuilder();
 
-                var namespaceName = domain.Name switch
+                var currentNamespace = domain.Name switch
                 {
-                    "" => $"{nameof(Onnxify)}",
-                    "ai.onnx.ml" => $"{nameof(Onnxify)}.ML",
-                    "com.microsoft" => $"{nameof(Onnxify)}.Microsoft",
-                    "com.microsoft.nhwc" => $"{nameof(Onnxify)}.Microsoft.NHWC",
-                    "com.microsoft.nchwc" => $"{nameof(Onnxify)}.Microsoft.NCHWc",
-                    "com.ms.internal.nhwc" => $"{nameof(Onnxify)}.Microsoft.Internal.NHWC",
+                    "" => rootNamespace,
+                    "ai.onnx.ml" => $"{rootNamespace}.ML",
+                    "com.microsoft" => $"{rootNamespace}.Microsoft",
+                    "com.microsoft.nhwc" => $"{rootNamespace}.Microsoft.NHWC",
+                    "com.microsoft.nchwc" => $"{rootNamespace}.Microsoft.NCHWc",
+                    "com.ms.internal.nhwc" => $"{rootNamespace}.Microsoft.Internal.NHWC",
+                    _ => throw new NotImplementedException($"Not implemented for '{domain}'"),
+                };
+
+                var extensionAnchor = domain.Name switch
+                {
+                    "" => graphType,
+                    "ai.onnx.ml" => $"{rootNamespace}.MLDomain",
+                    "com.microsoft" => $"{rootNamespace}.MicrosoftDomain",
+                    "com.microsoft.nhwc" => $"{rootNamespace}.MicrosoftNHWCDomain",
+                    "com.microsoft.nchwc" => $"{rootNamespace}.MicrosoftNCHWcDomain",
+                    "com.ms.internal.nhwc" => $"{rootNamespace}.MicrosoftInternalNHWCDomain",
                     _ => throw new NotImplementedException($"Not implemented for '{domain}'"),
                 };
 
                 foreach (var op in domain.Operators)
                 {
+                    var operatorClasses = new StringBuilder();
+                    var extensionMethods = new StringBuilder();
+
                     context.ReportDiagnostic(
                         Diagnostic.Create(
                             new DiagnosticDescriptor("GEN001", "test", op.Name, "gen", DiagnosticSeverity.Warning, true),
@@ -129,7 +146,7 @@ namespace Onnxify.SourceGenerator
                         """
                         : "[]";
 
-                    classes.AppendLine($$"""
+                    operatorClasses.AppendLine($$"""
                     public class {{className}}InputOptions
                     {
                         {{GetFields(op.Inputs, x => InputName(x)).Indent(1)}}
@@ -374,7 +391,7 @@ namespace Onnxify.SourceGenerator
                         }
                     }));
 
-                    classes.AppendLine($$"""
+                    operatorClasses.AppendLine($$"""
                     {{GetOperatorComment(op)}}
                     public class {{className}} : OnnxNode
                     {
@@ -446,7 +463,7 @@ namespace Onnxify.SourceGenerator
 
                     if (op.Outputs.Count() > 1)
                     {
-                        classes.AppendLine($$"""
+                        operatorClasses.AppendLine($$"""
                         public class {{className}}Output
                         {
                             {{GetResultFields(op.Outputs, x => OutputName(x)).Indent(1)}}
@@ -456,9 +473,9 @@ namespace Onnxify.SourceGenerator
 
                     var extensionMethodReturnType = op.Outputs.Count switch
                     {
-                        0 => className,
+                        0 => $"{currentNamespace}.{className}",
                         1 => GetNodeParameterType(op.Outputs[0]),
-                        _ => $"{className}Output",
+                        _ => $"{currentNamespace}.{className}Output",
                     };
 
                     var extensionMethodReturnValue = op.Outputs.Count switch
@@ -466,7 +483,7 @@ namespace Onnxify.SourceGenerator
                         0 => "op",
                         1 => string.Join(", ", op.Outputs.Select(x => $"op.{OutputName(x.Name)}")),
                         _ => $$"""
-                        new {{className}}Output 
+                        new {{currentNamespace}}.{{className}}Output 
                         { 
                             {{string.Join(",\n", op.Outputs.Select(x => $"{OutputName(x.Name)} = op.{OutputName(x.Name)}")).Indent(1)}} 
                         }
@@ -475,62 +492,75 @@ namespace Onnxify.SourceGenerator
 
                     if (!hasVariadicOutput)
                     {
-                        classes.AppendLine($$"""
-                        public static partial class {{className}}Extensions
+                        var edgeCreators = op.Outputs
+                            .Select(x => $"var edge{OutputName(x.Name)} = graph.AddEdge(name + \"_output_{x.Name.ToLower()}\");")
+                            .ToArray();
+
+                        extensionMethods.AppendLine($$"""
+                        {{GetOperatorComment(op)}}
+                        public static {{extensionMethodReturnType}} {{className}}(
+                            this {{extensionAnchor}} domain,
+                            string name,
+                            {{currentNamespace}}.{{className}}InputOptions options
+                        )
                         {
-                            {{GetOperatorComment(op).Indent(1)}}
-                            public static {{extensionMethodReturnType}} {{className}}(
-                                this OnnxGraph graph,
-                                string name,
-                                {{className}}InputOptions options
-                            )
-                            {
-                                {{string.Join("\n", (
-                                        op.Outputs.Select(x => (
-                                            $"var edge{OutputName(x.Name)} = graph.AddEdge(name + \"_output_{x.Name.ToLower()}\");"
-                                        )))
-                                    ).Indent(2)}}
+                            var graph = {{(extensionAnchor == graphType ? "domain" : "domain.Graph")}};
+                            
+                            {{string.Join("\n", edgeCreators).Indent(1)}}
                                 
-                                var op = new {{className}}(
-                                    name: name,
-                                    options: new {{className}}InputOutputOptions
-                                    {
-                                        {{string.Join(",\n", list1).Indent(4)}}
-                                    }
-                                );
+                            var op = new {{currentNamespace}}.{{className}}(
+                                name: name,
+                                options: new {{currentNamespace}}.{{className}}InputOutputOptions
+                                {
+                                    {{string.Join(",\n", list1).Indent(3)}}
+                                }
+                            );
                     
-                                graph.AddNode(op);
+                            graph.AddNode(op);
                     
-                                return {{extensionMethodReturnValue.Indent(2)}};
-                            }
+                            return {{extensionMethodReturnValue.Indent(1)}};
                         }
                         """);
                     }
 
-                    classes.AppendLine($$"""
-                    public static partial class {{className}}Extensions
+                    extensionMethods.AppendLine($$"""
+                    {{GetOperatorComment(op)}}
+                    public static {{extensionMethodReturnType}} {{className}}(
+                        this {{extensionAnchor}} domain,
+                        string name,
+                        {{currentNamespace}}.{{className}}InputOutputOptions options
+                    )
                     {
-                        {{GetOperatorComment(op).Indent(1)}}
-                        public static {{extensionMethodReturnType}} {{className}}(
-                            this OnnxGraph graph,
-                            string name,
-                            {{className}}InputOutputOptions options
-                        )
-                        {
-                            var op = new {{className}}(
-                                name: name,
-                                options: options
-                            );
-                
-                            graph.AddNode(op);
-                
-                            return {{extensionMethodReturnValue.Indent(2)}};
-                        }
+                        var graph = {{(extensionAnchor == graphType ? "domain" : "domain.Graph")}};
+
+                        var op = new {{currentNamespace}}.{{className}}(
+                            name: name,
+                            options: options
+                        );
+                    
+                        graph.AddNode(op);
+                    
+                        return {{extensionMethodReturnValue.Indent(1)}};
                     }
                     """);
 
                     typeResolver.Add($$"""
-                    ("{{op.Name}}", "{{op.Domain}}") => {{namespaceName}}.{{className}}.{{className}}FromProto(node, graph)
+                    ("{{op.Name}}", "{{op.Domain}}") => {{currentNamespace}}.{{className}}.{{className}}FromProto(node, graph)
+                    """);
+
+                    domainClasses.AppendLine($$"""
+                    namespace {{currentNamespace}}
+                    {
+                        {{operatorClasses.ToString().Indent(1)}}
+                    }
+
+                    namespace {{rootNamespace}}
+                    {
+                        public static partial class {{className}}Extensions
+                        {
+                            {{extensionMethods.ToString().Indent(2)}}
+                        }
+                    }
                     """);
                 }
 
@@ -542,15 +572,12 @@ namespace Onnxify.SourceGenerator
                 using System.Collections.Generic;
                 using Onnx;
 
-                namespace {{namespaceName}}
-                {
-                    {{classes.ToString().Indent(1)}}
-                }
+                {{domainClasses}}
 
                 #nullable restore
                 """;
 
-                context.AddSource($"{namespaceName}.g.cs", SourceText.From(code, Encoding.UTF8));
+                context.AddSource($"{currentNamespace}.g.cs", SourceText.From(code, Encoding.UTF8));
             }
 
             if (true)

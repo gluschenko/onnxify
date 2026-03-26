@@ -7,15 +7,17 @@ public class OnnxGraph
 {
     public string Name { get; init; }
 
-    private readonly GraphProto _graph;
-    private readonly OnnxModelBaseOptions _options;
-
     public IReadOnlyList<OnnxValue> Inputs => _inputs;
     public IReadOnlyList<OnnxValue> Outputs => _outputs;
     public IReadOnlyList<OnnxTensor> Initializers => _initializers;
     public IReadOnlyList<OnnxValue> Placeholders => _placeholders;
     public IReadOnlyList<OnnxNode> Nodes => _nodes;
 
+    public MLDomain ML => new(this);
+    public MicrosoftDomain Microsoft => new(this);
+
+    private readonly GraphProto _graph;
+    private readonly OnnxModelBaseOptions _options;
     private readonly LazyDictionary<string, OnnxValue> _inputs = new(x => x.Name, StringComparer.Ordinal);
     private readonly LazyDictionary<string, OnnxValue> _outputs = new(x => x.Name, StringComparer.Ordinal);
     private readonly LazyDictionary<string, OnnxTensor> _initializers = new(x => x.Name, StringComparer.Ordinal);
@@ -231,4 +233,40 @@ public class OnnxGraph
 
         return newGraph;
     }
+}
+
+public readonly struct MLDomain(OnnxGraph graph)
+{
+    public readonly OnnxGraph Graph = graph;
+}
+
+public readonly struct MicrosoftDomain(OnnxGraph graph)
+{
+    public readonly OnnxGraph Graph = graph;
+
+    public MicrosoftInternalDomain Internal => new(Graph);
+    public MicrosoftInternalNHWCDomain NHWC => new(Graph);
+    public MicrosoftNCHWcDomain NCHWc => new(Graph);
+}
+
+public readonly struct MicrosoftInternalDomain(OnnxGraph graph)
+{
+    public readonly OnnxGraph Graph = graph;
+
+    public MicrosoftInternalNHWCDomain NHWC => new(Graph);
+}
+
+public readonly struct MicrosoftInternalNHWCDomain(OnnxGraph graph)
+{
+    public readonly OnnxGraph Graph = graph;
+}
+
+public readonly struct MicrosoftNHWCDomain(OnnxGraph graph)
+{
+    public readonly OnnxGraph Graph = graph;
+}
+
+public readonly struct MicrosoftNCHWcDomain(OnnxGraph graph)
+{
+    public readonly OnnxGraph Graph = graph;
 }

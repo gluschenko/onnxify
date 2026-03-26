@@ -1,5 +1,4 @@
 ﻿using Google.Protobuf;
-using Google.Protobuf.WellKnownTypes;
 using Onnx;
 
 namespace Onnxify;
