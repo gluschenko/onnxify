@@ -1,6 +1,4 @@
-using System.IO;
-
-namespace Onnxify.Tests;
+﻿namespace Onnxify.Tests;
 
 public sealed class OnnxModelTests
 {

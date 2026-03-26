@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Onnxify\Onnxify.csproj" />
+    <ProjectReference Include="..\Onnxify.ProjectGenerator\Onnxify.ProjectGenerator.csproj" />
   </ItemGroup>
 
   <ItemGroup>

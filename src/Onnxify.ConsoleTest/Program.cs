@@ -2,6 +2,7 @@
 using System.Text;
 using Google.Protobuf;
 using Onnx;
+using Onnxify.ProjectGenerator;
 
 namespace Onnxify.ConsoleTest
 {
@@ -23,6 +24,7 @@ namespace Onnxify.ConsoleTest
             Test3();
             Test4();
             Test5();
+            Test6();
 
             Console.WriteLine("Press any key to pay respect...");
             Console.ReadKey();
@@ -325,6 +327,37 @@ namespace Onnxify.ConsoleTest
             }
             """;
             Console.WriteLine(text);
+
+            return;
+        }
+
+        static void Test6()
+        {
+            var inputModelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "bvlcalexnet-12-qdq.onnx");
+            var outputDirectoryPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Generated", "AlexNetProject");
+
+            var generator = new OnnxProjectGenerator();
+            var result = generator.Generate(new ProjectGeneratorOptions
+            {
+                InputModelPath = inputModelPath,
+                OutputDirectoryPath = outputDirectoryPath,
+                ProjectName = "AlexNetGeneratedSample",
+                Namespace = "Onnxify.Generated.AlexNet",
+                Overwrite = true,
+            });
+
+            Console.WriteLine($"Generated Program: {result.ProgramFilePath}");
+            Console.WriteLine($"Generated Project: {result.ProjectFilePath}");
+
+            foreach (var tensorFilePath in result.TensorFilePaths)
+            {
+                Console.WriteLine($"Generated Tensor: {tensorFilePath}");
+            }
+
+            foreach (var warning in result.Warnings)
+            {
+                Console.WriteLine($"Generator Warning: {warning}");
+            }
 
             return;
         }

@@ -55,7 +55,7 @@ public class OnnxValue<T> : OnnxValue where T : OnnxValueType
         Name = name;
         Type = type;
 
-        _valueInfo = valueInfo ?? new ValueInfoProto 
+        _valueInfo = valueInfo ?? new ValueInfoProto
         {
             Name = name,
         };

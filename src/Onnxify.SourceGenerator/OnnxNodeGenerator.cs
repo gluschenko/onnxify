@@ -1,6 +1,4 @@
-﻿using System.Globalization;
-using System.Linq;
-using System.Text;
+﻿using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
@@ -13,7 +11,7 @@ namespace Onnxify.SourceGenerator
     public class OnnxNodeGenerator : IIncrementalGenerator
     {
         private readonly static HashSet<string> _reservedFieldNames = [];
-        private readonly static Dictionary<string, string> _aliasFieldNames = new() 
+        private readonly static Dictionary<string, string> _aliasFieldNames = new()
         {
             ["Inputs"] = "In",
             ["Outputs"] = "Out",
@@ -74,7 +72,7 @@ namespace Onnxify.SourceGenerator
             var rootNamespace = $"{nameof(Onnxify)}";
             var graphType = $"{rootNamespace}.OnnxGraph";
 
-            foreach (var domain in domains) 
+            foreach (var domain in domains)
             {
                 var domainClasses = new StringBuilder();
 
@@ -285,7 +283,7 @@ namespace Onnxify.SourceGenerator
                             }
                             """);
 
-                                createOutputLines.Add($$"""
+                            createOutputLines.Add($$"""
                             if (options.{{OutputName(x.Name)}} is not null)
                             {
                                 outputs.Add(options.{{OutputName(x.Name)}});
@@ -656,7 +654,7 @@ namespace Onnxify.SourceGenerator
 
             return sb.ToString().Trim();
         }
-        
+
         private string GetFields(IEnumerable<OperatorAttribute> items, Func<string, string> onName)
         {
             var sb = new StringBuilder();

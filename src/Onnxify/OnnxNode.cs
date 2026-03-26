@@ -1,7 +1,7 @@
-﻿using Onnx;
+﻿using System.Collections.ObjectModel;
+using Onnx;
 using Onnxify.Data;
 using Onnxify.Helpers;
-using System.Collections.ObjectModel;
 
 namespace Onnxify;
 
@@ -39,7 +39,8 @@ public class OnnxNode : IOnnxGraphNode
         outputs: outputs,
         attributes: attributes,
         proto: null
-    ) { }
+    )
+    { }
 
     internal OnnxNode(
         string name,

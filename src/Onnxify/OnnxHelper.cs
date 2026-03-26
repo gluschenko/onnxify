@@ -126,16 +126,16 @@ public static class OnnxHelper
             TensorProto.Types.DataType.Complex64 => new OnnxSparseTensor<Complex64>(tensor, options),
             TensorProto.Types.DataType.Complex128 => new OnnxSparseTensor<Complex>(tensor, options),
             TensorProto.Types.DataType.Bfloat16 => new OnnxSparseTensor<BFloat16>(tensor, options),
-            TensorProto.Types.DataType.Float8E4M3Fn => new OnnxSparseTensor<Float8E4M3FN> (tensor, options),
-            TensorProto.Types.DataType.Float8E4M3Fnuz => new OnnxSparseTensor<Float8E4M3FNUZ> (tensor, options),
-            TensorProto.Types.DataType.Float8E5M2 => new OnnxSparseTensor<Float8E5M2> (tensor, options),
-            TensorProto.Types.DataType.Float8E5M2Fnuz => new OnnxSparseTensor<Float8E5M2FNUZ> (tensor, options),
-            TensorProto.Types.DataType.Float4E2M1 => new OnnxSparseTensor<Float4E2M1> (tensor, options),
-            TensorProto.Types.DataType.Float8E8M0 => new OnnxSparseTensor<Float8E8M0> (tensor, options),
-            TensorProto.Types.DataType.Uint4 => new OnnxSparseTensor<UInt4> (tensor, options),
-            TensorProto.Types.DataType.Int4 => new OnnxSparseTensor<Int4> (tensor, options),
-            TensorProto.Types.DataType.Uint2 => new OnnxSparseTensor<UInt2> (tensor, options),
-            TensorProto.Types.DataType.Int2 => new OnnxSparseTensor<Int2> (tensor, options),
+            TensorProto.Types.DataType.Float8E4M3Fn => new OnnxSparseTensor<Float8E4M3FN>(tensor, options),
+            TensorProto.Types.DataType.Float8E4M3Fnuz => new OnnxSparseTensor<Float8E4M3FNUZ>(tensor, options),
+            TensorProto.Types.DataType.Float8E5M2 => new OnnxSparseTensor<Float8E5M2>(tensor, options),
+            TensorProto.Types.DataType.Float8E5M2Fnuz => new OnnxSparseTensor<Float8E5M2FNUZ>(tensor, options),
+            TensorProto.Types.DataType.Float4E2M1 => new OnnxSparseTensor<Float4E2M1>(tensor, options),
+            TensorProto.Types.DataType.Float8E8M0 => new OnnxSparseTensor<Float8E8M0>(tensor, options),
+            TensorProto.Types.DataType.Uint4 => new OnnxSparseTensor<UInt4>(tensor, options),
+            TensorProto.Types.DataType.Int4 => new OnnxSparseTensor<Int4>(tensor, options),
+            TensorProto.Types.DataType.Uint2 => new OnnxSparseTensor<UInt2>(tensor, options),
+            TensorProto.Types.DataType.Int2 => new OnnxSparseTensor<Int2>(tensor, options),
             TensorProto.Types.DataType.Undefined => new OnnxSparseTensor<object>(tensor, options),
             _ => throw new NotImplementedException($"Not implemented for '{type}'"),
         };
@@ -841,5 +841,5 @@ public static class OnnxHelper
     public static T[] NotNull<T>(params T?[] input)
     {
         return input.Where(x => x is not null).Select(x => x!).ToArray();
-    } 
+    }
 }

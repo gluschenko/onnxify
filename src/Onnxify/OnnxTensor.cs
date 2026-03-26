@@ -1,5 +1,4 @@
 ﻿using Onnx;
-using static Onnx.TypeProto.Types;
 
 namespace Onnxify;
 

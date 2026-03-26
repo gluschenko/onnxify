@@ -99,7 +99,7 @@ public sealed class OnnxTensorType : OnnxValueType
 
         return result;
     }
-    
+
     public static OnnxTensorType Create<T>(string denotation = "")
     {
         var type = typeof(T);
