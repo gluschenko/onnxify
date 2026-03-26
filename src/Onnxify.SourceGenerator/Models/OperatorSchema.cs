@@ -48,6 +48,11 @@ namespace Onnxify.SourceGenerator.Models
 
         [JsonPropertyName("default")]
         public object? Default { get; set; }
+
+        public bool IsNullable()
+        {
+            return !Required && Default is null;
+        }
     }
 
     public sealed class OperatorParameter

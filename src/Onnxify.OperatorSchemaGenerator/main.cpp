@@ -1,5 +1,4 @@
-﻿#include <onnx/defs/schema.h>
-#include <string>
+﻿#include <string>
 #include <vector>
 #include <iostream>
 #include <fstream>
@@ -7,13 +6,27 @@
 #include <nlohmann/json_fwd.hpp>
 #include <filesystem>
 #include <algorithm>
-#include <onnx-ml.pb.h>
+#include <onnx/defs/schema.h>
+#include <core/session/onnxruntime_c_api.h>
+#include <utility>
 
 using namespace std;
 using json = nlohmann::json;
+using namespace onnx;
 
 int main()
 {
+    const OrtApi* ort = OrtGetApiBase()->GetApi(ORT_API_VERSION);
+
+    OrtEnv* env = nullptr;
+    OrtStatus* st = ort->CreateEnv(ORT_LOGGING_LEVEL_WARNING, "schema_dump", &env);
+    if (st != nullptr) {
+        const char* msg = ort->GetErrorMessage(st);
+        std::cerr << "CreateEnv failed: " << (msg ? msg : "") << "\n";
+        ort->ReleaseStatus(st);
+        return 1;
+    }
+
     json root;
     root["operators"] = json::array();
 
@@ -23,10 +36,12 @@ int main()
     {
         json op;
 
+        const char* doc = schema.doc();
+
         op["name"] = schema.Name();
         op["sinceVersion"] = schema.SinceVersion();
         op["domain"] = schema.domain();
-        op["doc"] = schema.doc();
+        op["doc"] = doc != nullptr ? schema.doc() : "";
 
         // inputs
         op["inputs"] = json::array();
@@ -93,20 +108,30 @@ int main()
         // attributes
         op["attributes"] = json::array();
 
-        for (const auto& attr : schema.attributes())
+        std::vector<std::string> attr_names;
+        for (const auto& kv : schema.attributes())
         {
+            attr_names.push_back(kv.first);
+        }
+
+        std::sort(attr_names.begin(), attr_names.end());
+
+        for (const auto& name : attr_names)
+        {
+            const auto& value = schema.attributes().at(name);
+
             json x;
 
-            x["name"] = attr.first;
-            x["type"] = (int)attr.second.type;
-            x["required"] = attr.second.required;
+            x["name"] = name;
+            x["type"] = (int)value.type;
+            x["required"] = value.required;
 
-            if (!attr.second.description.empty())
+            if (!value.description.empty())
             {
-                x["description"] = attr.second.description;
+                x["description"] = value.description;
             }
 
-            const ONNX_NAMESPACE::AttributeProto& def = attr.second.default_value;
+            const ONNX_NAMESPACE::AttributeProto& def = value.default_value;
             const auto type = def.type();
 
             switch (type)
@@ -202,4 +227,3 @@ int main()
     
     return 0;
 }
-

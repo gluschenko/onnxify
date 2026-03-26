@@ -9,8 +9,7 @@
   <PropertyGroup>
     <CurrentAbsolutePath>$(MSBuildThisFileDirectory)</CurrentAbsolutePath>
 
-    <ThirdPartySourcePath>$([System.IO.Path]::Combine('$(CurrentAbsolutePath)', '../../third_party/onnx'))</ThirdPartySourcePath>
-    <ThirdPartyTargetPath>$([System.IO.Path]::Combine('$(CurrentAbsolutePath)', 'Protobuf'))</ThirdPartyTargetPath>
+    <ThirdPartySourcePath>$([System.IO.Path]::Combine('$(CurrentAbsolutePath)', '../../third_party/onnxruntime/cmake/external/onnx'))</ThirdPartySourcePath>
 
     <AssetsTargetPath>$([System.IO.Path]::Combine('$(CurrentAbsolutePath)', 'Assets'))</AssetsTargetPath>
     <ProtoAssetsSourcePath>$([System.IO.Path]::Combine('$(ThirdPartySourcePath)', 'onnx'))</ProtoAssetsSourcePath>

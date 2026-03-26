@@ -16,7 +16,7 @@ public abstract class OnnxValueType
     {
         var proto = new TypeProto
         {
-            Denotation = Denotation
+            Denotation = Denotation,
         };
 
         return proto;
@@ -27,10 +27,11 @@ public abstract class OnnxValueType
         return type.ValueCase switch
         {
             TypeProto.ValueOneofCase.TensorType => FromProto(type.TensorType, type),
-            TypeProto.ValueOneofCase.SparseTensorType => FromProto(type.SparseTensorType),
-            TypeProto.ValueOneofCase.OpaqueType => FromProto(type.OpaqueType),
-            TypeProto.ValueOneofCase.SequenceType => FromProto(type.SequenceType),
-            TypeProto.ValueOneofCase.MapType => FromProto(type.MapType),
+            TypeProto.ValueOneofCase.SparseTensorType => FromProto(type.SparseTensorType, type),
+            TypeProto.ValueOneofCase.OpaqueType => FromProto(type.OpaqueType, type),
+            TypeProto.ValueOneofCase.SequenceType => FromProto(type.SequenceType, type),
+            TypeProto.ValueOneofCase.MapType => FromProto(type.MapType, type),
+            TypeProto.ValueOneofCase.OptionalType => FromProto(type.OptionalType, type),
             TypeProto.ValueOneofCase.None => throw new NotImplementedException($"Not implemented for '{type.ValueCase}'"),
             _ => throw new NotImplementedException($"Not implemented for '{type.ValueCase}'"),
         };
@@ -45,22 +46,27 @@ public abstract class OnnxValueType
         return new OnnxTensorType(type, shape, denotation);
     }
 
-    internal static OnnxValueType FromProto(TypeProto.Types.SparseTensor tensor)
+    internal static OnnxValueType FromProto(TypeProto.Types.SparseTensor tensor, TypeProto typeProto)
     {
         throw new Exception("TODO");
     }
 
-    internal static OnnxValueType FromProto(TypeProto.Types.Opaque tensor)
+    internal static OnnxValueType FromProto(TypeProto.Types.Opaque tensor, TypeProto typeProto)
     {
         throw new Exception("TODO");
     }
 
-    internal static OnnxValueType FromProto(TypeProto.Types.Sequence tensor)
+    internal static OnnxValueType FromProto(TypeProto.Types.Sequence tensor, TypeProto typeProto)
     {
         throw new Exception("TODO");
     }
 
-    internal static OnnxValueType FromProto(TypeProto.Types.Map tensor)
+    internal static OnnxValueType FromProto(TypeProto.Types.Map tensor, TypeProto typeProto)
+    {
+        throw new Exception("TODO");
+    }
+
+    internal static OnnxValueType FromProto(TypeProto.Types.Optional tensor, TypeProto typeProto)
     {
         throw new Exception("TODO");
     }
