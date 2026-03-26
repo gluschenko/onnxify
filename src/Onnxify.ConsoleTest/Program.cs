@@ -193,22 +193,8 @@ namespace Onnxify.ConsoleTest
 
         static void Test5()
         {
-            var inputModelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "gemma-3-270m", "model_q4f16.onnx");
-            // var inputModelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "bvlcalexnet-12-qdq.onnx");
+            var inputModelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "bvlcalexnet-12-qdq.onnx");
             var model = OnnxModel.FromFile(inputModelPath);
-
-            /*
-            var node = model.Graph.Nodes.First();
-            model.Graph.AddNode(
-                name: node.Name,
-                opType: node.OpType,
-                domain: node.Domain,
-                docString: node.DocString,
-                inputs: [],
-                outputs: [],
-                attributes: []
-            );
-            */
 
             string GetOnnxTensorType(OnnxTensorType t)
             {
