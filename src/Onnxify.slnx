@@ -5,11 +5,14 @@
   <Folder Name="/.misc/">
     <File Path=".editorconfig" />
   </Folder>
-  <Folder Name="/libs/">
+  <Folder Name="/codegen/">
+    <Project Path="Onnxify.Introspection/Onnxify.Introspection.csproj" Id="e5ea88fd-ffbf-4971-b390-d74858a702e0" />
     <Project Path="Onnxify.ProjectGenerator/Onnxify.ProjectGenerator.csproj" Id="1aa227d0-394a-4013-ba5d-9193f0ab85a3" />
+    <Project Path="Onnxify.TorchSharp.Introspection/Onnxify.TorchSharp.Introspection.csproj" Id="6b8608a7-7316-4a8e-b391-a20f20d4d6e3" />
+  </Folder>
+  <Folder Name="/libs/">
     <Project Path="Onnxify.SourceGenerator/Onnxify.SourceGenerator.csproj" Id="947c739d-8301-49a4-94d1-75976cdf6dea" />
     <Project Path="Onnxify.TorchSharp/Onnxify.TorchSharp.csproj" Id="90452197-f039-4f45-a177-04f0af4e1957" />
-    <Project Path="Onnxify.TorchSharp.Introspection/Onnxify.TorchSharp.Introspection.csproj" Id="6b8608a7-7316-4a8e-b391-a20f20d4d6e3" />
     <Project Path="Onnxify/Onnxify.csproj" Id="c2d6af74-de08-469c-ae86-91955fc31cb4" />
   </Folder>
   <Folder Name="/tests/">

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "Onnxify.Introspection": {
+      "commandName": "Project",
+      "commandLineArgs": "--output \"..\\..\\artifacts\\onnxify-public-api.md\" --xml \"bin\\Debug\\net10.0\\Onnxify.xml\""
+    }
+  }
+}

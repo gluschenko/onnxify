@@ -15,8 +15,8 @@ public sealed class OnnxModelTests
         Assert.Equal("tests", model.ProducerName);
         Assert.Equal(99, model.IrVersion);
         Assert.Single(model.OpsetImport);
-        Assert.Equal("", model.OpsetImport[0].Domain);
-        Assert.Equal(21, model.OpsetImport[0].Version);
+        Assert.Equal("", model.OpsetImport[0].Key);
+        Assert.Equal(21, model.OpsetImport[0].Value);
         Assert.NotNull(model.Graph);
         Assert.Empty(model.Graph.Nodes);
     }
