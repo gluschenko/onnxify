@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "Onnxify.TorchSharp.Introspection": {
+      "commandName": "Project",
+      "commandLineArgs": "--output \"..\\..\\..\\..\\..\\artifacts\\torchsharp-operators.md\" --xml \"bin\\Debug\\net10.0\\TorchSharp.xml\""
+    }
+  }
+}
