@@ -1,8 +1,6 @@
-using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Text;
-using System.Xml.Linq;
-using Onnxify;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Onnxify.Introspection;
 
@@ -13,10 +11,9 @@ internal static class Program
         try
         {
             var options = Options.Parse(args);
-            var assembly = typeof(OnnxModel).Assembly;
-            var xmlDocumentation = XmlDocumentationIndex.TryLoad(options.XmlPath ?? TryFindAdjacentXml(assembly.Location));
-            var catalog = ApiCatalog.Create(assembly, xmlDocumentation);
-            var markdown = MarkdownRenderer.Render(catalog, assembly, xmlDocumentation, options);
+            var schemaPath = ResolveSchemaPath(options.SchemaPath);
+            var root = LoadSchema(schemaPath);
+            var markdown = MarkdownRenderer.Render(root);
 
             var outputPath = Path.GetFullPath(options.OutputPath);
             var outputDirectory = Path.GetDirectoryName(outputPath);
@@ -28,13 +25,14 @@ internal static class Program
 
             File.WriteAllText(outputPath, markdown, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 
+            var operatorCount = root.Operators
+                .GroupBy(op => $"{op.Domain ?? string.Empty}::{op.Name}", StringComparer.Ordinal)
+                .Count();
+
             Console.WriteLine($"Saved Markdown to: {outputPath}");
-            Console.WriteLine($"Exported types: {catalog.Types.Count}");
-            Console.WriteLine($"Method groups: {catalog.MethodGroups.Count}");
-            Console.WriteLine($"Static methods: {catalog.StaticMethods.Count}");
-            Console.WriteLine($"Instance methods: {catalog.InstanceMethods.Count}");
-            Console.WriteLine($"Extension methods: {catalog.ExtensionMethods.Count}");
-            Console.WriteLine($"XML docs: {(xmlDocumentation is null ? "not found" : xmlDocumentation.SourcePath)}");
+            Console.WriteLine($"Schema: {schemaPath}");
+            Console.WriteLine($"Operator entries: {root.Operators.Count}");
+            Console.WriteLine($"Rendered operators: {operatorCount}");
             return 0;
         }
         catch (Exception ex)
@@ -44,19 +42,48 @@ internal static class Program
         }
     }
 
-    private static string? TryFindAdjacentXml(string assemblyPath)
+    private static string ResolveSchemaPath(string? schemaPath)
     {
-        var xmlPath = Path.ChangeExtension(assemblyPath, ".xml");
-        return File.Exists(xmlPath) ? xmlPath : null;
+        if (!string.IsNullOrWhiteSpace(schemaPath))
+        {
+            return Path.GetFullPath(schemaPath);
+        }
+
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (current is not null)
+        {
+            var candidate = Path.Combine(current.FullName, "src", "Onnxify", "Assets", "onnx_operators.json");
+
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            current = current.Parent;
+        }
+
+        throw new FileNotFoundException("Could not find src\\Onnxify\\Assets\\onnx_operators.json. Pass it explicitly via --schema.");
+    }
+
+    private static OperatorSchemaRoot LoadSchema(string schemaPath)
+    {
+        var json = File.ReadAllText(schemaPath);
+        var root = JsonSerializer.Deserialize<OperatorSchemaRoot>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+        });
+
+        return root ?? throw new InvalidOperationException($"Failed to deserialize operator schema from '{schemaPath}'.");
     }
 }
 
-internal sealed record Options(string OutputPath, string? XmlPath)
+internal sealed record Options(string OutputPath, string? SchemaPath)
 {
     public static Options Parse(string[] args)
     {
-        string outputPath = Path.Combine(Environment.CurrentDirectory, "artifacts", "onnxify-public-api.md");
-        string? xmlPath = null;
+        string outputPath = Path.Combine(Environment.CurrentDirectory, "artifacts", "onnxify-operators.md");
+        string? schemaPath = null;
 
         for (var index = 0; index < args.Length; index++)
         {
@@ -68,8 +95,9 @@ internal sealed record Options(string OutputPath, string? XmlPath)
                 case "-o":
                     outputPath = RequireValue(args, ref index, arg);
                     break;
-                case "--xml":
-                    xmlPath = RequireValue(args, ref index, arg);
+                case "--schema":
+                case "-s":
+                    schemaPath = RequireValue(args, ref index, arg);
                     break;
                 case "--help":
                 case "-h":
@@ -81,7 +109,7 @@ internal sealed record Options(string OutputPath, string? XmlPath)
             }
         }
 
-        return new Options(outputPath, xmlPath);
+        return new Options(outputPath, schemaPath);
     }
 
     private static string RequireValue(string[] args, ref int index, string optionName)
@@ -99,703 +127,278 @@ internal sealed record Options(string OutputPath, string? XmlPath)
     {
         Console.WriteLine(
             """
-            Onnxify public API catalog generator
+            Onnxify operator markdown generator
 
             Options:
-              -o, --output <path>   Markdown output path. Default: ./artifacts/onnxify-public-api.md
-                  --xml <path>      Optional XML documentation file for Onnxify.dll
+              -o, --output <path>   Markdown output path. Default: ./artifacts/onnxify-operators.md
+              -s, --schema <path>   Optional path to src/Onnxify/Assets/onnx_operators.json
               -h, --help            Show this help
             """
         );
     }
 }
 
-internal static class ApiCatalog
-{
-    public static Catalog Create(Assembly assembly, XmlDocumentationIndex? xmlDocumentation)
-    {
-        var exportedTypes = assembly.GetExportedTypes()
-            .OrderBy(type => type.FullName, StringComparer.Ordinal)
-            .ToArray();
-
-        var staticMethods = new List<MethodDescriptor>();
-        var instanceMethods = new List<MethodDescriptor>();
-        var extensionMethods = new List<MethodDescriptor>();
-
-        foreach (var type in exportedTypes)
-        {
-            foreach (var method in GetDeclaredPublicMethods(type))
-            {
-                if (IsExtensionMethod(method))
-                {
-                    extensionMethods.Add(MethodDescriptor.Create(method, xmlDocumentation, MethodCategory.Extension));
-                }
-                else if (method.IsStatic)
-                {
-                    staticMethods.Add(MethodDescriptor.Create(method, xmlDocumentation, MethodCategory.Static));
-                }
-                else
-                {
-                    instanceMethods.Add(MethodDescriptor.Create(method, xmlDocumentation, MethodCategory.Instance));
-                }
-            }
-        }
-
-        var typeDescriptors = exportedTypes
-            .Select(type => TypeDescriptor.Create(type, xmlDocumentation))
-            .ToArray();
-
-        var methodGroups = staticMethods
-            .Concat(instanceMethods)
-            .Concat(extensionMethods)
-            .GroupBy(method => method.Name, StringComparer.Ordinal)
-            .Select(group => new MethodGroup(
-                group.Key,
-                group.Where(method => method.Category == MethodCategory.Static).OrderBy(method => method, MethodDescriptorComparer.Instance).ToArray(),
-                group.Where(method => method.Category == MethodCategory.Instance).OrderBy(method => method, MethodDescriptorComparer.Instance).ToArray(),
-                group.Where(method => method.Category == MethodCategory.Extension).OrderBy(method => method, MethodDescriptorComparer.Instance).ToArray()))
-            .OrderBy(group => group.Name, StringComparer.Ordinal)
-            .ToArray();
-
-        return new Catalog(
-            typeDescriptors,
-            methodGroups,
-            staticMethods.OrderBy(method => method, MethodDescriptorComparer.Instance).ToArray(),
-            instanceMethods.OrderBy(method => method, MethodDescriptorComparer.Instance).ToArray(),
-            extensionMethods.OrderBy(method => method, MethodDescriptorComparer.Instance).ToArray()
-        );
-    }
-
-    private static IEnumerable<MethodInfo> GetDeclaredPublicMethods(Type type)
-    {
-        return type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
-            .Where(method => !method.IsSpecialName);
-    }
-
-    private static bool IsExtensionMethod(MethodInfo method)
-    {
-        return method.IsDefined(typeof(ExtensionAttribute), inherit: false);
-    }
-}
-
-internal sealed record Catalog(
-    IReadOnlyList<TypeDescriptor> Types,
-    IReadOnlyList<MethodGroup> MethodGroups,
-    IReadOnlyList<MethodDescriptor> StaticMethods,
-    IReadOnlyList<MethodDescriptor> InstanceMethods,
-    IReadOnlyList<MethodDescriptor> ExtensionMethods);
-
-internal sealed record TypeDescriptor(
-    string DisplayName,
-    string Kind,
-    string? BaseType,
-    IReadOnlyList<string> Interfaces,
-    string? Summary)
-{
-    public static TypeDescriptor Create(Type type, XmlDocumentationIndex? xmlDocumentation)
-    {
-        return new TypeDescriptor(
-            SignatureFormatter.FormatTypeName(type),
-            GetKind(type),
-            type.BaseType is null || type.BaseType == typeof(object) ? null : SignatureFormatter.FormatTypeName(type.BaseType),
-            type.GetInterfaces().Select(SignatureFormatter.FormatTypeName).OrderBy(name => name, StringComparer.Ordinal).ToArray(),
-            xmlDocumentation?.GetSummary(type)
-        );
-    }
-
-    private static string GetKind(Type type)
-    {
-        if (type.IsInterface)
-        {
-            return "interface";
-        }
-
-        if (type.IsEnum)
-        {
-            return "enum";
-        }
-
-        if (type.IsValueType)
-        {
-            return "struct";
-        }
-
-        if (type.IsAbstract && type.IsSealed)
-        {
-            return "static class";
-        }
-
-        if (type.IsAbstract)
-        {
-            return "abstract class";
-        }
-
-        return "class";
-    }
-}
-
-internal sealed record MethodGroup(
-    string Name,
-    IReadOnlyList<MethodDescriptor> StaticMethods,
-    IReadOnlyList<MethodDescriptor> InstanceMethods,
-    IReadOnlyList<MethodDescriptor> ExtensionMethods);
-
-internal enum MethodCategory
-{
-    Static,
-    Instance,
-    Extension,
-}
-
-internal sealed record MethodDescriptor(
-    string Name,
-    string Signature,
-    string DeclaringTypeDisplayName,
-    string ReturnTypeDisplayName,
-    MethodCategory Category,
-    IReadOnlyList<ParameterDescriptor> Parameters,
-    IReadOnlyList<string> GenericArguments,
-    string? Summary,
-    IReadOnlyDictionary<string, string> ParameterComments)
-{
-    public static MethodDescriptor Create(MethodInfo method, XmlDocumentationIndex? xmlDocumentation, MethodCategory category)
-    {
-        var parameters = method.GetParameters();
-        var summary = xmlDocumentation?.GetSummary(method);
-        var parameterComments = parameters
-            .Select(parameter => new KeyValuePair<string, string?>(parameter.Name ?? string.Empty, xmlDocumentation?.GetParameterComment(method, parameter.Name)))
-            .Where(pair => !string.IsNullOrWhiteSpace(pair.Value))
-            .ToDictionary(pair => pair.Key, pair => pair.Value!, StringComparer.Ordinal);
-
-        return new MethodDescriptor(
-            method.Name,
-            SignatureFormatter.FormatMethod(method),
-            SignatureFormatter.FormatTypeName(method.DeclaringType!),
-            SignatureFormatter.FormatTypeName(method.ReturnType),
-            category,
-            parameters.Select((parameter, index) => ParameterDescriptor.Create(parameter, category == MethodCategory.Extension && index == 0)).ToArray(),
-            method.IsGenericMethodDefinition
-                ? method.GetGenericArguments().Select(arg => arg.Name).ToArray()
-                : Array.Empty<string>(),
-            summary,
-            parameterComments
-        );
-    }
-}
-
-internal sealed record ParameterDescriptor(
-    string Name,
-    string TypeDisplayName,
-    bool IsExtensionReceiver,
-    bool IsOptional,
-    bool IsParams,
-    string? DefaultValue)
-{
-    public static ParameterDescriptor Create(ParameterInfo parameter, bool isExtensionReceiver)
-    {
-        return new ParameterDescriptor(
-            parameter.Name ?? string.Empty,
-            SignatureFormatter.FormatParameterType(parameter),
-            isExtensionReceiver,
-            parameter.IsOptional,
-            parameter.GetCustomAttribute<ParamArrayAttribute>() is not null,
-            parameter.IsOptional ? SignatureFormatter.FormatConstant(parameter.DefaultValue) : null
-        );
-    }
-}
-
 internal static class MarkdownRenderer
 {
-    public static string Render(Catalog catalog, Assembly assembly, XmlDocumentationIndex? xmlDocumentation, Options options)
+    public static string Render(OperatorSchemaRoot root)
     {
         var builder = new StringBuilder();
 
-        builder.AppendLine("# Onnxify Public API Catalog");
-        builder.AppendLine();
-        builder.AppendLine($"- Generated at: `{DateTimeOffset.Now:O}`");
-        builder.AppendLine($"- Assembly: `{assembly.Location}`");
-        builder.AppendLine($"- Assembly version: `{assembly.GetName().Version}`");
-        builder.AppendLine($"- Output: `{Path.GetFullPath(options.OutputPath)}`");
-        builder.AppendLine($"- XML docs: `{xmlDocumentation?.SourcePath ?? "not found"}`");
-        builder.AppendLine($"- Exported types: `{catalog.Types.Count}`");
-        builder.AppendLine($"- Method groups: `{catalog.MethodGroups.Count}`");
-        builder.AppendLine($"- Static methods: `{catalog.StaticMethods.Count}`");
-        builder.AppendLine($"- Instance methods: `{catalog.InstanceMethods.Count}`");
-        builder.AppendLine($"- Extension methods: `{catalog.ExtensionMethods.Count}`");
-        builder.AppendLine();
-        builder.AppendLine("## Types");
-        builder.AppendLine();
+        var operators = root.Operators
+            .GroupBy(op => $"{op.Domain ?? string.Empty}::{op.Name}", StringComparer.Ordinal)
+            .Select(group => group.OrderByDescending(op => op.SinceVersion).First())
+            .OrderBy(op => op.Domain, StringComparer.Ordinal)
+            .ThenBy(op => op.Name, StringComparer.Ordinal)
+            .ToArray();
 
-        foreach (var type in catalog.Types)
+        for (var index = 0; index < operators.Length; index++)
         {
-            builder.AppendLine($"### `{type.DisplayName}`");
+            var op = operators[index];
+            builder.AppendLine(GetTitle(op));
+            builder.AppendLine(Normalize(op.Doc));
             builder.AppendLine();
-            builder.AppendLine($"- Kind: `{type.Kind}`");
 
-            if (!string.IsNullOrWhiteSpace(type.BaseType))
+            if (!string.IsNullOrWhiteSpace(op.Domain))
             {
-                builder.AppendLine($"- Base type: `{type.BaseType}`");
+                builder.AppendLine($"Domain: `{op.Domain}`");
             }
 
-            if (type.Interfaces.Count > 0)
-            {
-                builder.AppendLine($"- Interfaces: `{string.Join("`, `", type.Interfaces)}`");
-            }
-
-            if (!string.IsNullOrWhiteSpace(type.Summary))
-            {
-                builder.AppendLine($"- Summary: {type.Summary}");
-            }
-
+            builder.AppendLine($"Since version: `{op.SinceVersion}`");
             builder.AppendLine();
-        }
 
-        builder.AppendLine("## Method Index");
-        builder.AppendLine();
-
-        foreach (var group in catalog.MethodGroups)
-        {
-            builder.AppendLine($"- [{group.Name}](#{Anchorize(group.Name)})");
-        }
-
-        foreach (var group in catalog.MethodGroups)
-        {
+            AppendSection(builder, "Inputs", op.Inputs.Select(ParameterDescriptor.FromInput).ToArray());
             builder.AppendLine();
-            builder.AppendLine($"## {group.Name}");
+            AppendSection(builder, "Outputs", op.Outputs.Select(ParameterDescriptor.FromOutput).ToArray());
             builder.AppendLine();
-            builder.AppendLine($"- Static overloads: `{group.StaticMethods.Count}`");
-            builder.AppendLine($"- Instance overloads: `{group.InstanceMethods.Count}`");
-            builder.AppendLine($"- Extension overloads: `{group.ExtensionMethods.Count}`");
+            AppendSection(builder, "Attributes", op.Attributes.Select(ParameterDescriptor.FromAttribute).ToArray());
 
-            AppendSection(builder, "Static API", group.StaticMethods);
-            AppendSection(builder, "Instance API", group.InstanceMethods);
-            AppendSection(builder, "Extension API", group.ExtensionMethods);
-        }
-
-        return builder.ToString();
-    }
-
-    private static void AppendSection(StringBuilder builder, string title, IReadOnlyList<MethodDescriptor> methods)
-    {
-        builder.AppendLine();
-        builder.AppendLine($"### {title}");
-        builder.AppendLine();
-
-        if (methods.Count == 0)
-        {
-            builder.AppendLine("_No methods found._");
-            return;
-        }
-
-        for (var index = 0; index < methods.Count; index++)
-        {
-            var method = methods[index];
-            builder.AppendLine($"#### `{method.Signature}`");
-            builder.AppendLine();
-            builder.AppendLine($"- Declaring type: `{method.DeclaringTypeDisplayName}`");
-            builder.AppendLine($"- Return type: `{method.ReturnTypeDisplayName}`");
-
-            if (method.GenericArguments.Count > 0)
-            {
-                builder.AppendLine($"- Generic arguments: `{string.Join("`, `", method.GenericArguments)}`");
-            }
-
-            if (!string.IsNullOrWhiteSpace(method.Summary))
-            {
-                builder.AppendLine($"- Summary: {method.Summary}");
-            }
-
-            if (method.Parameters.Count == 0)
-            {
-                builder.AppendLine("- Parameters: none");
-            }
-            else
-            {
-                builder.AppendLine("- Parameters:");
-
-                foreach (var parameter in method.Parameters)
-                {
-                    var suffix = new List<string>();
-
-                    if (parameter.IsExtensionReceiver)
-                    {
-                        suffix.Add("extension receiver");
-                    }
-
-                    if (parameter.IsParams)
-                    {
-                        suffix.Add("params");
-                    }
-
-                    if (parameter.IsOptional && parameter.DefaultValue is not null)
-                    {
-                        suffix.Add($"optional = {parameter.DefaultValue}");
-                    }
-
-                    var description = suffix.Count == 0
-                        ? string.Empty
-                        : $" ({string.Join(", ", suffix)})";
-
-                    builder.AppendLine($"  - `{parameter.TypeDisplayName} {parameter.Name}`{description}");
-
-                    if (method.ParameterComments.TryGetValue(parameter.Name, out var comment))
-                    {
-                        builder.AppendLine($"    - {comment}");
-                    }
-                }
-            }
-
-            if (index < methods.Count - 1)
+            if (index < operators.Length - 1)
             {
                 builder.AppendLine();
             }
         }
-    }
-
-    private static string Anchorize(string text)
-    {
-        return text
-            .Trim()
-            .ToLowerInvariant()
-            .Replace(" ", "-")
-            .Replace(".", string.Empty)
-            .Replace("_", "-");
-    }
-}
-
-internal static class SignatureFormatter
-{
-    public static string FormatMethod(MethodInfo method)
-    {
-        var builder = new StringBuilder();
-
-        builder.Append(FormatTypeName(method.DeclaringType!));
-        builder.Append('.');
-        builder.Append(method.Name);
-
-        if (method.IsGenericMethodDefinition)
-        {
-            builder.Append('<');
-            builder.Append(string.Join(", ", method.GetGenericArguments().Select(arg => arg.Name)));
-            builder.Append('>');
-        }
-
-        builder.Append('(');
-        builder.Append(string.Join(", ", method.GetParameters().Select(FormatParameter)));
-        builder.Append(')');
-        return builder.ToString();
-    }
-
-    public static string FormatParameter(ParameterInfo parameter)
-    {
-        var builder = new StringBuilder();
-
-        if (parameter.GetCustomAttribute<ParamArrayAttribute>() is not null)
-        {
-            builder.Append("params ");
-        }
-
-        builder.Append(FormatParameterType(parameter));
-        builder.Append(' ');
-        builder.Append(parameter.Name);
-
-        if (parameter.IsOptional)
-        {
-            builder.Append(" = ");
-            builder.Append(FormatConstant(parameter.DefaultValue));
-        }
 
         return builder.ToString();
     }
 
-    public static string FormatParameterType(ParameterInfo parameter)
+    private static string GetTitle(OperatorSchema op)
     {
-        if (parameter.ParameterType.IsByRef)
-        {
-            var prefix = parameter.IsOut ? "out " : "ref ";
-            return prefix + FormatTypeName(parameter.ParameterType.GetElementType()!);
-        }
-
-        return FormatTypeName(parameter.ParameterType);
+        return string.IsNullOrWhiteSpace(op.Domain)
+            ? $"# {op.Name}"
+            : $"# {op.Name} [{op.Domain}]";
     }
 
-    public static string FormatTypeName(Type type)
+    private static void AppendSection(StringBuilder builder, string title, IReadOnlyList<ParameterDescriptor> parameters)
     {
-        if (type.IsByRef)
+        builder.AppendLine($"## {title}");
+
+        if (parameters.Count == 0)
         {
-            return $"{FormatTypeName(type.GetElementType()!)}&";
+            builder.AppendLine("_None._");
+            return;
         }
 
-        if (type.IsPointer)
+        foreach (var parameter in parameters)
         {
-            return $"{FormatTypeName(type.GetElementType()!)}*";
+            builder.AppendLine($"* `{parameter.Name}` ({parameter.TypeDisplay}) - {parameter.Description}");
         }
-
-        if (type.IsArray)
-        {
-            var commas = new string(',', type.GetArrayRank() - 1);
-            return $"{FormatTypeName(type.GetElementType()!)}[{commas}]";
-        }
-
-        if (type.IsGenericParameter)
-        {
-            return type.Name;
-        }
-
-        if (type.IsGenericType)
-        {
-            var genericTypeDefinition = type.GetGenericTypeDefinition();
-            var typeName = genericTypeDefinition.Name;
-            var tickIndex = typeName.IndexOf('`');
-
-            if (tickIndex >= 0)
-            {
-                typeName = typeName[..tickIndex];
-            }
-
-            var prefix = type.IsNested
-                ? $"{FormatTypeName(type.DeclaringType!)}."
-                : string.IsNullOrWhiteSpace(type.Namespace) ? string.Empty : $"{type.Namespace}.";
-
-            return $"{prefix}{typeName}<{string.Join(", ", type.GetGenericArguments().Select(FormatTypeName))}>";
-        }
-
-        if (type.IsNested)
-        {
-            return $"{FormatTypeName(type.DeclaringType!)}.{type.Name}";
-        }
-
-        return type.FullName ?? type.Name;
     }
 
-    public static string FormatConstant(object? value)
-    {
-        return value switch
-        {
-            null => "null",
-            string text => $"\"{text}\"",
-            char ch => $"'{ch}'",
-            bool boolean => boolean ? "true" : "false",
-            Enum @enum => $"{FormatTypeName(@enum.GetType())}.{Enum.GetName(@enum.GetType(), @enum)}",
-            float number => number.ToString("R"),
-            double number => number.ToString("R"),
-            decimal number => number.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            _ => Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) ?? value.ToString() ?? "null",
-        };
-    }
-
-    public static string FormatDocumentationTypeName(Type type)
-    {
-        if (type.IsByRef)
-        {
-            return $"{FormatDocumentationTypeName(type.GetElementType()!)}@";
-        }
-
-        if (type.IsPointer)
-        {
-            return $"{FormatDocumentationTypeName(type.GetElementType()!)}*";
-        }
-
-        if (type.IsArray)
-        {
-            if (type.GetArrayRank() == 1)
-            {
-                return $"{FormatDocumentationTypeName(type.GetElementType()!)}[]";
-            }
-
-            var dimensions = string.Join(",", Enumerable.Repeat("0:", type.GetArrayRank()));
-            return $"{FormatDocumentationTypeName(type.GetElementType()!)}[{dimensions}]";
-        }
-
-        if (type.IsGenericParameter)
-        {
-            var prefix = type.DeclaringMethod is null ? "`" : "``";
-            return $"{prefix}{type.GenericParameterPosition}";
-        }
-
-        if (type.IsGenericType)
-        {
-            var genericTypeDefinition = type.GetGenericTypeDefinition();
-            var definitionName = GetDocumentationTypeName(genericTypeDefinition);
-            var arguments = string.Join(",", type.GetGenericArguments().Select(FormatDocumentationTypeName));
-            return $"{definitionName}{{{arguments}}}";
-        }
-
-        return GetDocumentationTypeName(type);
-    }
-
-    private static string GetDocumentationTypeName(Type type)
-    {
-        var fullName = type.FullName ?? type.Name;
-        return fullName.Replace('+', '.');
-    }
-}
-
-internal sealed class MethodDescriptorComparer : IComparer<MethodDescriptor>
-{
-    public static MethodDescriptorComparer Instance { get; } = new();
-
-    public int Compare(MethodDescriptor? x, MethodDescriptor? y)
-    {
-        if (ReferenceEquals(x, y))
-        {
-            return 0;
-        }
-
-        if (x is null)
-        {
-            return -1;
-        }
-
-        if (y is null)
-        {
-            return 1;
-        }
-
-        var result = StringComparer.Ordinal.Compare(x.DeclaringTypeDisplayName, y.DeclaringTypeDisplayName);
-
-        if (result != 0)
-        {
-            return result;
-        }
-
-        result = x.Parameters.Count.CompareTo(y.Parameters.Count);
-
-        if (result != 0)
-        {
-            return result;
-        }
-
-        for (var index = 0; index < x.Parameters.Count && index < y.Parameters.Count; index++)
-        {
-            result = StringComparer.Ordinal.Compare(x.Parameters[index].TypeDisplayName, y.Parameters[index].TypeDisplayName);
-
-            if (result != 0)
-            {
-                return result;
-            }
-        }
-
-        return StringComparer.Ordinal.Compare(x.Signature, y.Signature);
-    }
-}
-
-internal sealed class XmlDocumentationIndex
-{
-    private readonly Dictionary<string, XElement> _members;
-
-    private XmlDocumentationIndex(string sourcePath, Dictionary<string, XElement> members)
-    {
-        SourcePath = sourcePath;
-        _members = members;
-    }
-
-    public string SourcePath { get; }
-
-    public static XmlDocumentationIndex? TryLoad(string? xmlPath)
-    {
-        if (string.IsNullOrWhiteSpace(xmlPath) || !File.Exists(xmlPath))
-        {
-            return null;
-        }
-
-        var document = XDocument.Load(xmlPath, LoadOptions.PreserveWhitespace);
-        var members = document.Root?
-            .Element("members")?
-            .Elements("member")
-            .Select(member => new
-            {
-                Name = member.Attribute("name")?.Value,
-                Member = member,
-            })
-            .Where(entry => !string.IsNullOrWhiteSpace(entry.Name))
-            .ToDictionary(entry => entry.Name!, entry => entry.Member, StringComparer.Ordinal);
-
-        if (members is null)
-        {
-            return null;
-        }
-
-        return new XmlDocumentationIndex(Path.GetFullPath(xmlPath), members);
-    }
-
-    public string? GetSummary(Type type)
-    {
-        return _members.TryGetValue($"T:{SignatureFormatter.FormatDocumentationTypeName(type)}", out var member)
-            ? Normalize(member.Element("summary")?.Value)
-            : null;
-    }
-
-    public string? GetSummary(MethodInfo method)
-    {
-        return TryGetMember(method, out var member)
-            ? Normalize(member.Element("summary")?.Value)
-            : null;
-    }
-
-    public string? GetParameterComment(MethodInfo method, string? parameterName)
-    {
-        if (string.IsNullOrWhiteSpace(parameterName))
-        {
-            return null;
-        }
-
-        if (!TryGetMember(method, out var member))
-        {
-            return null;
-        }
-
-        return Normalize(
-            member.Elements("param")
-                .FirstOrDefault(param => string.Equals(param.Attribute("name")?.Value, parameterName, StringComparison.Ordinal))?
-                .Value
-        );
-    }
-
-    private bool TryGetMember(MethodInfo method, out XElement member)
-    {
-        var key = BuildMethodDocumentationId(method);
-        return _members.TryGetValue(key, out member!);
-    }
-
-    private static string BuildMethodDocumentationId(MethodInfo method)
-    {
-        var builder = new StringBuilder();
-        builder.Append("M:");
-        builder.Append(SignatureFormatter.FormatDocumentationTypeName(method.DeclaringType!));
-        builder.Append('.');
-        builder.Append(method.Name);
-
-        if (method.IsGenericMethodDefinition)
-        {
-            builder.Append("``");
-            builder.Append(method.GetGenericArguments().Length);
-        }
-
-        var parameters = method.GetParameters();
-
-        if (parameters.Length > 0)
-        {
-            builder.Append('(');
-            builder.Append(string.Join(",", parameters.Select(parameter => SignatureFormatter.FormatDocumentationTypeName(parameter.ParameterType))));
-            builder.Append(')');
-        }
-
-        return builder.ToString();
-    }
-
-    private static string? Normalize(string? text)
+    private static string Normalize(string? text)
     {
         if (string.IsNullOrWhiteSpace(text))
         {
-            return null;
+            return "No description.";
         }
 
-        var parts = text
+        var lines = text
             .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Where(part => !string.IsNullOrWhiteSpace(part));
+            .Where(line => !string.IsNullOrWhiteSpace(line));
 
-        var normalized = string.Join(" ", parts).Trim();
-        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+        var normalized = string.Join(" ", lines);
+        return string.IsNullOrWhiteSpace(normalized) ? "No description." : normalized;
     }
+}
+
+internal sealed record ParameterDescriptor(string Name, string TypeDisplay, string Description)
+{
+    public static ParameterDescriptor FromInput(OperatorParameter parameter)
+    {
+        return new ParameterDescriptor(
+            parameter.Name,
+            FormatParameterType(parameter.Type, parameter.Option, parameter.MinArity),
+            Normalize(parameter.Description)
+        );
+    }
+
+    public static ParameterDescriptor FromOutput(OperatorParameter parameter)
+    {
+        return new ParameterDescriptor(
+            parameter.Name,
+            FormatParameterType(parameter.Type, parameter.Option, parameter.MinArity),
+            Normalize(parameter.Description)
+        );
+    }
+
+    public static ParameterDescriptor FromAttribute(OperatorAttribute attribute)
+    {
+        var parts = new List<string> { FormatAttributeType(attribute.Type) };
+        parts.Add(attribute.Required ? "required" : "optional");
+
+        if (attribute.Default is not null)
+        {
+            parts.Add($"default: {FormatDefaultValue(attribute.Default)}");
+        }
+
+        return new ParameterDescriptor(
+            attribute.Name,
+            string.Join(", ", parts),
+            Normalize(attribute.Description)
+        );
+    }
+
+    private static string Normalize(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return "No description.";
+        }
+
+        var lines = text
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(line => !string.IsNullOrWhiteSpace(line));
+
+        var normalized = string.Join(" ", lines);
+        return string.IsNullOrWhiteSpace(normalized) ? "No description." : normalized;
+    }
+
+    private static string FormatParameterType(string type, FormalParameterOption option, int minArity)
+    {
+        var parts = new List<string> { type };
+
+        switch (option)
+        {
+            case FormalParameterOption.Optional:
+                parts.Add("optional");
+                break;
+            case FormalParameterOption.Variadic:
+                parts.Add($"variadic, min arity: {minArity}");
+                break;
+        }
+
+        return string.Join(", ", parts);
+    }
+
+    private static string FormatAttributeType(int type)
+    {
+        return type switch
+        {
+            1 => "float",
+            2 => "int",
+            3 => "string",
+            4 => "tensor",
+            5 => "graph",
+            6 => "float[]",
+            7 => "int[]",
+            8 => "string[]",
+            9 => "tensor[]",
+            10 => "graph[]",
+            11 => "sparse_tensor",
+            12 => "sparse_tensor[]",
+            13 => "type_proto",
+            14 => "type_proto[]",
+            _ => "undefined",
+        };
+    }
+
+    private static string FormatDefaultValue(object value)
+    {
+        return value switch
+        {
+            JsonElement element => element.ValueKind switch
+            {
+                JsonValueKind.String => element.GetString() ?? string.Empty,
+                JsonValueKind.Number => element.ToString(),
+                JsonValueKind.True => "true",
+                JsonValueKind.False => "false",
+                JsonValueKind.Array => $"[{string.Join(", ", element.EnumerateArray().Select(item => FormatDefaultValue(item)))}]",
+                JsonValueKind.Null => "null",
+                _ => element.ToString(),
+            },
+            _ => value.ToString() ?? string.Empty,
+        };
+    }
+}
+
+internal sealed class OperatorSchemaRoot
+{
+    [JsonPropertyName("operators")]
+    public required List<OperatorSchema> Operators { get; set; }
+}
+
+internal sealed class OperatorSchema
+{
+    [JsonPropertyName("name")]
+    public required string Name { get; set; }
+
+    [JsonPropertyName("domain")]
+    public required string Domain { get; set; }
+
+    [JsonPropertyName("sinceVersion")]
+    public required int SinceVersion { get; set; }
+
+    [JsonPropertyName("doc")]
+    public required string? Doc { get; set; }
+
+    [JsonPropertyName("attributes")]
+    public required List<OperatorAttribute> Attributes { get; set; }
+
+    [JsonPropertyName("inputs")]
+    public required List<OperatorParameter> Inputs { get; set; }
+
+    [JsonPropertyName("outputs")]
+    public required List<OperatorParameter> Outputs { get; set; }
+}
+
+internal sealed class OperatorAttribute
+{
+    [JsonPropertyName("name")]
+    public required string Name { get; set; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    [JsonPropertyName("required")]
+    public required bool Required { get; set; }
+
+    [JsonPropertyName("type")]
+    public required int Type { get; set; }
+
+    [JsonPropertyName("default")]
+    public object? Default { get; set; }
+}
+
+internal sealed class OperatorParameter
+{
+    [JsonPropertyName("name")]
+    public required string Name { get; set; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    [JsonPropertyName("option")]
+    public required FormalParameterOption Option { get; set; }
+
+    [JsonPropertyName("minArity")]
+    public required int MinArity { get; set; }
+
+    [JsonPropertyName("type")]
+    public required string Type { get; set; }
+}
+
+internal enum FormalParameterOption : byte
+{
+    Single = 0,
+    Optional = 1,
+    Variadic = 2,
 }
