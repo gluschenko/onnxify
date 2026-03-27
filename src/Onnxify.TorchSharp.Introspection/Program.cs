@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Xml.Linq;
 using TorchSharp;
@@ -16,7 +15,7 @@ internal static class Program
             var assembly = typeof(torch).Assembly;
             var xmlDocumentation = XmlDocumentationIndex.TryLoad(options.XmlPath ?? TryFindAdjacentXml(assembly.Location));
             var catalog = TorchSharpCatalog.Create(assembly, xmlDocumentation);
-            var markdown = MarkdownRenderer.Render(catalog, assembly, xmlDocumentation, options);
+            var markdown = MarkdownRenderer.Render(catalog);
 
             var outputPath = Path.GetFullPath(options.OutputPath);
             var outputDirectory = Path.GetDirectoryName(outputPath);
@@ -29,10 +28,8 @@ internal static class Program
             File.WriteAllText(outputPath, markdown, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 
             Console.WriteLine($"Saved Markdown to: {outputPath}");
-            Console.WriteLine($"Operator groups: {catalog.OperatorGroups.Count}");
-            Console.WriteLine($"Torch methods: {catalog.TorchMethods.Count}");
-            Console.WriteLine($"Tensor instance methods: {catalog.TensorInstanceMethods.Count}");
-            Console.WriteLine($"Extension methods: {catalog.ExtensionMethods.Count}");
+            Console.WriteLine($"Operators: {catalog.Operators.Count}");
+            Console.WriteLine($"Source methods: {catalog.MethodCount}");
             Console.WriteLine($"XML docs: {(xmlDocumentation is null ? "not found" : xmlDocumentation.SourcePath)}");
             return 0;
         }
@@ -46,7 +43,52 @@ internal static class Program
     private static string? TryFindAdjacentXml(string assemblyPath)
     {
         var xmlPath = Path.ChangeExtension(assemblyPath, ".xml");
-        return File.Exists(xmlPath) ? xmlPath : null;
+        if (File.Exists(xmlPath))
+        {
+            return xmlPath;
+        }
+
+        return TryFindNuGetXmlFallback();
+    }
+
+    private static string? TryFindNuGetXmlFallback()
+    {
+        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+        if (string.IsNullOrWhiteSpace(userProfile))
+        {
+            return null;
+        }
+
+        var packageRoot = Path.Combine(userProfile, ".nuget", "packages", "torchsharp");
+
+        if (!Directory.Exists(packageRoot))
+        {
+            return null;
+        }
+
+        var candidates = Directory.GetDirectories(packageRoot)
+            .Select(path => new
+            {
+                Path = Path.Combine(path, "lib", "net6.0", "TorchSharp.xml"),
+                VersionText = Path.GetFileName(path),
+            })
+            .Where(entry => File.Exists(entry.Path))
+            .Select(entry =>
+            {
+                var parsed = Version.TryParse(entry.VersionText, out var version);
+                return new
+                {
+                    entry.Path,
+                    Version = parsed ? version : new Version(0, 0),
+                    Parsed = parsed,
+                };
+            })
+            .OrderByDescending(entry => entry.Parsed)
+            .ThenByDescending(entry => entry.Version)
+            .ToArray();
+
+        return candidates.FirstOrDefault()?.Path;
     }
 }
 
@@ -98,7 +140,7 @@ internal sealed record Options(string OutputPath, string? XmlPath)
     {
         Console.WriteLine(
             """
-            TorchSharp operator catalog generator
+            TorchSharp operator markdown generator
 
             Options:
               -o, --output <path>   Markdown output path. Default: ./artifacts/torchsharp-operators.md
@@ -113,71 +155,25 @@ internal static class TorchSharpCatalog
 {
     public static Catalog Create(Assembly assembly, XmlDocumentationIndex? xmlDocumentation)
     {
-        var torchMethods = new List<MethodDescriptor>();
-        var tensorInstanceMethods = new List<MethodDescriptor>();
-        var extensionMethods = new List<MethodDescriptor>();
-
-        foreach (var type in assembly.GetExportedTypes())
-        {
-            if (IsTorchOperatorContainer(type))
-            {
-                foreach (var method in GetDeclaredPublicMethods(type))
-                {
-                    if (method.IsStatic && !IsExtensionMethod(method))
-                    {
-                        torchMethods.Add(MethodDescriptor.Create(method, xmlDocumentation, MethodCategory.TorchStatic));
-                    }
-                }
-            }
-
-            if (IsTensorType(type))
-            {
-                foreach (var method in GetDeclaredPublicMethods(type))
-                {
-                    if (!method.IsStatic)
-                    {
-                        tensorInstanceMethods.Add(MethodDescriptor.Create(method, xmlDocumentation, MethodCategory.TensorInstance));
-                    }
-                }
-            }
-
-            if (type.IsSealed && type.IsAbstract)
-            {
-                foreach (var method in GetDeclaredPublicMethods(type))
-                {
-                    if (IsExtensionMethod(method))
-                    {
-                        extensionMethods.Add(MethodDescriptor.Create(method, xmlDocumentation, MethodCategory.Extension));
-                    }
-                }
-            }
-        }
-
-        var operatorGroups = torchMethods
-            .Concat(tensorInstanceMethods)
-            .Concat(extensionMethods)
-            .GroupBy(method => method.Name, StringComparer.Ordinal)
-            .Select(group => new OperatorGroup(
-                group.Key,
-                group.Where(method => method.Category == MethodCategory.TorchStatic).OrderBy(method => method, MethodDescriptorComparer.Instance).ToArray(),
-                group.Where(method => method.Category == MethodCategory.TensorInstance).OrderBy(method => method, MethodDescriptorComparer.Instance).ToArray(),
-                group.Where(method => method.Category == MethodCategory.Extension).OrderBy(method => method, MethodDescriptorComparer.Instance).ToArray()))
-            .OrderBy(group => group.Name, StringComparer.Ordinal)
+        var methods = assembly.GetExportedTypes()
+            .Where(IsTorchOperatorContainer)
+            .SelectMany(GetDeclaredPublicStaticMethods)
+            .Where(method => !method.IsSpecialName)
+            .Where(IsOperatorMethod)
             .ToArray();
 
-        return new Catalog(
-            operatorGroups,
-            torchMethods.OrderBy(method => method, MethodDescriptorComparer.Instance).ToArray(),
-            tensorInstanceMethods.OrderBy(method => method, MethodDescriptorComparer.Instance).ToArray(),
-            extensionMethods.OrderBy(method => method, MethodDescriptorComparer.Instance).ToArray()
-        );
+        var operators = methods
+            .GroupBy(method => method.Name, StringComparer.Ordinal)
+            .Select(group => OperatorDescriptor.Create(group.Key, group.ToArray(), xmlDocumentation))
+            .OrderBy(op => op.Name, StringComparer.Ordinal)
+            .ToArray();
+
+        return new Catalog(operators, methods.Length);
     }
 
-    private static IEnumerable<MethodInfo> GetDeclaredPublicMethods(Type type)
+    private static IEnumerable<MethodInfo> GetDeclaredPublicStaticMethods(Type type)
     {
-        return type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
-            .Where(method => !method.IsSpecialName)
-            .Where(method => !method.ContainsGenericParameters || method.IsGenericMethodDefinition || !method.DeclaringType!.ContainsGenericParameters);
+        return type.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly);
     }
 
     private static bool IsTorchOperatorContainer(Type type)
@@ -198,276 +194,194 @@ internal static class TorchSharpCatalog
         return false;
     }
 
-    private static bool IsExtensionMethod(MethodInfo method)
+    private static bool IsOperatorMethod(MethodInfo method)
     {
-        return method.IsDefined(typeof(ExtensionAttribute), inherit: false);
-    }
-
-    private static bool IsTensorType(Type type)
-    {
-        return string.Equals(type.Name, "Tensor", StringComparison.Ordinal)
-            || string.Equals(type.FullName, "TorchSharp.Tensor", StringComparison.Ordinal)
-            || string.Equals(type.FullName, "TorchSharp.torch.Tensor", StringComparison.Ordinal);
+        return OperatorDescriptor.IsTensorLikeReturnType(method.ReturnType);
     }
 }
 
-internal sealed record Catalog(
-    IReadOnlyList<OperatorGroup> OperatorGroups,
-    IReadOnlyList<MethodDescriptor> TorchMethods,
-    IReadOnlyList<MethodDescriptor> TensorInstanceMethods,
-    IReadOnlyList<MethodDescriptor> ExtensionMethods);
+internal sealed record Catalog(IReadOnlyList<OperatorDescriptor> Operators, int MethodCount);
 
-internal sealed record OperatorGroup(
+internal sealed record OperatorDescriptor(
     string Name,
-    IReadOnlyList<MethodDescriptor> TorchMethods,
-    IReadOnlyList<MethodDescriptor> TensorInstanceMethods,
-    IReadOnlyList<MethodDescriptor> ExtensionMethods);
-
-internal enum MethodCategory
+    string Description,
+    IReadOnlyList<FieldDescriptor> Inputs,
+    IReadOnlyList<FieldDescriptor> Outputs,
+    IReadOnlyList<FieldDescriptor> Attributes)
 {
-    TorchStatic,
-    TensorInstance,
-    Extension,
-}
-
-internal sealed record MethodDescriptor(
-    string Name,
-    string Signature,
-    string DeclaringTypeDisplayName,
-    string ReturnTypeDisplayName,
-    MethodCategory Category,
-    IReadOnlyList<ParameterDescriptor> Parameters,
-    IReadOnlyList<string> GenericArguments,
-    string? Summary,
-    IReadOnlyDictionary<string, string> ParameterComments)
-{
-    public static MethodDescriptor Create(MethodInfo method, XmlDocumentationIndex? xmlDocumentation, MethodCategory category)
+    public static OperatorDescriptor Create(string name, IReadOnlyList<MethodInfo> methods, XmlDocumentationIndex? xmlDocumentation)
     {
-        var parameters = method.GetParameters();
-        var summary = xmlDocumentation?.GetSummary(method);
-        var parameterComments = parameters
-            .Select(parameter => new KeyValuePair<string, string?>(parameter.Name ?? string.Empty, xmlDocumentation?.GetParameterComment(method, parameter.Name)))
-            .Where(pair => !string.IsNullOrWhiteSpace(pair.Value))
-            .ToDictionary(pair => pair.Key, pair => pair.Value!, StringComparer.Ordinal);
+        var description = methods
+            .Select(method => xmlDocumentation?.GetSummary(method))
+            .FirstOrDefault(summary => !string.IsNullOrWhiteSpace(summary))
+            ?? "No description.";
 
-        return new MethodDescriptor(
-            method.Name,
-            SignatureFormatter.FormatMethod(method),
-            SignatureFormatter.FormatTypeName(method.DeclaringType!),
-            SignatureFormatter.FormatTypeName(method.ReturnType),
-            category,
-            parameters.Select((parameter, index) => ParameterDescriptor.Create(parameter, category == MethodCategory.Extension && index == 0)).ToArray(),
-            method.IsGenericMethodDefinition
-                ? method.GetGenericArguments().Select(arg => arg.Name).ToArray()
-                : Array.Empty<string>(),
-            summary,
-            parameterComments
+        var inputs = MergeFields(
+            methods.SelectMany(method => method.GetParameters())
+                .Where(IsInputParameter)
+                .Select(parameter => FieldDescriptor.FromInput(parameter, xmlDocumentation))
         );
+
+        var outputs = MergeFields(
+            methods.Select(method => FieldDescriptor.FromOutput(method, xmlDocumentation))
+        );
+
+        var attributes = MergeFields(
+            methods.SelectMany(method => method.GetParameters())
+                .Where(parameter => !IsInputParameter(parameter))
+                .Select(parameter => FieldDescriptor.FromAttribute(parameter, xmlDocumentation))
+        );
+
+        return new OperatorDescriptor(name, description, inputs, outputs, attributes);
+    }
+
+    private static IReadOnlyList<FieldDescriptor> MergeFields(IEnumerable<FieldDescriptor> fields)
+    {
+        return fields
+            .GroupBy(field => field.Name, StringComparer.Ordinal)
+            .Select(group =>
+            {
+                var types = group.Select(field => field.TypeDisplay).Distinct(StringComparer.Ordinal).OrderBy(x => x, StringComparer.Ordinal).ToArray();
+                var descriptions = group.Select(field => field.Description).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.Ordinal).ToArray();
+
+                return new FieldDescriptor(
+                    group.Key,
+                    string.Join(" | ", types),
+                    descriptions.Length == 0 ? "No description." : descriptions[0]
+                );
+            })
+            .OrderBy(field => field.Name, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static bool IsInputParameter(ParameterInfo parameter)
+    {
+        return IsTensorLikeParameter(parameter.ParameterType);
+    }
+
+    internal static bool IsTensorLikeParameter(Type type)
+    {
+        if (type.IsArray)
+        {
+            return IsTensorLikeParameter(type.GetElementType()!);
+        }
+
+        if (Nullable.GetUnderlyingType(type) is Type underlyingType)
+        {
+            return IsTensorLikeParameter(underlyingType);
+        }
+
+        var fullName = type.FullName ?? type.Name;
+        return fullName.Contains("Tensor", StringComparison.Ordinal)
+            || (type.IsGenericType && type.GetGenericArguments().Any(IsTensorLikeParameter));
+    }
+
+    internal static bool IsTensorLikeReturnType(Type type)
+    {
+        return IsTensorLikeParameter(type);
     }
 }
 
-internal sealed record ParameterDescriptor(
-    string Name,
-    string TypeDisplayName,
-    bool IsExtensionReceiver,
-    bool IsOptional,
-    bool IsParams,
-    string? DefaultValue)
+internal sealed record FieldDescriptor(string Name, string TypeDisplay, string Description)
 {
-    public static ParameterDescriptor Create(ParameterInfo parameter, bool isExtensionReceiver)
+    public static FieldDescriptor FromInput(ParameterInfo parameter, XmlDocumentationIndex? xmlDocumentation)
     {
-        return new ParameterDescriptor(
-            parameter.Name ?? string.Empty,
+        return new FieldDescriptor(
+            parameter.Name ?? "input",
             SignatureFormatter.FormatParameterType(parameter),
-            isExtensionReceiver,
-            parameter.IsOptional,
-            parameter.GetCustomAttribute<ParamArrayAttribute>() is not null,
-            parameter.IsOptional ? SignatureFormatter.FormatConstant(parameter.DefaultValue) : null
+            xmlDocumentation?.GetParameterComment(parameter.Member as MethodInfo, parameter.Name) ?? "No description."
         );
+    }
+
+    public static FieldDescriptor FromAttribute(ParameterInfo parameter, XmlDocumentationIndex? xmlDocumentation)
+    {
+        var typeDisplay = SignatureFormatter.FormatParameterType(parameter);
+
+        if (parameter.IsOptional)
+        {
+            typeDisplay += $", optional, default: {SignatureFormatter.FormatConstant(parameter.DefaultValue)}";
+        }
+
+        return new FieldDescriptor(
+            parameter.Name ?? "attribute",
+            typeDisplay,
+            xmlDocumentation?.GetParameterComment(parameter.Member as MethodInfo, parameter.Name) ?? "No description."
+        );
+    }
+
+    public static FieldDescriptor FromOutput(MethodInfo method, XmlDocumentationIndex? xmlDocumentation)
+    {
+        return new FieldDescriptor(
+            GetOutputName(method.ReturnType),
+            SignatureFormatter.FormatTypeName(method.ReturnType),
+            xmlDocumentation?.GetReturns(method) ?? "No description."
+        );
+    }
+
+    private static string GetOutputName(Type returnType)
+    {
+        if (returnType == typeof(void))
+        {
+            return "result";
+        }
+
+        if (returnType.IsArray)
+        {
+            return "outputs";
+        }
+
+        var fullName = returnType.FullName ?? returnType.Name;
+        return fullName.Contains("Tensor", StringComparison.Ordinal) ? "output" : "result";
     }
 }
 
 internal static class MarkdownRenderer
 {
-    public static string Render(Catalog catalog, Assembly assembly, XmlDocumentationIndex? xmlDocumentation, Options options)
+    public static string Render(Catalog catalog)
     {
         var builder = new StringBuilder();
 
-        builder.AppendLine("# TorchSharp Operator Catalog");
-        builder.AppendLine();
-        builder.AppendLine($"- Generated at: `{DateTimeOffset.Now:O}`");
-        builder.AppendLine($"- Assembly: `{assembly.Location}`");
-        builder.AppendLine($"- Assembly version: `{assembly.GetName().Version}`");
-        builder.AppendLine($"- Output: `{Path.GetFullPath(options.OutputPath)}`");
-        builder.AppendLine($"- XML docs: `{xmlDocumentation?.SourcePath ?? "not found"}`");
-        builder.AppendLine($"- Operator groups: `{catalog.OperatorGroups.Count}`");
-        builder.AppendLine($"- Torch static methods: `{catalog.TorchMethods.Count}`");
-        builder.AppendLine($"- Tensor instance methods: `{catalog.TensorInstanceMethods.Count}`");
-        builder.AppendLine($"- Extension methods: `{catalog.ExtensionMethods.Count}`");
-        builder.AppendLine();
-        builder.AppendLine("## Index");
-        builder.AppendLine();
-
-        foreach (var group in catalog.OperatorGroups)
+        for (var index = 0; index < catalog.Operators.Count; index++)
         {
-            builder.AppendLine($"- [{group.Name}](#{Anchorize(group.Name)})");
-        }
-
-        foreach (var group in catalog.OperatorGroups)
-        {
+            var op = catalog.Operators[index];
+            builder.AppendLine($"# {op.Name}");
+            builder.AppendLine(op.Description);
             builder.AppendLine();
-            builder.AppendLine($"## {group.Name}");
-            builder.AppendLine();
-            builder.AppendLine($"- Torch static overloads: `{group.TorchMethods.Count}`");
-            builder.AppendLine($"- Tensor instance overloads: `{group.TensorInstanceMethods.Count}`");
-            builder.AppendLine($"- Extension overloads: `{group.ExtensionMethods.Count}`");
 
-            AppendSection(builder, "Torch Static API", group.TorchMethods);
-            AppendSection(builder, "Tensor Instance API", group.TensorInstanceMethods);
-            AppendSection(builder, "Extension API", group.ExtensionMethods);
+            AppendSection(builder, "Inputs", op.Inputs);
+            builder.AppendLine();
+            AppendSection(builder, "Outputs", op.Outputs);
+            builder.AppendLine();
+            AppendSection(builder, "Attributes", op.Attributes);
+
+            if (index < catalog.Operators.Count - 1)
+            {
+                builder.AppendLine();
+            }
         }
 
         return builder.ToString();
     }
 
-    private static void AppendSection(StringBuilder builder, string title, IReadOnlyList<MethodDescriptor> methods)
+    private static void AppendSection(StringBuilder builder, string title, IReadOnlyList<FieldDescriptor> fields)
     {
-        builder.AppendLine();
-        builder.AppendLine($"### {title}");
-        builder.AppendLine();
+        builder.AppendLine($"## {title}");
 
-        if (methods.Count == 0)
+        if (fields.Count == 0)
         {
-            builder.AppendLine("_No methods found._");
+            builder.AppendLine("_None._");
             return;
         }
 
-        for (var index = 0; index < methods.Count; index++)
+        foreach (var field in fields)
         {
-            var method = methods[index];
-            builder.AppendLine($"#### `{method.Signature}`");
-            builder.AppendLine();
-            builder.AppendLine($"- Declaring type: `{GetMethodDeclaringType(method)}`");
-            builder.AppendLine($"- Return type: `{method.ReturnTypeDisplayName}`");
-
-            if (method.GenericArguments.Count > 0)
-            {
-                builder.AppendLine($"- Generic arguments: `{string.Join("`, `", method.GenericArguments)}`");
-            }
-
-            if (!string.IsNullOrWhiteSpace(method.Summary))
-            {
-                builder.AppendLine($"- Summary: {method.Summary}");
-            }
-
-            if (method.Parameters.Count == 0)
-            {
-                builder.AppendLine("- Parameters: none");
-            }
-            else
-            {
-                builder.AppendLine("- Parameters:");
-
-                foreach (var parameter in method.Parameters)
-                {
-                    var suffix = new List<string>();
-
-                    if (parameter.IsExtensionReceiver)
-                    {
-                        suffix.Add("extension receiver");
-                    }
-
-                    if (parameter.IsParams)
-                    {
-                        suffix.Add("params");
-                    }
-
-                    if (parameter.IsOptional && parameter.DefaultValue is not null)
-                    {
-                        suffix.Add($"optional = {parameter.DefaultValue}");
-                    }
-
-                    var description = suffix.Count == 0
-                        ? string.Empty
-                        : $" ({string.Join(", ", suffix)})";
-
-                    builder.AppendLine($"  - `{parameter.TypeDisplayName} {parameter.Name}`{description}");
-
-                    if (method.ParameterComments.TryGetValue(parameter.Name, out var comment))
-                    {
-                        builder.AppendLine($"    - {comment}");
-                    }
-                }
-            }
-
-            if (index < methods.Count - 1)
-            {
-                builder.AppendLine();
-            }
+            builder.AppendLine($"* `{field.Name}` ({field.TypeDisplay}) - {field.Description}");
         }
-    }
-
-    private static string GetMethodDeclaringType(MethodDescriptor method)
-    {
-        return method.DeclaringTypeDisplayName;
-    }
-
-    private static string Anchorize(string text)
-    {
-        return text
-            .Trim()
-            .ToLowerInvariant()
-            .Replace(" ", "-")
-            .Replace(".", string.Empty)
-            .Replace("_", "-");
     }
 }
 
 internal static class SignatureFormatter
 {
-    public static string FormatMethod(MethodInfo method)
-    {
-        var builder = new StringBuilder();
-
-        builder.Append(FormatTypeName(method.DeclaringType!));
-        builder.Append('.');
-        builder.Append(method.Name);
-
-        if (method.IsGenericMethodDefinition)
-        {
-            builder.Append('<');
-            builder.Append(string.Join(", ", method.GetGenericArguments().Select(arg => arg.Name)));
-            builder.Append('>');
-        }
-
-        builder.Append('(');
-        builder.Append(string.Join(", ", method.GetParameters().Select(FormatParameter)));
-        builder.Append(')');
-        return builder.ToString();
-    }
-
-    public static string FormatParameter(ParameterInfo parameter)
-    {
-        var builder = new StringBuilder();
-
-        if (parameter.GetCustomAttribute<ParamArrayAttribute>() is not null)
-        {
-            builder.Append("params ");
-        }
-
-        builder.Append(FormatParameterType(parameter));
-        builder.Append(' ');
-        builder.Append(parameter.Name);
-
-        if (parameter.IsOptional)
-        {
-            builder.Append(" = ");
-            builder.Append(FormatConstant(parameter.DefaultValue));
-        }
-
-        return builder.ToString();
-    }
-
     public static string FormatParameterType(ParameterInfo parameter)
     {
         if (parameter.ParameterType.IsByRef)
@@ -486,15 +400,15 @@ internal static class SignatureFormatter
             return $"{FormatTypeName(type.GetElementType()!)}&";
         }
 
-        if (type.IsPointer)
-        {
-            return $"{FormatTypeName(type.GetElementType()!)}*";
-        }
-
         if (type.IsArray)
         {
             var commas = new string(',', type.GetArrayRank() - 1);
             return $"{FormatTypeName(type.GetElementType()!)}[{commas}]";
+        }
+
+        if (Nullable.GetUnderlyingType(type) is Type underlyingType)
+        {
+            return $"{FormatTypeName(underlyingType)}?";
         }
 
         if (type.IsGenericParameter)
@@ -551,11 +465,6 @@ internal static class SignatureFormatter
             return $"{FormatDocumentationTypeName(type.GetElementType()!)}@";
         }
 
-        if (type.IsPointer)
-        {
-            return $"{FormatDocumentationTypeName(type.GetElementType()!)}*";
-        }
-
         if (type.IsArray)
         {
             if (type.GetArrayRank() == 1)
@@ -591,55 +500,6 @@ internal static class SignatureFormatter
     }
 }
 
-internal sealed class MethodDescriptorComparer : IComparer<MethodDescriptor>
-{
-    public static MethodDescriptorComparer Instance { get; } = new();
-
-    public int Compare(MethodDescriptor? x, MethodDescriptor? y)
-    {
-        if (ReferenceEquals(x, y))
-        {
-            return 0;
-        }
-
-        if (x is null)
-        {
-            return -1;
-        }
-
-        if (y is null)
-        {
-            return 1;
-        }
-
-        var result = StringComparer.Ordinal.Compare(x.DeclaringTypeDisplayName, y.DeclaringTypeDisplayName);
-
-        if (result != 0)
-        {
-            return result;
-        }
-
-        result = x.Parameters.Count.CompareTo(y.Parameters.Count);
-
-        if (result != 0)
-        {
-            return result;
-        }
-
-        for (var index = 0; index < x.Parameters.Count && index < y.Parameters.Count; index++)
-        {
-            result = StringComparer.Ordinal.Compare(x.Parameters[index].TypeDisplayName, y.Parameters[index].TypeDisplayName);
-
-            if (result != 0)
-            {
-                return result;
-            }
-        }
-
-        return StringComparer.Ordinal.Compare(x.Signature, y.Signature);
-    }
-}
-
 internal sealed class XmlDocumentationIndex
 {
     private readonly Dictionary<string, XElement> _members;
@@ -671,24 +531,22 @@ internal sealed class XmlDocumentationIndex
             .Where(entry => !string.IsNullOrWhiteSpace(entry.Name))
             .ToDictionary(entry => entry.Name!, entry => entry.Member, StringComparer.Ordinal);
 
-        if (members is null)
-        {
-            return null;
-        }
-
-        return new XmlDocumentationIndex(Path.GetFullPath(xmlPath), members);
+        return members is null ? null : new XmlDocumentationIndex(Path.GetFullPath(xmlPath), members);
     }
 
     public string? GetSummary(MethodInfo method)
     {
-        return TryGetMember(method, out var member)
-            ? Normalize(member.Element("summary")?.Value)
-            : null;
+        return TryGetMember(method, out var member) ? Normalize(member.Element("summary")?.Value) : null;
     }
 
-    public string? GetParameterComment(MethodInfo method, string? parameterName)
+    public string? GetReturns(MethodInfo method)
     {
-        if (string.IsNullOrWhiteSpace(parameterName))
+        return TryGetMember(method, out var member) ? Normalize(member.Element("returns")?.Value) : null;
+    }
+
+    public string? GetParameterComment(MethodInfo? method, string? parameterName)
+    {
+        if (method is null || string.IsNullOrWhiteSpace(parameterName))
         {
             return null;
         }
@@ -707,8 +565,7 @@ internal sealed class XmlDocumentationIndex
 
     private bool TryGetMember(MethodInfo method, out XElement member)
     {
-        var key = BuildMethodDocumentationId(method);
-        return _members.TryGetValue(key, out member!);
+        return _members.TryGetValue(BuildMethodDocumentationId(method), out member!);
     }
 
     private static string BuildMethodDocumentationId(MethodInfo method)
