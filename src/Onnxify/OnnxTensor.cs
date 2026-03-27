@@ -30,7 +30,7 @@ public abstract class OnnxTensor : IOnnxGraphEdge
         External = 1,
     }
 
-    public static TensorDataLocation FromProto(TensorProto.Types.DataLocation value)
+    internal static TensorDataLocation FromProto(TensorProto.Types.DataLocation value)
     {
         return value switch
         {
@@ -40,7 +40,7 @@ public abstract class OnnxTensor : IOnnxGraphEdge
         };
     }
 
-    public static TensorProto.Types.DataLocation ToProto(TensorDataLocation value)
+    internal static TensorProto.Types.DataLocation ToProto(TensorDataLocation value)
     {
         return value switch
         {

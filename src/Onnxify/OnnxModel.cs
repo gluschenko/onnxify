@@ -1,5 +1,6 @@
 ﻿using Google.Protobuf;
 using Onnx;
+using Onnxify.Data;
 
 namespace Onnxify;
 
@@ -41,9 +42,9 @@ public class OnnxModel
         set => _model.Domain = value;
     }
 
-    public IList<StringStringEntryProto> MetadataProps { get; }
-    public IList<TrainingInfoProto> TrainingInfo { get; }
-    public IList<OperatorSetIdProto> OpsetImport { get; }
+    public IReadOnlyList<KeyValuePair<string, string>> MetadataProps => _metadataProps;
+    public IReadOnlyList<KeyValuePair<string, long>> OpsetImport => _opsetImport;
+    public IReadOnlyList<TrainingInfo> TrainingInfo => _trainingInfo;
 
     public OnnxGraph Graph => _graph;
 
@@ -51,15 +52,30 @@ public class OnnxModel
     private readonly OnnxGraph _graph;
     private readonly OnnxModelBaseOptions _options;
 
+    private readonly LazyDictionary<string, KeyValuePair<string, string>> _metadataProps = new(x => x.Key, StringComparer.Ordinal);
+    private readonly LazyDictionary<string, KeyValuePair<string, long>> _opsetImport = new(x => x.Key, StringComparer.Ordinal);
+    private readonly List<TrainingInfo> _trainingInfo = new();
+
     internal OnnxModel(ModelProto model, OnnxModelBaseOptions options)
     {
         _model = model;
         _options = options;
         _graph = new OnnxGraph(model.Graph, _options);
 
-        MetadataProps = new List<StringStringEntryProto>(model.MetadataProps);
-        TrainingInfo = new List<TrainingInfoProto>(model.TrainingInfo);
-        OpsetImport = new List<OperatorSetIdProto>(model.OpsetImport);
+        foreach (var x in model.MetadataProps)
+        {
+            _metadataProps.Add(new KeyValuePair<string, string>(x.Key, x.Value));
+        }
+
+        foreach (var x in model.OpsetImport)
+        {
+            _opsetImport.Add(new KeyValuePair<string, long>(x.Domain, x.Version));
+        }
+
+        foreach (var x in model.TrainingInfo)
+        {
+            _trainingInfo.Add(Onnxify.TrainingInfo.FromProto(x, options));
+        }
     }
 
     public static OnnxModel Create(OnnxModelCreationOptions? options = null)
@@ -118,9 +134,9 @@ public class OnnxModel
         var newModel = _model.Clone();
         newModel.Graph = _graph.ToProto();
 
-        newModel.MetadataProps.Set(MetadataProps);
-        newModel.TrainingInfo.Set(TrainingInfo);
-        newModel.OpsetImport.Set(OpsetImport);
+        newModel.MetadataProps.Set(_metadataProps.Select(x => new StringStringEntryProto { Key = x.Key, Value = x.Value }));
+        newModel.OpsetImport.Set(_opsetImport.Select(x => new OperatorSetIdProto { Domain = x.Key, Version = x.Value }));
+        newModel.TrainingInfo.Set(_trainingInfo.Select(x => x.ToProto()));
 
         return newModel;
     }
@@ -147,4 +163,34 @@ public interface IOnnxGraphNode
 public interface IOnnxGraphEdge
 {
     public string Name { get; }
+}
+
+public class TrainingInfo
+{
+    public required OnnxGraph Initialization { get; init; }
+    public required OnnxGraph Algorithm { get; init; }
+    public required Dictionary<string, string> InitializationBinding { get; init; }
+    public required Dictionary<string, string> UpdateBinding { get; init; }
+
+    internal TrainingInfoProto ToProto()
+    {
+        return new TrainingInfoProto
+        {
+            Initialization = Initialization.ToProto(),
+            Algorithm = Algorithm.ToProto(),
+            InitializationBinding = { InitializationBinding.Select(x => new StringStringEntryProto { Key = x.Key, Value = x.Value }).ToList() },
+            UpdateBinding = { UpdateBinding.Select(x => new StringStringEntryProto { Key = x.Key, Value = x.Value }).ToList() },
+        };
+    }
+
+    internal static TrainingInfo FromProto(TrainingInfoProto proto, OnnxModelBaseOptions options)
+    {
+        return new TrainingInfo 
+        {
+            Initialization = new OnnxGraph(proto.Initialization, options),
+            Algorithm = new OnnxGraph(proto.Algorithm, options),
+            InitializationBinding = proto.InitializationBinding.ToDictionary(x => x.Key, x => x.Value),
+            UpdateBinding = proto.UpdateBinding.ToDictionary(x => x.Key, x => x.Value),
+        };
+    }
 }

@@ -586,9 +586,9 @@ namespace Onnxify.SourceGenerator
                 if (typeResolver.Count() > 0)
                 {
                     classes.AppendLine($$"""
-                    public static class OnnxNodeHelper
+                    internal static class OnnxNodeHelper
                     {
-                        public static OnnxNode? TryFromProto(NodeProto node, OnnxGraph graph)
+                        internal static OnnxNode? TryFromProto(NodeProto node, OnnxGraph graph)
                         {
                             return (node.OpType, node.Domain) switch
                             {

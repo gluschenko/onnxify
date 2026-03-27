@@ -21,7 +21,6 @@ namespace Onnxify.ConsoleTest
             Test0();
             Test1();
             Test2();
-            Test3();
             Test4();
             Test5();
             Test6();
@@ -163,24 +162,6 @@ namespace Onnxify.ConsoleTest
             model.Save(outputPath, true);
 
             return;
-        }
-
-        static void Test3()
-        {
-            var inputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "bvlcalexnet-12-qdq.onnx");
-            var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "bvlcalexnet-12-qdq__.onnx");
-            var outputPath2 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "bvlcalexnet-12-qdq.txt");
-
-            var data = File.ReadAllBytes(inputPath);
-            var model = ModelProto.Parser.ParseFrom(data);
-
-            var text = model.Graph.ToString();
-            File.WriteAllTextAsync(outputPath2, text);
-
-            using (var fs = File.Create(outputPath))
-            {
-                model.WriteTo(fs);
-            }
         }
 
         static void Test4()

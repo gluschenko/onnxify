@@ -40,7 +40,7 @@
   </ItemGroup>
 
   <ItemGroup Condition="Exists('$(ProtoOnnxMLSourcePath)')">
-    <Protobuf Include="Assets\onnx-ml.proto3" OutputOptions="file_extension=.cs" />
+    <Protobuf Include="Assets\onnx-ml.proto3" OutputOptions="file_extension=.cs,internal_access" />
   </ItemGroup>
 
 </Project>
