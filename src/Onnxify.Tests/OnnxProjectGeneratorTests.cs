@@ -23,11 +23,6 @@ public sealed class OnnxProjectGeneratorTests
             model.ModelVersion = 12;
             model.Domain = "ai.onnxify.generator.tests";
             model.Document = "Generated project";
-            model.MetadataProps.Add(new StringStringEntryProto
-            {
-                Key = "source",
-                Value = "unit-test",
-            });
 
             var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([1, 2], "input-denotation"));
             var hidden = model.Graph.AddValue("hidden", OnnxTensorType.Create<float>([1, 2]));

@@ -3,7 +3,7 @@
   "profiles": {
     "Onnxify.Introspection": {
       "commandName": "Project",
-      "commandLineArgs": "--output \"..\\..\\artifacts\\onnxify-public-api.md\" --xml \"bin\\Debug\\net10.0\\Onnxify.xml\""
+      "commandLineArgs": "--output \"..\\..\\..\\..\\..\\artifacts\\onnxify-public-api.md\" --xml \"bin\\Debug\\net10.0\\Onnxify.xml\""
     }
   }
 }
