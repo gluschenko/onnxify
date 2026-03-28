@@ -167,7 +167,7 @@ namespace Onnxify.ConsoleTest
         static void Test4()
         {
             var model = new AlexNet("alexnet", 10);
-            var onnxModel = model.Onnxify();
+            var onnxModel = model.Export();
 
             var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "alexnet__test.onnx");
             onnxModel.Save(outputPath, true);
