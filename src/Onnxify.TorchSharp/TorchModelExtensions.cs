@@ -38,7 +38,8 @@ public static class TorchModelExtensions
         TorchModule module,
         OnnxGraph graph,
         IOnnxGraphEdge input,
-        TorchModuleExportState state)
+        TorchModuleExportState state
+    )
     {
         if (module is global::TorchSharp.Modules.Conv2d conv2d)
         {
@@ -68,7 +69,8 @@ public static class TorchModelExtensions
                     KernelShape = ToLongArray(maxPool2d.kernel_size),
                     Strides = strides.Length == 0 ? null : strides,
                     Pads = padding.Length == 0 ? null : ExpandPadding(padding),
-                });
+                }
+            );
 
             return result.Y ?? throw new InvalidOperationException("MaxPool export did not produce an output edge.");
         }
