@@ -67,12 +67,13 @@ namespace Onnxify.ConsoleTest
         {
             var model = OnnxModel.Create(new OnnxModelCreationOptions());
             var graph = model.Graph;
+            var exportState = new TorchModuleExportState();
 
             var input = graph.AddInput(
                 name: "input",
                 type: OnnxTensorType.Create<float>([1, 3, 224, 224]));
 
-            var x = _features.ToOnnxGraph(graph, input);
+            var x = _features.ToOnnxGraph(graph, input, exportState);
 
             // The generic module walker does not yet lower AdaptiveAvgPool2d([2, 2]),
             // so we keep the existing approximation used by this sample.
@@ -93,7 +94,7 @@ namespace Onnxify.ConsoleTest
                 }
             );
 
-            x = _classifier.ToOnnxGraph(graph, x);
+            x = _classifier.ToOnnxGraph(graph, x, exportState);
 
             var outputEdge = graph.AddEdge("output");
             graph.Identity(

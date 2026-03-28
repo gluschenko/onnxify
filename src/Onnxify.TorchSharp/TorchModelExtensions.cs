@@ -9,13 +9,29 @@ public static class TorchModelExtensions
     public static IOnnxGraphEdge ToOnnxGraph(
         this TorchModule module,
         OnnxGraph graph,
-        IOnnxGraphEdge input)
+        IOnnxGraphEdge input
+    )
     {
         ArgumentNullException.ThrowIfNull(module);
         ArgumentNullException.ThrowIfNull(graph);
         ArgumentNullException.ThrowIfNull(input);
 
         return ExportModule(module, graph, input, new TorchModuleExportState());
+    }
+
+    public static IOnnxGraphEdge ToOnnxGraph(
+        this TorchModule module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input,
+        TorchModuleExportState state
+    )
+    {
+        ArgumentNullException.ThrowIfNull(module);
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(state);
+
+        return ExportModule(module, graph, input, state);
     }
 
     private static IOnnxGraphEdge ExportModule(
@@ -159,7 +175,7 @@ public static class TorchModelExtensions
     }
 }
 
-internal sealed class TorchModuleExportState
+public sealed class TorchModuleExportState
 {
     private readonly Dictionary<string, int> _counters = new(StringComparer.Ordinal);
 
