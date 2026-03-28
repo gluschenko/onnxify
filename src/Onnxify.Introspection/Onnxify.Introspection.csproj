@@ -11,4 +11,8 @@
     <ProjectReference Include="..\Onnxify\Onnxify.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="TorchSharp" Version="0.106.0" />
+  </ItemGroup>
+
 </Project>

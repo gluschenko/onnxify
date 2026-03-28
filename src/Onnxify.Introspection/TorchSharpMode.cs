@@ -3,41 +3,33 @@ using System.Text;
 using System.Xml.Linq;
 using TorchSharp;
 
-namespace Onnxify.TorchSharp.Introspection;
+namespace Onnxify.Introspection;
 
-internal static class Program
+internal static class TorchSharpMode
 {
-    public static int Main(string[] args)
+    public static int Run(string[] args)
     {
-        try
+        var options = TorchSharpOptions.Parse(args);
+        var assembly = typeof(torch).Assembly;
+        var xmlDocumentation = TorchXmlDocumentationIndex.TryLoad(options.XmlPath ?? TryFindAdjacentXml(assembly.Location));
+        var catalog = TorchSharpCatalog.Create(assembly, xmlDocumentation);
+        var markdown = TorchSharpMarkdownRenderer.Render(catalog);
+
+        var outputPath = Path.GetFullPath(options.OutputPath);
+        var outputDirectory = Path.GetDirectoryName(outputPath);
+
+        if (!string.IsNullOrWhiteSpace(outputDirectory))
         {
-            var options = Options.Parse(args);
-            var assembly = typeof(torch).Assembly;
-            var xmlDocumentation = XmlDocumentationIndex.TryLoad(options.XmlPath ?? TryFindAdjacentXml(assembly.Location));
-            var catalog = TorchSharpCatalog.Create(assembly, xmlDocumentation);
-            var markdown = MarkdownRenderer.Render(catalog);
-
-            var outputPath = Path.GetFullPath(options.OutputPath);
-            var outputDirectory = Path.GetDirectoryName(outputPath);
-
-            if (!string.IsNullOrWhiteSpace(outputDirectory))
-            {
-                Directory.CreateDirectory(outputDirectory);
-            }
-
-            File.WriteAllText(outputPath, markdown, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-
-            Console.WriteLine($"Saved Markdown to: {outputPath}");
-            Console.WriteLine($"Operators: {catalog.Operators.Count}");
-            Console.WriteLine($"Source methods: {catalog.MethodCount}");
-            Console.WriteLine($"XML docs: {(xmlDocumentation is null ? "not found" : xmlDocumentation.SourcePath)}");
-            return 0;
+            Directory.CreateDirectory(outputDirectory);
         }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine(ex);
-            return 1;
-        }
+
+        File.WriteAllText(outputPath, markdown, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+
+        Console.WriteLine($"Saved Markdown to: {outputPath}");
+        Console.WriteLine($"Operators: {catalog.Operators.Count}");
+        Console.WriteLine($"Source methods: {catalog.MethodCount}");
+        Console.WriteLine($"XML docs: {(xmlDocumentation is null ? "not found" : xmlDocumentation.SourcePath)}");
+        return 0;
     }
 
     private static string? TryFindAdjacentXml(string assemblyPath)
@@ -92,9 +84,9 @@ internal static class Program
     }
 }
 
-internal sealed record Options(string OutputPath, string? XmlPath)
+internal sealed record TorchSharpOptions(string OutputPath, string? XmlPath)
 {
-    public static Options Parse(string[] args)
+    public static TorchSharpOptions Parse(string[] args)
     {
         string outputPath = Path.Combine(Environment.CurrentDirectory, "artifacts", "torchsharp-operators.md");
         string? xmlPath = null;
@@ -122,7 +114,7 @@ internal sealed record Options(string OutputPath, string? XmlPath)
             }
         }
 
-        return new Options(outputPath, xmlPath);
+        return new TorchSharpOptions(outputPath, xmlPath);
     }
 
     private static string RequireValue(string[] args, ref int index, string optionName)
@@ -153,7 +145,7 @@ internal sealed record Options(string OutputPath, string? XmlPath)
 
 internal static class TorchSharpCatalog
 {
-    public static Catalog Create(Assembly assembly, XmlDocumentationIndex? xmlDocumentation)
+    public static TorchCatalog Create(Assembly assembly, TorchXmlDocumentationIndex? xmlDocumentation)
     {
         var methods = assembly.GetExportedTypes()
             .Where(IsTorchOperatorContainer)
@@ -164,11 +156,11 @@ internal static class TorchSharpCatalog
 
         var operators = methods
             .GroupBy(method => method.Name, StringComparer.Ordinal)
-            .Select(group => OperatorDescriptor.Create(group.Key, group.ToArray(), xmlDocumentation))
+            .Select(group => TorchOperatorDescriptor.Create(group.Key, group.ToArray(), xmlDocumentation))
             .OrderBy(op => op.Name, StringComparer.Ordinal)
             .ToArray();
 
-        return new Catalog(operators, methods.Length);
+        return new TorchCatalog(operators, methods.Length);
     }
 
     private static IEnumerable<MethodInfo> GetDeclaredPublicStaticMethods(Type type)
@@ -196,20 +188,20 @@ internal static class TorchSharpCatalog
 
     private static bool IsOperatorMethod(MethodInfo method)
     {
-        return OperatorDescriptor.IsTensorLikeReturnType(method.ReturnType);
+        return TorchOperatorDescriptor.IsTensorLikeReturnType(method.ReturnType);
     }
 }
 
-internal sealed record Catalog(IReadOnlyList<OperatorDescriptor> Operators, int MethodCount);
+internal sealed record TorchCatalog(IReadOnlyList<TorchOperatorDescriptor> Operators, int MethodCount);
 
-internal sealed record OperatorDescriptor(
+internal sealed record TorchOperatorDescriptor(
     string Name,
     string Description,
-    IReadOnlyList<FieldDescriptor> Inputs,
-    IReadOnlyList<FieldDescriptor> Outputs,
-    IReadOnlyList<FieldDescriptor> Attributes)
+    IReadOnlyList<TorchFieldDescriptor> Inputs,
+    IReadOnlyList<TorchFieldDescriptor> Outputs,
+    IReadOnlyList<TorchFieldDescriptor> Attributes)
 {
-    public static OperatorDescriptor Create(string name, IReadOnlyList<MethodInfo> methods, XmlDocumentationIndex? xmlDocumentation)
+    public static TorchOperatorDescriptor Create(string name, IReadOnlyList<MethodInfo> methods, TorchXmlDocumentationIndex? xmlDocumentation)
     {
         var description = methods
             .Select(method => xmlDocumentation?.GetSummary(method))
@@ -219,23 +211,23 @@ internal sealed record OperatorDescriptor(
         var inputs = MergeFields(
             methods.SelectMany(method => method.GetParameters())
                 .Where(IsInputParameter)
-                .Select(parameter => FieldDescriptor.FromInput(parameter, xmlDocumentation))
+                .Select(parameter => TorchFieldDescriptor.FromInput(parameter, xmlDocumentation))
         );
 
         var outputs = MergeFields(
-            methods.Select(method => FieldDescriptor.FromOutput(method, xmlDocumentation))
+            methods.Select(method => TorchFieldDescriptor.FromOutput(method, xmlDocumentation))
         );
 
         var attributes = MergeFields(
             methods.SelectMany(method => method.GetParameters())
                 .Where(parameter => !IsInputParameter(parameter))
-                .Select(parameter => FieldDescriptor.FromAttribute(parameter, xmlDocumentation))
+                .Select(parameter => TorchFieldDescriptor.FromAttribute(parameter, xmlDocumentation))
         );
 
-        return new OperatorDescriptor(name, description, inputs, outputs, attributes);
+        return new TorchOperatorDescriptor(name, description, inputs, outputs, attributes);
     }
 
-    private static IReadOnlyList<FieldDescriptor> MergeFields(IEnumerable<FieldDescriptor> fields)
+    private static IReadOnlyList<TorchFieldDescriptor> MergeFields(IEnumerable<TorchFieldDescriptor> fields)
     {
         return fields
             .GroupBy(field => field.Name, StringComparer.Ordinal)
@@ -244,7 +236,7 @@ internal sealed record OperatorDescriptor(
                 var types = group.Select(field => field.TypeDisplay).Distinct(StringComparer.Ordinal).OrderBy(x => x, StringComparer.Ordinal).ToArray();
                 var descriptions = group.Select(field => field.Description).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.Ordinal).ToArray();
 
-                return new FieldDescriptor(
+                return new TorchFieldDescriptor(
                     group.Key,
                     string.Join(" | ", types),
                     descriptions.Length == 0 ? "No description." : descriptions[0]
@@ -282,38 +274,38 @@ internal sealed record OperatorDescriptor(
     }
 }
 
-internal sealed record FieldDescriptor(string Name, string TypeDisplay, string Description)
+internal sealed record TorchFieldDescriptor(string Name, string TypeDisplay, string Description)
 {
-    public static FieldDescriptor FromInput(ParameterInfo parameter, XmlDocumentationIndex? xmlDocumentation)
+    public static TorchFieldDescriptor FromInput(ParameterInfo parameter, TorchXmlDocumentationIndex? xmlDocumentation)
     {
-        return new FieldDescriptor(
+        return new TorchFieldDescriptor(
             parameter.Name ?? "input",
-            SignatureFormatter.FormatParameterType(parameter),
+            TorchSignatureFormatter.FormatParameterType(parameter),
             xmlDocumentation?.GetParameterComment(parameter.Member as MethodInfo, parameter.Name) ?? "No description."
         );
     }
 
-    public static FieldDescriptor FromAttribute(ParameterInfo parameter, XmlDocumentationIndex? xmlDocumentation)
+    public static TorchFieldDescriptor FromAttribute(ParameterInfo parameter, TorchXmlDocumentationIndex? xmlDocumentation)
     {
-        var typeDisplay = SignatureFormatter.FormatParameterType(parameter);
+        var typeDisplay = TorchSignatureFormatter.FormatParameterType(parameter);
 
         if (parameter.IsOptional)
         {
-            typeDisplay += $", optional, default: {SignatureFormatter.FormatConstant(parameter.DefaultValue)}";
+            typeDisplay += $", optional, default: {TorchSignatureFormatter.FormatConstant(parameter.DefaultValue)}";
         }
 
-        return new FieldDescriptor(
+        return new TorchFieldDescriptor(
             parameter.Name ?? "attribute",
             typeDisplay,
             xmlDocumentation?.GetParameterComment(parameter.Member as MethodInfo, parameter.Name) ?? "No description."
         );
     }
 
-    public static FieldDescriptor FromOutput(MethodInfo method, XmlDocumentationIndex? xmlDocumentation)
+    public static TorchFieldDescriptor FromOutput(MethodInfo method, TorchXmlDocumentationIndex? xmlDocumentation)
     {
-        return new FieldDescriptor(
+        return new TorchFieldDescriptor(
             GetOutputName(method.ReturnType),
-            SignatureFormatter.FormatTypeName(method.ReturnType),
+            TorchSignatureFormatter.FormatTypeName(method.ReturnType),
             xmlDocumentation?.GetReturns(method) ?? "No description."
         );
     }
@@ -335,9 +327,9 @@ internal sealed record FieldDescriptor(string Name, string TypeDisplay, string D
     }
 }
 
-internal static class MarkdownRenderer
+internal static class TorchSharpMarkdownRenderer
 {
-    public static string Render(Catalog catalog)
+    public static string Render(TorchCatalog catalog)
     {
         var builder = new StringBuilder();
 
@@ -363,7 +355,7 @@ internal static class MarkdownRenderer
         return builder.ToString();
     }
 
-    private static void AppendSection(StringBuilder builder, string title, IReadOnlyList<FieldDescriptor> fields)
+    private static void AppendSection(StringBuilder builder, string title, IReadOnlyList<TorchFieldDescriptor> fields)
     {
         builder.AppendLine($"## {title}");
 
@@ -380,7 +372,7 @@ internal static class MarkdownRenderer
     }
 }
 
-internal static class SignatureFormatter
+internal static class TorchSignatureFormatter
 {
     public static string FormatParameterType(ParameterInfo parameter)
     {
@@ -500,11 +492,11 @@ internal static class SignatureFormatter
     }
 }
 
-internal sealed class XmlDocumentationIndex
+internal sealed class TorchXmlDocumentationIndex
 {
     private readonly Dictionary<string, XElement> _members;
 
-    private XmlDocumentationIndex(string sourcePath, Dictionary<string, XElement> members)
+    private TorchXmlDocumentationIndex(string sourcePath, Dictionary<string, XElement> members)
     {
         SourcePath = sourcePath;
         _members = members;
@@ -512,7 +504,7 @@ internal sealed class XmlDocumentationIndex
 
     public string SourcePath { get; }
 
-    public static XmlDocumentationIndex? TryLoad(string? xmlPath)
+    public static TorchXmlDocumentationIndex? TryLoad(string? xmlPath)
     {
         if (string.IsNullOrWhiteSpace(xmlPath) || !File.Exists(xmlPath))
         {
@@ -531,7 +523,7 @@ internal sealed class XmlDocumentationIndex
             .Where(entry => !string.IsNullOrWhiteSpace(entry.Name))
             .ToDictionary(entry => entry.Name!, entry => entry.Member, StringComparer.Ordinal);
 
-        return members is null ? null : new XmlDocumentationIndex(Path.GetFullPath(xmlPath), members);
+        return members is null ? null : new TorchXmlDocumentationIndex(Path.GetFullPath(xmlPath), members);
     }
 
     public string? GetSummary(MethodInfo method)
@@ -572,7 +564,7 @@ internal sealed class XmlDocumentationIndex
     {
         var builder = new StringBuilder();
         builder.Append("M:");
-        builder.Append(SignatureFormatter.FormatDocumentationTypeName(method.DeclaringType!));
+        builder.Append(TorchSignatureFormatter.FormatDocumentationTypeName(method.DeclaringType!));
         builder.Append('.');
         builder.Append(method.Name);
 
@@ -587,7 +579,7 @@ internal sealed class XmlDocumentationIndex
         if (parameters.Length > 0)
         {
             builder.Append('(');
-            builder.Append(string.Join(",", parameters.Select(parameter => SignatureFormatter.FormatDocumentationTypeName(parameter.ParameterType))));
+            builder.Append(string.Join(",", parameters.Select(parameter => TorchSignatureFormatter.FormatDocumentationTypeName(parameter.ParameterType))));
             builder.Append(')');
         }
 

@@ -1,9 +1,13 @@
 {
   "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
-    "Onnxify.Introspection": {
+    "Onnxify.Introspection.Onnxify": {
       "commandName": "Project",
-      "commandLineArgs": "--output \"..\\..\\..\\..\\..\\artifacts\\onnxify-operators.md\""
+      "commandLineArgs": "onnxify --output \"..\\..\\..\\..\\..\\artifacts\\onnxify-operators.md\""
+    },
+    "Onnxify.Introspection.TorchSharp": {
+      "commandName": "Project",
+      "commandLineArgs": "torchsharp --output \"..\\..\\..\\..\\..\\artifacts\\torchsharp-operators.md\" --xml \"C:\\Users\\Alexander\\.nuget\\packages\\torchsharp\\0.105.1\\lib\\net6.0\\TorchSharp.xml\""
     }
   }
 }
