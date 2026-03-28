@@ -3,7 +3,7 @@ using TorchSharp;
 using static TorchSharp.torch;
 using static TorchSharp.torch.nn;
 
-namespace Onnxify.ConsoleTest
+namespace Onnxify.Examples
 {
     public class AlexNet : Module<Tensor, Tensor>
     {
@@ -71,7 +71,8 @@ namespace Onnxify.ConsoleTest
 
             var input = graph.AddInput(
                 name: "input",
-                type: OnnxTensorType.Create<float>([1, 3, 224, 224]));
+                type: OnnxTensorType.Create<float>([1, 3, 224, 224])
+            );
 
             var x = _features.ToOnnxGraph(graph, input, exportState);
 

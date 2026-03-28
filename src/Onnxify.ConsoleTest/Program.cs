@@ -1,7 +1,5 @@
 ﻿using System.Globalization;
 using System.Text;
-using Google.Protobuf;
-using Onnx;
 using Onnxify.ProjectGenerator;
 
 namespace Onnxify.ConsoleTest
@@ -21,7 +19,6 @@ namespace Onnxify.ConsoleTest
             Test0();
             Test1();
             Test2();
-            Test4();
             Test5();
             Test6();
 
@@ -161,16 +158,6 @@ namespace Onnxify.ConsoleTest
 
             model.Save(outputPath, true);
 
-            return;
-        }
-
-        static void Test4()
-        {
-            var model = new AlexNet("alexnet", 10);
-            var onnxModel = model.Export();
-
-            var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "alexnet__test.onnx");
-            onnxModel.Save(outputPath, true);
             return;
         }
 
