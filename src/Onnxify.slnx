@@ -6,7 +6,6 @@
     <File Path=".editorconfig" />
   </Folder>
   <Folder Name="/codegen/">
-    <Project Path="Onnxify.Introspection/Onnxify.Introspection.csproj" Id="e5ea88fd-ffbf-4971-b390-d74858a702e0" />
     <Project Path="Onnxify.ProjectGenerator/Onnxify.ProjectGenerator.csproj" Id="1aa227d0-394a-4013-ba5d-9193f0ab85a3" />
   </Folder>
   <Folder Name="/libs/">
