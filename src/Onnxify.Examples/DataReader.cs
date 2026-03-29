@@ -74,7 +74,8 @@ namespace Onnxify.Examples
                         // Resize
                         using var resized = bitmap.Resize(
                             new SKImageInfo(width, height),
-                            SKFilterQuality.Medium);
+                            SKFilterQuality.Medium
+                        );
 
                         if (resized == null)
                         {
@@ -128,36 +129,39 @@ namespace Onnxify.Examples
 
         private static Tensor ImageToTensor(SKBitmap bitmap, int channels)
         {
-            int width = bitmap.Width;
-            int height = bitmap.Height;
+            var width = bitmap.Width;
+            var height = bitmap.Height;
 
             // CHW layout
             var data = new float[channels * height * width];
 
-            for (int y = 0; y < height; y++)
+            for (var y = 0; y < height; y++)
             {
-                for (int x = 0; x < width; x++)
+                for (var x = 0; x < width; x++)
                 {
                     var color = bitmap.GetPixel(x, y);
 
                     int idx = y * width + x;
 
-                    if (channels >= 3)
+                    if (channels == 3)
                     {
                         data[0 * height * width + idx] = color.Red / 255f;
                         data[1 * height * width + idx] = color.Green / 255f;
                         data[2 * height * width + idx] = color.Blue / 255f;
                     }
-
-                    if (channels == 1)
+                    else if (channels == 1)
                     {
                         var gray = (color.Red + color.Green + color.Blue) / 3f / 255f;
                         data[idx] = gray;
                     }
+                    else
+                    {
+                        throw new NotImplementedException($"Not implemented for {nameof(channels)} = {channels}");
+                    }
                 }
             }
 
-            return torch.tensor(data, new long[] { channels, height, width });
+            return torch.tensor(data, [channels, height, width]);
         }
     }
 }

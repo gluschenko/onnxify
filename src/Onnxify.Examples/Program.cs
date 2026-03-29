@@ -33,10 +33,10 @@ namespace Onnxify.Examples
             var contrast = transforms.AdjustContrast(1.25);
 
             using (var dataset = new DataReader(datasetDirectory, [
-                /*hflip,
+                hflip,
                 gray,
                 rotate,
-                contrast,*/
+                contrast,
             ]))
             {
                 dataset.Load(
