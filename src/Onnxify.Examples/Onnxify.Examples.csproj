@@ -12,4 +12,9 @@
     <ProjectReference Include="..\Onnxify\Onnxify.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="TorchSharp-cuda-windows" Version="0.106.0" />
+    <PackageReference Include="TorchVision" Version="0.106.0" />
+  </ItemGroup>
+
 </Project>

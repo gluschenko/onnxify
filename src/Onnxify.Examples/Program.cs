@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using System.Text;
+using static TorchSharp.torchvision;
 
 namespace Onnxify.Examples
 {
@@ -15,20 +16,49 @@ namespace Onnxify.Examples
             Console.InputEncoding = Encoding.Unicode;
             Console.OutputEncoding = Encoding.Unicode;
 
-            Test4();
+            var datasetDirectory = @"D:\Backups\ML\microsoft-catsvsdogs-dataset\PetImages";
+            var outputDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
 
-            Console.WriteLine("Press any key to pay respect...");
-            Console.ReadKey();
-        }
+            if (!Directory.Exists(outputDirectory))
+            {
+                Directory.CreateDirectory(outputDirectory);
+            }
 
-        static void Test4()
-        {
             var model = new AlexNet("alexnet", 10);
             var onnxModel = model.Export();
 
-            var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "alexnet__test.onnx");
+            var hflip = transforms.HorizontalFlip();
+            var gray = transforms.Grayscale(3);
+            var rotate = transforms.Rotate(90);
+            var contrast = transforms.AdjustContrast(1.25);
+
+            using (var dataset = new DataReader(datasetDirectory, [
+                /*hflip,
+                gray,
+                rotate,
+                contrast,*/
+            ]))
+            {
+                dataset.Load(
+                    width: 244,
+                    height: 244,
+                    channels: 3,
+                    count: 1000
+                );
+
+                var trainer = new AlexNetTrainer(model, dataset);
+                trainer.Train(
+                    epochs: 25,
+                    batchSize: 64,
+                    learningRate: 0.002f
+                );
+            }
+
+            var outputPath = Path.Combine(outputDirectory, "alexnet__test.onnx");
             onnxModel.Save(outputPath, true);
-            return;
+
+            Console.WriteLine("Press any key to pay respect...");
+            Console.ReadKey();
         }
     }
 }
