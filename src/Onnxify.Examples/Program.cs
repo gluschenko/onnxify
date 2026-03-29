@@ -33,10 +33,10 @@ namespace Onnxify.Examples
             var contrast = transforms.AdjustContrast(1.25);
 
             using (var dataset = new DataReader(datasetDirectory, [
-                hflip,
-                gray,
-                rotate,
-                contrast,
+                // hflip,
+                // gray,
+                // rotate,
+                // contrast,
             ]))
             {
                 dataset.Load(
@@ -48,9 +48,9 @@ namespace Onnxify.Examples
 
                 var trainer = new AlexNetTrainer(model, dataset);
                 trainer.Train(
-                    epochs: 10,
-                    batchSize: 16,
-                    learningRate: 0.001f
+                    epochs: 100,
+                    batchSize: 256,
+                    learningRate: 0.0001f
                 );
             }
 

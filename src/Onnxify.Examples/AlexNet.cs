@@ -8,7 +8,6 @@ namespace Onnxify.Examples
     public class AlexNet : Module<Tensor, Tensor>
     {
         private readonly Module<Tensor, Tensor> _features;
-        private readonly Module<Tensor, Tensor> _avgPool;
         private readonly Module<Tensor, Tensor> _classifier;
         private readonly int _numClasses;
 
@@ -17,32 +16,40 @@ namespace Onnxify.Examples
             _numClasses = numClasses;
 
             _features = Sequential(
-                ("c1", Conv2d(3, 64, kernel_size: 3, stride: 2, padding: 1)),
-                ("r1", ReLU(inplace: true)),
-                ("mp1", MaxPool2d(kernel_size: [2, 2])),
-                ("c2", Conv2d(64, 192, kernel_size: 3, padding: 1)),
-                ("r2", ReLU(inplace: true)),
-                ("mp2", MaxPool2d(kernel_size: [2, 2])),
-                ("c3", Conv2d(192, 384, kernel_size: 3, padding: 1)),
-                ("r3", ReLU(inplace: true)),
-                ("c4", Conv2d(384, 256, kernel_size: 3, padding: 1)),
-                ("r4", ReLU(inplace: true)),
-                ("c5", Conv2d(256, 256, kernel_size: 3, padding: 1)),
-                ("r5", ReLU(inplace: true)),
-                ("mp3", MaxPool2d(kernel_size: [2, 2]))
+                // Conv1
+                ("conv1", Conv2d(3, 96, kernel_size: 11, stride: 4)),
+                ("relu1", ReLU(inplace: true)),
+                ("pool1", MaxPool2d(kernel_size: 3, stride: 2)),
+
+                // Conv2 (groups=2)
+                ("conv2", Conv2d(96, 256, kernel_size: 5, padding: 2, groups: 2)),
+                ("relu2", ReLU(inplace: true)),
+                ("pool2", MaxPool2d(kernel_size: 3, stride: 2)),
+
+                // Conv3
+                ("conv3", Conv2d(256, 384, kernel_size: 3, padding: 1)),
+                ("relu3", ReLU(inplace: true)),
+
+                // Conv4 (groups=2)
+                ("conv4", Conv2d(384, 384, kernel_size: 3, padding: 1, groups: 2)),
+                ("relu4", ReLU(inplace: true)),
+
+                // Conv5 (groups=2)
+                ("conv5", Conv2d(384, 256, kernel_size: 3, padding: 1, groups: 2)),
+                ("relu5", ReLU(inplace: true)),
+                ("pool5", MaxPool2d(kernel_size: 3, stride: 2))
             );
 
-            _avgPool = AdaptiveAvgPool2d([2, 2]);
-
             _classifier = Sequential(
-                ("d1", Dropout()),
-                ("l1", Linear(256 * 2 * 2, 4096)),
-                ("r1", ReLU(inplace: true)),
-                ("d2", Dropout()),
-                ("l2", Linear(4096, 4096)),
-                ("r3", ReLU(inplace: true)),
-                ("d3", Dropout()),
-                ("l3", Linear(4096, numClasses))
+                ("dropout1", Dropout()),
+                ("fc1", Linear(256 * 6 * 6, 4096)),
+                ("relu6", ReLU(inplace: true)),
+
+                ("dropout2", Dropout()),
+                ("fc2", Linear(4096, 4096)),
+                ("relu7", ReLU(inplace: true)),
+
+                ("fc3", Linear(4096, numClasses))
             );
 
             RegisterComponents();
@@ -55,12 +62,10 @@ namespace Onnxify.Examples
 
         public override Tensor forward(Tensor input)
         {
-            var f = _features.forward(input);
-            var avg = _avgPool.forward(f);
-
-            var x = avg.view([avg.shape[0], 256 * 2 * 2]);
-
-            return _classifier.forward(x);
+            var x = _features.forward(input);
+            x = x.view([x.shape[0], 256 * 6 * 6]);
+            x = _classifier.forward(x);
+            return x;
         }
 
         public OnnxModel Export()
@@ -75,16 +80,6 @@ namespace Onnxify.Examples
             );
 
             var x = _features.ToOnnxGraph(graph, input, exportState);
-
-            // The generic module walker does not yet lower AdaptiveAvgPool2d([2, 2]),
-            // so we keep the existing approximation used by this sample.
-            x = graph.GlobalAveragePool(
-                name: "gap",
-                options: new GlobalAveragePoolInputOptions
-                {
-                    X = x,
-                }
-            );
 
             x = graph.Flatten(
                 name: "flatten",
