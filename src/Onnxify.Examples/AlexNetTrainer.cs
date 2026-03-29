@@ -37,7 +37,9 @@ namespace Onnxify.Examples
                 var batchData = new List<Tensor>();
                 var batchLabels = new List<Tensor>();
 
-                int batchIndex = 0;
+                var batchIndex = 0;
+                var processedSamples = 0;
+                var correctPredictions = 0;
 
                 foreach (var (data, label) in _reader.Data())
                 {
@@ -52,7 +54,11 @@ namespace Onnxify.Examples
                             optimizer,
                             criterion,
                             device,
-                            ref batchIndex
+                            epoch,
+                            epochs,
+                            ref batchIndex,
+                            ref processedSamples,
+                            ref correctPredictions
                         );
 
                         batchData.Clear();
@@ -60,7 +66,6 @@ namespace Onnxify.Examples
                     }
                 }
 
-                // хвост
                 if (batchData.Count > 0)
                 {
                     TrainBatch(
@@ -69,9 +74,15 @@ namespace Onnxify.Examples
                         optimizer,
                         criterion,
                         device,
-                        ref batchIndex
+                        epoch,
+                        epochs,
+                        ref batchIndex,
+                        ref processedSamples,
+                        ref correctPredictions
                     );
                 }
+
+                Console.WriteLine();
             }
         }
 
@@ -81,25 +92,37 @@ namespace Onnxify.Examples
             optim.Optimizer optimizer,
             Loss<torch.Tensor, torch.Tensor, torch.Tensor> criterion,
             Device device,
-            ref int batchIndex
+            int epoch,
+            int epochs,
+            ref int batchIndex,
+            ref int processedSamples,
+            ref int correctPredictions
         )
         {
-            using var x = torch.stack(batchData).to(device);     // [N, C, H, W]
+            using var d = torch.NewDisposeScope();
+            using var x = torch.stack(batchData).to(device); // [N, C, H, W]
             using var y = torch.stack(batchLabels).to(device).view(-1); // [N]
 
             optimizer.zero_grad();
 
             using var output = _model.forward(x);
-
             using var loss = criterion.call(output, y);
 
             loss.backward();
             optimizer.step();
 
-            if (batchIndex % 10 == 0)
-            {
-                Console.WriteLine($"Batch {batchIndex} | Loss: {loss.ToSingle():F4}");
-            }
+            using var predicted = output.argmax(1);
+            using var correct = predicted.eq(y);
+
+            processedSamples += batchData.Count;
+            correctPredictions += correct.sum().ToInt32();
+            var accuracy = processedSamples == 0
+                ? 0f
+                : (float)correctPredictions / processedSamples;
+
+            Console.Write(
+                $"\rTrain: epoch {epoch}/{epochs} | batch {batchIndex + 1} | samples {processedSamples} | loss {loss.ToSingle():0.000000} | acc {accuracy:0.000000}"
+            );
 
             batchIndex++;
         }
