@@ -52,7 +52,7 @@ namespace Onnxify.Examples
                     .Take(count)
                     .Where(f =>
                     {
-                        return 
+                        return
                             f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
                             f.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||
                             f.EndsWith(".png", StringComparison.OrdinalIgnoreCase);
@@ -77,7 +77,9 @@ namespace Onnxify.Examples
                             SKFilterQuality.Medium);
 
                         if (resized == null)
+                        {
                             continue;
+                        }
 
                         // Convert to tensor
                         var tensor = ImageToTensor(resized, channels);
@@ -87,10 +89,17 @@ namespace Onnxify.Examples
 
                         _data.Add(tensor);
                         _labels.Add(labelTensor);
+
+                        foreach (var transform in _transforms)
+                        {
+                            var tensorTransformed = transform.call(tensor);
+
+                            _data.Add(tensorTransformed);
+                            _labels.Add(labelTensor);
+                        }
                     }
                     catch
                     {
-                        // dataset часто содержит битые изображения
                         continue;
                     }
                 }
@@ -99,14 +108,15 @@ namespace Onnxify.Examples
 
         public IEnumerable<(Tensor, Tensor)> Data()
         {
+            var indicies = Enumerable.Range(0, _data.Count())
+                .Select((_, i) => i)
+                .OrderBy(x => Guid.NewGuid())
+                .ToArray();
+
             for (var i = 0; i < _data.Count; i++)
             {
-                yield return (_data[i], _labels[i]);
-
-                foreach (var tfrm in _transforms)
-                {
-                    yield return (tfrm.call(_data[i]), _labels[i]);
-                }
+                var index = indicies[i];
+                yield return (_data[index], _labels[index]);
             }
         }
 

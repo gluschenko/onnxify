@@ -1,5 +1,4 @@
-﻿using Onnx;
-using Onnxify.ProjectGenerator;
+﻿using Onnxify.ProjectGenerator;
 
 namespace Onnxify.Tests;
 

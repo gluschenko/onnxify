@@ -24,7 +24,7 @@ namespace Onnxify.Examples
                 Directory.CreateDirectory(outputDirectory);
             }
 
-            var model = new AlexNet("alexnet", 10);
+            var model = new AlexNet("alexnet", 2);
             var onnxModel = model.Export();
 
             var hflip = transforms.HorizontalFlip();
@@ -43,14 +43,14 @@ namespace Onnxify.Examples
                     width: 244,
                     height: 244,
                     channels: 3,
-                    count: 1000
+                    count: 5000
                 );
 
                 var trainer = new AlexNetTrainer(model, dataset);
                 trainer.Train(
-                    epochs: 25,
-                    batchSize: 96,
-                    learningRate: 0.01f
+                    epochs: 10,
+                    batchSize: 16,
+                    learningRate: 0.001f
                 );
             }
 

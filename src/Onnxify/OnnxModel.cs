@@ -185,7 +185,7 @@ public class TrainingInfo
 
     internal static TrainingInfo FromProto(TrainingInfoProto proto, OnnxModelBaseOptions options)
     {
-        return new TrainingInfo 
+        return new TrainingInfo
         {
             Initialization = new OnnxGraph(proto.Initialization, options),
             Algorithm = new OnnxGraph(proto.Algorithm, options),
