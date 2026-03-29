@@ -1,4 +1,6 @@
-﻿using TorchSharp;
+﻿using System.Collections;
+using System.Reflection;
+using TorchSharp;
 using static TorchSharp.torch;
 using static TorchSharp.torch.nn;
 
@@ -19,6 +21,8 @@ namespace Onnxify.Examples
             int epochs = 5,
             int batchSize = 32,
             float learningRate = 1e-3f,
+            int schedulerStepSize = 5,
+            float schedulerGamma = 0.5f,
             Device? device = null
         )
         {
@@ -29,10 +33,14 @@ namespace Onnxify.Examples
 
             var optimizer = optim.Adam(_model.parameters(), learningRate);
             var criterion = CrossEntropyLoss();
+            var scheduler = new StepLearningRateScheduler(learningRate, schedulerStepSize, schedulerGamma);
 
             for (int epoch = 1; epoch <= epochs; epoch++)
             {
-                Console.WriteLine($"Epoch {epoch}/{epochs}");
+                var currentLearningRate = scheduler.GetLearningRate(epoch);
+                scheduler.Apply(optimizer, epoch);
+
+                Console.WriteLine($"Epoch {epoch}/{epochs} | lr {currentLearningRate:0.000000}");
 
                 var batchData = new List<Tensor>();
                 var batchLabels = new List<Tensor>();
@@ -56,6 +64,7 @@ namespace Onnxify.Examples
                             device,
                             epoch,
                             epochs,
+                            currentLearningRate,
                             ref batchIndex,
                             ref processedSamples,
                             ref correctPredictions
@@ -76,6 +85,7 @@ namespace Onnxify.Examples
                         device,
                         epoch,
                         epochs,
+                        currentLearningRate,
                         ref batchIndex,
                         ref processedSamples,
                         ref correctPredictions
@@ -94,6 +104,7 @@ namespace Onnxify.Examples
             Device device,
             int epoch,
             int epochs,
+            float learningRate,
             ref int batchIndex,
             ref int processedSamples,
             ref int correctPredictions
@@ -121,10 +132,39 @@ namespace Onnxify.Examples
                 : (float)correctPredictions / processedSamples;
 
             Console.Write(
-                $"\rTrain: epoch {epoch}/{epochs} | batch {batchIndex + 1} | samples {processedSamples} | loss {loss.ToSingle():0.000000} | acc {accuracy:0.000000}"
+                $"\rTrain: epoch {epoch}/{epochs} | batch {batchIndex + 1} | samples {processedSamples} | loss {loss.ToSingle():0.000000} | acc {accuracy:0.000000} | lr {learningRate:0.000000}"
             );
 
             batchIndex++;
+        }
+
+        private sealed class StepLearningRateScheduler
+        {
+            private readonly float _initialLearningRate;
+            private readonly int _stepSize;
+            private readonly float _gamma;
+
+            public StepLearningRateScheduler(float initialLearningRate, int stepSize, float gamma)
+            {
+                _initialLearningRate = initialLearningRate;
+                _stepSize = Math.Max(1, stepSize);
+                _gamma = gamma;
+            }
+
+            public float GetLearningRate(int epoch)
+            {
+                var decaySteps = Math.Max(0, (epoch - 1) / _stepSize);
+                return _initialLearningRate * MathF.Pow(_gamma, decaySteps);
+            }
+
+            public void Apply(optim.Optimizer optimizer, int epoch)
+            {
+                var learningRate = GetLearningRate(epoch);
+                foreach (var x in optimizer.ParamGroups)
+                {
+                    x.LearningRate = learningRate;
+                }
+            }
         }
     }
 }
