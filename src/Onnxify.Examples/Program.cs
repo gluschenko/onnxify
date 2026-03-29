@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using System.Text;
+using static TorchSharp.torch;
 using static TorchSharp.torchvision;
 
 namespace Onnxify.Examples
@@ -18,6 +19,7 @@ namespace Onnxify.Examples
 
             var datasetDirectory = @"D:\Backups\ML\microsoft-catsvsdogs-dataset\PetImages";
             var outputDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
+            var device = cuda.is_available() ? CUDA : CPU;
 
             if (!Directory.Exists(outputDirectory))
             {
@@ -25,7 +27,6 @@ namespace Onnxify.Examples
             }
 
             var model = new AlexNet("alexnet", 2);
-            var onnxModel = model.Export();
 
             var hflip = transforms.HorizontalFlip();
             var gray = transforms.Grayscale(3);
@@ -40,26 +41,49 @@ namespace Onnxify.Examples
             ]))
             {
                 dataset.Load(
-                    width: 244,
-                    height: 244,
+                    width: 227,
+                    height: 227,
                     channels: 3,
                     count: 5000
                 );
+                dataset.Split(testFraction: 0.2f, seed: 42);
+
+                Console.WriteLine($"Train samples: {dataset.TrainSampleCount}");
+                Console.WriteLine($"Test samples:  {dataset.TestSampleCount}");
 
                 var trainer = new AlexNetTrainer(model, dataset);
                 trainer.Train(
-                    epochs: 100,
+                    epochs: 30,
                     batchSize: 256,
-                    learningRate: 0.0001f
+                    learningRate: 0.0001f,
+                    schedulerStepSize: 30,
+                    schedulerGamma: 0.5f,
+                    minLearningRate: 1e-5f,
+                    device: device
+                );
+
+                var outputPath = Path.Combine(outputDirectory, "alexnet__test.onnx");
+                var onnxModel = model.Export();
+                onnxModel.Save(outputPath, true);
+
+                var torchEvaluation = ModelEvaluator.EvaluateTorch(model, dataset, batchSize: 256, device);
+                var onnxEvaluation = ModelEvaluator.EvaluateOnnx(outputPath, dataset, batchSize: 256);
+
+                ModelEvaluator.PrintConfusionMatrix(
+                    "Torch Confusion Matrix",
+                    torchEvaluation,
+                    dataset.LabelNames
+                );
+
+                ModelEvaluator.PrintConfusionMatrix(
+                    "ONNX Confusion Matrix",
+                    onnxEvaluation,
+                    dataset.LabelNames
                 );
             }
-
-            var outputPath = Path.Combine(outputDirectory, "alexnet__test.onnx");
-            onnxModel.Save(outputPath, true);
 
             Console.WriteLine("Press any key to pay respect...");
             Console.ReadKey();
         }
     }
 }
-

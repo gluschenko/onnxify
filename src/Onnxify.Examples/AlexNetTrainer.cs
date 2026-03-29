@@ -41,51 +41,21 @@ namespace Onnxify.Examples
                 minLearningRate
             );
 
-            for (int epoch = 1; epoch <= epochs; epoch++)
+            for (var epoch = 1; epoch <= epochs; epoch++)
             {
                 var currentLearningRate = scheduler.GetLearningRate(epoch);
                 scheduler.Apply(optimizer, epoch);
 
                 Console.WriteLine($"Epoch {epoch}/{epochs} | lr {FormatLearningRate(currentLearningRate)}");
 
-                var batchData = new List<Tensor>();
-                var batchLabels = new List<Tensor>();
-
                 var batchIndex = 0;
                 var processedSamples = 0;
                 var correctPredictions = 0;
 
-                foreach (var (data, label) in _reader.Data())
-                {
-                    batchData.Add(data);
-                    batchLabels.Add(label);
-
-                    if (batchData.Count == batchSize)
-                    {
-                        TrainBatch(
-                            batchData,
-                            batchLabels,
-                            optimizer,
-                            criterion,
-                            device,
-                            epoch,
-                            epochs,
-                            currentLearningRate,
-                            ref batchIndex,
-                            ref processedSamples,
-                            ref correctPredictions
-                        );
-
-                        batchData.Clear();
-                        batchLabels.Clear();
-                    }
-                }
-
-                if (batchData.Count > 0)
+                foreach (var batch in _reader.GetTrainingBatches(batchSize, shuffle: true))
                 {
                     TrainBatch(
-                        batchData,
-                        batchLabels,
+                        batch,
                         optimizer,
                         criterion,
                         device,
@@ -103,8 +73,7 @@ namespace Onnxify.Examples
         }
 
         private void TrainBatch(
-            List<Tensor> batchData,
-            List<Tensor> batchLabels,
+            DataReader.Batch batch,
             optim.Optimizer optimizer,
             Loss<torch.Tensor, torch.Tensor, torch.Tensor> criterion,
             Device device,
@@ -117,8 +86,8 @@ namespace Onnxify.Examples
         )
         {
             using var d = torch.NewDisposeScope();
-            using var x = torch.stack(batchData).to(device); // [N, C, H, W]
-            using var y = torch.stack(batchLabels).to(device).view(-1); // [N]
+            using var x = torch.stack(batch.Data).to(device);
+            using var y = torch.stack(batch.Labels).to(device).view(-1);
 
             optimizer.zero_grad();
 
@@ -131,8 +100,9 @@ namespace Onnxify.Examples
             using var predicted = output.argmax(1);
             using var correct = predicted.eq(y);
 
-            processedSamples += batchData.Count;
+            processedSamples += batch.LabelIndices.Length;
             correctPredictions += correct.sum().ToInt32();
+
             var accuracy = processedSamples == 0
                 ? 0f
                 : (float)correctPredictions / processedSamples;
