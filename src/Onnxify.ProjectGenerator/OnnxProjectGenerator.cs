@@ -159,7 +159,8 @@ public sealed class OnnxProjectGenerator
                         type: {{RenderValueType(value.Type)}}
                     );
 
-                """);
+                """
+            );
         }
 
         foreach (var tensor in model.Graph.Initializers)
@@ -174,7 +175,8 @@ public sealed class OnnxProjectGenerator
                         value: {{RenderTensorLoadExpression(tensor, assetRelativePath)}}
                     );
 
-                """);
+                """
+            );
         }
 
         var intermediateEdges = model.Graph.Nodes
@@ -189,7 +191,8 @@ public sealed class OnnxProjectGenerator
                 $$"""
                     var {{GetEdgeVariable(edge)}} = model.Graph.AddEdge({{AsStringLiteral(edge.Name)}});
 
-                """);
+                """
+            );
         }
 
         foreach (var node in model.Graph.Nodes)
@@ -206,7 +209,8 @@ public sealed class OnnxProjectGenerator
                         attributes: {{RenderAttributes(node.Attributes, context)}}
                     );
 
-                """);
+                """
+            );
         }
 
         if (!string.IsNullOrWhiteSpace(model.Graph.Name))

@@ -554,7 +554,7 @@ namespace Onnxify.SourceGenerator
 
                     namespace {{rootNamespace}}
                     {
-                        public static partial class {{className}}Extensions
+                        public static partial class OnnxifyExtensions
                         {
                             {{extensionMethods.ToString().Indent(2)}}
                         }

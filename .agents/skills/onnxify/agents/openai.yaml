@@ -1,0 +1,4 @@
+interface:
+  display_name: "Onnxify"
+  short_description: "Work on the Onnxify ONNX library"
+  default_prompt: "Use $onnxify to inspect, extend, or validate the Onnxify .NET library in this repository."
