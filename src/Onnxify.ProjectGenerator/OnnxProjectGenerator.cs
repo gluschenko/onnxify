@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
-using Onnxify.Data;
+using Onnxify.Data.Numerics;
 
 namespace Onnxify.ProjectGenerator;
 
@@ -354,17 +354,17 @@ public sealed class OnnxProjectGenerator
                     return Cast<Complex64, T>(values);
                 }
 
-                if (typeof(T) == typeof(Complex))
+                if (typeof(T) == typeof(Complex128))
                 {
                     var raw = MemoryMarshal.Cast<byte, double>(bytes).ToArray();
-                    var values = new Complex[raw.Length / 2];
+                    var values = new Complex128[raw.Length / 2];
 
                     for (var index = 0; index < values.Length; index++)
                     {
-                        values[index] = new Complex(raw[index * 2], raw[index * 2 + 1]);
+                        values[index] = new Complex128(raw[index * 2], raw[index * 2 + 1]);
                     }
 
-                    return Cast<Complex, T>(values);
+                    return Cast<Complex128, T>(values);
                 }
 
                 throw new NotSupportedException($"Tensor data type '{typeof(T)}' is not supported.");
@@ -454,7 +454,7 @@ public sealed class OnnxProjectGenerator
             OnnxTensor<Half> x => context.WriteBinaryAsset(safeName, "bin", PackHalf(x.Value.ToArray())),
             OnnxTensor<BFloat16> x => context.WriteBinaryAsset(safeName, "bin", PackBFloat16(x.Value.ToArray())),
             OnnxTensor<Complex64> x => context.WriteBinaryAsset(safeName, "bin", PackComplex64(x.Value.ToArray())),
-            OnnxTensor<Complex> x => context.WriteBinaryAsset(safeName, "bin", PackComplex128(x.Value.ToArray())),
+            OnnxTensor<Complex128> x => context.WriteBinaryAsset(safeName, "bin", PackComplex128(x.Value.ToArray())),
             OnnxTensor<string> x => context.WriteTextAsset(safeName, "json", JsonSerializer.Serialize(x.Value.ToArray())),
             _ => throw CreateUnsupportedTensorException(tensor),
         };
@@ -499,7 +499,7 @@ public sealed class OnnxProjectGenerator
         return Pack(buffer);
     }
 
-    private static byte[] PackComplex128(Complex[] values)
+    private static byte[] PackComplex128(Complex128[] values)
     {
         var buffer = new double[values.Length * 2];
         for (var index = 0; index < values.Length; index++)
@@ -529,7 +529,7 @@ public sealed class OnnxProjectGenerator
             OnnxTensor<Half> x => x.Shape,
             OnnxTensor<BFloat16> x => x.Shape,
             OnnxTensor<Complex64> x => x.Shape,
-            OnnxTensor<Complex> x => x.Shape,
+            OnnxTensor<Complex128> x => x.Shape,
             OnnxTensor<string> x => x.Shape,
             _ => throw CreateUnsupportedTensorException(tensor),
         };
@@ -555,7 +555,7 @@ public sealed class OnnxProjectGenerator
             OnnxTensor<Half> => $"TensorDataLoader.LoadArray<Half>({literalPath})",
             OnnxTensor<BFloat16> => $"TensorDataLoader.LoadArray<BFloat16>({literalPath})",
             OnnxTensor<Complex64> => $"TensorDataLoader.LoadArray<Complex64>({literalPath})",
-            OnnxTensor<Complex> => $"TensorDataLoader.LoadArray<Complex>({literalPath})",
+            OnnxTensor<Complex128> => $"TensorDataLoader.LoadArray<Complex128>({literalPath})",
             OnnxTensor<string> => $"TensorDataLoader.LoadStringArray({literalPath})",
             _ => throw CreateUnsupportedTensorException(tensor),
         };
@@ -696,7 +696,7 @@ public sealed class OnnxProjectGenerator
         if (type == typeof(Half)) return "Half";
         if (type == typeof(BFloat16)) return "BFloat16";
         if (type == typeof(Complex64)) return "Complex64";
-        if (type == typeof(Complex)) return "Complex";
+        if (type == typeof(Complex128)) return "Complex128";
 
         throw new NotSupportedException($"CLR type '{type}' is not supported.");
     }

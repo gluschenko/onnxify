@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using Google.Protobuf;
 using Google.Protobuf.Collections;
 using Onnx;
-using Onnxify.Data;
+using Onnxify.Data.Numerics;
 
 namespace Onnxify;
 
@@ -29,7 +29,7 @@ public static class OnnxHelper
             TensorProto.Types.DataType.Uint32 => OnnxTensor.FromProto<uint>(tensor, options),
             TensorProto.Types.DataType.Uint64 => OnnxTensor.FromProto<ulong>(tensor, options),
             TensorProto.Types.DataType.Complex64 => OnnxTensor.FromProto<Complex64>(tensor, options),
-            TensorProto.Types.DataType.Complex128 => OnnxTensor.FromProto<Complex>(tensor, options),
+            TensorProto.Types.DataType.Complex128 => OnnxTensor.FromProto<Complex128>(tensor, options),
             TensorProto.Types.DataType.Bfloat16 => OnnxTensor.FromProto<BFloat16>(tensor, options),
             TensorProto.Types.DataType.Float8E4M3Fn => OnnxTensor.FromProto<Float8E4M3FN>(tensor, options),
             TensorProto.Types.DataType.Float8E4M3Fnuz => OnnxTensor.FromProto<Float8E4M3FNUZ>(tensor, options),
@@ -62,7 +62,7 @@ public static class OnnxHelper
         if (type == typeof(uint)) return TensorProto.Types.DataType.Uint32;
         if (type == typeof(ulong)) return TensorProto.Types.DataType.Uint64;
         if (type == typeof(Complex64)) return TensorProto.Types.DataType.Complex64;
-        if (type == typeof(System.Numerics.Complex)) return TensorProto.Types.DataType.Complex128;
+        if (type == typeof(Complex128)) return TensorProto.Types.DataType.Complex128;
         if (type == typeof(BFloat16)) return TensorProto.Types.DataType.Bfloat16;
         if (type == typeof(object)) return TensorProto.Types.DataType.Undefined;
 
@@ -87,7 +87,7 @@ public static class OnnxHelper
             TensorProto.Types.DataType.Uint32 => typeof(uint),
             TensorProto.Types.DataType.Uint64 => typeof(ulong),
             TensorProto.Types.DataType.Complex64 => typeof(Complex64),
-            TensorProto.Types.DataType.Complex128 => typeof(System.Numerics.Complex),
+            TensorProto.Types.DataType.Complex128 => typeof(Complex128),
             TensorProto.Types.DataType.Bfloat16 => typeof(BFloat16),
             TensorProto.Types.DataType.Float8E4M3Fn => typeof(Float8E4M3FN),
             TensorProto.Types.DataType.Float8E4M3Fnuz => typeof(Float8E4M3FNUZ),
@@ -124,7 +124,7 @@ public static class OnnxHelper
             TensorProto.Types.DataType.Uint32 => new OnnxSparseTensor<uint>(tensor, options),
             TensorProto.Types.DataType.Uint64 => new OnnxSparseTensor<ulong>(tensor, options),
             TensorProto.Types.DataType.Complex64 => new OnnxSparseTensor<Complex64>(tensor, options),
-            TensorProto.Types.DataType.Complex128 => new OnnxSparseTensor<Complex>(tensor, options),
+            TensorProto.Types.DataType.Complex128 => new OnnxSparseTensor<Complex128>(tensor, options),
             TensorProto.Types.DataType.Bfloat16 => new OnnxSparseTensor<BFloat16>(tensor, options),
             TensorProto.Types.DataType.Float8E4M3Fn => new OnnxSparseTensor<Float8E4M3FN>(tensor, options),
             TensorProto.Types.DataType.Float8E4M3Fnuz => new OnnxSparseTensor<Float8E4M3FNUZ>(tensor, options),
@@ -435,14 +435,14 @@ public static class OnnxHelper
         return result;
     }
 
-    private static Complex[] ConvertComplex128(ReadOnlySpan<byte> data)
+    private static Complex128[] ConvertComplex128(ReadOnlySpan<byte> data)
     {
         var doubleSpan = MemoryMarshal.Cast<byte, double>(data);
-        var result = new Complex[doubleSpan.Length / 2];
+        var result = new Complex128[doubleSpan.Length / 2];
 
         for (var i = 0; i < result.Length; i++)
         {
-            result[i] = new Complex(
+            result[i] = new Complex128(
                 doubleSpan[i * 2],
                 doubleSpan[i * 2 + 1]
             );
@@ -752,7 +752,7 @@ public static class OnnxHelper
                 tensor.RawData = PackComplex64(c64);
                 break;
 
-            case System.Numerics.Complex[] c128:
+            case Complex128[] c128:
                 tensor.DataType = (int)TensorProto.Types.DataType.Complex128;
                 tensor.RawData = PackComplex128(c128);
                 break;
@@ -816,7 +816,7 @@ public static class OnnxHelper
         return Pack(buffer);
     }
 
-    private static ByteString PackComplex128(System.Numerics.Complex[] data)
+    private static ByteString PackComplex128(Complex128[] data)
     {
         var buffer = new double[data.Length * 2];
 

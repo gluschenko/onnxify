@@ -880,7 +880,7 @@ namespace Onnxify.SourceGenerator
                 "tensor(string)" => "OnnxTensor<string>",
 
                 "tensor(complex64)" => "OnnxTensor<Complex64>",
-                "tensor(complex128)" => "OnnxTensor<Complex>",
+                "tensor(complex128)" => "OnnxTensor<Complex128>",
 
                 _ => type, // throw new NotSupportedException($"Unsupported ONNX type: {type}")
             };

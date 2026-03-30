@@ -1,4 +1,6 @@
-﻿namespace Onnxify.Data;
+﻿using Onnxify.Data;
+
+namespace Onnxify.Data.Numerics;
 
 public readonly struct Float4E2M1
 {

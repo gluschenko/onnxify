@@ -1,4 +1,4 @@
-﻿namespace Onnxify.Data;
+﻿namespace Onnxify.Data.Numerics;
 
 public readonly struct Float8E8M0
 {
