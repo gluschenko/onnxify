@@ -1,14 +1,71 @@
-﻿using System.Numerics;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using Google.Protobuf;
 using Google.Protobuf.Collections;
 using Onnx;
+using Onnxify.Data;
 using Onnxify.Data.Numerics;
 
 namespace Onnxify;
 
 public static class OnnxHelper
 {
+    private static readonly (Type SystemType, TensorProto.Types.DataType DataType)[] _typePairs =
+    [
+        (typeof(float), TensorProto.Types.DataType.Float),
+        (typeof(byte), TensorProto.Types.DataType.Uint8),
+        (typeof(sbyte), TensorProto.Types.DataType.Int8),
+        (typeof(ushort), TensorProto.Types.DataType.Uint16),
+        (typeof(short), TensorProto.Types.DataType.Int16),
+        (typeof(int), TensorProto.Types.DataType.Int32),
+        (typeof(long), TensorProto.Types.DataType.Int64),
+        (typeof(string), TensorProto.Types.DataType.String),
+        (typeof(bool), TensorProto.Types.DataType.Bool),
+        (typeof(Half), TensorProto.Types.DataType.Float16),
+        (typeof(double), TensorProto.Types.DataType.Double),
+        (typeof(uint), TensorProto.Types.DataType.Uint32),
+        (typeof(ulong), TensorProto.Types.DataType.Uint64),
+        (typeof(Complex64), TensorProto.Types.DataType.Complex64),
+        (typeof(Complex128), TensorProto.Types.DataType.Complex128),
+        (typeof(BFloat16), TensorProto.Types.DataType.Bfloat16),
+        (typeof(Float8E4M3FN), TensorProto.Types.DataType.Float8E4M3Fn),
+        (typeof(Float8E4M3FNUZ), TensorProto.Types.DataType.Float8E4M3Fnuz),
+        (typeof(Float8E5M2), TensorProto.Types.DataType.Float8E5M2),
+        (typeof(Float8E5M2FNUZ), TensorProto.Types.DataType.Float8E5M2Fnuz),
+        (typeof(Float4E2M1), TensorProto.Types.DataType.Float4E2M1),
+        (typeof(Float8E8M0), TensorProto.Types.DataType.Float8E8M0),
+        (typeof(UInt4), TensorProto.Types.DataType.Uint4),
+        (typeof(Int4), TensorProto.Types.DataType.Int4),
+        (typeof(UInt2), TensorProto.Types.DataType.Uint2),
+        (typeof(Int2), TensorProto.Types.DataType.Int2),
+        (typeof(object), TensorProto.Types.DataType.Undefined),
+    ];
+
+    private static readonly Dictionary<Type, TensorProto.Types.DataType> _typeToDataType =
+        _typePairs.ToDictionary(x => x.SystemType, x => x.DataType);
+
+    private static readonly Dictionary<TensorProto.Types.DataType, Type> _dataTypeToType =
+        _typePairs.ToDictionary(x => x.DataType, x => x.SystemType);
+
+    internal static TensorProto.Types.DataType GetDataType(Type type)
+    {
+        if (_typeToDataType.TryGetValue(type, out var dataType))
+        {
+            return dataType;
+        }
+
+        throw new NotImplementedException($"Type '{type}' is not supported");
+    }
+
+    internal static Type GetSystemType(TensorProto.Types.DataType type)
+    {
+        if (_dataTypeToType.TryGetValue(type, out var systemType))
+        {
+            return systemType;
+        }
+
+        throw new NotImplementedException($"DataType '{type}' is not supported");
+    }
+
     internal static OnnxTensor FromProto(TensorProto tensor, OnnxModelBaseOptions options)
     {
         var type = (TensorProto.Types.DataType)tensor.DataType;
@@ -43,64 +100,6 @@ public static class OnnxHelper
             TensorProto.Types.DataType.Int2 => OnnxTensor.FromProto<Int2>(tensor, options),
             TensorProto.Types.DataType.Undefined => OnnxTensor.FromProto<object>(tensor, options),
             _ => throw new NotImplementedException($"Not implemented for '{type}'"),
-        };
-    }
-
-    internal static TensorProto.Types.DataType GetDataType(Type type)
-    {
-        if (type == typeof(float)) return TensorProto.Types.DataType.Float;
-        if (type == typeof(byte)) return TensorProto.Types.DataType.Uint8;
-        if (type == typeof(sbyte)) return TensorProto.Types.DataType.Int8;
-        if (type == typeof(ushort)) return TensorProto.Types.DataType.Uint16;
-        if (type == typeof(short)) return TensorProto.Types.DataType.Int16;
-        if (type == typeof(int)) return TensorProto.Types.DataType.Int32;
-        if (type == typeof(long)) return TensorProto.Types.DataType.Int64;
-        if (type == typeof(string)) return TensorProto.Types.DataType.String;
-        if (type == typeof(bool)) return TensorProto.Types.DataType.Bool;
-        if (type == typeof(Half)) return TensorProto.Types.DataType.Float16;
-        if (type == typeof(double)) return TensorProto.Types.DataType.Double;
-        if (type == typeof(uint)) return TensorProto.Types.DataType.Uint32;
-        if (type == typeof(ulong)) return TensorProto.Types.DataType.Uint64;
-        if (type == typeof(Complex64)) return TensorProto.Types.DataType.Complex64;
-        if (type == typeof(Complex128)) return TensorProto.Types.DataType.Complex128;
-        if (type == typeof(BFloat16)) return TensorProto.Types.DataType.Bfloat16;
-        if (type == typeof(object)) return TensorProto.Types.DataType.Undefined;
-
-        throw new NotImplementedException($"Type '{type}' is not supported");
-    }
-
-    internal static Type GetSystemType(TensorProto.Types.DataType type)
-    {
-        return type switch
-        {
-            TensorProto.Types.DataType.Float => typeof(float),
-            TensorProto.Types.DataType.Uint8 => typeof(byte),
-            TensorProto.Types.DataType.Int8 => typeof(sbyte),
-            TensorProto.Types.DataType.Uint16 => typeof(ushort),
-            TensorProto.Types.DataType.Int16 => typeof(short),
-            TensorProto.Types.DataType.Int32 => typeof(int),
-            TensorProto.Types.DataType.Int64 => typeof(long),
-            TensorProto.Types.DataType.String => typeof(string),
-            TensorProto.Types.DataType.Bool => typeof(bool),
-            TensorProto.Types.DataType.Float16 => typeof(Half),
-            TensorProto.Types.DataType.Double => typeof(double),
-            TensorProto.Types.DataType.Uint32 => typeof(uint),
-            TensorProto.Types.DataType.Uint64 => typeof(ulong),
-            TensorProto.Types.DataType.Complex64 => typeof(Complex64),
-            TensorProto.Types.DataType.Complex128 => typeof(Complex128),
-            TensorProto.Types.DataType.Bfloat16 => typeof(BFloat16),
-            TensorProto.Types.DataType.Float8E4M3Fn => typeof(Float8E4M3FN),
-            TensorProto.Types.DataType.Float8E4M3Fnuz => typeof(Float8E4M3FNUZ),
-            TensorProto.Types.DataType.Float8E5M2 => typeof(Float8E5M2),
-            TensorProto.Types.DataType.Float8E5M2Fnuz => typeof(Float8E5M2FNUZ),
-            TensorProto.Types.DataType.Float4E2M1 => typeof(Float4E2M1),
-            TensorProto.Types.DataType.Float8E8M0 => typeof(Float8E8M0),
-            TensorProto.Types.DataType.Uint4 => typeof(UInt4),
-            TensorProto.Types.DataType.Int4 => typeof(Int4),
-            TensorProto.Types.DataType.Uint2 => typeof(UInt2),
-            TensorProto.Types.DataType.Int2 => typeof(Int2),
-            TensorProto.Types.DataType.Undefined => typeof(object),
-            _ => throw new NotImplementedException($"DataType '{type}' is not supported")
         };
     }
 
@@ -145,6 +144,7 @@ public static class OnnxHelper
     {
         var type = (TensorProto.Types.DataType)tensor.DataType;
 
+        // TODO: data reader abstraction
         if (tensor.DataLocation == TensorProto.Types.DataLocation.External)
         {
             if (!Directory.Exists(options.DataLocation))
@@ -159,12 +159,12 @@ public static class OnnxHelper
                 throw new InvalidOperationException("External tensor missing 'location'");
             }
 
-            var offset = external.TryGetValue("offset", out var offStr)
-                ? long.Parse(offStr)
+            var offset = external.TryGetValue("offset", out var offsetString)
+                ? long.Parse(offsetString)
                 : 0;
 
-            var length = external.TryGetValue("length", out var lenStr)
-                ? long.Parse(lenStr)
+            var length = external.TryGetValue("length", out var lengthString)
+                ? long.Parse(lengthString)
                 : -1;
 
             var path = Path.Combine(options.DataLocation ?? "", location);
@@ -211,24 +211,21 @@ public static class OnnxHelper
     {
         return type switch
         {
-            TensorProto.Types.DataType.Float => MemoryMarshal.Cast<byte, float>(span).ToArray(),
-            TensorProto.Types.DataType.Double => MemoryMarshal.Cast<byte, double>(span).ToArray(),
-            TensorProto.Types.DataType.Int32 => MemoryMarshal.Cast<byte, int>(span).ToArray(),
-            TensorProto.Types.DataType.Int64 => MemoryMarshal.Cast<byte, long>(span).ToArray(),
-            TensorProto.Types.DataType.Uint32 => MemoryMarshal.Cast<byte, uint>(span).ToArray(),
-            TensorProto.Types.DataType.Uint64 => MemoryMarshal.Cast<byte, ulong>(span).ToArray(),
-            TensorProto.Types.DataType.Int16 => MemoryMarshal.Cast<byte, short>(span).ToArray(),
-            TensorProto.Types.DataType.Uint16 => MemoryMarshal.Cast<byte, ushort>(span).ToArray(),
-            TensorProto.Types.DataType.Int8 => MemoryMarshal.Cast<byte, sbyte>(span).ToArray(),
+            TensorProto.Types.DataType.Float => Unpack<float>(span),
+            TensorProto.Types.DataType.Double => Unpack<double>(span),
+            TensorProto.Types.DataType.Int32 => Unpack<int>(span),
+            TensorProto.Types.DataType.Int64 => Unpack<long>(span),
+            TensorProto.Types.DataType.Uint32 => Unpack<uint>(span),
+            TensorProto.Types.DataType.Uint64 => Unpack<ulong>(span),
+            TensorProto.Types.DataType.Int16 => Unpack<short>(span),
+            TensorProto.Types.DataType.Uint16 => Unpack<ushort>(span),
+            TensorProto.Types.DataType.Int8 => Unpack<sbyte>(span),
             TensorProto.Types.DataType.Uint8 => span.ToArray(),
             TensorProto.Types.DataType.Bool => span.ToArray().Select(x => x != 0).ToArray(),
-
             TensorProto.Types.DataType.Float16 => ConvertHalf(span),
             TensorProto.Types.DataType.Bfloat16 => ConvertBFloat16(span),
-
             TensorProto.Types.DataType.Complex64 => ConvertComplex64(span),
             TensorProto.Types.DataType.Complex128 => ConvertComplex128(span),
-
             TensorProto.Types.DataType.Float8E4M3Fn => ConvertFloat8E4M3FN(span),
             TensorProto.Types.DataType.Float8E4M3Fnuz => ConvertFloat8E4M3FNUZ(span),
             TensorProto.Types.DataType.Float8E5M2 => ConvertFloat8E5M2(span),
@@ -239,7 +236,6 @@ public static class OnnxHelper
             TensorProto.Types.DataType.Int4 => ConvertInt4(span),
             TensorProto.Types.DataType.Uint2 => ConvertUInt2(span),
             TensorProto.Types.DataType.Int2 => ConvertInt2(span),
-
             _ => throw new NotImplementedException($"Unsupported raw tensor type {type}")
         };
     }
@@ -383,6 +379,73 @@ public static class OnnxHelper
         return result;
     }
 
+    private static T[] Unpack<T>(ReadOnlySpan<byte> span) where T : struct
+    {
+        return MemoryMarshal.Cast<byte, T>(span).ToArray();
+    }
+
+    private static ByteString Pack<T>(T[] data) where T : struct
+    {
+        var span = MemoryMarshal.AsBytes(data.AsSpan());
+        return ByteString.CopyFrom(span.ToArray());
+    }
+
+    private static ByteString PackHalf(Half[] data)
+    {
+        var buffer = new byte[data.Length * 2];
+
+        for (var i = 0; i < data.Length; i++)
+        {
+            var bits = BitConverter.HalfToUInt16Bits(data[i]);
+            buffer[i * 2] = (byte)(bits & 0xFF);
+            buffer[i * 2 + 1] = (byte)(bits >> 8);
+        }
+
+        return ByteString.CopyFrom(buffer);
+    }
+
+    private static ByteString PackBFloat16(BFloat16[] data)
+    {
+        var buffer = new byte[data.Length * 2];
+
+        for (var i = 0; i < data.Length; i++)
+        {
+            var bits = (uint)BitConverter.SingleToInt32Bits(data[i].ToSingle());
+            var bf = (ushort)(bits >> 16);
+
+            buffer[i * 2] = (byte)(bf & 0xFF);
+            buffer[i * 2 + 1] = (byte)(bf >> 8);
+        }
+
+        return ByteString.CopyFrom(buffer);
+    }
+
+    private static ByteString PackComplex64(Complex64[] data)
+    {
+        var buffer = new float[data.Length * 2];
+
+        for (var i = 0; i < data.Length; i++)
+        {
+            buffer[i * 2] = data[i].Real;
+            buffer[i * 2 + 1] = data[i].Imaginary;
+        }
+
+        return Pack(buffer);
+    }
+
+    private static ByteString PackComplex128(Complex128[] data)
+    {
+        var buffer = new double[data.Length * 2];
+
+        for (var i = 0; i < data.Length; i++)
+        {
+            buffer[i * 2] = data[i].Real;
+            buffer[i * 2 + 1] = data[i].Imaginary;
+        }
+
+        return Pack(buffer);
+    }
+
     internal static IEnumerable<T> GetValue<T>(this TensorProto tensor, OnnxModelBaseOptions options)
     {
         var value = GetValue(tensor, options);
@@ -517,158 +580,133 @@ public static class OnnxHelper
 
     internal static AttributeProto.Types.AttributeType GetAttributeType(this Type type)
     {
+        if (type == typeof(object))
+            return AttributeProto.Types.AttributeType.Undefined;
+
         if (type == typeof(float))
-        {
             return AttributeProto.Types.AttributeType.Float;
-        }
 
         if (type == typeof(long) || type == typeof(int) || type == typeof(short) || type == typeof(byte))
-        {
             return AttributeProto.Types.AttributeType.Int;
-        }
 
         if (type == typeof(string))
-        {
             return AttributeProto.Types.AttributeType.String;
-        }
 
         if (type == typeof(TensorProto))
-        {
             return AttributeProto.Types.AttributeType.Tensor;
-        }
 
         if (type == typeof(GraphProto))
-        {
             return AttributeProto.Types.AttributeType.Graph;
-        }
 
         if (type == typeof(SparseTensorProto))
-        {
             return AttributeProto.Types.AttributeType.SparseTensor;
-        }
 
         if (type == typeof(OnnxValueType))
-        {
             return AttributeProto.Types.AttributeType.TypeProto;
-        }
 
-        if (type == typeof(float[]))
-        {
+        var elementType = TypeHelper.GetCollectionElementType(type);
+
+        if (elementType == typeof(float))
             return AttributeProto.Types.AttributeType.Floats;
-        }
 
-        if (type == typeof(long[]) || type == typeof(int[]) || type == typeof(short[]) || type == typeof(byte[]))
-        {
+        if (elementType == typeof(long) || elementType == typeof(int) || elementType == typeof(short) || elementType == typeof(byte))
             return AttributeProto.Types.AttributeType.Ints;
-        }
 
-        if (type == typeof(string[]))
-        {
+        if (elementType == typeof(string))
             return AttributeProto.Types.AttributeType.Strings;
-        }
 
-        if (type == typeof(TensorProto[]))
-        {
+        if (elementType == typeof(TensorProto))
             return AttributeProto.Types.AttributeType.Tensors;
-        }
 
-        if (type == typeof(GraphProto[]))
-        {
+        if (elementType == typeof(GraphProto))
             return AttributeProto.Types.AttributeType.Graphs;
-        }
 
-        if (type == typeof(SparseTensorProto[]))
-        {
+        if (elementType == typeof(SparseTensorProto))
             return AttributeProto.Types.AttributeType.SparseTensors;
-        }
 
-        if (type == typeof(OnnxValueType[]))
-        {
+        if (elementType == typeof(OnnxValueType))
             return AttributeProto.Types.AttributeType.TypeProtos;
-        }
-
-        if (type == typeof(object))
-        {
-            return AttributeProto.Types.AttributeType.Undefined;
-        }
 
         throw new NotImplementedException($"Type '{type}' is not supported");
     }
 
+    private static void ResetValue(this AttributeProto attribute)
+    {
+        ArgumentNullException.ThrowIfNull(attribute);
+
+        attribute.F = default;
+        attribute.I = default;
+        attribute.S = ByteString.Empty;
+        attribute.T = null;
+        attribute.G = null;
+        attribute.SparseTensor = null;
+        attribute.Tp = null;
+
+        attribute.Floats.Clear();
+        attribute.Ints.Clear();
+        attribute.Strings.Clear();
+        attribute.Tensors.Clear();
+        attribute.Graphs.Clear();
+        attribute.SparseTensors.Clear();
+        attribute.TypeProtos.Clear();
+
+        attribute.Type = AttributeProto.Types.AttributeType.Undefined;
+    }
+
     internal static void SetValue<T>(this AttributeProto attribute, T value)
     {
-        switch (value)
+        ArgumentNullException.ThrowIfNull(attribute);
+        ArgumentNullException.ThrowIfNull(value);
+
+        attribute.ResetValue();
+
+        var type = GetAttributeType(typeof(T));
+        attribute.Type = type;
+
+        switch (type)
         {
-            case float f:
-                attribute.F = f;
-                attribute.Type = AttributeProto.Types.AttributeType.Float;
+            case AttributeProto.Types.AttributeType.Float:
+                attribute.F = Convert.ToSingle(value);
                 break;
-
-            case long i:
-                attribute.I = i;
-                attribute.Type = AttributeProto.Types.AttributeType.Int;
+            case AttributeProto.Types.AttributeType.Int:
+                attribute.I = Convert.ToInt64(value);
                 break;
-
-            case string s:
-                attribute.S = ByteString.CopyFromUtf8(s);
-                attribute.Type = AttributeProto.Types.AttributeType.String;
+            case AttributeProto.Types.AttributeType.String:
+                attribute.S = ByteString.CopyFromUtf8(Convert.ToString(value)!);
                 break;
-
-            case OnnxTensor t:
-                attribute.T = t.ToProto();
-                attribute.Type = AttributeProto.Types.AttributeType.Tensor;
+            case AttributeProto.Types.AttributeType.Tensor:
+                attribute.T = TypeHelper.Require<OnnxTensor>(value).ToProto();
                 break;
-
-            case OnnxGraph g:
-                attribute.G = g.ToProto();
-                attribute.Type = AttributeProto.Types.AttributeType.Graph;
+            case AttributeProto.Types.AttributeType.Graph:
+                attribute.G = TypeHelper.Require<OnnxGraph>(value).ToProto();
                 break;
-
-            case OnnxSparseTensor sparseTensor:
-                attribute.SparseTensor = sparseTensor.ToProto();
-                attribute.Type = AttributeProto.Types.AttributeType.SparseTensor;
+            case AttributeProto.Types.AttributeType.SparseTensor:
+                attribute.SparseTensor = TypeHelper.Require<OnnxSparseTensor>(value).ToProto();
                 break;
-
-            case OnnxValueType valueType:
-                attribute.Tp = valueType.ToProto();
-                attribute.Type = AttributeProto.Types.AttributeType.SparseTensors;
+            case AttributeProto.Types.AttributeType.TypeProto:
+                attribute.Tp = TypeHelper.Require<OnnxValueType>(value).ToProto();
                 break;
-
-            case float[] floatArray:
-                attribute.Floats.Set(floatArray);
-                attribute.Type = AttributeProto.Types.AttributeType.Floats;
+            case AttributeProto.Types.AttributeType.Floats:
+                attribute.Floats.Set(TypeHelper.RequireMany<float>(value));
                 break;
-
-            case long[] intArray:
-                attribute.Ints.Set(intArray);
-                attribute.Type = AttributeProto.Types.AttributeType.Ints;
+            case AttributeProto.Types.AttributeType.Ints:
+                attribute.Ints.Set(TypeHelper.RequireMany<long>(value));
                 break;
-
-            case string[] stringArray:
-                attribute.Strings.Set(stringArray.Select(ByteString.CopyFromUtf8));
-                attribute.Type = AttributeProto.Types.AttributeType.Strings;
+            case AttributeProto.Types.AttributeType.Strings:
+                attribute.Strings.Set(TypeHelper.RequireMany<string>(value).Select(ByteString.CopyFromUtf8));
                 break;
-
-            case OnnxTensor[] tensorArray:
-                attribute.Tensors.Set(tensorArray.Select(x => x.ToProto()));
-                attribute.Type = AttributeProto.Types.AttributeType.Tensors;
+            case AttributeProto.Types.AttributeType.Tensors:
+                attribute.Tensors.Set(TypeHelper.RequireMany<OnnxTensor>(value).Select(x => x.ToProto()));
                 break;
-
-            case OnnxGraph[] graphArray:
-                attribute.Graphs.Set(graphArray.Select(x => x.ToProto()));
-                attribute.Type = AttributeProto.Types.AttributeType.Graphs;
+            case AttributeProto.Types.AttributeType.Graphs:
+                attribute.Graphs.Set(TypeHelper.RequireMany<OnnxGraph>(value).Select(x => x.ToProto()));
                 break;
-
-            case OnnxSparseTensor[] sparseTensorArray:
-                attribute.SparseTensors.Set(sparseTensorArray.Select(x => x.ToProto()));
-                attribute.Type = AttributeProto.Types.AttributeType.SparseTensors;
+            case AttributeProto.Types.AttributeType.SparseTensors:
+                attribute.SparseTensors.Set(TypeHelper.RequireMany<OnnxSparseTensor>(value).Select(x => x.ToProto()));
                 break;
-
-            case OnnxValueType[] valueTypeArray:
-                attribute.TypeProtos.Set(valueTypeArray.Select(x => x.ToProto()));
-                attribute.Type = AttributeProto.Types.AttributeType.SparseTensors;
+            case AttributeProto.Types.AttributeType.TypeProtos:
+                attribute.TypeProtos.Set(TypeHelper.RequireMany<OnnxValueType>(value).Select(x => x.ToProto()));
                 break;
-
             default:
                 throw new NotSupportedException($"Unsupported attribute type {typeof(T).Name}");
         }
@@ -678,6 +716,12 @@ public static class OnnxHelper
     {
         tensor.Dims.Set(shape);
 
+        tensor.DoubleData.Clear();
+        tensor.FloatData.Clear();
+        tensor.Int32Data.Clear();
+        tensor.Int64Data.Clear();
+        tensor.Uint64Data.Clear();
+        tensor.StringData.Clear();
         tensor.RawData = ByteString.Empty;
 
         switch (value)
@@ -767,68 +811,6 @@ public static class OnnxHelper
         }
     }
 
-    private static ByteString Pack<T>(T[] data) where T : struct
-    {
-        var span = MemoryMarshal.AsBytes(data.AsSpan());
-        return ByteString.CopyFrom(span.ToArray());
-    }
-
-    private static ByteString PackHalf(Half[] data)
-    {
-        var buffer = new byte[data.Length * 2];
-
-        for (var i = 0; i < data.Length; i++)
-        {
-            var bits = BitConverter.HalfToUInt16Bits(data[i]);
-            buffer[i * 2] = (byte)(bits & 0xFF);
-            buffer[i * 2 + 1] = (byte)(bits >> 8);
-        }
-
-        return ByteString.CopyFrom(buffer);
-    }
-
-    private static ByteString PackBFloat16(BFloat16[] data)
-    {
-        var buffer = new byte[data.Length * 2];
-
-        for (var i = 0; i < data.Length; i++)
-        {
-            var bits = (uint)BitConverter.SingleToInt32Bits(data[i].ToSingle());
-            var bf = (ushort)(bits >> 16);
-
-            buffer[i * 2] = (byte)(bf & 0xFF);
-            buffer[i * 2 + 1] = (byte)(bf >> 8);
-        }
-
-        return ByteString.CopyFrom(buffer);
-    }
-
-    private static ByteString PackComplex64(Complex64[] data)
-    {
-        var buffer = new float[data.Length * 2];
-
-        for (var i = 0; i < data.Length; i++)
-        {
-            buffer[i * 2] = data[i].Real;
-            buffer[i * 2 + 1] = data[i].Imaginary;
-        }
-
-        return Pack(buffer);
-    }
-
-    private static ByteString PackComplex128(Complex128[] data)
-    {
-        var buffer = new double[data.Length * 2];
-
-        for (var i = 0; i < data.Length; i++)
-        {
-            buffer[i * 2] = data[i].Real;
-            buffer[i * 2 + 1] = data[i].Imaginary;
-        }
-
-        return Pack(buffer);
-    }
-
     internal static void Set<T>(this RepeatedField<T> collection, IEnumerable<T> items)
     {
         collection.Clear();
@@ -836,10 +818,5 @@ public static class OnnxHelper
         {
             collection.Add(x);
         }
-    }
-
-    public static T[] NotNull<T>(params T?[] input)
-    {
-        return input.Where(x => x is not null).Select(x => x!).ToArray();
     }
 }
