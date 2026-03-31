@@ -1,6 +1,6 @@
 ﻿using Onnxify;
 
-namespace Onnxify.Data;
+namespace Onnxify.Helpers;
 
 public static class TypeHelper
 {

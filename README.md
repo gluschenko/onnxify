@@ -20,6 +20,20 @@ The repository currently contains:
 - `Onnxify.TFLite`
 - `Onnxify.Runtime.LiteRT`
 
+## TODO
+
+- Fully-typed operator Input/Output fields (OneOf?)
+- Graph edges in a single collection (or in two for placeholders)
+- Project generator generates operator nodes
+- Parse pytorch\torch\onnx\_internal\torchscript_exporter (create MD with support status)
+- Generate agent skills from operator-schema.json
+- ToString for OnnxModel, OnnxNode, OnnxxTensor, etc (recursive?)
+- OnnxDataProvider, SafetensorsDataProvider, BaseDataProvider...
+- Graph manipulations: add nodes, remove nodes, replace nodes
+- Graph cyclicity validation
+- CLI for agents and humans (to explore ONNX files)
+- Agent skills for Export imaplementation on Torch modules
+- Allow to add or remove OnnxModel meta (training info, imports, producer, version)
 
 ## Status
 

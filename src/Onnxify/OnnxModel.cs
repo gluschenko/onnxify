@@ -1,6 +1,7 @@
 ﻿using Google.Protobuf;
 using Onnx;
 using Onnxify.Data;
+using Onnxify.Helpers;
 
 namespace Onnxify;
 

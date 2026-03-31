@@ -133,7 +133,7 @@ namespace Onnxify.SourceGenerator
 
                     var optionsAttributesList = optionsAttributes.Length > 0
                         ? $$"""
-                        OnnxHelper.NotNull<OnnxAttribute>(
+                        TypeHelper.NotNull<OnnxAttribute>(
                             new List<Func<OnnxAttribute?>>() 
                             { 
                                 {{string.Join(",\n", optionsAttributes).Indent(2)}}
@@ -569,6 +569,7 @@ namespace Onnxify.SourceGenerator
                 using System;
                 using System.Collections.Generic;
                 using Onnx;
+                using {{nameof(Onnxify)}}.Helpers;
 
                 {{domainClasses}}
 
@@ -607,6 +608,7 @@ namespace Onnxify.SourceGenerator
                 using System;
                 using System.Collections.Generic;
                 using Onnx;
+                using {{namespaceName}};
 
                 namespace {{namespaceName}}
                 {

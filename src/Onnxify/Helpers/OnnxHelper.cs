@@ -1,11 +1,9 @@
-﻿using System.Runtime.InteropServices;
-using Google.Protobuf;
+﻿using Google.Protobuf;
 using Google.Protobuf.Collections;
 using Onnx;
-using Onnxify.Data;
 using Onnxify.Data.Numerics;
 
-namespace Onnxify;
+namespace Onnxify.Helpers;
 
 public static class OnnxHelper
 {
@@ -180,15 +178,15 @@ public static class OnnxHelper
             var buffer = new byte[length];
             fs.ReadExactly(buffer);
 
-            var data = ConvertRaw(buffer, type);
-
+            var data = DecodeRawData(buffer, type);
             return data;
         }
 
         if (tensor.RawData.Length > 0)
         {
             var span = tensor.RawData.Span;
-            return ConvertRaw(span, type);
+            var data = DecodeRawData(span, type);
+            return data;
         }
 
         return type switch
@@ -204,246 +202,143 @@ public static class OnnxHelper
         };
     }
 
-    internal static object ConvertRaw(
+    internal static object DecodeRawData(
         ReadOnlySpan<byte> span,
         TensorProto.Types.DataType type
     )
     {
         return type switch
         {
-            TensorProto.Types.DataType.Float => Unpack<float>(span),
-            TensorProto.Types.DataType.Double => Unpack<double>(span),
-            TensorProto.Types.DataType.Int32 => Unpack<int>(span),
-            TensorProto.Types.DataType.Int64 => Unpack<long>(span),
-            TensorProto.Types.DataType.Uint32 => Unpack<uint>(span),
-            TensorProto.Types.DataType.Uint64 => Unpack<ulong>(span),
-            TensorProto.Types.DataType.Int16 => Unpack<short>(span),
-            TensorProto.Types.DataType.Uint16 => Unpack<ushort>(span),
-            TensorProto.Types.DataType.Int8 => Unpack<sbyte>(span),
-            TensorProto.Types.DataType.Uint8 => span.ToArray(),
-            TensorProto.Types.DataType.Bool => span.ToArray().Select(x => x != 0).ToArray(),
-            TensorProto.Types.DataType.Float16 => ConvertHalf(span),
-            TensorProto.Types.DataType.Bfloat16 => ConvertBFloat16(span),
-            TensorProto.Types.DataType.Complex64 => ConvertComplex64(span),
-            TensorProto.Types.DataType.Complex128 => ConvertComplex128(span),
-            TensorProto.Types.DataType.Float8E4M3Fn => ConvertFloat8E4M3FN(span),
-            TensorProto.Types.DataType.Float8E4M3Fnuz => ConvertFloat8E4M3FNUZ(span),
-            TensorProto.Types.DataType.Float8E5M2 => ConvertFloat8E5M2(span),
-            TensorProto.Types.DataType.Float8E5M2Fnuz => ConvertFloat8E5M2FNUZ(span),
-            TensorProto.Types.DataType.Float4E2M1 => ConvertFloat4(span),
-            TensorProto.Types.DataType.Float8E8M0 => ConvertFloat8E8M0(span),
-            TensorProto.Types.DataType.Uint4 => ConvertUInt4(span),
-            TensorProto.Types.DataType.Int4 => ConvertInt4(span),
-            TensorProto.Types.DataType.Uint2 => ConvertUInt2(span),
-            TensorProto.Types.DataType.Int2 => ConvertInt2(span),
+            TensorProto.Types.DataType.Float => BinaryHelper.Decode<float>(span),
+            TensorProto.Types.DataType.Double => BinaryHelper.Decode<double>(span),
+            TensorProto.Types.DataType.Int32 => BinaryHelper.Decode<int>(span),
+            TensorProto.Types.DataType.Int64 => BinaryHelper.Decode<long>(span),
+            TensorProto.Types.DataType.Uint32 => BinaryHelper.Decode<uint>(span),
+            TensorProto.Types.DataType.Uint64 => BinaryHelper.Decode<ulong>(span),
+            TensorProto.Types.DataType.Int16 => BinaryHelper.Decode<short>(span),
+            TensorProto.Types.DataType.Uint16 => BinaryHelper.Decode<ushort>(span),
+            TensorProto.Types.DataType.Int8 => BinaryHelper.Decode<sbyte>(span),
+            TensorProto.Types.DataType.Uint8 => BinaryHelper.Decode<byte>(span),
+            TensorProto.Types.DataType.Bool => BinaryHelper.DecodeBoolArray(span),
+            TensorProto.Types.DataType.Float16 => BinaryHelper.DecodeHalf(span),
+            TensorProto.Types.DataType.Bfloat16 => BinaryHelper.DecodeBFloat16(span),
+            TensorProto.Types.DataType.Complex64 => BinaryHelper.DecodeComplex64(span),
+            TensorProto.Types.DataType.Complex128 => BinaryHelper.DecodeComplex128(span),
+            TensorProto.Types.DataType.Float8E4M3Fn => BinaryHelper.DecodeFloat8E4M3FN(span),
+            TensorProto.Types.DataType.Float8E4M3Fnuz => BinaryHelper.DecodeFloat8E4M3FNUZ(span),
+            TensorProto.Types.DataType.Float8E5M2 => BinaryHelper.DecodeFloat8E5M2(span),
+            TensorProto.Types.DataType.Float8E5M2Fnuz => BinaryHelper.DecodeFloat8E5M2FNUZ(span),
+            TensorProto.Types.DataType.Float4E2M1 => BinaryHelper.DecodeFloat4(span),
+            TensorProto.Types.DataType.Float8E8M0 => BinaryHelper.DecodeFloat8E8M0(span),
+            TensorProto.Types.DataType.Uint4 => BinaryHelper.DecodeUInt4(span),
+            TensorProto.Types.DataType.Int4 => BinaryHelper.DecodeInt4(span),
+            TensorProto.Types.DataType.Uint2 => BinaryHelper.DecodeUInt2(span),
+            TensorProto.Types.DataType.Int2 => BinaryHelper.DecodeInt2(span),
             _ => throw new NotImplementedException($"Unsupported raw tensor type {type}")
         };
     }
 
-    internal static Float8E4M3FN[] ConvertFloat8E4M3FN(ReadOnlySpan<byte> span)
+    internal static void SetValue<T>(this TensorProto tensor, T value, params long[] shape)
     {
-        var result = new Float8E4M3FN[span.Length];
-        for (int i = 0; i < span.Length; i++)
+        tensor.ResetValue();
+        tensor.Dims.Set(shape);
+
+        switch (value)
         {
-            result[i] = new Float8E4M3FN(span[i]);
+            case float[] f:
+                tensor.DataType = (int)TensorProto.Types.DataType.Float;
+                tensor.RawData = BinaryHelper.Encode(f);
+                break;
+
+            case double[] d:
+                tensor.DataType = (int)TensorProto.Types.DataType.Double;
+                tensor.RawData = BinaryHelper.Encode(d);
+                break;
+
+            case int[] i32:
+                tensor.DataType = (int)TensorProto.Types.DataType.Int32;
+                tensor.RawData = BinaryHelper.Encode(i32);
+                break;
+
+            case long[] i64:
+                tensor.DataType = (int)TensorProto.Types.DataType.Int64;
+                tensor.RawData = BinaryHelper.Encode(i64);
+                break;
+
+            case byte[] u8:
+                tensor.DataType = (int)TensorProto.Types.DataType.Uint8;
+                tensor.RawData = BinaryHelper.Encode(u8);
+                break;
+
+            case sbyte[] i8:
+                tensor.DataType = (int)TensorProto.Types.DataType.Int8;
+                tensor.RawData = BinaryHelper.Encode(i8);
+                break;
+
+            case short[] i16:
+                tensor.DataType = (int)TensorProto.Types.DataType.Int16;
+                tensor.RawData = BinaryHelper.Encode(i16);
+                break;
+
+            case ushort[] u16:
+                tensor.DataType = (int)TensorProto.Types.DataType.Uint16;
+                tensor.RawData = BinaryHelper.Encode(u16);
+                break;
+
+            case uint[] u32:
+                tensor.DataType = (int)TensorProto.Types.DataType.Uint32;
+                tensor.RawData = BinaryHelper.Encode(u32);
+                break;
+
+            case ulong[] u64:
+                tensor.DataType = (int)TensorProto.Types.DataType.Uint64;
+                tensor.RawData = BinaryHelper.Encode(u64);
+                break;
+
+            case bool[] b:
+                tensor.DataType = (int)TensorProto.Types.DataType.Bool;
+                tensor.RawData = BinaryHelper.EncodeBoolArray(b);
+                break;
+
+            case Half[] h:
+                tensor.DataType = (int)TensorProto.Types.DataType.Float16;
+                tensor.RawData = BinaryHelper.EncodeHalf(h);
+                break;
+
+            case BFloat16[] bf when typeof(T) == typeof(BFloat16[]):
+                tensor.DataType = (int)TensorProto.Types.DataType.Bfloat16;
+                tensor.RawData = BinaryHelper.EncodeBFloat16(bf);
+                break;
+
+            case Complex64[] c64:
+                tensor.DataType = (int)TensorProto.Types.DataType.Complex64;
+                tensor.RawData = BinaryHelper.EncodeComplex64(c64);
+                break;
+
+            case Complex128[] c128:
+                tensor.DataType = (int)TensorProto.Types.DataType.Complex128;
+                tensor.RawData = BinaryHelper.EncodeComplex128(c128);
+                break;
+
+            case string[] s:
+                tensor.DataType = (int)TensorProto.Types.DataType.String;
+                tensor.StringData.Set(s.Select(ByteString.CopyFromUtf8));
+                break;
+
+            default:
+                throw new NotSupportedException($"Unsupported tensor type {typeof(T)}");
         }
-
-        return result;
     }
 
-    internal static Float8E4M3FNUZ[] ConvertFloat8E4M3FNUZ(ReadOnlySpan<byte> span)
+    internal static void ResetValue(this TensorProto tensor)
     {
-        var result = new Float8E4M3FNUZ[span.Length];
-        for (int i = 0; i < span.Length; i++)
-        {
-            result[i] = new Float8E4M3FNUZ(span[i]);
-        }
-
-        return result;
-    }
-
-    internal static Float8E5M2[] ConvertFloat8E5M2(ReadOnlySpan<byte> span)
-    {
-        var result = new Float8E5M2[span.Length];
-        for (int i = 0; i < span.Length; i++)
-        {
-            result[i] = new Float8E5M2(span[i]);
-        }
-
-        return result;
-    }
-
-    internal static Float8E5M2FNUZ[] ConvertFloat8E5M2FNUZ(ReadOnlySpan<byte> span)
-    {
-        var result = new Float8E5M2FNUZ[span.Length];
-        for (int i = 0; i < span.Length; i++)
-        {
-            result[i] = new Float8E5M2FNUZ(span[i]);
-        }
-
-        return result;
-    }
-
-    internal static Float8E8M0[] ConvertFloat8E8M0(ReadOnlySpan<byte> span)
-    {
-        var result = new Float8E8M0[span.Length];
-        for (int i = 0; i < span.Length; i++)
-        {
-            result[i] = new Float8E8M0(span[i]);
-        }
-
-        return result;
-    }
-
-    internal static Float4E2M1[] ConvertFloat4(ReadOnlySpan<byte> span)
-    {
-        var result = new Float4E2M1[span.Length * 2];
-
-        int j = 0;
-        for (int i = 0; i < span.Length; i++)
-        {
-            byte b = span[i];
-
-            result[j++] = new Float4E2M1((byte)(b & 0x0F));       // low nibble
-            result[j++] = new Float4E2M1((byte)(b >> 4));         // high nibble
-        }
-
-        return result;
-    }
-
-    internal static UInt4[] ConvertUInt4(ReadOnlySpan<byte> span)
-    {
-        var result = new UInt4[span.Length * 2];
-
-        int j = 0;
-        for (int i = 0; i < span.Length; i++)
-        {
-            byte b = span[i];
-
-            result[j++] = new UInt4((byte)(b & 0x0F));
-            result[j++] = new UInt4((byte)(b >> 4));
-        }
-
-        return result;
-    }
-
-    internal static Int4[] ConvertInt4(ReadOnlySpan<byte> span)
-    {
-        var result = new Int4[span.Length * 2];
-
-        int j = 0;
-        for (int i = 0; i < span.Length; i++)
-        {
-            byte b = span[i];
-
-            result[j++] = new Int4((sbyte)(b & 0x0F));
-            result[j++] = new Int4((sbyte)(b >> 4));
-        }
-
-        return result;
-    }
-
-    internal static UInt2[] ConvertUInt2(ReadOnlySpan<byte> span)
-    {
-        var result = new UInt2[span.Length * 4];
-
-        int j = 0;
-        for (int i = 0; i < span.Length; i++)
-        {
-            byte b = span[i];
-
-            result[j++] = new UInt2((byte)(b & 0x03));
-            result[j++] = new UInt2((byte)((b >> 2) & 0x03));
-            result[j++] = new UInt2((byte)((b >> 4) & 0x03));
-            result[j++] = new UInt2((byte)((b >> 6) & 0x03));
-        }
-
-        return result;
-    }
-
-    internal static Int2[] ConvertInt2(ReadOnlySpan<byte> span)
-    {
-        var result = new Int2[span.Length * 4];
-
-        int j = 0;
-        for (int i = 0; i < span.Length; i++)
-        {
-            byte b = span[i];
-
-            result[j++] = new Int2((sbyte)(b & 0x03));
-            result[j++] = new Int2((sbyte)((b >> 2) & 0x03));
-            result[j++] = new Int2((sbyte)((b >> 4) & 0x03));
-            result[j++] = new Int2((sbyte)((b >> 6) & 0x03));
-        }
-
-        return result;
-    }
-
-    private static T[] Unpack<T>(ReadOnlySpan<byte> span) where T : struct
-    {
-        return MemoryMarshal.Cast<byte, T>(span).ToArray();
-    }
-
-    private static ByteString Pack<T>(T[] data) where T : struct
-    {
-        var span = MemoryMarshal.AsBytes(data.AsSpan());
-        return ByteString.CopyFrom(span.ToArray());
-    }
-
-    private static ByteString PackHalf(Half[] data)
-    {
-        var buffer = new byte[data.Length * 2];
-
-        for (var i = 0; i < data.Length; i++)
-        {
-            var bits = BitConverter.HalfToUInt16Bits(data[i]);
-            buffer[i * 2] = (byte)(bits & 0xFF);
-            buffer[i * 2 + 1] = (byte)(bits >> 8);
-        }
-
-        return ByteString.CopyFrom(buffer);
-    }
-
-    private static ByteString PackBFloat16(BFloat16[] data)
-    {
-        var buffer = new byte[data.Length * 2];
-
-        for (var i = 0; i < data.Length; i++)
-        {
-            var bits = (uint)BitConverter.SingleToInt32Bits(data[i].ToSingle());
-            var bf = (ushort)(bits >> 16);
-
-            buffer[i * 2] = (byte)(bf & 0xFF);
-            buffer[i * 2 + 1] = (byte)(bf >> 8);
-        }
-
-        return ByteString.CopyFrom(buffer);
-    }
-
-    private static ByteString PackComplex64(Complex64[] data)
-    {
-        var buffer = new float[data.Length * 2];
-
-        for (var i = 0; i < data.Length; i++)
-        {
-            buffer[i * 2] = data[i].Real;
-            buffer[i * 2 + 1] = data[i].Imaginary;
-        }
-
-        return Pack(buffer);
-    }
-
-    private static ByteString PackComplex128(Complex128[] data)
-    {
-        var buffer = new double[data.Length * 2];
-
-        for (var i = 0; i < data.Length; i++)
-        {
-            buffer[i * 2] = data[i].Real;
-            buffer[i * 2 + 1] = data[i].Imaginary;
-        }
-
-        return Pack(buffer);
+        tensor.DoubleData.Clear();
+        tensor.FloatData.Clear();
+        tensor.Int32Data.Clear();
+        tensor.Int64Data.Clear();
+        tensor.Uint64Data.Clear();
+        tensor.StringData.Clear();
+        tensor.RawData = ByteString.Empty;
     }
 
     internal static IEnumerable<T> GetValue<T>(this TensorProto tensor, OnnxModelBaseOptions options)
@@ -456,62 +351,6 @@ public static class OnnxHelper
         }
 
         throw new InvalidCastException($"Tensor '{tensor.Name}' is {value.GetType().Name}, not {typeof(T).Name}");
-    }
-
-    private static BFloat16[] ConvertBFloat16(ReadOnlySpan<byte> data)
-    {
-        var ushortSpan = System.Runtime.InteropServices.MemoryMarshal.Cast<byte, ushort>(data);
-        var result = new BFloat16[ushortSpan.Length];
-
-        for (var i = 0; i < ushortSpan.Length; i++)
-        {
-            var value = (uint)ushortSpan[i] << 16;
-            result[i] = new BFloat16(BitConverter.Int32BitsToSingle((int)value));
-        }
-
-        return result;
-    }
-
-    private static Half[] ConvertHalf(ReadOnlySpan<byte> data)
-    {
-        var ushortSpan = MemoryMarshal.Cast<byte, ushort>(data);
-        var result = new Half[ushortSpan.Length];
-
-        for (var i = 0; i < ushortSpan.Length; i++)
-        {
-            result[i] = BitConverter.UInt16BitsToHalf(ushortSpan[i]);
-        }
-
-        return result;
-    }
-
-    private static Complex64[] ConvertComplex64(ReadOnlySpan<byte> data)
-    {
-        var floatSpan = MemoryMarshal.Cast<byte, float>(data);
-        var result = new Complex64[floatSpan.Length / 2];
-
-        for (var i = 0; i < result.Length; i++)
-        {
-            result[i] = new Complex64(floatSpan[i * 2], floatSpan[i * 2 + 1]);
-        }
-
-        return result;
-    }
-
-    private static Complex128[] ConvertComplex128(ReadOnlySpan<byte> data)
-    {
-        var doubleSpan = MemoryMarshal.Cast<byte, double>(data);
-        var result = new Complex128[doubleSpan.Length / 2];
-
-        for (var i = 0; i < result.Length; i++)
-        {
-            result[i] = new Complex128(
-                doubleSpan[i * 2],
-                doubleSpan[i * 2 + 1]
-            );
-        }
-
-        return result;
     }
 
     internal static T GetValue<T>(this AttributeProto attribute, OnnxModelBaseOptions options)
@@ -709,105 +548,6 @@ public static class OnnxHelper
                 break;
             default:
                 throw new NotSupportedException($"Unsupported attribute type {typeof(T).Name}");
-        }
-    }
-
-    internal static void SetValue<T>(this TensorProto tensor, T value, params long[] shape)
-    {
-        tensor.Dims.Set(shape);
-
-        tensor.DoubleData.Clear();
-        tensor.FloatData.Clear();
-        tensor.Int32Data.Clear();
-        tensor.Int64Data.Clear();
-        tensor.Uint64Data.Clear();
-        tensor.StringData.Clear();
-        tensor.RawData = ByteString.Empty;
-
-        switch (value)
-        {
-            case float[] f:
-                tensor.DataType = (int)TensorProto.Types.DataType.Float;
-                tensor.RawData = Pack(f);
-                break;
-
-            case double[] d:
-                tensor.DataType = (int)TensorProto.Types.DataType.Double;
-                tensor.RawData = Pack(d);
-                break;
-
-            case int[] i32:
-                tensor.DataType = (int)TensorProto.Types.DataType.Int32;
-                tensor.RawData = Pack(i32);
-                break;
-
-            case long[] i64:
-                tensor.DataType = (int)TensorProto.Types.DataType.Int64;
-                tensor.RawData = Pack(i64);
-                break;
-
-            case byte[] u8:
-                tensor.DataType = (int)TensorProto.Types.DataType.Uint8;
-                tensor.RawData = ByteString.CopyFrom(u8);
-                break;
-
-            case sbyte[] i8:
-                tensor.DataType = (int)TensorProto.Types.DataType.Int8;
-                tensor.RawData = Pack(i8);
-                break;
-
-            case short[] i16:
-                tensor.DataType = (int)TensorProto.Types.DataType.Int16;
-                tensor.RawData = Pack(i16);
-                break;
-
-            case ushort[] u16:
-                tensor.DataType = (int)TensorProto.Types.DataType.Uint16;
-                tensor.RawData = Pack(u16);
-                break;
-
-            case uint[] u32:
-                tensor.DataType = (int)TensorProto.Types.DataType.Uint32;
-                tensor.RawData = Pack(u32);
-                break;
-
-            case ulong[] u64:
-                tensor.DataType = (int)TensorProto.Types.DataType.Uint64;
-                tensor.RawData = Pack(u64);
-                break;
-
-            case bool[] b:
-                tensor.DataType = (int)TensorProto.Types.DataType.Bool;
-                tensor.RawData = ByteString.CopyFrom(b.Select(x => (byte)(x ? 1 : 0)).ToArray());
-                break;
-
-            case Half[] h:
-                tensor.DataType = (int)TensorProto.Types.DataType.Float16;
-                tensor.RawData = PackHalf(h);
-                break;
-
-            case BFloat16[] bf when typeof(T) == typeof(BFloat16[]):
-                tensor.DataType = (int)TensorProto.Types.DataType.Bfloat16;
-                tensor.RawData = PackBFloat16(bf);
-                break;
-
-            case Complex64[] c64:
-                tensor.DataType = (int)TensorProto.Types.DataType.Complex64;
-                tensor.RawData = PackComplex64(c64);
-                break;
-
-            case Complex128[] c128:
-                tensor.DataType = (int)TensorProto.Types.DataType.Complex128;
-                tensor.RawData = PackComplex128(c128);
-                break;
-
-            case string[] s:
-                tensor.DataType = (int)TensorProto.Types.DataType.String;
-                tensor.StringData.Set(s.Select(ByteString.CopyFromUtf8));
-                break;
-
-            default:
-                throw new NotSupportedException($"Unsupported tensor type {typeof(T)}");
         }
     }
 

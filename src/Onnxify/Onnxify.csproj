@@ -8,12 +8,9 @@
 
   <PropertyGroup>
     <CurrentAbsolutePath>$(MSBuildThisFileDirectory)</CurrentAbsolutePath>
-
     <ThirdPartySourcePath>$([System.IO.Path]::Combine('$(CurrentAbsolutePath)', '../../third_party/onnxruntime/cmake/external/onnx'))</ThirdPartySourcePath>
-
     <AssetsTargetPath>$([System.IO.Path]::Combine('$(CurrentAbsolutePath)', 'Assets'))</AssetsTargetPath>
     <ProtoAssetsSourcePath>$([System.IO.Path]::Combine('$(ThirdPartySourcePath)', 'onnx'))</ProtoAssetsSourcePath>
-    
     <ProtoOnnxMLSourcePath>$([System.IO.Path]::Combine('$(AssetsTargetPath)', 'onnx-ml.proto3'))</ProtoOnnxMLSourcePath>
   </PropertyGroup>
 

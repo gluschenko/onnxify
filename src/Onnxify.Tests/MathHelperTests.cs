@@ -1,4 +1,4 @@
-﻿using Onnxify.Data;
+﻿using Onnxify.Helpers;
 
 namespace Onnxify.Tests;
 
