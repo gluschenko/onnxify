@@ -234,6 +234,30 @@ public class OnnxGraph
 
         return newGraph;
     }
+
+    public override string ToString()
+    {
+        var name = string.IsNullOrWhiteSpace(Name) ? "<unnamed>" : Name;
+        return $"""
+            OnnxGraph(
+                Name={name},
+                Inputs={FormatCollection(Inputs).Indent(1)},
+                Outputs={FormatCollection(Outputs).Indent(1)},
+                Initializers={FormatCollection(Initializers).Indent(1)},
+                Values={FormatCollection(Placeholders).Indent(1)},
+                Nodes={FormatCollection(Nodes).Indent(1)}
+            )
+            """;
+    }
+
+    private static string FormatCollection<T>(IEnumerable<T> values)
+    {
+        return $"""
+            [
+                {string.Join(",\n", values).Indent(1)}
+            ]
+            """;
+    }
 }
 
 public readonly struct MLDomain(OnnxGraph graph)

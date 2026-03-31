@@ -1,4 +1,4 @@
-﻿using Onnx;
+using Onnx;
 
 namespace Onnxify;
 
@@ -69,6 +69,9 @@ public class OnnxValue<T> : OnnxValue where T : OnnxValueType
 
         return newValue;
     }
+
+    public override string ToString()
+    {
+        return $"{Name}: {Type}";
+    }
 }
-
-

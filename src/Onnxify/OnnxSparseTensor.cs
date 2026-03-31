@@ -33,4 +33,9 @@ public class OnnxSparseTensor<T> : OnnxSparseTensor
 
         return newTensor;
     }
+
+    public override string ToString()
+    {
+        return _value.ToString();
+    }
 }

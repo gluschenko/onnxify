@@ -1,4 +1,5 @@
-﻿using Onnx;
+﻿using System.Globalization;
+using Onnx;
 using Onnxify.Helpers;
 
 namespace Onnxify;
@@ -54,6 +55,8 @@ public abstract class OnnxTensor : IOnnxGraphEdge
 
 public class OnnxTensor<T> : OnnxTensor
 {
+    private const int PREVIEW_EDGE_COUNT = 2;
+
     public override string Name { get; }
     public override Type DataType { get; }
     public TensorDataLocation DataLocation { get; private set; }
@@ -97,5 +100,45 @@ public class OnnxTensor<T> : OnnxTensor
         newTensor.SetValue(data, Shape);
 
         return newTensor;
+    }
+
+    public override string ToString()
+    {
+        var data = Value.ToArray();
+        var shape = $"[{string.Join(", ", Shape)}]";
+
+        return $"{Name}: {DataType.Name}{shape} = {FormatPreview(data)}";
+    }
+
+    private static string FormatPreview(T[] data)
+    {
+        if (data.Length == 0)
+        {
+            return "[]";
+        }
+
+        if (data.Length <= PREVIEW_EDGE_COUNT * 2)
+        {
+            return $"[{string.Join(", ", data.Select(FormatValue))}]";
+        }
+
+        var head = data.Take(PREVIEW_EDGE_COUNT).Select(FormatValue);
+        var tail = data.Skip(data.Length - PREVIEW_EDGE_COUNT).Select(FormatValue);
+        return $"[{string.Join(", ", head)}, ... {string.Join(", ", tail)}]";
+    }
+
+    private static string FormatValue(T value)
+    {
+        if (value is null)
+        {
+            return "null";
+        }
+
+        return value switch
+        {
+            string text => text,
+            IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
+            _ => value.ToString() ?? string.Empty,
+        };
     }
 }

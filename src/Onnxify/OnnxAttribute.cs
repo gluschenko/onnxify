@@ -1,4 +1,5 @@
-﻿using Onnx;
+using System.Collections;
+using Onnx;
 using Onnxify.Helpers;
 
 namespace Onnxify;
@@ -61,5 +62,25 @@ public class OnnxAttribute<T> : OnnxAttribute where T : notnull
     public override object GetValue()
     {
         return Value;
+    }
+
+    public override string ToString()
+    {
+        return $"{Name}: {Type.Name} = {FormatValue(Value)}";
+    }
+
+    private static string FormatValue(T value)
+    {
+        return value switch
+        {
+            string text => text,
+            IEnumerable values when value is not string => $"[{string.Join(", ", values.Cast<object?>().Select(FormatObject))}]",
+            _ => FormatObject(value),
+        };
+    }
+
+    private static string FormatObject(object? value)
+    {
+        return value?.ToString() ?? "null";
     }
 }

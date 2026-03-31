@@ -144,15 +144,18 @@ public class OnnxModel
 
     public override string ToString()
     {
+        var producerName = string.IsNullOrWhiteSpace(ProducerName) ? "<unknown>" : ProducerName;
+        var domain = string.IsNullOrWhiteSpace(Domain) ? "<default>" : Domain;
         return $"""
-        OnnxModel(
-            ProducerName={ProducerName},
-            ProducerVersion={ProducerVersion},
-            ModelVersion={ModelVersion},
-            IrVersion={IrVersion},
-            Domain={Domain}
-        )
-        """;
+            OnnxModel(
+                Producer={producerName},
+                Version={ProducerVersion},
+                ModelVersion={ModelVersion},
+                IrVersion={IrVersion},
+                Domain={domain},
+                Graph={Graph.ToString().Indent(1)}
+            )
+            """;
     }
 }
 

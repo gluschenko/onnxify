@@ -1,4 +1,5 @@
 ﻿using System.Runtime.InteropServices;
+using System.Text;
 using Google.Protobuf;
 using Onnxify.Data.Numerics;
 

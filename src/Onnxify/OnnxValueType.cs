@@ -38,6 +38,11 @@ public abstract class OnnxValueType
         };
     }
 
+    public override string ToString()
+    {
+        return GetType().Name;
+    }
+
     internal static OnnxTensorType FromProto(TypeProto.Types.Tensor proto, TypeProto typeProto)
     {
         var type = OnnxHelper.GetSystemType((TensorProto.Types.DataType)proto.ElemType);
@@ -125,6 +130,19 @@ public sealed class OnnxTensorType : OnnxValueType
 
         return proto;
     }
+
+    public override string ToString()
+    {
+        var shape = Shape is null
+            ? string.Empty
+            : $"[{string.Join(", ", Shape.Dimensions)}]";
+
+        var denotation = string.IsNullOrWhiteSpace(Denotation)
+            ? string.Empty
+            : $" ({Denotation})";
+
+        return $"{Type.Name}{shape}{denotation}";
+    }
 }
 
 public class OnnxTensorShape
@@ -187,6 +205,11 @@ public abstract class OnnxDimension
 
     public static implicit operator OnnxDimension(long value) => new OnnxDimension<long>(value);
     public static implicit operator OnnxDimension(string value) => new OnnxDimension<string>(value);
+
+    public override string ToString()
+    {
+        return GetValue().ToString() ?? string.Empty;
+    }
 }
 
 public class OnnxDimension<T> : OnnxDimension where T : notnull
