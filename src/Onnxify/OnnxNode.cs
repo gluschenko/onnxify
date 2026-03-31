@@ -309,5 +309,28 @@ public class OnnxNode : IOnnxGraphNode
         ArgumentNullException.ThrowIfNull(name);
         return _attributes.Remove(name);
     }
+
+    public override string ToString()
+    {
+        var domain = string.IsNullOrWhiteSpace(Domain) ? "<default>" : Domain;
+
+        return $"""
+            OnnxNode(
+                Name={Name},
+                OpType={OpType},
+                Domain={domain},
+                Inputs=[
+                    {string.Join(",\n", Inputs).Indent(2)}
+                ],
+                Outputs=[
+                    {string.Join(",\n", Outputs).Indent(2)}
+                ],
+                Attributes=[
+                    {string.Join(",\n", Attributes).Indent(2)}
+                ]
+                Doc={(!string.IsNullOrWhiteSpace(DocString) ? DocString : "<missing>")}
+            )
+            """;
+    }
 }
 

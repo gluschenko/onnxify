@@ -8,4 +8,9 @@ public class OnnxEdge : IOnnxGraphEdge
     {
         Name = name;
     }
+
+    public override string ToString()
+    {
+        return Name;
+    }
 }
