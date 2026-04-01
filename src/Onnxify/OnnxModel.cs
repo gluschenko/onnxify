@@ -44,7 +44,7 @@ public class OnnxModel
     }
 
     public IReadOnlyList<KeyValuePair<string, string>> MetadataProps => _metadataProps;
-    public IReadOnlyList<KeyValuePair<string, long>> OpsetImport => _opsetImport;
+    public IReadOnlyList<OperationSet> OpsetImport => _opsetImport;
     public IReadOnlyList<TrainingInfo> TrainingInfo => _trainingInfo;
 
     public OnnxGraph Graph => _graph;
@@ -54,8 +54,8 @@ public class OnnxModel
     private readonly OnnxModelBaseOptions _options;
 
     private readonly LazyDictionary<string, KeyValuePair<string, string>> _metadataProps = new(x => x.Key, StringComparer.Ordinal);
-    private readonly LazyDictionary<string, KeyValuePair<string, long>> _opsetImport = new(x => x.Key, StringComparer.Ordinal);
-    private readonly List<TrainingInfo> _trainingInfo = new();
+    private readonly LazyDictionary<string, OperationSet> _opsetImport = new(x => x.Domain, StringComparer.Ordinal);
+    private readonly List<TrainingInfo> _trainingInfo = [];
 
     internal OnnxModel(ModelProto model, OnnxModelBaseOptions options)
     {
@@ -70,7 +70,11 @@ public class OnnxModel
 
         foreach (var x in model.OpsetImport)
         {
-            _opsetImport.Add(new KeyValuePair<string, long>(x.Domain, x.Version));
+            _opsetImport.Add(new OperationSet
+            {
+                Domain = x.Domain,
+                Version = x.Version,
+            });
         }
 
         foreach (var x in model.TrainingInfo)
@@ -136,7 +140,7 @@ public class OnnxModel
         newModel.Graph = _graph.ToProto();
 
         newModel.MetadataProps.Set(_metadataProps.Select(x => new StringStringEntryProto { Key = x.Key, Value = x.Value }));
-        newModel.OpsetImport.Set(_opsetImport.Select(x => new OperatorSetIdProto { Domain = x.Key, Version = x.Value }));
+        newModel.OpsetImport.Set(_opsetImport.Select(x => new OperatorSetIdProto { Domain = x.Domain, Version = x.Version }));
         newModel.TrainingInfo.Set(_trainingInfo.Select(x => x.ToProto()));
 
         return newModel;
@@ -167,6 +171,12 @@ public interface IOnnxGraphNode
 public interface IOnnxGraphEdge
 {
     public string Name { get; }
+}
+
+public class OperationSet
+{
+    public required string Domain { get; init; }
+    public required long Version { get; init; }
 }
 
 public class TrainingInfo

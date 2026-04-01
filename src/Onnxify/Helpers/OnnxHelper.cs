@@ -141,8 +141,8 @@ public static class OnnxHelper
     internal static object GetValue(this TensorProto tensor, OnnxModelBaseOptions options)
     {
         var type = (TensorProto.Types.DataType)tensor.DataType;
+        var systemType = GetSystemType(type);
 
-        // TODO: data reader abstraction
         if (tensor.DataLocation == TensorProto.Types.DataLocation.External)
         {
             if (!Directory.Exists(options.DataLocation))
@@ -165,27 +165,22 @@ public static class OnnxHelper
                 ? long.Parse(lengthString)
                 : -1;
 
-            var path = Path.Combine(options.DataLocation ?? "", location);
+            var path = Path.Combine(options.DataLocation ?? string.Empty, location);
 
-            using var fs = File.OpenRead(path);
-            fs.Seek(offset, SeekOrigin.Begin);
+            var result = options.DataReader.ReadTensorValue(
+                location: path,
+                offset: offset,
+                length: length,
+                type: systemType
+            );
 
-            if (length < 0)
-            {
-                length = fs.Length - offset;
-            }
-
-            var buffer = new byte[length];
-            fs.ReadExactly(buffer);
-
-            var data = DecodeRawData(buffer, type);
-            return data;
+            return result;
         }
 
         if (tensor.RawData.Length > 0)
         {
             var span = tensor.RawData.Span;
-            var data = DecodeRawData(span, type);
+            var data = DecodeRawData(span, systemType);
             return data;
         }
 
@@ -204,10 +199,12 @@ public static class OnnxHelper
 
     internal static object DecodeRawData(
         ReadOnlySpan<byte> span,
-        TensorProto.Types.DataType type
+        Type type
     )
     {
-        return type switch
+        var tensorType = GetDataType(type);
+
+        return tensorType switch
         {
             TensorProto.Types.DataType.Float => BinaryHelper.Decode<float>(span),
             TensorProto.Types.DataType.Double => BinaryHelper.Decode<double>(span),

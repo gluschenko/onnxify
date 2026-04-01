@@ -426,8 +426,8 @@ public sealed class OnnxProjectGenerator
                 $$"""
                     model.OpsetImport.Add(new OperatorSetIdProto
                     {
-                        Domain = {{AsStringLiteral(opsetImport.Key)}},
-                        Version = {{opsetImport.Value.ToString(CultureInfo.InvariantCulture)}}L,
+                        Domain = {{AsStringLiteral(opsetImport.Domain)}},
+                        Version = {{opsetImport.Version.ToString(CultureInfo.InvariantCulture)}}L,
                     });
 
                 """);
