@@ -1,4 +1,4 @@
-using SkiaSharp;
+﻿using SkiaSharp;
 using TorchSharp;
 using static TorchSharp.torch;
 
@@ -109,7 +109,7 @@ namespace Onnxify.Examples
         {
             if (_baseSamples.Count == 0)
             {
-                throw new InvalidOperationException("Load data before splitting.");
+                return;
             }
 
             DisposeGeneratedSamples();

@@ -28,7 +28,14 @@ public abstract class TorchModuleExporter<TSource, TDestination> : ITorchModuleE
         TorchModuleExportState state
     )
     {
-        return Export(graph, module, input, state);
+        if (module is TSource sourceModule)
+        {
+            return Export(graph, sourceModule, input, state);
+        }
+        else
+        {
+            throw new NotSupportedException($"'{this.GetType().Name}' is not designed for '{module.GetType().FullName}'");
+        }
     }
 
     public abstract IOnnxGraphEdge Export(
@@ -166,7 +173,7 @@ public sealed class LinearExporter : TorchModuleExporter<TorchModules.Linear, Ge
         TorchModuleExportState state
     )
     {
-        var name = state.Next("fc");
+        var name = state.Next("linear");
         var weight = graph.AddTensor(
             name: $"{name}_w",
             shape: TorchHelper.GetShape(module.weight),
@@ -209,7 +216,7 @@ public sealed class AdaptiveAvgPool2dExporter : TorchModuleExporter<TorchModules
         if (outputSize.SequenceEqual([1L, 1L]))
         {
             return graph.GlobalAveragePool(
-                name: state.Next("gap"),
+                name: state.Next("global_average_pool"),
                 options: new GlobalAveragePoolInputOptions
                 {
                     X = input,
@@ -236,8 +243,7 @@ public sealed class SequentialExporter : TorchModuleExporter<TorchModules.Sequen
         var children = module.children().OfType<TorchModule>().ToArray();
         if (children.Length == 0)
         {
-            throw new NotSupportedException(
-                $"Unsupported TorchSharp module leaf: {module.GetType().FullName}.");
+            throw new NotSupportedException($"Unsupported TorchSharp module leaf: {module.GetType().FullName}.");
         }
 
         // This walker assumes child modules form a simple feed-forward chain in registration order.
