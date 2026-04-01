@@ -79,7 +79,7 @@ namespace Onnxify.Examples
                 type: OnnxTensorType.Create<float>(["batch", 3, 227, 227])
             );
 
-            var x = _features.ToOnnxGraph(graph, input, exportState);
+            var x = _features.Export(graph, input, exportState);
 
             x = graph.Flatten(
                 name: "flatten",
@@ -90,7 +90,7 @@ namespace Onnxify.Examples
                 }
             );
 
-            x = _classifier.ToOnnxGraph(graph, x, exportState);
+            x = _classifier.Export(graph, x, exportState);
 
             var outputEdge = graph.AddEdge("output");
             graph.Identity(

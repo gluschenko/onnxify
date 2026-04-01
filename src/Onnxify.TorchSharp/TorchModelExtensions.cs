@@ -1,25 +1,18 @@
-﻿using Onnxify.TorchSharp.Operators;
-
-namespace Onnxify.TorchSharp;
-
-using TorchModule = global::TorchSharp.torch.nn.Module<global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor>;
+﻿namespace Onnxify.TorchSharp;
 
 public static class TorchModelExtensions
 {
-    public static IOnnxGraphEdge ToOnnxGraph(
-        this TorchModule module,
-        OnnxGraph graph,
-        IOnnxGraphEdge input
-    )
-    {
-        ArgumentNullException.ThrowIfNull(module);
-        ArgumentNullException.ThrowIfNull(graph);
-        ArgumentNullException.ThrowIfNull(input);
+    private static readonly IEnumerable<ITorchModuleExporter> _exporters = [
+        new ConvExporter(),
+        new ReluExporter(),
+        new MaxPool2dExporter(),
+        new DropoutExporter(),
+        new LinearExporter(),
+        new AdaptiveAvgPool2dExporter(),
+        new SequentialExporter(),
+    ];
 
-        return ExportModule(module, graph, input, new TorchModuleExportState());
-    }
-
-    public static IOnnxGraphEdge ToOnnxGraph(
+    public static IOnnxGraphEdge Export(
         this TorchModule module,
         OnnxGraph graph,
         IOnnxGraphEdge input,
@@ -31,104 +24,252 @@ public static class TorchModelExtensions
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(state);
 
-        return ExportModule(module, graph, input, state);
+        foreach (var exporter in _exporters)
+        {
+            if (exporter.IsMatch(module))
+            {
+                var edge = exporter.Export(graph, module, input, state);
+                return edge;
+            }
+        }
+
+        throw new NotImplementedException($"Not implemented for '{module.GetType().FullName}'");
+    }
+}
+
+public interface ITorchModuleExporter
+{
+    public bool IsMatch(TorchModule module);
+
+    public abstract IOnnxGraphEdge Export(
+        OnnxGraph graph,
+        TorchModule module,
+        IOnnxGraphEdge input,
+        TorchModuleExportState state
+    );
+}
+
+public abstract class TorchModuleExporter<TSource, TDestination> : ITorchModuleExporter
+    where TSource : TorchModule
+    where TDestination : OnnxNode
+{
+    public virtual bool IsMatch(TorchModule module)
+    {
+        return module is TSource;
     }
 
-    private static IOnnxGraphEdge ExportModule(
-        TorchModule module,
+    public IOnnxGraphEdge Export(
         OnnxGraph graph,
+        TorchModule module,
         IOnnxGraphEdge input,
         TorchModuleExportState state
     )
     {
-        if (module is global::TorchSharp.Modules.Conv2d conv2d)
+        return Export(graph, module, input, state);
+    }
+
+    public abstract IOnnxGraphEdge Export(
+        OnnxGraph graph,
+        TSource module,
+        IOnnxGraphEdge input,
+        TorchModuleExportState state
+    );
+}
+
+public sealed class ConvExporter : TorchModuleExporter<TorchModules.Conv2d, Conv>
+{
+    public override IOnnxGraphEdge Export(
+        OnnxGraph graph,
+        TorchModules.Conv2d module,
+        IOnnxGraphEdge input,
+        TorchModuleExportState state
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(module);
+
+        var name = state.Next("conv");
+
+        var weight = graph.AddTensor(
+            name: $"{name}_w",
+            shape: TorchHelper.GetShape(module.weight),
+            value: TorchHelper.GetFloatData(module.weight)
+        );
+
+        IOnnxGraphEdge? bias = null;
+        if (module.bias is not null)
         {
-            return graph.Conv(state.Next("conv"), input, conv2d);
+            bias = graph.AddTensor(
+                name: $"{name}_b",
+                shape: TorchHelper.GetShape(module.bias),
+                value: TorchHelper.GetFloatData(module.bias)
+            );
         }
 
-        if (module is global::TorchSharp.Modules.ReLU)
+        var padding = TorchHelper.ToLongArray(module.padding);
+        var strides = TorchHelper.ToLongArray(module.stride);
+        var dilations = TorchHelper.ToLongArray(module.dilation);
+
+        return graph.Conv(
+            name: name,
+            options: new ConvInputOptions
+            {
+                X = input,
+                W = weight,
+                B = bias,
+                KernelShape = TorchHelper.ToLongArray(module.kernel_size),
+                Strides = strides.Length == 0 ? null : strides,
+                Pads = padding.Length == 0 ? null : TorchHelper.ExpandPadding(padding),
+                Dilations = dilations.Length == 0 ? null : dilations,
+                Group = module.groups,
+            }
+        );
+    }
+}
+
+public sealed class ReluExporter : TorchModuleExporter<TorchModules.ReLU, Relu>
+{
+    public override IOnnxGraphEdge Export(
+        OnnxGraph graph,
+        TorchModules.ReLU module,
+        IOnnxGraphEdge input,
+        TorchModuleExportState state
+    )
+    {
+        return graph.Relu(
+            name: state.Next("relu"),
+            options: new ReluInputOptions
+            {
+                X = input,
+            }
+        );
+    }
+}
+
+public sealed class MaxPool2dExporter : TorchModuleExporter<TorchModules.MaxPool2d, MaxPool>
+{
+    public override IOnnxGraphEdge Export(
+        OnnxGraph graph,
+        TorchModules.MaxPool2d module,
+        IOnnxGraphEdge input,
+        TorchModuleExportState state
+    )
+    {
+        var padding = TorchHelper.ToLongArray(module.padding);
+        var strides = TorchHelper.ToLongArray(module.stride);
+        var result = graph.MaxPool(
+            name: state.Next("maxpool"),
+            options: new MaxPoolInputOptions
+            {
+                X = input,
+                KernelShape = TorchHelper.ToLongArray(module.kernel_size),
+                Strides = strides.Length == 0 ? null : strides,
+                Pads = padding.Length == 0 ? null : TorchHelper.ExpandPadding(padding),
+            }
+        );
+
+        return result.Y ?? throw new InvalidOperationException("MaxPool export did not produce an output edge.");
+    }
+}
+
+public sealed class DropoutExporter : TorchModuleExporter<TorchModules.Dropout, Dropout>
+{
+    public override IOnnxGraphEdge Export(
+        OnnxGraph graph,
+        TorchModules.Dropout module,
+        IOnnxGraphEdge input,
+        TorchModuleExportState state
+    )
+    {
+        var output = graph.Dropout(
+            name: state.Next("dropout"),
+            options: new DropoutInputOptions
+            {
+                Data = input,
+            }
+        );
+
+        return output.Output;
+    }
+}
+
+public sealed class LinearExporter : TorchModuleExporter<TorchModules.Linear, Gemm>
+{
+    public override IOnnxGraphEdge Export(
+        OnnxGraph graph,
+        TorchModules.Linear module,
+        IOnnxGraphEdge input,
+        TorchModuleExportState state
+    )
+    {
+        var name = state.Next("fc");
+        var weight = graph.AddTensor(
+            name: $"{name}_w",
+            shape: TorchHelper.GetShape(module.weight),
+            value: TorchHelper.GetFloatData(module.weight)
+        );
+
+        IOnnxGraphEdge? bias = null;
+        if (module.bias is not null)
         {
-            return graph.Relu(
-                name: state.Next("relu"),
-                options: new ReluInputOptions
+            bias = graph.AddTensor(
+                name: $"{name}_b",
+                shape: TorchHelper.GetShape(module.bias),
+                value: TorchHelper.GetFloatData(module.bias)
+            );
+        }
+
+        return graph.Gemm(
+            name: name,
+            options: new GemmInputOptions
+            {
+                A = input,
+                B = weight,
+                C = bias,
+                TransB = 1,
+            }
+        );
+    }
+}
+
+public sealed class AdaptiveAvgPool2dExporter : TorchModuleExporter<TorchModules.AdaptiveAvgPool2d, GlobalAveragePool>
+{
+    public override IOnnxGraphEdge Export(
+        OnnxGraph graph,
+        TorchModules.AdaptiveAvgPool2d module,
+        IOnnxGraphEdge input,
+        TorchModuleExportState state
+    )
+    {
+        var outputSize = TorchHelper.ToLongArray(module.output_size);
+        if (outputSize.SequenceEqual([1L, 1L]))
+        {
+            return graph.GlobalAveragePool(
+                name: state.Next("gap"),
+                options: new GlobalAveragePoolInputOptions
                 {
                     X = input,
                 }
             );
         }
 
-        if (module is global::TorchSharp.Modules.MaxPool2d maxPool2d)
-        {
-            var padding = ToLongArray(maxPool2d.padding);
-            var strides = ToLongArray(maxPool2d.stride);
-            var result = graph.MaxPool(
-                name: state.Next("maxpool"),
-                options: new MaxPoolInputOptions
-                {
-                    X = input,
-                    KernelShape = ToLongArray(maxPool2d.kernel_size),
-                    Strides = strides.Length == 0 ? null : strides,
-                    Pads = padding.Length == 0 ? null : ExpandPadding(padding),
-                }
-            );
+        throw new NotSupportedException(
+            $"AdaptiveAvgPool2d with output_size [{string.Join(", ", outputSize)}] requires shape-aware " +
+            $"lowering and cannot be exported by the recursive module walker."
+        );
+    }
+}
 
-            return result.Y ?? throw new InvalidOperationException("MaxPool export did not produce an output edge.");
-        }
-
-        if (module is global::TorchSharp.Modules.Dropout)
-        {
-            return input;
-        }
-
-        if (module is global::TorchSharp.Modules.Linear linear)
-        {
-            var name = state.Next("fc");
-            var weight = graph.AddTensor(
-                name: $"{name}_w",
-                shape: GetShape(linear.weight),
-                value: GetFloatData(linear.weight)
-            );
-
-            IOnnxGraphEdge? bias = null;
-            if (linear.bias is not null)
-            {
-                bias = graph.AddTensor(
-                    name: $"{name}_b",
-                    shape: GetShape(linear.bias),
-                    value: GetFloatData(linear.bias)
-                );
-            }
-
-            return graph.Gemm(
-                name: name,
-                options: new GemmInputOptions
-                {
-                    A = input,
-                    B = weight,
-                    C = bias,
-                    TransB = 1,
-                }
-            );
-        }
-
-        if (module is global::TorchSharp.Modules.AdaptiveAvgPool2d adaptiveAvgPool2d)
-        {
-            var outputSize = ToLongArray(adaptiveAvgPool2d.output_size);
-            if (outputSize.SequenceEqual([1L, 1L]))
-            {
-                return graph.GlobalAveragePool(
-                    name: state.Next("gap"),
-                    options: new GlobalAveragePoolInputOptions
-                    {
-                        X = input,
-                    }
-                );
-            }
-
-            throw new NotSupportedException(
-                $"AdaptiveAvgPool2d with output_size [{string.Join(", ", outputSize)}] requires shape-aware lowering and cannot be exported by the recursive module walker.");
-        }
-
+public sealed class SequentialExporter : TorchModuleExporter<TorchModules.Sequential, GlobalAveragePool>
+{
+    public override IOnnxGraphEdge Export(
+        OnnxGraph graph,
+        TorchModules.Sequential module,
+        IOnnxGraphEdge input,
+        TorchModuleExportState state
+    )
+    {
         var children = module.children().OfType<TorchModule>().ToArray();
         if (children.Length == 0)
         {
@@ -140,56 +281,10 @@ public static class TorchModelExtensions
         var current = input;
         foreach (var child in children)
         {
-            current = ExportModule(child, graph, current, state);
+            current = child.Export(graph, current, state);
         }
 
         return current;
     }
-
-    private static long[] GetShape(global::TorchSharp.torch.Tensor tensor)
-    {
-        return ((IEnumerable<long>)tensor.shape).ToArray();
-    }
-
-    private static float[] GetFloatData(global::TorchSharp.torch.Tensor tensor)
-    {
-        return tensor
-            .detach()
-            .cpu()
-            .data<float>()
-            .ToArray();
-    }
-
-    private static long[] ToLongArray(IEnumerable<long>? value)
-    {
-        return value?.ToArray() ?? [];
-    }
-
-    private static long[] ExpandPadding(long[] padding)
-    {
-        return padding.Length switch
-        {
-            1 => [padding[0], padding[0], padding[0], padding[0]],
-            2 => [padding[0], padding[1], padding[0], padding[1]],
-            4 => padding,
-            _ => throw new NotSupportedException($"Unsupported padding rank: {padding.Length}."),
-        };
-    }
 }
 
-public sealed class TorchModuleExportState
-{
-    private readonly Dictionary<string, int> _counters = new(StringComparer.Ordinal);
-
-    public string Next(string prefix)
-    {
-        if (!_counters.TryGetValue(prefix, out var index))
-        {
-            _counters[prefix] = 1;
-            return $"{prefix}0";
-        }
-
-        _counters[prefix] = index + 1;
-        return $"{prefix}{index}";
-    }
-}
