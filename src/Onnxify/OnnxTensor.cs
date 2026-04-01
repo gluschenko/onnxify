@@ -55,7 +55,7 @@ public abstract class OnnxTensor : IOnnxGraphEdge
 
 public class OnnxTensor<T> : OnnxTensor
 {
-    private const int PREVIEW_EDGE_COUNT = 2;
+    private const int PREVIEW_EDGE_COUNT = 3;
 
     public override string Name { get; }
     public override Type DataType { get; }
