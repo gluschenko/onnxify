@@ -1,3 +1,6 @@
 [submodule "third_party/onnxruntime"]
 	path = third_party/onnxruntime
 	url = https://github.com/microsoft/onnxruntime.git
+[submodule "third_party/onnxscript"]
+	path = third_party/onnxscript
+	url = https://github.com/microsoft/onnxscript.git
