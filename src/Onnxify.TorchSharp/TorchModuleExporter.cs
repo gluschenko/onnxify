@@ -46,6 +46,18 @@ public abstract class TorchModuleExporter<TSource, TDestination> : ITorchModuleE
     );
 }
 
+[AttributeUsage(AttributeTargets.Class)]
+public class TorchOpAttribute : Attribute
+{
+    public string Name { get; init; }
+
+    public TorchOpAttribute(string name)
+    {
+        Name = name;
+    }
+}
+
+[TorchOp("aten::conv2d")]
 public sealed class ConvExporter : TorchModuleExporter<TorchModules.Conv2d, Conv>
 {
     public override IOnnxGraphEdge Export(
@@ -98,6 +110,7 @@ public sealed class ConvExporter : TorchModuleExporter<TorchModules.Conv2d, Conv
     }
 }
 
+[TorchOp("aten::relu")]
 public sealed class ReluExporter : TorchModuleExporter<TorchModules.ReLU, Relu>
 {
     public override IOnnxGraphEdge Export(
@@ -117,6 +130,7 @@ public sealed class ReluExporter : TorchModuleExporter<TorchModules.ReLU, Relu>
     }
 }
 
+[TorchOp("aten::max_pool2d")]
 public sealed class MaxPool2dExporter : TorchModuleExporter<TorchModules.MaxPool2d, MaxPool>
 {
     public override IOnnxGraphEdge Export(
@@ -143,6 +157,7 @@ public sealed class MaxPool2dExporter : TorchModuleExporter<TorchModules.MaxPool
     }
 }
 
+[TorchOp("aten::dropout")]
 public sealed class DropoutExporter : TorchModuleExporter<TorchModules.Dropout, Dropout>
 {
     public override IOnnxGraphEdge Export(
@@ -164,6 +179,7 @@ public sealed class DropoutExporter : TorchModuleExporter<TorchModules.Dropout, 
     }
 }
 
+[TorchOp("aten::linear")]
 public sealed class LinearExporter : TorchModuleExporter<TorchModules.Linear, Gemm>
 {
     public override IOnnxGraphEdge Export(
@@ -203,6 +219,7 @@ public sealed class LinearExporter : TorchModuleExporter<TorchModules.Linear, Ge
     }
 }
 
+[TorchOp("aten::avg_pool2d")] // ???
 public sealed class AdaptiveAvgPool2dExporter : TorchModuleExporter<TorchModules.AdaptiveAvgPool2d, GlobalAveragePool>
 {
     public override IOnnxGraphEdge Export(

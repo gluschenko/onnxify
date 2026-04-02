@@ -53,7 +53,7 @@ namespace Onnxify.Examples
 
                 var trainer = new AlexNetTrainer(model, dataset);
                 trainer.Train(
-                    epochs: 30,
+                    epochs: 60,
                     batchSize: 256,
                     learningRate: 0.0001f,
                     schedulerStepSize: 30,
