@@ -3,7 +3,7 @@ using TorchSharp;
 using static TorchSharp.torch;
 using static TorchSharp.torch.nn;
 
-namespace Onnxify.Examples
+namespace Onnxify.Examples.Models
 {
     public class AlexNet : Module<Tensor, Tensor>
     {

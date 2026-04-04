@@ -2,7 +2,7 @@
 using static TorchSharp.torch;
 using static TorchSharp.torch.nn;
 
-namespace Onnxify.Examples
+namespace Onnxify.Examples.Models
 {
     internal class AlexNetTrainer
     {

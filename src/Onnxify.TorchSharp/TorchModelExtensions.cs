@@ -10,6 +10,7 @@ public static class TorchModelExtensions
         new LinearExporter(),
         new AdaptiveAvgPool2dExporter(),
         new SequentialExporter(),
+        new EmbeddingExporter(),
     ];
 
     public static IOnnxGraphEdge Export(

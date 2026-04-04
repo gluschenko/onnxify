@@ -1,0 +1,100 @@
+﻿using Onnxify.TorchSharp;
+using TorchSharp;
+using static Google.Protobuf.Compiler.CodeGeneratorResponse.Types;
+using static TorchSharp.torch;
+
+namespace Onnxify.Examples.Models;
+
+/// <summary>
+/// https://github.com/AU-DIS/LSTM_langid/blob/main/src/LSTMLID.py
+/// https://github.com/dotnet/TorchSharp/blob/main/test/TorchSharpTest/TestSaveSD.cs
+/// </summary>
+public class LSTMLIDModel : torch.nn.Module<Tensor, Tensor>
+{
+    private readonly int _vocabSize;
+    private readonly int _langSetSize;
+    private readonly int _numClasses;
+
+    private readonly global::TorchSharp.Modules.Embedding _charEmbeddings;
+    private readonly global::TorchSharp.Modules.LSTM _lstm;
+    private readonly global::TorchSharp.Modules.Linear _hidden2Lang;
+    private readonly torch.Device _device;
+
+    public LSTMLIDModel(
+        Dictionary<string, int> charToIdx,
+        Dictionary<string, int> langToIdx,
+        int numClasses,
+        int embeddingDim,
+        int hiddenDim,
+        int layers
+    ) : base("LSTMLIDModel")
+    {
+        _vocabSize = charToIdx.Count;
+        _langSetSize = langToIdx.Count;
+        _numClasses = numClasses;
+
+        _device = torch.CPU;
+
+        _charEmbeddings = torch.nn.Embedding(_vocabSize, embeddingDim, padding_idx: charToIdx["PAD"]);
+        _lstm = torch.nn.LSTM(embeddingDim, hiddenDim, numLayers: layers, bidirectional: true, batchFirst: true);
+        _hidden2Lang = torch.nn.Linear(hiddenDim * 2, _langSetSize);
+
+        RegisterComponents();
+
+        if (_device.type != DeviceType.CPU)
+        {
+            this.to(_device);
+        }
+    }
+
+    public override Tensor forward(Tensor input)
+    {
+        var x = _charEmbeddings.forward(input);
+        var (lstm, _, _) = _lstm.forward(x);
+        var linear = _hidden2Lang.forward(lstm);
+        var logit = torch.sum(linear, 1);
+        return logit;
+    }
+
+    public void SaveModel(string modelPath)
+    {
+        // var scriptedModel = torch.jit.load(model);
+        // torch.jit.save(this, "mymodel_scripted.pt");
+        this.save(modelPath);
+    }
+
+    public OnnxModel Export()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions());
+        var graph = model.Graph;
+        var exportState = new TorchModuleExportState();
+
+        var input = graph.AddInput(
+            name: "input",
+            type: OnnxTensorType.Create<int>(["seq_len", 1])
+        );
+
+        var x = _charEmbeddings.Export(graph, input, exportState);
+
+        x = _lstm.Export(graph, input, exportState);
+
+        x = _hidden2Lang.Export(graph, x, exportState);
+
+        var outputEdge = graph.AddEdge("output");
+        graph.Identity(
+            name: "output_identity",
+            options: new IdentityInputOutputOptions
+            {
+                Input = x,
+                Output = outputEdge,
+            }
+        );
+
+        graph.AddOutput(
+            name: "output",
+            type: OnnxTensorType.Create<float>([_numClasses])
+        );
+
+        return model;
+    }
+}

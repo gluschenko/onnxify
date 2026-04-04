@@ -1,4 +1,8 @@
-﻿namespace Onnxify.TorchSharp;
+﻿using System.Reflection;
+using System.Xml.Linq;
+using static TorchSharp.torch;
+
+namespace Onnxify.TorchSharp;
 
 public interface ITorchModuleExporter
 {
@@ -271,6 +275,488 @@ public sealed class SequentialExporter : TorchModuleExporter<TorchModules.Sequen
         }
 
         return current;
+    }
+}
+
+public sealed class EmbeddingExporter : TorchModuleExporter<TorchModules.Embedding, GlobalAveragePool>
+{
+    public override IOnnxGraphEdge Export(
+        OnnxGraph graph,
+        TorchModules.Embedding module,
+        IOnnxGraphEdge input,
+        TorchModuleExportState state
+    )
+    {
+        ArgumentNullException.ThrowIfNull(module.weight);
+
+        var name = state.Next("embedding");
+
+        var weight = graph.AddTensor(
+            name: $"{name}_w",
+            shape: TorchHelper.GetShape(module.weight),
+            value: TorchHelper.GetFloatData(module.weight)
+        );
+
+        return graph.Gather(
+            name: name,
+            options: new GatherInputOptions
+            {
+                Data = weight,
+                Indices = input,
+            }
+        );
+    }
+}
+
+public static class ExporterExtensions
+{
+    public static IOnnxGraphEdge Export(
+        this TorchModules.LSTM module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input,
+        TorchModuleExportState state
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(module);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(state);
+
+        var numLayers = checked((int)GetRequiredInt64Member(module, "_num_layers"));
+        var hiddenSize = checked((int)GetRequiredInt64Member(module, "_hidden_size"));
+        var bidirectional = GetRequiredBoolMember(module, "_bidirectional");
+        var batchFirst = GetRequiredBoolMember(module, "_batch_first");
+        /*var projSize = GetOptionalInt64Member(module, "proj_size");
+
+        if (projSize > 0)
+        {
+            throw new NotSupportedException(
+                "LSTM with proj_size > 0 is not supported by this exporter yet."
+            );
+        }*/
+
+        var numDirections = bidirectional ? 2 : 1;
+        var direction = bidirectional ? "bidirectional" : "forward";
+
+        var current = input;
+
+        // PyTorch batch_first=true => [batch, seq, feat]
+        // ONNX LSTM expects           [seq, batch, feat]
+        if (batchFirst)
+        {
+            current = graph.Transpose(
+                name: state.Next("transpose"),
+                options: new TransposeInputOptions
+                {
+                    Data = current,
+                    Perm = new long[] { 1, 0, 2 },
+                }
+            );
+        }
+
+        for (var layer = 0; layer < numLayers; layer++)
+        {
+            var name = state.Next("lstm");
+
+            var flatW = new List<float>();
+            var flatR = new List<float>();
+            List<float>? flatB = null;
+
+            long inputSize = -1;
+            long recurrentInputSize = -1;
+
+            var hasBiases =
+                TryGetTensorParameter(module, GetBiasIhName(layer, false), out _)
+                || TryGetTensorParameter(module, GetBiasHhName(layer, false), out _);
+
+            if (hasBiases)
+            {
+                flatB = new List<float>();
+            }
+
+            for (var dir = 0; dir < numDirections; dir++)
+            {
+                var reverse = dir == 1;
+
+                var weightIh = GetRequiredTensorParameter(module, GetWeightIhName(layer, reverse));
+                var weightHh = GetRequiredTensorParameter(module, GetWeightHhName(layer, reverse));
+
+                var weightIhShape = TorchHelper.GetShape(weightIh);
+                var weightHhShape = TorchHelper.GetShape(weightHh);
+
+                if (weightIhShape.Length != 2 || weightHhShape.Length != 2)
+                {
+                    throw new NotSupportedException(
+                        $"LSTM weights must be rank-2. Got weight_ih rank={weightIhShape.Length}, weight_hh rank={weightHhShape.Length}."
+                    );
+                }
+
+                if (weightIhShape[0] != 4L * hiddenSize)
+                {
+                    throw new NotSupportedException(
+                        $"Unexpected weight_ih rows for layer {layer}, dir {dir}. Expected {4L * hiddenSize}, got {weightIhShape[0]}."
+                    );
+                }
+
+                if (weightHhShape[0] != 4L * hiddenSize)
+                {
+                    throw new NotSupportedException(
+                        $"Unexpected weight_hh rows for layer {layer}, dir {dir}. Expected {4L * hiddenSize}, got {weightHhShape[0]}."
+                    );
+                }
+
+                if (inputSize < 0)
+                {
+                    inputSize = weightIhShape[1];
+                }
+                else if (inputSize != weightIhShape[1])
+                {
+                    throw new NotSupportedException(
+                        $"All directions of the same LSTM layer must have identical input_size. Layer {layer}: got {inputSize} and {weightIhShape[1]}."
+                    );
+                }
+
+                if (recurrentInputSize < 0)
+                {
+                    recurrentInputSize = weightHhShape[1];
+                }
+                else if (recurrentInputSize != weightHhShape[1])
+                {
+                    throw new NotSupportedException(
+                        $"All directions of the same LSTM layer must have identical hidden/recurrent size. Layer {layer}: got {recurrentInputSize} and {weightHhShape[1]}."
+                    );
+                }
+
+                var reorderedW = ReorderLstmGateMatrix(
+                    TorchHelper.GetFloatData(weightIh),
+                    hiddenSize,
+                    checked((int)weightIhShape[1])
+                );
+
+                var reorderedR = ReorderLstmGateMatrix(
+                    TorchHelper.GetFloatData(weightHh),
+                    hiddenSize,
+                    checked((int)weightHhShape[1])
+                );
+
+                flatW.AddRange(reorderedW);
+                flatR.AddRange(reorderedR);
+
+                if (hasBiases)
+                {
+                    var biasIh = GetRequiredTensorParameter(module, GetBiasIhName(layer, reverse));
+                    var biasHh = GetRequiredTensorParameter(module, GetBiasHhName(layer, reverse));
+
+                    var reorderedBiasIh = ReorderLstmGateVector(
+                        TorchHelper.GetFloatData(biasIh),
+                        hiddenSize
+                    );
+
+                    var reorderedBiasHh = ReorderLstmGateVector(
+                        TorchHelper.GetFloatData(biasHh),
+                        hiddenSize
+                    );
+
+                    flatB!.AddRange(reorderedBiasIh);
+                    flatB.AddRange(reorderedBiasHh);
+                }
+            }
+
+            var w = graph.AddTensor(
+                name: $"{name}_W",
+                shape: new long[] { numDirections, 4L * hiddenSize, inputSize },
+                value: flatW.ToArray()
+            );
+
+            var r = graph.AddTensor(
+                name: $"{name}_R",
+                shape: new long[] { numDirections, 4L * hiddenSize, recurrentInputSize },
+                value: flatR.ToArray()
+            );
+
+            IOnnxGraphEdge? b = null;
+            if (hasBiases)
+            {
+                b = graph.AddTensor(
+                    name: $"{name}_B",
+                    shape: new long[] { numDirections, 8L * hiddenSize },
+                    value: flatB!.ToArray()
+                );
+            }
+
+            var lstm = graph.LSTM(
+                name: name,
+                options: new LSTMInputOptions
+                {
+                    X = current,
+                    W = w,
+                    R = r,
+                    B = b,
+                    Direction = direction,
+                    HiddenSize = hiddenSize,
+                }
+            );
+
+            var y = lstm.Y
+                ?? throw new InvalidOperationException("LSTM export did not produce the Y output.");
+
+            // ONNX Y: [seq, num_directions, batch, hidden]
+            // Torch output: [seq, batch, num_directions * hidden]
+            var yTransposed = graph.Transpose(
+                name: $"{name}_transpose",
+                options: new TransposeInputOptions
+                {
+                    Data = y,
+                    Perm = new long[] { 0, 2, 1, 3 },
+                }
+            );
+
+            // Reshape with zeros keeps seq and batch dimensions from input tensor.
+            var reshapeShape = graph.AddTensor(
+                name: $"{name}_shape",
+                shape: new long[] { 3 },
+                value: new long[] { 0, 0, numDirections * (long)hiddenSize }
+            );
+
+            current = graph.Reshape(
+                name: $"{name}_reshape",
+                options: new ReshapeInputOptions
+                {
+                    Data = yTransposed,
+                    Shape = reshapeShape,
+                }
+            );
+        }
+
+        if (batchFirst)
+        {
+            current = graph.Transpose(
+                name: state.Next("transpose"),
+                options: new TransposeInputOptions
+                {
+                    Data = current,
+                    Perm = new long[] { 1, 0, 2 },
+                }
+            );
+        }
+
+        return current;
+    }
+
+    private static string GetWeightIhName(int layer, bool reverse)
+        => reverse ? $"weight_ih_l{layer}_reverse" : $"weight_ih_l{layer}";
+
+    private static string GetWeightHhName(int layer, bool reverse)
+        => reverse ? $"weight_hh_l{layer}_reverse" : $"weight_hh_l{layer}";
+
+    private static string GetBiasIhName(int layer, bool reverse)
+        => reverse ? $"bias_ih_l{layer}_reverse" : $"bias_ih_l{layer}";
+
+    private static string GetBiasHhName(int layer, bool reverse)
+        => reverse ? $"bias_hh_l{layer}_reverse" : $"bias_hh_l{layer}";
+
+    private static Tensor GetRequiredTensorParameter(TorchModules.LSTM module, string name)
+    {
+        if (TryGetTensorParameter(module, name, out var tensor))
+        {
+            return tensor;
+        }
+
+        throw new NotSupportedException($"LSTM parameter '{name}' was not found.");
+    }
+
+    private static bool TryGetTensorParameter(TorchModules.LSTM module, string name, out Tensor tensor)
+    {
+        const BindingFlags Flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+
+        // 1. Direct property/field lookup for names like weight_ih_l0
+        var type = module.GetType();
+
+        var prop = type.GetProperty(name, Flags);
+        if (prop?.GetValue(module) is Tensor propTensor)
+        {
+            tensor = propTensor;
+            return true;
+        }
+
+        var field = type.GetField(name, Flags);
+        if (field?.GetValue(module) is Tensor fieldTensor)
+        {
+            tensor = fieldTensor;
+            return true;
+        }
+
+        // 2. Fallback to named_parameters()
+        foreach (var entry in module.named_parameters())
+        {
+            if (TryReadNamedTensor(entry, out var entryName, out var entryTensor)
+                && string.Equals(entryName, name, StringComparison.Ordinal))
+            {
+                tensor = entryTensor;
+                return true;
+            }
+        }
+
+        tensor = null!;
+        return false;
+    }
+
+    private static bool TryReadNamedTensor(object entry, out string name, out Tensor tensor)
+    {
+        const BindingFlags Flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+
+        name = string.Empty;
+        tensor = null!;
+
+        if (entry is null)
+        {
+            return false;
+        }
+
+        var type = entry.GetType();
+
+        object? nameValue =
+            type.GetProperty("name", Flags)?.GetValue(entry)
+            ?? type.GetProperty("Name", Flags)?.GetValue(entry)
+            ?? type.GetField("Item1", Flags)?.GetValue(entry)
+            ?? type.GetProperty("Key", Flags)?.GetValue(entry);
+
+        object? tensorValue =
+            type.GetProperty("parameter", Flags)?.GetValue(entry)
+            ?? type.GetProperty("Parameter", Flags)?.GetValue(entry)
+            ?? type.GetProperty("tensor", Flags)?.GetValue(entry)
+            ?? type.GetProperty("Tensor", Flags)?.GetValue(entry)
+            ?? type.GetProperty("Value", Flags)?.GetValue(entry)
+            ?? type.GetField("Item2", Flags)?.GetValue(entry);
+
+        if (nameValue is string s && tensorValue is Tensor t)
+        {
+            name = s;
+            tensor = t;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static long GetRequiredInt64Member(object instance, string name)
+    {
+        if (TryGetMemberValue(instance, name, out var value))
+        {
+            return Convert.ToInt64(value);
+        }
+
+        throw new NotSupportedException($"Required member '{name}' was not found on '{instance.GetType().FullName}'.");
+    }
+
+    private static long GetOptionalInt64Member(object instance, string name, long defaultValue = 0)
+    {
+        if (TryGetMemberValue(instance, name, out var value))
+        {
+            return Convert.ToInt64(value);
+        }
+
+        return defaultValue;
+    }
+
+    private static bool GetRequiredBoolMember(object instance, string name)
+    {
+        if (TryGetMemberValue(instance, name, out var value))
+        {
+            return Convert.ToBoolean(value);
+        }
+
+        throw new NotSupportedException($"Required member '{name}' was not found on '{instance.GetType().FullName}'.");
+    }
+
+    private static bool TryGetMemberValue(object instance, string name, out object value)
+    {
+        const BindingFlags Flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+
+        var type = instance.GetType();
+
+        var prop = type.GetProperty(name, Flags);
+        if (prop is not null)
+        {
+            value = prop.GetValue(instance)!;
+            return true;
+        }
+
+        var field = type.GetField(name, Flags);
+        if (field is not null)
+        {
+            value = field.GetValue(instance)!;
+            return true;
+        }
+
+        value = null!;
+        return false;
+    }
+
+    // PyTorch LSTM gate order: [i, f, g, o]
+    // ONNX LSTM gate order:    [i, o, f, g]
+    private static float[] ReorderLstmGateMatrix(float[] source, int hiddenSize, int width)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        var expectedLength = 4 * hiddenSize * width;
+        if (source.Length != expectedLength)
+        {
+            throw new ArgumentException(
+                $"Unexpected matrix length. Expected {expectedLength}, got {source.Length}.",
+                nameof(source)
+            );
+        }
+
+        var result = new float[source.Length];
+        var gateBlockLength = hiddenSize * width;
+
+        CopyGateBlock(source, result, sourceGate: 0, targetGate: 0, gateBlockLength); // i -> i
+        CopyGateBlock(source, result, sourceGate: 3, targetGate: 1, gateBlockLength); // o -> o
+        CopyGateBlock(source, result, sourceGate: 1, targetGate: 2, gateBlockLength); // f -> f
+        CopyGateBlock(source, result, sourceGate: 2, targetGate: 3, gateBlockLength); // g -> g
+
+        return result;
+    }
+
+    private static float[] ReorderLstmGateVector(float[] source, int hiddenSize)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        var expectedLength = 4 * hiddenSize;
+        if (source.Length != expectedLength)
+        {
+            throw new ArgumentException(
+                $"Unexpected vector length. Expected {expectedLength}, got {source.Length}.",
+                nameof(source)
+            );
+        }
+
+        var result = new float[source.Length];
+
+        CopyGateBlock(source, result, sourceGate: 0, targetGate: 0, hiddenSize); // i -> i
+        CopyGateBlock(source, result, sourceGate: 3, targetGate: 1, hiddenSize); // o -> o
+        CopyGateBlock(source, result, sourceGate: 1, targetGate: 2, hiddenSize); // f -> f
+        CopyGateBlock(source, result, sourceGate: 2, targetGate: 3, hiddenSize); // g -> g
+
+        return result;
+    }
+
+    private static void CopyGateBlock(
+        float[] source,
+        float[] destination,
+        int sourceGate,
+        int targetGate,
+        int gateBlockLength
+    )
+    {
+        Array.Copy(
+            sourceArray: source,
+            sourceIndex: sourceGate * gateBlockLength,
+            destinationArray: destination,
+            destinationIndex: targetGate * gateBlockLength,
+            length: gateBlockLength
+        );
     }
 }
 

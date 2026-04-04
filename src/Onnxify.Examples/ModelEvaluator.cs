@@ -1,5 +1,6 @@
 ﻿using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
+using Onnxify.Examples.Models;
 using TorchSharp;
 using static TorchSharp.torch;
 
