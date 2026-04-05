@@ -128,6 +128,8 @@ namespace Onnxify.Examples
 
             var outputPath = Path.Combine(outputDirectory, "lang-lstm.onnx");
             var onnxModel = model.Export();
+            Console.WriteLine(onnxModel.ToString());
+
             onnxModel.Save(outputPath, true);
         }
     }

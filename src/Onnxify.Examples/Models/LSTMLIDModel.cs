@@ -1,4 +1,5 @@
-﻿using Onnxify.TorchSharp;
+﻿using System.Text.Json;
+using Onnxify.TorchSharp;
 using TorchSharp;
 using static Google.Protobuf.Compiler.CodeGeneratorResponse.Types;
 using static TorchSharp.torch;
@@ -11,6 +12,8 @@ namespace Onnxify.Examples.Models;
 /// </summary>
 public class LSTMLIDModel : torch.nn.Module<Tensor, Tensor>
 {
+    private readonly Dictionary<string, int> _charToIdx;
+    private readonly Dictionary<string, int> _langToIdx;
     private readonly int _vocabSize;
     private readonly int _langSetSize;
     private readonly int _numClasses;
@@ -29,6 +32,8 @@ public class LSTMLIDModel : torch.nn.Module<Tensor, Tensor>
         int layers
     ) : base("LSTMLIDModel")
     {
+        _charToIdx = charToIdx;
+        _langToIdx = langToIdx;
         _vocabSize = charToIdx.Count;
         _langSetSize = langToIdx.Count;
         _numClasses = numClasses;
@@ -71,16 +76,25 @@ public class LSTMLIDModel : torch.nn.Module<Tensor, Tensor>
 
         var input = graph.AddInput(
             name: "input",
-            type: OnnxTensorType.Create<int>(["seq_len", 1])
+            type: OnnxTensorType.Create<long>(["batch_size", "seq_len"])
         );
 
         var x = _charEmbeddings.Export(graph, input, exportState);
-
-        x = _lstm.Export(graph, input, exportState);
-
+        x = _lstm.Export(graph, x, exportState).Y ?? throw new Exception();
         x = _hidden2Lang.Export(graph, x, exportState);
 
+        x = graph.ReduceSum(
+            name: "sum_logits",
+            options: new ReduceSumInputOptions
+            {
+                Data = x,
+                Axes = graph.AddTensor<long>("sum_logits_axes", [1], [1]),
+                Keepdims = 0,
+            }
+        );
+
         var outputEdge = graph.AddEdge("output");
+
         graph.Identity(
             name: "output_identity",
             options: new IdentityInputOutputOptions
@@ -92,7 +106,24 @@ public class LSTMLIDModel : torch.nn.Module<Tensor, Tensor>
 
         graph.AddOutput(
             name: "output",
-            type: OnnxTensorType.Create<float>([_numClasses])
+            type: OnnxTensorType.Create<float>(["batch_size", _langSetSize])
+        );
+
+        model.AddMetadataProps(
+            key: "char_to_idx",
+            value: JsonSerializer.Serialize(_charToIdx)
+        );
+
+        model.AddMetadataProps(
+            key: "lang_to_idx",
+            value: JsonSerializer.Serialize(_langToIdx)
+        );
+
+        model.AddMetadataProps(
+            key: "idx_to_lang",
+            value: JsonSerializer.Serialize(
+                _langToIdx.OrderBy(x => x.Value).Select(x => x.Key).ToArray()
+            )
         );
 
         return model;

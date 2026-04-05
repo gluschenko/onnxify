@@ -161,6 +161,11 @@ public class OnnxModel
             )
             """;
     }
+
+    public void AddMetadataProps(string key, string value)
+    {
+        _metadataProps[key] = new KeyValuePair<string, string>(key, value);
+    }
 }
 
 public interface IOnnxGraphNode

@@ -310,7 +310,7 @@ public sealed class EmbeddingExporter : TorchModuleExporter<TorchModules.Embeddi
 
 public static class ExporterExtensions
 {
-    public static IOnnxGraphEdge Export(
+    public static LSTMOutput Export(
         this TorchModules.LSTM module,
         OnnxGraph graph,
         IOnnxGraphEdge input,
@@ -326,14 +326,6 @@ public static class ExporterExtensions
         var hiddenSize = checked((int)GetRequiredInt64Member(module, "_hidden_size"));
         var bidirectional = GetRequiredBoolMember(module, "_bidirectional");
         var batchFirst = GetRequiredBoolMember(module, "_batch_first");
-        /*var projSize = GetOptionalInt64Member(module, "proj_size");
-
-        if (projSize > 0)
-        {
-            throw new NotSupportedException(
-                "LSTM with proj_size > 0 is not supported by this exporter yet."
-            );
-        }*/
 
         var numDirections = bidirectional ? 2 : 1;
         var direction = bidirectional ? "bidirectional" : "forward";
@@ -354,6 +346,9 @@ public static class ExporterExtensions
             );
         }
 
+        var outputH = new List<IOnnxGraphEdge>();
+        var outputC = new List<IOnnxGraphEdge>();
+
         for (var layer = 0; layer < numLayers; layer++)
         {
             var name = state.Next("lstm");
@@ -366,8 +361,8 @@ public static class ExporterExtensions
             long recurrentInputSize = -1;
 
             var hasBiases =
-                TryGetTensorParameter(module, GetBiasIhName(layer, false), out _)
-                || TryGetTensorParameter(module, GetBiasHhName(layer, false), out _);
+                TryGetTensorParameter(module, GetBiasIhName(layer, false), out _) ||
+                TryGetTensorParameter(module, GetBiasHhName(layer, false), out _);
 
             if (hasBiases)
             {
@@ -500,6 +495,15 @@ public static class ExporterExtensions
             var y = lstm.Y
                 ?? throw new InvalidOperationException("LSTM export did not produce the Y output.");
 
+            var yh = lstm.YH
+                ?? throw new InvalidOperationException("LSTM export did not produce the YH output.");
+
+            var yc = lstm.YC
+                ?? throw new InvalidOperationException("LSTM export did not produce the YC output.");
+
+            outputH.Add(yh);
+            outputC.Add(yc);
+
             // ONNX Y: [seq, num_directions, batch, hidden]
             // Torch output: [seq, batch, num_directions * hidden]
             var yTransposed = graph.Transpose(
@@ -540,7 +544,34 @@ public static class ExporterExtensions
             );
         }
 
-        return current;
+        var finalH = outputH.Count == 1
+            ? outputH[0]
+            : graph.Concat(
+                name: state.Next("concat"),
+                options: new ConcatInputOptions
+                {
+                    In = outputH.ToArray(),
+                    Axis = 0,
+                }
+            );
+
+        var finalC = outputC.Count == 1
+            ? outputC[0]
+            : graph.Concat(
+                name: state.Next("concat"),
+                options: new ConcatInputOptions
+                {
+                    In = outputC.ToArray(),
+                    Axis = 0,
+                }
+            );
+
+        return new LSTMOutput
+        {
+            Y = current,
+            YH = finalH,
+            YC = finalC,
+        };
     }
 
     private static string GetWeightIhName(int layer, bool reverse)
