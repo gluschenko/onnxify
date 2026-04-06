@@ -49,7 +49,7 @@ public abstract class TorchModuleExporter<TSource, TDestination> : ITorchModuleE
     );
 }
 
-[AttributeUsage(AttributeTargets.Class)]
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 public class TorchOpAttribute : Attribute
 {
     public string Name { get; init; }
@@ -277,6 +277,7 @@ public sealed class SequentialExporter : TorchModuleExporter<TorchModules.Sequen
     }
 }
 
+[TorchOp("aten::embedding")]
 public sealed class EmbeddingExporter : TorchModuleExporter<TorchModules.Embedding, GlobalAveragePool>
 {
     public override IOnnxGraphEdge Export(
@@ -309,6 +310,7 @@ public sealed class EmbeddingExporter : TorchModuleExporter<TorchModules.Embeddi
 
 public static class ExporterExtensions
 {
+    [TorchOp("aten::lstm.input")]
     public static LSTMOutput Export(
         this TorchModules.LSTM module,
         OnnxGraph graph,

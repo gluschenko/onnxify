@@ -52,9 +52,10 @@ internal static partial class Program
 
         IReadOnlyList<OperatorRecord> operators = LoadOperators(opsDirectory);
         IReadOnlyList<TorchSharpCandidate> candidates = LoadTorchSharpCandidates();
+        IReadOnlySet<string> coveredOperators = LoadCoveredOperators();
 
         var rows = operators
-            .Select(op => CreateRow(op, candidates))
+            .Select(op => CreateRow(op, candidates, coveredOperators))
             .OrderBy(row => row.Operator, StringComparer.Ordinal)
             .ToArray();
 
@@ -190,6 +191,44 @@ internal static partial class Program
         return candidates.Values.ToArray();
     }
 
+    private static IReadOnlySet<string> LoadCoveredOperators()
+    {
+        const BindingFlags AllMembers =
+            BindingFlags.Public |
+            BindingFlags.NonPublic |
+            BindingFlags.Static |
+            BindingFlags.Instance;
+
+        Assembly assembly = typeof(global::Onnxify.TorchSharp.TorchOpAttribute).Assembly;
+        var coveredOperators = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (Type type in assembly.GetTypes())
+        {
+            foreach (global::Onnxify.TorchSharp.TorchOpAttribute attribute in
+                type.GetCustomAttributes<global::Onnxify.TorchSharp.TorchOpAttribute>(inherit: false))
+            {
+                if (!string.IsNullOrWhiteSpace(attribute.Name))
+                {
+                    coveredOperators.Add(attribute.Name);
+                }
+            }
+
+            foreach (MethodInfo method in type.GetMethods(AllMembers))
+            {
+                foreach (global::Onnxify.TorchSharp.TorchOpAttribute attribute in
+                    method.GetCustomAttributes<global::Onnxify.TorchSharp.TorchOpAttribute>(inherit: false))
+                {
+                    if (!string.IsNullOrWhiteSpace(attribute.Name))
+                    {
+                        coveredOperators.Add(attribute.Name);
+                    }
+                }
+            }
+        }
+
+        return coveredOperators;
+    }
+
     private static bool IsModuleType(Type type)
     {
         for (Type? current = type; current is not null; current = current.BaseType)
@@ -217,7 +256,10 @@ internal static partial class Program
         }
     }
 
-    private static ReportRow CreateRow(OperatorRecord op, IReadOnlyList<TorchSharpCandidate> candidates)
+    private static ReportRow CreateRow(
+        OperatorRecord op,
+        IReadOnlyList<TorchSharpCandidate> candidates,
+        IReadOnlySet<string> coveredOperators)
     {
         string normalizedOperator = NormalizeOperatorName(op.Name, op.SourceModule);
         TorchSharpCandidate? match = candidates.FirstOrDefault(candidate =>
@@ -226,7 +268,8 @@ internal static partial class Program
         return new ReportRow(
             op.Name,
             match?.Path ?? string.Empty,
-            match is not null);
+            match is not null,
+            coveredOperators.Contains(op.Name));
     }
 
     private static string NormalizeOperatorName(string operatorName, string sourceModule)
@@ -291,13 +334,21 @@ internal static partial class Program
 
     private static string BuildMarkdown(IEnumerable<ReportRow> rows)
     {
+        ReportRow[] rowArray = rows.ToArray();
+        int total = rowArray.Length;
+        int foundCount = rowArray.Count(static row => row.Found);
+        int coveredCount = rowArray.Count(static row => row.Covered);
+
         var builder = new StringBuilder();
         builder.AppendLine("# TorchSharp operator coverage");
         builder.AppendLine();
-        builder.AppendLine("| ONNXScript operator | TorchSharp module | Found |");
-        builder.AppendLine("| --- | --- | --- |");
+        builder.AppendLine($"Found: {FormatPercentage(foundCount, total)} ({foundCount}/{total})");
+        builder.AppendLine($"Coverage: {FormatPercentage(coveredCount, total)} ({coveredCount}/{total})");
+        builder.AppendLine();
+        builder.AppendLine("| ONNXScript operator | TorchSharp module | Found | Coverage |");
+        builder.AppendLine("| --- | --- | --- | --- |");
 
-        foreach (ReportRow row in rows)
+        foreach (ReportRow row in rowArray)
         {
             builder
                 .Append("| ")
@@ -306,10 +357,22 @@ internal static partial class Program
                 .Append(EscapeMarkdown(row.TorchSharpModule))
                 .Append(" | ")
                 .Append(row.Found ? "&#10003;" : string.Empty)
+                .Append(" | ")
+                .Append(row.Covered ? "&#10003;" : string.Empty)
                 .AppendLine(" |");
         }
 
         return builder.ToString();
+    }
+
+    private static string FormatPercentage(int count, int total)
+    {
+        if (total == 0)
+        {
+            return "0.00%";
+        }
+
+        return (count * 100.0 / total).ToString("F2", CultureInfo.InvariantCulture) + "%";
     }
 
     private static string EscapeMarkdown(string value)
@@ -327,5 +390,5 @@ internal static partial class Program
 
     private sealed record TorchSharpCandidate(string NormalizedName, string Path);
 
-    private sealed record ReportRow(string Operator, string TorchSharpModule, bool Found);
+    private sealed record ReportRow(string Operator, string TorchSharpModule, bool Found, bool Covered);
 }

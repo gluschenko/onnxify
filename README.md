@@ -36,6 +36,31 @@ The repository currently contains:
 - [ ] Agent skills for Export imaplementation on Torch modules
 - [ ] Allow to add or remove OnnxModel meta (training info, imports, producer, version)
 
+## Expression tree research
+
+```
+public override Tensor forward(Tensor input)
+{
+    var x = _charEmbeddings.forward(input);
+    var (lstm, _, _) = _lstm.forward(x);
+    var linear = _hidden2Lang.forward(lstm);
+    var logit = torch.sum(linear, 1);
+    return logit;
+}
+
+public OnnxModel Export()
+{
+    return TorchModelExporter.FromExpression<Tensor>((tensor) =>
+    {
+        var x = _charEmbeddings.forward(input);
+        var (lstm, _, _) = _lstm.forward(x);
+        var linear = _hidden2Lang.forward(lstm);
+        var logit = torch.sum(linear, 1);
+        return logit;
+    });
+}
+```
+
 ## Status
 
 This project is in an early stage.

@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
+using Onnxify.Helpers;
 using Onnxify.TorchSharp;
 using TorchSharp;
-using static Google.Protobuf.Compiler.CodeGeneratorResponse.Types;
 using static TorchSharp.torch;
 
 namespace Onnxify.Examples.Models;
