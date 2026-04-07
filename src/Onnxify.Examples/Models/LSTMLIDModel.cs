@@ -63,8 +63,6 @@ public class LSTMLIDModel : torch.nn.Module<Tensor, Tensor>
 
     public void SaveModel(string modelPath)
     {
-        // var scriptedModel = torch.jit.load(model);
-        // torch.jit.save(this, "mymodel_scripted.pt");
         this.save(modelPath);
     }
 
