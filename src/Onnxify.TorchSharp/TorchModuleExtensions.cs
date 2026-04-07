@@ -5,84 +5,6 @@ namespace Onnxify.TorchSharp;
 
 public static class TorchModuleExtensions
 {
-    private static readonly Dictionary<Type, Func<TorchModule, OnnxGraph, IOnnxGraphEdge, IOnnxGraphEdge>> _exporters;
-
-    static TorchModuleExtensions()
-    {
-        _exporters = BuildExporters();
-    }
-
-    private static Dictionary<Type, Func<TorchModule, OnnxGraph, IOnnxGraphEdge, IOnnxGraphEdge>> BuildExporters()
-    {
-        var result = new Dictionary<Type, Func<TorchModule, OnnxGraph, IOnnxGraphEdge, IOnnxGraphEdge>>();
-
-        var methods = typeof(TorchModuleExtensions)
-            .GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-
-        foreach (var method in methods)
-        {
-            var attr = method.GetCustomAttribute<TorchOpAttribute>();
-            if (attr is null)
-                continue;
-
-            var parameters = method.GetParameters();
-
-            // Ожидаем extension method:
-            // this TorchModules.Conv2d module, OnnxGraph graph, IOnnxGraphEdge input
-            if (parameters.Length != 3)
-                throw new InvalidOperationException($"Invalid exporter signature: {method.Name}");
-
-            var moduleType = parameters[0].ParameterType;
-            var graphType = parameters[1].ParameterType;
-            var inputType = parameters[2].ParameterType;
-
-            if (!typeof(TorchModule).IsAssignableFrom(moduleType))
-                throw new InvalidOperationException($"{method.Name}: first param must be TorchModule");
-
-            if (graphType != typeof(OnnxGraph))
-                throw new InvalidOperationException($"{method.Name}: second param must be OnnxGraph");
-
-            if (inputType != typeof(IOnnxGraphEdge))
-                throw new InvalidOperationException($"{method.Name}: third param must be IOnnxGraphEdge");
-
-            // return type:
-            if (!typeof(IOnnxGraphEdge).IsAssignableFrom(method.ReturnType))
-            {
-                // особый случай LSTM
-                if (method.ReturnType != typeof(LSTMOutput))
-                {
-                    throw new InvalidOperationException($"{method.Name}: invalid return type");
-                }
-            }
-
-            var del = CreateExporterDelegate(method, moduleType);
-
-            result[moduleType] = del;
-        }
-
-        return result;
-    }
-
-    private static Func<TorchModule, OnnxGraph, IOnnxGraphEdge, IOnnxGraphEdge> CreateExporterDelegate(
-        MethodInfo method,
-        Type moduleType
-    )
-    {
-        return (module, graph, input) =>
-        {
-            var result = method.Invoke(null, [module, graph, input]);
-
-            return result switch
-            {
-                IOnnxGraphEdge edge => edge,
-                LSTMOutput lstm => lstm.Y ?? throw new InvalidOperationException(),
-                _ => throw new InvalidOperationException(
-                    $"Unsupported return type from {method.Name}: {result?.GetType().FullName}"
-                )
-            };
-        };
-    }
-
     public static IOnnxGraphEdge Export(
         this TorchModule module,
         OnnxGraph graph,
@@ -93,19 +15,18 @@ public static class TorchModuleExtensions
         ArgumentNullException.ThrowIfNull(graph);
         ArgumentNullException.ThrowIfNull(input);
 
-        var moduleType = module.GetType();
-
-        foreach (var (type, exporter) in _exporters)
+        return module switch
         {
-            if (type.IsAssignableFrom(moduleType))
-            {
-                return exporter(module, graph, input);
-            }
-        }
-
-        throw new NotImplementedException(
-            $"Not implemented for '{moduleType.FullName}'"
-        );
+            TorchModules.Sequential m => m.Export(graph, input),
+            TorchModules.Conv2d m => m.Export(graph, input),
+            TorchModules.ReLU m => m.Export(graph, input),
+            TorchModules.MaxPool2d m => m.Export(graph, input),
+            TorchModules.Dropout m => m.Export(graph, input),
+            TorchModules.Linear m => m.Export(graph, input),
+            TorchModules.AdaptiveAvgPool2d m => m.Export(graph, input),
+            TorchModules.Embedding m => m.Export(graph, input),
+            _ => throw new NotImplementedException($"Not implemented for '{module.GetType().FullName}'"),
+        };
     }
 
     public static IOnnxGraphEdge Export(
