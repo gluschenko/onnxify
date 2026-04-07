@@ -60,6 +60,9 @@ internal static partial class Program
             .ToArray();
 
         string markdown = BuildMarkdown(rows);
+
+        Console.WriteLine(markdown);
+
         Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
         File.WriteAllText(outputPath, markdown, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 
