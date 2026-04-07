@@ -20,8 +20,55 @@ namespace Onnxify.Examples
             Console.OutputEncoding = Encoding.Unicode;
 
             A();
-            return;
+            B();
 
+            Console.WriteLine("Press any key to pay respect...");
+            Console.ReadKey();
+        }
+
+        static void A()
+        {
+            var outputDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
+
+            var charToIdx = new Dictionary<string, int>
+            {
+                { "PAD", 0 },
+                { "a", 1 },
+                { "b", 2 },
+            };
+
+            var langToIdx = new Dictionary<string, int>
+            {
+                { "en", 0 },
+                { "fr", 1 },
+            };
+
+            var embeddingDim = 128;
+            var hiddenDim = 256;
+            var layers = 2;
+
+            var model = new LSTMLIDModel(charToIdx, langToIdx, langToIdx.Count, embeddingDim, hiddenDim, layers);
+
+            // Example input tensor
+            var sentences = torch.randint(0, charToIdx.Count, new long[] { 1, 10 }, device: torch.CPU);
+
+            // Forward pass
+            var output = model.forward(sentences);
+            Console.WriteLine(output);
+
+            // Save model
+            model.eval();
+            model.SaveModel("LSTMLIDModel.pt");
+
+            var outputPath = Path.Combine(outputDirectory, "lang-lstm.onnx");
+            var onnxModel = model.Export();
+            Console.WriteLine(onnxModel.ToString());
+
+            onnxModel.Save(outputPath, true);
+        }
+
+        static void B()
+        {
             var datasetDirectory = @"D:\Backups\ML\Ararat";
             // var datasetDirectory = @"D:\Backups\ML\microsoft-catsvsdogs-dataset\PetImages";
             var outputDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
@@ -87,50 +134,6 @@ namespace Onnxify.Examples
                     dataset.LabelNames
                 );
             }
-
-            Console.WriteLine("Press any key to pay respect...");
-            Console.ReadKey();
-        }
-
-        static void A()
-        {
-            var outputDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
-
-            var charToIdx = new Dictionary<string, int>
-            {
-                { "PAD", 0 },
-                { "a", 1 },
-                { "b", 2 },
-            };
-
-            var langToIdx = new Dictionary<string, int>
-            {
-                { "en", 0 },
-                { "fr", 1 },
-            };
-
-            var embeddingDim = 128;
-            var hiddenDim = 256;
-            var layers = 2;
-
-            var model = new LSTMLIDModel(charToIdx, langToIdx, langToIdx.Count, embeddingDim, hiddenDim, layers);
-
-            // Example input tensor
-            var sentences = torch.randint(0, charToIdx.Count, new long[] { 1, 10 }, device: torch.CPU);
-
-            // Forward pass
-            var output = model.forward(sentences);
-            Console.WriteLine(output);
-
-            // Save model
-            model.eval();
-            model.SaveModel("LSTMLIDModel.pt");
-
-            var outputPath = Path.Combine(outputDirectory, "lang-lstm.onnx");
-            var onnxModel = model.Export();
-            Console.WriteLine(onnxModel.ToString());
-
-            onnxModel.Save(outputPath, true);
         }
     }
 }
