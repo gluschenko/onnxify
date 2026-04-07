@@ -1,6 +1,6 @@
 ﻿namespace Onnxify.TorchSharp;
 
-[AttributeUsage(AttributeTargets.Method)]
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
 public class TorchOpAttribute : Attribute
 {
     public string Name { get; init; }

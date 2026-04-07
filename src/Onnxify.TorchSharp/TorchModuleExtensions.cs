@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using static TorchSharp.torch;
+using System.Runtime.CompilerServices;
 
 namespace Onnxify.TorchSharp;
 
@@ -35,6 +36,15 @@ public static class TorchModuleExtensions
             TorchModules.Hardswish m => m.Export(graph, input),
             TorchModules.SiLU m => m.Export(graph, input),
             TorchModules.LogSigmoid m => m.Export(graph, input),
+            TorchModules.GELU m => m.Export(graph, input),
+            TorchModules.Mish m => m.Export(graph, input),
+            TorchModules.SELU m => m.Export(graph, input),
+            TorchModules.Softplus m => m.Export(graph, input),
+            TorchModules.PReLU m => m.Export(graph, input),
+            TorchModules.PixelShuffle m => m.Export(graph, input),
+            TorchModules.PixelUnshuffle m => m.Export(graph, input),
+            TorchModules.ReflectionPad1d m => m.Export(graph, input),
+            TorchModules.ReflectionPad2d m => m.Export(graph, input),
             TorchModules.MaxPool2d m => m.Export(graph, input),
             TorchModules.MaxPool1d m => m.Export(graph, input),
             TorchModules.MaxPool3d m => m.Export(graph, input),
@@ -426,6 +436,7 @@ public static class TorchModuleExtensions
     }
 
     [TorchOp("aten::softmax.int")]
+    [TorchOp("aten::_softmax")]
     public static IOnnxGraphEdge Export(
         this TorchModules.Softmax module,
         OnnxGraph graph,
@@ -443,6 +454,8 @@ public static class TorchModuleExtensions
     }
 
     [TorchOp("aten::log_softmax.int")]
+    [TorchOp("aten::_log_softmax")]
+    [TorchOp("aten::special_log_softmax")]
     public static IOnnxGraphEdge Export(
         this TorchModules.LogSoftmax module,
         OnnxGraph graph,
@@ -480,6 +493,184 @@ public static class TorchModuleExtensions
             {
                 Input = sigmoid,
             }
+        );
+    }
+
+    [TorchOp("aten::gelu")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.GELU module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        var approximate = GetOptionalStringMember(module, defaultValue: "none", "approximate", "_approximate");
+
+        return graph.Gelu(
+            name: graph.NextName("gelu"),
+            options: new GeluInputOptions
+            {
+                X = input,
+                Approximate = approximate,
+            }
+        );
+    }
+
+    [TorchOp("aten::mish")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.Mish module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        return graph.Mish(
+            name: graph.NextName("mish"),
+            options: new MishInputOptions
+            {
+                X = input,
+            }
+        );
+    }
+
+    [TorchOp("aten::selu")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.SELU module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        return graph.Selu(
+            name: graph.NextName("selu"),
+            options: new SeluInputOptions
+            {
+                X = input,
+                Alpha = 1.6732632f,
+                Gamma = 1.050701f,
+            }
+        );
+    }
+
+    [TorchOp("aten::softplus")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.Softplus module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        var beta = GetOptionalDoubleMember(module, defaultValue: 1.0, "beta", "_beta");
+        var threshold = GetOptionalDoubleMember(module, defaultValue: 20.0, "threshold", "_threshold");
+
+        if (Math.Abs(beta - 1.0) > 1e-6 || Math.Abs(threshold - 20.0) > 1e-6)
+        {
+            throw new NotSupportedException(
+                $"Softplus export currently supports only beta=1 and threshold=20, got beta={beta}, threshold={threshold}."
+            );
+        }
+
+        return graph.Softplus(
+            name: graph.NextName("softplus"),
+            options: new SoftplusInputOptions
+            {
+                X = input,
+            }
+        );
+    }
+
+    [TorchOp("aten::prelu")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.PReLU module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        var name = graph.NextName("prelu");
+        var weightTensor = GetRequiredTensorMember(module, "weight", "_weight");
+
+        var slope = graph.AddTensor(
+            name: $"{name}_slope",
+            shape: TorchHelper.GetShape(weightTensor),
+            value: TorchHelper.GetFloatData(weightTensor)
+        );
+
+        return graph.PRelu(
+            name: name,
+            options: new PReluInputOptions
+            {
+                X = input,
+                Slope = slope,
+            }
+        );
+    }
+
+    [TorchOp("aten::pixel_shuffle")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.PixelShuffle module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        var upscaleFactor = GetRequiredInt64Member(module, "upscale_factor", "_upscale_factor");
+
+        return graph.DepthToSpace(
+            name: graph.NextName("pixel_shuffle"),
+            options: new DepthToSpaceInputOptions
+            {
+                Input = input,
+                Blocksize = upscaleFactor,
+                Mode = "DCR",
+            }
+        );
+    }
+
+    [TorchOp("aten::pixel_unshuffle")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.PixelUnshuffle module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        var downscaleFactor = GetRequiredInt64Member(module, "downscale_factor", "_downscale_factor");
+
+        return graph.SpaceToDepth(
+            name: graph.NextName("pixel_unshuffle"),
+            options: new SpaceToDepthInputOptions
+            {
+                Input = input,
+                Blocksize = downscaleFactor,
+            }
+        );
+    }
+
+    [TorchOp("aten::reflection_pad1d")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.ReflectionPad1d module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        return ExportPad(
+            module: module,
+            graph: graph,
+            input: input,
+            prefix: "reflection_pad",
+            mode: "reflect",
+            spatialRank: 1
+        );
+    }
+
+    [TorchOp("aten::reflection_pad2d")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.ReflectionPad2d module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        return ExportPad(
+            module: module,
+            graph: graph,
+            input: input,
+            prefix: "reflection_pad",
+            mode: "reflect",
+            spatialRank: 2
         );
     }
 
@@ -1096,12 +1287,7 @@ public static class TorchModuleExtensions
 
     private static long GetRequiredInt64Member(object instance, string name)
     {
-        if (TryGetMemberValue(instance, name, out var value))
-        {
-            return Convert.ToInt64(value);
-        }
-
-        throw new NotSupportedException($"Required member '{name}' was not found on '{instance.GetType().FullName}'.");
+        return GetRequiredInt64Member(instance, [name]);
     }
 
     private static long GetOptionalInt64Member(object instance, string name, long defaultValue = 0)
@@ -1122,6 +1308,64 @@ public static class TorchModuleExtensions
         }
 
         throw new NotSupportedException($"Required member '{name}' was not found on '{instance.GetType().FullName}'.");
+    }
+
+    private static long GetRequiredInt64Member(object instance, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (TryGetMemberValue(instance, name, out var value))
+            {
+                return Convert.ToInt64(value);
+            }
+        }
+
+        throw new NotSupportedException(
+            $"Required member '{string.Join("' or '", names)}' was not found on '{instance.GetType().FullName}'."
+        );
+    }
+
+    private static string GetOptionalStringMember(object instance, string defaultValue, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (TryGetMemberValue(instance, name, out var value))
+            {
+                return Convert.ToString(value) ?? defaultValue;
+            }
+        }
+
+        return defaultValue;
+    }
+
+    private static Tensor GetRequiredTensorMember(object instance, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (TryGetMemberValue(instance, name, out var value) && value is Tensor tensor)
+            {
+                return tensor;
+            }
+        }
+
+        throw new NotSupportedException(
+            $"Required tensor member '{string.Join("' or '", names)}' was not found on '{instance.GetType().FullName}'."
+        );
+    }
+
+    private static long[] GetRequiredInt64ArrayMember(object instance, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (TryGetMemberValue(instance, name, out var value))
+            {
+                return ConvertToLongArray(value);
+            }
+        }
+
+        throw new NotSupportedException(
+            $"Required array member '{string.Join("' or '", names)}' was not found on '{instance.GetType().FullName}'."
+        );
     }
 
     private static double GetOptionalDoubleMember(object instance, double defaultValue, params string[] names)
@@ -1159,6 +1403,122 @@ public static class TorchModuleExtensions
 
         value = null!;
         return false;
+    }
+
+    private static IOnnxGraphEdge ExportPad(
+        object module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input,
+        string prefix,
+        string mode,
+        int spatialRank
+    )
+    {
+        var name = graph.NextName(prefix);
+        var padding = GetRequiredInt64ArrayMember(module, "padding", "_padding");
+        var padsTensor = graph.AddTensor(
+            name: $"{name}_pads",
+            shape: [2L * (spatialRank + 2)],
+            value: CreatePadVector(padding, spatialRank)
+        );
+
+        return graph.Pad(
+            name: name,
+            options: new PadInputOptions
+            {
+                Data = input,
+                Pads = padsTensor,
+                Mode = mode,
+            }
+        );
+    }
+
+    private static long[] CreatePadVector(long[] padding, int spatialRank)
+    {
+        return spatialRank switch
+        {
+            1 => CreatePadVector1d(padding),
+            2 => CreatePadVector2d(padding),
+            _ => throw new NotSupportedException($"Unsupported pad spatial rank: {spatialRank}."),
+        };
+    }
+
+    private static long[] CreatePadVector1d(long[] padding)
+    {
+        var normalized = padding.Length switch
+        {
+            1 => new[] { padding[0], padding[0] },
+            2 => padding,
+            _ => throw new NotSupportedException(
+                $"Unsupported 1D padding shape: [{string.Join(", ", padding)}]."
+            ),
+        };
+
+        return [0, 0, normalized[0], 0, 0, normalized[1]];
+    }
+
+    private static long[] CreatePadVector2d(long[] padding)
+    {
+        var normalized = padding.Length switch
+        {
+            1 => new[] { padding[0], padding[0], padding[0], padding[0] },
+            2 => new[] { padding[0], padding[0], padding[1], padding[1] },
+            4 => padding,
+            _ => throw new NotSupportedException(
+                $"Unsupported 2D padding shape: [{string.Join(", ", padding)}]."
+            ),
+        };
+
+        var left = normalized[0];
+        var right = normalized[1];
+        var top = normalized[2];
+        var bottom = normalized[3];
+
+        return [0, 0, top, left, 0, 0, bottom, right];
+    }
+
+    private static long[] ConvertToLongArray(object value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        if (value is long[] longArray)
+        {
+            return longArray;
+        }
+
+        if (value is int[] intArray)
+        {
+            return [.. intArray.Select(x => (long)x)];
+        }
+
+        if (value is IEnumerable<long> longEnumerable)
+        {
+            return [.. longEnumerable];
+        }
+
+        if (value is System.Collections.IEnumerable enumerable and not string)
+        {
+            var values = new List<long>();
+            foreach (var item in enumerable)
+            {
+                values.Add(Convert.ToInt64(item));
+            }
+
+            return [.. values];
+        }
+
+        if (value is ITuple tuple)
+        {
+            var values = new long[tuple.Length];
+            for (var i = 0; i < tuple.Length; i++)
+            {
+                values[i] = Convert.ToInt64(tuple[i]);
+            }
+
+            return values;
+        }
+
+        return [Convert.ToInt64(value)];
     }
 
     // PyTorch LSTM gate order: [i, f, g, o]
