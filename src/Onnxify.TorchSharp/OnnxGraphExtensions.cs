@@ -3,65 +3,33 @@ using static TorchSharp.torch;
 
 namespace Onnxify.TorchSharp;
 
-public interface ITorchModuleExporter
+public static class OnnxGraphExtensions
 {
-    public bool IsMatch(TorchModule module);
-
-    public abstract IOnnxGraphEdge Export(
-        OnnxGraph graph,
-        TorchModule module,
-        IOnnxGraphEdge input
-    );
-}
-
-public abstract class TorchModuleExporter<TSource, TDestination> : ITorchModuleExporter
-    where TSource : TorchModule
-    where TDestination : OnnxNode
-{
-    public virtual bool IsMatch(TorchModule module)
-    {
-        return module is TSource;
-    }
-
-    public IOnnxGraphEdge Export(
-        OnnxGraph graph,
-        TorchModule module,
+    public static IOnnxGraphEdge Export(
+        this OnnxGraph graph,
+        TorchModules.Sequential module,
         IOnnxGraphEdge input
     )
     {
-        if (module is TSource sourceModule)
+        var children = module.children().OfType<TorchModule>().ToArray();
+        if (children.Length == 0)
         {
-            return Export(graph, sourceModule, input);
+            throw new NotSupportedException($"Unsupported TorchSharp module leaf: {module.GetType().FullName}.");
         }
-        else
+
+        // This walker assumes child modules form a simple feed-forward chain in registration order.
+        var current = input;
+        foreach (var child in children)
         {
-            throw new NotSupportedException($"'{this.GetType().Name}' is not designed for '{module.GetType().FullName}'");
+            current = child.Export(graph, current);
         }
+
+        return current;
     }
 
-    public abstract IOnnxGraphEdge Export(
-        OnnxGraph graph,
-        TSource module,
-        IOnnxGraphEdge input
-    );
-}
-
-[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
-public class TorchOpAttribute : Attribute
-{
-    public string Name { get; init; }
-
-    public TorchOpAttribute(string name)
-    {
-        Name = name;
-    }
-}
-
-[TorchOp("aten::conv2d")]
-public sealed class ConvExporter : TorchModuleExporter<TorchModules.Conv2d, Conv>
-{
-    public override IOnnxGraphEdge Export(
-        OnnxGraph graph,
+    [TorchOp("aten::conv2d")]
+    public static IOnnxGraphEdge Export(
+        this OnnxGraph graph,
         TorchModules.Conv2d module,
         IOnnxGraphEdge input
     )
@@ -107,13 +75,10 @@ public sealed class ConvExporter : TorchModuleExporter<TorchModules.Conv2d, Conv
             }
         );
     }
-}
 
-[TorchOp("aten::relu")]
-public sealed class ReluExporter : TorchModuleExporter<TorchModules.ReLU, Relu>
-{
-    public override IOnnxGraphEdge Export(
-        OnnxGraph graph,
+    [TorchOp("aten::relu")]
+    public static IOnnxGraphEdge Export(
+        this OnnxGraph graph,
         TorchModules.ReLU module,
         IOnnxGraphEdge input
     )
@@ -126,13 +91,10 @@ public sealed class ReluExporter : TorchModuleExporter<TorchModules.ReLU, Relu>
             }
         );
     }
-}
 
-[TorchOp("aten::max_pool2d")]
-public sealed class MaxPool2dExporter : TorchModuleExporter<TorchModules.MaxPool2d, MaxPool>
-{
-    public override IOnnxGraphEdge Export(
-        OnnxGraph graph,
+    [TorchOp("aten::max_pool2d")]
+    public static IOnnxGraphEdge Export(
+        this OnnxGraph graph,
         TorchModules.MaxPool2d module,
         IOnnxGraphEdge input
     )
@@ -152,13 +114,10 @@ public sealed class MaxPool2dExporter : TorchModuleExporter<TorchModules.MaxPool
 
         return result.Y ?? throw new InvalidOperationException("MaxPool export did not produce an output edge.");
     }
-}
 
-[TorchOp("aten::dropout")]
-public sealed class DropoutExporter : TorchModuleExporter<TorchModules.Dropout, Dropout>
-{
-    public override IOnnxGraphEdge Export(
-        OnnxGraph graph,
+    [TorchOp("aten::dropout")]
+    public static IOnnxGraphEdge Export(
+        this OnnxGraph graph,
         TorchModules.Dropout module,
         IOnnxGraphEdge input
     )
@@ -173,13 +132,10 @@ public sealed class DropoutExporter : TorchModuleExporter<TorchModules.Dropout, 
 
         return output.Output;
     }
-}
 
-[TorchOp("aten::linear")]
-public sealed class LinearExporter : TorchModuleExporter<TorchModules.Linear, Gemm>
-{
-    public override IOnnxGraphEdge Export(
-        OnnxGraph graph,
+    [TorchOp("aten::linear")]
+    public static IOnnxGraphEdge Export(
+        this OnnxGraph graph,
         TorchModules.Linear module,
         IOnnxGraphEdge input
     )
@@ -212,13 +168,10 @@ public sealed class LinearExporter : TorchModuleExporter<TorchModules.Linear, Ge
             }
         );
     }
-}
 
-[TorchOp("aten::avg_pool2d")] // ???
-public sealed class AdaptiveAvgPool2dExporter : TorchModuleExporter<TorchModules.AdaptiveAvgPool2d, GlobalAveragePool>
-{
-    public override IOnnxGraphEdge Export(
-        OnnxGraph graph,
+    [TorchOp("aten::avg_pool2d")] // ???
+    public static IOnnxGraphEdge Export(
+        this OnnxGraph graph,
         TorchModules.AdaptiveAvgPool2d module,
         IOnnxGraphEdge input
     )
@@ -240,38 +193,10 @@ public sealed class AdaptiveAvgPool2dExporter : TorchModuleExporter<TorchModules
             $"lowering and cannot be exported by the recursive module walker."
         );
     }
-}
 
-public sealed class SequentialExporter : TorchModuleExporter<TorchModules.Sequential, GlobalAveragePool>
-{
-    public override IOnnxGraphEdge Export(
-        OnnxGraph graph,
-        TorchModules.Sequential module,
-        IOnnxGraphEdge input
-    )
-    {
-        var children = module.children().OfType<TorchModule>().ToArray();
-        if (children.Length == 0)
-        {
-            throw new NotSupportedException($"Unsupported TorchSharp module leaf: {module.GetType().FullName}.");
-        }
-
-        // This walker assumes child modules form a simple feed-forward chain in registration order.
-        var current = input;
-        foreach (var child in children)
-        {
-            current = child.Export(graph, current);
-        }
-
-        return current;
-    }
-}
-
-[TorchOp("aten::embedding")]
-public sealed class EmbeddingExporter : TorchModuleExporter<TorchModules.Embedding, GlobalAveragePool>
-{
-    public override IOnnxGraphEdge Export(
-        OnnxGraph graph,
+    [TorchOp("aten::embedding")]
+    public static IOnnxGraphEdge Export(
+        this OnnxGraph graph,
         TorchModules.Embedding module,
         IOnnxGraphEdge input
     )
@@ -295,10 +220,7 @@ public sealed class EmbeddingExporter : TorchModuleExporter<TorchModules.Embeddi
             }
         );
     }
-}
 
-public static class ExporterExtensions
-{
     [TorchOp("aten::lstm.input")]
     public static LSTMOutput Export(
         this TorchModules.LSTM module,
@@ -447,22 +369,23 @@ public static class ExporterExtensions
 
             var w = graph.AddTensor(
                 name: $"{name}_W",
-                shape: new long[] { numDirections, 4L * hiddenSize, inputSize },
+                shape: [numDirections, 4L * hiddenSize, inputSize],
                 value: flatW.ToArray()
             );
 
             var r = graph.AddTensor(
                 name: $"{name}_R",
-                shape: new long[] { numDirections, 4L * hiddenSize, recurrentInputSize },
+                shape: [numDirections, 4L * hiddenSize, recurrentInputSize],
                 value: flatR.ToArray()
             );
 
             IOnnxGraphEdge? b = null;
             if (hasBiases)
             {
+                var shape = new long[] { numDirections, 8L * hiddenSize };
                 b = graph.AddTensor(
                     name: $"{name}_B",
-                    shape: new long[] { numDirections, 8L * hiddenSize },
+                    shape: shape,
                     value: flatB!.ToArray()
                 );
             }
@@ -499,15 +422,15 @@ public static class ExporterExtensions
                 options: new TransposeInputOptions
                 {
                     Data = y,
-                    Perm = new long[] { 0, 2, 1, 3 },
+                    Perm = [0, 2, 1, 3],
                 }
             );
 
             // Reshape with zeros keeps seq and batch dimensions from input tensor.
             var reshapeShape = graph.AddTensor(
                 name: $"{name}_shape",
-                shape: new long[] { 3 },
-                value: new long[] { 0, 0, numDirections * (long)hiddenSize }
+                shape: [3],
+                value: [0, 0, numDirections * (long)hiddenSize]
             );
 
             current = graph.Reshape(
@@ -527,7 +450,7 @@ public static class ExporterExtensions
                 options: new TransposeInputOptions
                 {
                     Data = current,
-                    Perm = new long[] { 1, 0, 2 },
+                    Perm = [1, 0, 2],
                 }
             );
         }
