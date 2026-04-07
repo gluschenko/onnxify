@@ -1,7 +1,7 @@
 # TorchSharp operator coverage
 
 Found: 83.73% (417/498)
-Coverage: 3.61% (18/498)
+Coverage: 5.62% (28/498)
 
 | ONNXScript operator | TorchSharp module | Found | Coverage |
 | --- | --- | --- | --- |
@@ -94,7 +94,7 @@ Coverage: 3.61% (18/498)
 | aten::atleast_3d.Sequence | TorchSharp.torch+Tensor.atleast_3d | &#10003; |  |
 | aten::avg_pool1d | TorchSharp.Modules.AvgPool1d | &#10003; | &#10003; |
 | aten::avg_pool2d | TorchSharp.Modules.AvgPool2d | &#10003; | &#10003; |
-| aten::avg_pool3d | TorchSharp.Modules.AvgPool3d | &#10003; |  |
+| aten::avg_pool3d | TorchSharp.Modules.AvgPool3d | &#10003; | &#10003; |
 | aten::baddbmm | TorchSharp.torch+Tensor.baddbmm | &#10003; |  |
 | aten::bernoulli | TorchSharp.torch+Tensor.bernoulli | &#10003; |  |
 | aten::bernoulli.p | TorchSharp.torch+Tensor.bernoulli | &#10003; |  |
@@ -120,7 +120,7 @@ Coverage: 3.61% (18/498)
 | aten::broadcast_to | TorchSharp.torch+Tensor.broadcast_to | &#10003; |  |
 | aten::cat | TorchSharp.torch+distributions+constraints.cat | &#10003; |  |
 | aten::ceil | TorchSharp.torch+Tensor.ceil | &#10003; |  |
-| aten::celu | TorchSharp.Modules.CELU | &#10003; |  |
+| aten::celu | TorchSharp.Modules.CELU | &#10003; | &#10003; |
 | aten::chunk | TorchSharp.torch+Tensor.chunk | &#10003; |  |
 | aten::clamp | TorchSharp.torch+Tensor.clamp | &#10003; |  |
 | aten::clamp.Tensor | TorchSharp.torch+Tensor.clamp | &#10003; |  |
@@ -138,7 +138,7 @@ Coverage: 3.61% (18/498)
 | aten::contiguous | TorchSharp.torch+Tensor.contiguous | &#10003; |  |
 | aten::conv1d | TorchSharp.Modules.Conv1d | &#10003; | &#10003; |
 | aten::conv2d | TorchSharp.Modules.Conv2d | &#10003; | &#10003; |
-| aten::conv3d | TorchSharp.Modules.Conv3d | &#10003; |  |
+| aten::conv3d | TorchSharp.Modules.Conv3d | &#10003; | &#10003; |
 | aten::convolution | TorchSharp.Modules.Convolution | &#10003; |  |
 | aten::copy | TorchSharp.torch+Storage`1.copy_ | &#10003; |  |
 | aten::cos | TorchSharp.torch+Tensor.cos | &#10003; |  |
@@ -209,9 +209,9 @@ Coverage: 3.61% (18/498)
 | aten::gt.Tensor | TorchSharp.torch+Tensor.gt | &#10003; |  |
 | aten::hamming_window | TorchSharp.torch.hamming_window | &#10003; |  |
 | aten::hann_window | TorchSharp.torch.hann_window | &#10003; |  |
-| aten::hardsigmoid | TorchSharp.Modules.Hardsigmoid | &#10003; |  |
-| aten::hardswish | TorchSharp.Modules.Hardswish | &#10003; |  |
-| aten::hardtanh | TorchSharp.Modules.Hardtanh | &#10003; |  |
+| aten::hardsigmoid | TorchSharp.Modules.Hardsigmoid | &#10003; | &#10003; |
+| aten::hardswish | TorchSharp.Modules.Hardswish | &#10003; | &#10003; |
+| aten::hardtanh | TorchSharp.Modules.Hardtanh | &#10003; | &#10003; |
 | aten::hardtanh_backward |  |  |  |
 | aten::heaviside | TorchSharp.torch+Tensor.heaviside | &#10003; |  |
 | aten::histc | TorchSharp.torch+Tensor.histc | &#10003; |  |
@@ -245,7 +245,7 @@ Coverage: 3.61% (18/498)
 | aten::log10 | TorchSharp.torch+Tensor.log10 | &#10003; |  |
 | aten::log1p | TorchSharp.torch+Tensor.log1p | &#10003; |  |
 | aten::log2 | TorchSharp.torch+Tensor.log2 | &#10003; |  |
-| aten::log_sigmoid | TorchSharp.Modules.LogSigmoid | &#10003; |  |
+| aten::log_sigmoid | TorchSharp.Modules.LogSigmoid | &#10003; | &#10003; |
 | aten::log_softmax.int | TorchSharp.Modules.LogSoftmax | &#10003; | &#10003; |
 | aten::logaddexp | TorchSharp.torch+Tensor.logaddexp | &#10003; |  |
 | aten::logaddexp2 | TorchSharp.torch+Tensor.logaddexp2 | &#10003; |  |
@@ -272,7 +272,7 @@ Coverage: 3.61% (18/498)
 | aten::max_pool1d_with_indices | TorchSharp.torch+nn+functional.max_pool1d_with_indices | &#10003; |  |
 | aten::max_pool2d | TorchSharp.Modules.MaxPool2d | &#10003; | &#10003; |
 | aten::max_pool2d_with_indices | TorchSharp.torch+nn+functional.max_pool2d_with_indices | &#10003; |  |
-| aten::max_pool3d | TorchSharp.Modules.MaxPool3d | &#10003; |  |
+| aten::max_pool3d | TorchSharp.Modules.MaxPool3d | &#10003; | &#10003; |
 | aten::max_pool3d_with_indices | TorchSharp.torch+nn+functional.max_pool3d_with_indices | &#10003; |  |
 | aten::maximum | TorchSharp.torch+Tensor.maximum | &#10003; |  |
 | aten::mean | TorchSharp.torch+Tensor.mean | &#10003; |  |
@@ -337,7 +337,7 @@ Coverage: 3.61% (18/498)
 | aten::reflection_pad2d | TorchSharp.Modules.ReflectionPad2d | &#10003; |  |
 | aten::reflection_pad3d | TorchSharp.Modules.ReflectionPad3d | &#10003; |  |
 | aten::relu | TorchSharp.Modules.ReLU | &#10003; | &#10003; |
-| aten::relu6 | TorchSharp.Modules.ReLU6 | &#10003; |  |
+| aten::relu6 | TorchSharp.Modules.ReLU6 | &#10003; | &#10003; |
 | aten::remainder.Scalar | TorchSharp.torch+Tensor.remainder | &#10003; |  |
 | aten::remainder.Scalar_Tensor | TorchSharp.torch+Tensor.remainder | &#10003; |  |
 | aten::remainder.Tensor | TorchSharp.torch+Tensor.remainder | &#10003; |  |
@@ -366,7 +366,7 @@ Coverage: 3.61% (18/498)
 | aten::sigmoid | TorchSharp.Modules.Sigmoid | &#10003; | &#10003; |
 | aten::sign | TorchSharp.torch+Tensor.sign | &#10003; |  |
 | aten::signbit | TorchSharp.torch+Tensor.signbit | &#10003; |  |
-| aten::silu | TorchSharp.Modules.SiLU | &#10003; |  |
+| aten::silu | TorchSharp.Modules.SiLU | &#10003; | &#10003; |
 | aten::sin | TorchSharp.torch+Tensor.sin | &#10003; |  |
 | aten::sinc | TorchSharp.torch+Tensor.sinc | &#10003; |  |
 | aten::sinh | TorchSharp.torch+Tensor.sinh | &#10003; |  |
