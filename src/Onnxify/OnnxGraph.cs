@@ -115,6 +115,34 @@ public class OnnxGraph
         return null;
     }
 
+    public string NextName(string prefix)
+    {
+        var node = GetNode(prefix);
+        var value = GetValue(prefix);
+
+        if (node is not null || value is not null)
+        {
+            var counter = 0;
+
+            while (true)
+            {
+                var candidate = $"{prefix}_{counter}";
+
+                node = GetNode(candidate);
+                value = GetValue(candidate);
+
+                if (node is null && value is null) 
+                {
+                    return candidate;
+                }
+
+                counter++;
+            }
+        }
+
+        return prefix;
+    }
+
     public OnnxTensor AddTensor<T>(
         string name,
         long[] shape,

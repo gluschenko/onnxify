@@ -72,14 +72,13 @@ namespace Onnxify.Examples.Models
         {
             var model = OnnxModel.Create(new OnnxModelCreationOptions());
             var graph = model.Graph;
-            var exportState = new TorchModuleExportState();
 
             var input = graph.AddInput(
                 name: "input",
                 type: OnnxTensorType.Create<float>(["batch", 3, 227, 227])
             );
 
-            var x = _features.Export(graph, input, exportState);
+            var x = _features.Export(graph, input);
 
             x = graph.Flatten(
                 name: "flatten",
@@ -90,7 +89,7 @@ namespace Onnxify.Examples.Models
                 }
             );
 
-            x = _classifier.Export(graph, x, exportState);
+            x = _classifier.Export(graph, x);
 
             var outputEdge = graph.AddEdge("output");
             graph.Identity(

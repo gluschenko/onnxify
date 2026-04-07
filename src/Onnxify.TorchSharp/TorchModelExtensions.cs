@@ -16,20 +16,18 @@ public static class TorchModelExtensions
     public static IOnnxGraphEdge Export(
         this TorchModule module,
         OnnxGraph graph,
-        IOnnxGraphEdge input,
-        TorchModuleExportState state
+        IOnnxGraphEdge input
     )
     {
         ArgumentNullException.ThrowIfNull(module);
         ArgumentNullException.ThrowIfNull(graph);
         ArgumentNullException.ThrowIfNull(input);
-        ArgumentNullException.ThrowIfNull(state);
 
         foreach (var exporter in _exporters)
         {
             if (exporter.IsMatch(module))
             {
-                var edge = exporter.Export(graph, module, input, state);
+                var edge = exporter.Export(graph, module, input);
                 return edge;
             }
         }

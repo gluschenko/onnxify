@@ -10,8 +10,7 @@ public interface ITorchModuleExporter
     public abstract IOnnxGraphEdge Export(
         OnnxGraph graph,
         TorchModule module,
-        IOnnxGraphEdge input,
-        TorchModuleExportState state
+        IOnnxGraphEdge input
     );
 }
 
@@ -27,13 +26,12 @@ public abstract class TorchModuleExporter<TSource, TDestination> : ITorchModuleE
     public IOnnxGraphEdge Export(
         OnnxGraph graph,
         TorchModule module,
-        IOnnxGraphEdge input,
-        TorchModuleExportState state
+        IOnnxGraphEdge input
     )
     {
         if (module is TSource sourceModule)
         {
-            return Export(graph, sourceModule, input, state);
+            return Export(graph, sourceModule, input);
         }
         else
         {
@@ -44,8 +42,7 @@ public abstract class TorchModuleExporter<TSource, TDestination> : ITorchModuleE
     public abstract IOnnxGraphEdge Export(
         OnnxGraph graph,
         TSource module,
-        IOnnxGraphEdge input,
-        TorchModuleExportState state
+        IOnnxGraphEdge input
     );
 }
 
@@ -66,15 +63,14 @@ public sealed class ConvExporter : TorchModuleExporter<TorchModules.Conv2d, Conv
     public override IOnnxGraphEdge Export(
         OnnxGraph graph,
         TorchModules.Conv2d module,
-        IOnnxGraphEdge input,
-        TorchModuleExportState state
+        IOnnxGraphEdge input
     )
     {
         ArgumentNullException.ThrowIfNull(graph);
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(module);
 
-        var name = state.Next("conv");
+        var name = graph.NextName("conv");
 
         var weight = graph.AddTensor(
             name: $"{name}_w",
@@ -119,12 +115,11 @@ public sealed class ReluExporter : TorchModuleExporter<TorchModules.ReLU, Relu>
     public override IOnnxGraphEdge Export(
         OnnxGraph graph,
         TorchModules.ReLU module,
-        IOnnxGraphEdge input,
-        TorchModuleExportState state
+        IOnnxGraphEdge input
     )
     {
         return graph.Relu(
-            name: state.Next("relu"),
+            name: graph.NextName("relu"),
             options: new ReluInputOptions
             {
                 X = input,
@@ -139,14 +134,13 @@ public sealed class MaxPool2dExporter : TorchModuleExporter<TorchModules.MaxPool
     public override IOnnxGraphEdge Export(
         OnnxGraph graph,
         TorchModules.MaxPool2d module,
-        IOnnxGraphEdge input,
-        TorchModuleExportState state
+        IOnnxGraphEdge input
     )
     {
         var padding = TorchHelper.ToLongArray(module.padding);
         var strides = TorchHelper.ToLongArray(module.stride);
         var result = graph.MaxPool(
-            name: state.Next("maxpool"),
+            name: graph.NextName("maxpool"),
             options: new MaxPoolInputOptions
             {
                 X = input,
@@ -166,12 +160,11 @@ public sealed class DropoutExporter : TorchModuleExporter<TorchModules.Dropout, 
     public override IOnnxGraphEdge Export(
         OnnxGraph graph,
         TorchModules.Dropout module,
-        IOnnxGraphEdge input,
-        TorchModuleExportState state
+        IOnnxGraphEdge input
     )
     {
         var output = graph.Dropout(
-            name: state.Next("dropout"),
+            name: graph.NextName("dropout"),
             options: new DropoutInputOptions
             {
                 Data = input,
@@ -188,11 +181,10 @@ public sealed class LinearExporter : TorchModuleExporter<TorchModules.Linear, Ge
     public override IOnnxGraphEdge Export(
         OnnxGraph graph,
         TorchModules.Linear module,
-        IOnnxGraphEdge input,
-        TorchModuleExportState state
+        IOnnxGraphEdge input
     )
     {
-        var name = state.Next("linear");
+        var name = graph.NextName("linear");
         var weight = graph.AddTensor(
             name: $"{name}_w",
             shape: TorchHelper.GetShape(module.weight),
@@ -228,15 +220,14 @@ public sealed class AdaptiveAvgPool2dExporter : TorchModuleExporter<TorchModules
     public override IOnnxGraphEdge Export(
         OnnxGraph graph,
         TorchModules.AdaptiveAvgPool2d module,
-        IOnnxGraphEdge input,
-        TorchModuleExportState state
+        IOnnxGraphEdge input
     )
     {
         var outputSize = TorchHelper.ToLongArray(module.output_size);
         if (outputSize.SequenceEqual([1L, 1L]))
         {
             return graph.GlobalAveragePool(
-                name: state.Next("global_average_pool"),
+                name: graph.NextName("global_average_pool"),
                 options: new GlobalAveragePoolInputOptions
                 {
                     X = input,
@@ -256,8 +247,7 @@ public sealed class SequentialExporter : TorchModuleExporter<TorchModules.Sequen
     public override IOnnxGraphEdge Export(
         OnnxGraph graph,
         TorchModules.Sequential module,
-        IOnnxGraphEdge input,
-        TorchModuleExportState state
+        IOnnxGraphEdge input
     )
     {
         var children = module.children().OfType<TorchModule>().ToArray();
@@ -270,7 +260,7 @@ public sealed class SequentialExporter : TorchModuleExporter<TorchModules.Sequen
         var current = input;
         foreach (var child in children)
         {
-            current = child.Export(graph, current, state);
+            current = child.Export(graph, current);
         }
 
         return current;
@@ -283,13 +273,12 @@ public sealed class EmbeddingExporter : TorchModuleExporter<TorchModules.Embeddi
     public override IOnnxGraphEdge Export(
         OnnxGraph graph,
         TorchModules.Embedding module,
-        IOnnxGraphEdge input,
-        TorchModuleExportState state
+        IOnnxGraphEdge input
     )
     {
         ArgumentNullException.ThrowIfNull(module.weight);
 
-        var name = state.Next("embedding");
+        var name = graph.NextName("embedding");
 
         var weight = graph.AddTensor(
             name: $"{name}_w",
@@ -314,14 +303,12 @@ public static class ExporterExtensions
     public static LSTMOutput Export(
         this TorchModules.LSTM module,
         OnnxGraph graph,
-        IOnnxGraphEdge input,
-        TorchModuleExportState state
+        IOnnxGraphEdge input
     )
     {
         ArgumentNullException.ThrowIfNull(graph);
         ArgumentNullException.ThrowIfNull(module);
         ArgumentNullException.ThrowIfNull(input);
-        ArgumentNullException.ThrowIfNull(state);
 
         var numLayers = checked((int)GetRequiredInt64Member(module, "_num_layers"));
         var hiddenSize = checked((int)GetRequiredInt64Member(module, "_hidden_size"));
@@ -338,7 +325,7 @@ public static class ExporterExtensions
         if (batchFirst)
         {
             current = graph.Transpose(
-                name: state.Next("transpose"),
+                name: graph.NextName("transpose"),
                 options: new TransposeInputOptions
                 {
                     Data = current,
@@ -352,7 +339,7 @@ public static class ExporterExtensions
 
         for (var layer = 0; layer < numLayers; layer++)
         {
-            var name = state.Next("lstm");
+            var name = graph.NextName("lstm");
 
             var flatW = new List<float>();
             var flatR = new List<float>();
@@ -536,7 +523,7 @@ public static class ExporterExtensions
         if (batchFirst)
         {
             current = graph.Transpose(
-                name: state.Next("transpose"),
+                name: graph.NextName("transpose"),
                 options: new TransposeInputOptions
                 {
                     Data = current,
@@ -548,7 +535,7 @@ public static class ExporterExtensions
         var finalH = outputH.Count == 1
             ? outputH[0]
             : graph.Concat(
-                name: state.Next("concat"),
+                name: graph.NextName("concat"),
                 options: new ConcatInputOptions
                 {
                     In = outputH.ToArray(),
@@ -559,7 +546,7 @@ public static class ExporterExtensions
         var finalC = outputC.Count == 1
             ? outputC[0]
             : graph.Concat(
-                name: state.Next("concat"),
+                name: graph.NextName("concat"),
                 options: new ConcatInputOptions
                 {
                     In = outputC.ToArray(),

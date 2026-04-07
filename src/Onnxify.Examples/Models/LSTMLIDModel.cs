@@ -72,16 +72,15 @@ public class LSTMLIDModel : torch.nn.Module<Tensor, Tensor>
     {
         var model = OnnxModel.Create(new OnnxModelCreationOptions());
         var graph = model.Graph;
-        var exportState = new TorchModuleExportState();
 
         var input = graph.AddInput(
             name: "input",
             type: OnnxTensorType.Create<long>(["batch_size", "seq_len"])
         );
 
-        var x = _charEmbeddings.Export(graph, input, exportState);
-        x = _lstm.Export(graph, x, exportState).Y ?? throw new Exception();
-        x = _hidden2Lang.Export(graph, x, exportState);
+        var x = _charEmbeddings.Export(graph, input);
+        x = _lstm.Export(graph, x).Y ?? throw new Exception();
+        x = _hidden2Lang.Export(graph, x);
 
         x = graph.ReduceSum(
             name: "sum_logits",
