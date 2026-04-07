@@ -1,7 +1,7 @@
 # TorchSharp operator coverage
 
 Found: 83.73% (417/498)
-Coverage: 1.61% (8/498)
+Coverage: 3.61% (18/498)
 
 | ONNXScript operator | TorchSharp module | Found | Coverage |
 | --- | --- | --- | --- |
@@ -92,7 +92,7 @@ Coverage: 1.61% (8/498)
 | aten::atleast_2d.Sequence | TorchSharp.torch+Tensor.atleast_2d | &#10003; |  |
 | aten::atleast_3d | TorchSharp.torch+Tensor.atleast_3d | &#10003; |  |
 | aten::atleast_3d.Sequence | TorchSharp.torch+Tensor.atleast_3d | &#10003; |  |
-| aten::avg_pool1d | TorchSharp.Modules.AvgPool1d | &#10003; |  |
+| aten::avg_pool1d | TorchSharp.Modules.AvgPool1d | &#10003; | &#10003; |
 | aten::avg_pool2d | TorchSharp.Modules.AvgPool2d | &#10003; | &#10003; |
 | aten::avg_pool3d | TorchSharp.Modules.AvgPool3d | &#10003; |  |
 | aten::baddbmm | TorchSharp.torch+Tensor.baddbmm | &#10003; |  |
@@ -136,7 +136,7 @@ Coverage: 1.61% (8/498)
 | aten::conj | TorchSharp.torch+Tensor.conj | &#10003; |  |
 | aten::constant_pad_nd |  |  |  |
 | aten::contiguous | TorchSharp.torch+Tensor.contiguous | &#10003; |  |
-| aten::conv1d | TorchSharp.Modules.Conv1d | &#10003; |  |
+| aten::conv1d | TorchSharp.Modules.Conv1d | &#10003; | &#10003; |
 | aten::conv2d | TorchSharp.Modules.Conv2d | &#10003; | &#10003; |
 | aten::conv3d | TorchSharp.Modules.Conv3d | &#10003; |  |
 | aten::convolution | TorchSharp.Modules.Convolution | &#10003; |  |
@@ -160,7 +160,7 @@ Coverage: 1.61% (8/498)
 | aten::dot | TorchSharp.torch+Tensor.dot | &#10003; |  |
 | aten::dropout | TorchSharp.Modules.Dropout | &#10003; | &#10003; |
 | aten::einsum | TorchSharp.torch.einsum | &#10003; |  |
-| aten::elu | TorchSharp.Modules.ELU | &#10003; |  |
+| aten::elu | TorchSharp.Modules.ELU | &#10003; | &#10003; |
 | aten::embedding | TorchSharp.Modules.Embedding | &#10003; | &#10003; |
 | aten::embedding_bag | TorchSharp.Modules.EmbeddingBag | &#10003; |  |
 | aten::embedding_bag.padding_idx | TorchSharp.Modules.EmbeddingBag | &#10003; |  |
@@ -184,7 +184,7 @@ Coverage: 1.61% (8/498)
 | aten::fake_quantize_per_tensor_affine.tensor_qparams | TorchSharp.torch.fake_quantize_per_tensor_affine | &#10003; |  |
 | aten::fill.Scalar | TorchSharp.torch+Storage`1.fill_ | &#10003; |  |
 | aten::fill.Tensor | TorchSharp.torch+Storage`1.fill_ | &#10003; |  |
-| aten::flatten.using_ints | TorchSharp.Modules.Flatten | &#10003; |  |
+| aten::flatten.using_ints | TorchSharp.Modules.Flatten | &#10003; | &#10003; |
 | aten::flip | TorchSharp.torch+Tensor.flip | &#10003; |  |
 | aten::floor | TorchSharp.torch+Tensor.floor | &#10003; |  |
 | aten::floor_divide | TorchSharp.torch+Tensor.floor_divide | &#10003; |  |
@@ -230,7 +230,7 @@ Coverage: 1.61% (8/498)
 | aten::layer_norm | TorchSharp.Modules.LayerNorm | &#10003; |  |
 | aten::le.Scalar | TorchSharp.torch+Tensor.le | &#10003; |  |
 | aten::le.Tensor | TorchSharp.torch+Tensor.le | &#10003; |  |
-| aten::leaky_relu | TorchSharp.Modules.LeakyReLU | &#10003; |  |
+| aten::leaky_relu | TorchSharp.Modules.LeakyReLU | &#10003; | &#10003; |
 | aten::lerp.Scalar | TorchSharp.torch+Tensor.lerp | &#10003; |  |
 | aten::lerp.Tensor | TorchSharp.torch+Tensor.lerp | &#10003; |  |
 | aten::less.Tensor | TorchSharp.torch+Tensor.less | &#10003; |  |
@@ -246,7 +246,7 @@ Coverage: 1.61% (8/498)
 | aten::log1p | TorchSharp.torch+Tensor.log1p | &#10003; |  |
 | aten::log2 | TorchSharp.torch+Tensor.log2 | &#10003; |  |
 | aten::log_sigmoid | TorchSharp.Modules.LogSigmoid | &#10003; |  |
-| aten::log_softmax.int | TorchSharp.Modules.LogSoftmax | &#10003; |  |
+| aten::log_softmax.int | TorchSharp.Modules.LogSoftmax | &#10003; | &#10003; |
 | aten::logaddexp | TorchSharp.torch+Tensor.logaddexp | &#10003; |  |
 | aten::logaddexp2 | TorchSharp.torch+Tensor.logaddexp2 | &#10003; |  |
 | aten::logcumsumexp | TorchSharp.torch+Tensor.logcumsumexp | &#10003; |  |
@@ -268,7 +268,7 @@ Coverage: 1.61% (8/498)
 | aten::matmul | TorchSharp.torch+Tensor.matmul | &#10003; |  |
 | aten::max | TorchSharp.torch+Tensor.max | &#10003; |  |
 | aten::max.dim | TorchSharp.torch+Tensor.max | &#10003; |  |
-| aten::max_pool1d | TorchSharp.Modules.MaxPool1d | &#10003; |  |
+| aten::max_pool1d | TorchSharp.Modules.MaxPool1d | &#10003; | &#10003; |
 | aten::max_pool1d_with_indices | TorchSharp.torch+nn+functional.max_pool1d_with_indices | &#10003; |  |
 | aten::max_pool2d | TorchSharp.Modules.MaxPool2d | &#10003; | &#10003; |
 | aten::max_pool2d_with_indices | TorchSharp.torch+nn+functional.max_pool2d_with_indices | &#10003; |  |
@@ -363,7 +363,7 @@ Coverage: 1.61% (8/498)
 | aten::select.int | TorchSharp.torch+Tensor.select | &#10003; |  |
 | aten::select_scatter | TorchSharp.torch+Tensor.select_scatter | &#10003; |  |
 | aten::selu | TorchSharp.Modules.SELU | &#10003; |  |
-| aten::sigmoid | TorchSharp.Modules.Sigmoid | &#10003; |  |
+| aten::sigmoid | TorchSharp.Modules.Sigmoid | &#10003; | &#10003; |
 | aten::sign | TorchSharp.torch+Tensor.sign | &#10003; |  |
 | aten::signbit | TorchSharp.torch+Tensor.signbit | &#10003; |  |
 | aten::silu | TorchSharp.Modules.SiLU | &#10003; |  |
@@ -372,7 +372,7 @@ Coverage: 1.61% (8/498)
 | aten::sinh | TorchSharp.torch+Tensor.sinh | &#10003; |  |
 | aten::slice.Tensor | TorchSharp.torch+Size.Slice | &#10003; |  |
 | aten::slice_scatter | TorchSharp.torch+Tensor.slice_scatter | &#10003; |  |
-| aten::softmax.int | TorchSharp.Modules.Softmax | &#10003; |  |
+| aten::softmax.int | TorchSharp.Modules.Softmax | &#10003; | &#10003; |
 | aten::softplus | TorchSharp.Modules.Softplus | &#10003; |  |
 | aten::sort | TorchSharp.torch+Tensor.sort | &#10003; |  |
 | aten::special_erf | TorchSharp.torch+Tensor.erf | &#10003; |  |
@@ -400,7 +400,7 @@ Coverage: 1.61% (8/498)
 | aten::sym_storage_offset |  |  |  |
 | aten::t | TorchSharp.torch+Tensor.t | &#10003; |  |
 | aten::tan | TorchSharp.torch+Tensor.tan | &#10003; |  |
-| aten::tanh | TorchSharp.Modules.Tanh | &#10003; |  |
+| aten::tanh | TorchSharp.Modules.Tanh | &#10003; | &#10003; |
 | aten::tensor.bool | TorchSharp.torch+TensorIndex.Tensor | &#10003; |  |
 | aten::tensor.float | TorchSharp.torch+TensorIndex.Tensor | &#10003; |  |
 | aten::tensor.int | TorchSharp.torch+TensorIndex.Tensor | &#10003; |  |

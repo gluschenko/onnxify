@@ -18,11 +18,21 @@ public static class TorchModuleExtensions
         return module switch
         {
             TorchModules.Sequential m => m.Export(graph, input),
+            TorchModules.Conv1d m => m.Export(graph, input),
             TorchModules.Conv2d m => m.Export(graph, input),
             TorchModules.ReLU m => m.Export(graph, input),
+            TorchModules.LeakyReLU m => m.Export(graph, input),
+            TorchModules.ELU m => m.Export(graph, input),
+            TorchModules.Sigmoid m => m.Export(graph, input),
+            TorchModules.Tanh m => m.Export(graph, input),
+            TorchModules.Softmax m => m.Export(graph, input),
+            TorchModules.LogSoftmax m => m.Export(graph, input),
             TorchModules.MaxPool2d m => m.Export(graph, input),
+            TorchModules.MaxPool1d m => m.Export(graph, input),
             TorchModules.Dropout m => m.Export(graph, input),
             TorchModules.Linear m => m.Export(graph, input),
+            TorchModules.AvgPool1d m => m.Export(graph, input),
+            TorchModules.Flatten m => m.Export(graph, input),
             TorchModules.AdaptiveAvgPool2d m => m.Export(graph, input),
             TorchModules.Embedding m => m.Export(graph, input),
             _ => throw new NotImplementedException($"Not implemented for '{module.GetType().FullName}'"),
@@ -49,6 +59,79 @@ public static class TorchModuleExtensions
         }
 
         return current;
+    }
+
+    [TorchOp("aten::conv1d")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.Conv1d module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(module);
+
+        var name = graph.NextName("conv");
+
+        var weight = graph.AddTensor(
+            name: $"{name}_w",
+            shape: TorchHelper.GetShape(module.weight),
+            value: TorchHelper.GetFloatData(module.weight)
+        );
+
+        IOnnxGraphEdge? bias = null;
+        if (module.bias is not null)
+        {
+            bias = graph.AddTensor(
+                name: $"{name}_b",
+                shape: TorchHelper.GetShape(module.bias),
+                value: TorchHelper.GetFloatData(module.bias)
+            );
+        }
+
+        var attributes = new List<OnnxAttribute>
+        {
+            new OnnxAttribute<long[]>("kernel_shape", TorchHelper.ToLongArray(module.kernel_size)),
+        };
+
+        var strides = TorchHelper.ToLongArray(module.stride);
+        if (strides.Length > 0)
+        {
+            attributes.Add(new OnnxAttribute<long[]>("strides", strides));
+        }
+
+        var padding = TorchHelper.ToLongArray(module.padding);
+        if (padding.Length > 0)
+        {
+            attributes.Add(new OnnxAttribute<long[]>("pads", TorchHelper.ExpandPadding(padding, spatialRank: 1)));
+        }
+
+        var dilations = TorchHelper.ToLongArray(module.dilation);
+        if (dilations.Length > 0)
+        {
+            attributes.Add(new OnnxAttribute<long[]>("dilations", dilations));
+        }
+
+        if (module.groups != 1)
+        {
+            attributes.Add(new OnnxAttribute<long>("group", module.groups));
+        }
+
+        var inputs = new List<IOnnxGraphEdge> { input, weight };
+        if (bias is not null)
+        {
+            inputs.Add(bias);
+        }
+
+        return AddSingleOutputNode(
+            graph,
+            name: name,
+            opType: "Conv",
+            outputName: $"{name}_y",
+            inputs: inputs,
+            attributes: attributes
+        );
     }
 
     [TorchOp("aten::conv2d")]
@@ -93,7 +176,7 @@ public static class TorchModuleExtensions
                 B = bias,
                 KernelShape = TorchHelper.ToLongArray(module.kernel_size),
                 Strides = strides.Length == 0 ? null : strides,
-                Pads = padding.Length == 0 ? null : TorchHelper.ExpandPadding(padding),
+                Pads = padding.Length == 0 ? null : TorchHelper.ExpandPadding(padding, spatialRank: 2),
                 Dilations = dilations.Length == 0 ? null : dilations,
                 Group = module.groups,
             }
@@ -116,6 +199,112 @@ public static class TorchModuleExtensions
         );
     }
 
+    [TorchOp("aten::leaky_relu")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.LeakyReLU module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        return AddSingleOutputNode(
+            graph,
+            prefix: "leaky_relu",
+            opType: "LeakyRelu",
+            inputs: [input],
+            attributes:
+            [
+                new OnnxAttribute<float>("alpha", (float)module.negative_slope),
+            ]
+        );
+    }
+
+    [TorchOp("aten::elu")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.ELU module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        return AddSingleOutputNode(
+            graph,
+            prefix: "elu",
+            opType: "Elu",
+            inputs: [input],
+            attributes:
+            [
+                new OnnxAttribute<float>("alpha", (float)module.alpha),
+            ]
+        );
+    }
+
+    [TorchOp("aten::sigmoid")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.Sigmoid module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        return AddSingleOutputNode(
+            graph,
+            prefix: "sigmoid",
+            opType: "Sigmoid",
+            inputs: [input]
+        );
+    }
+
+    [TorchOp("aten::tanh")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.Tanh module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        return AddSingleOutputNode(
+            graph,
+            prefix: "tanh",
+            opType: "Tanh",
+            inputs: [input]
+        );
+    }
+
+    [TorchOp("aten::softmax.int")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.Softmax module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        return AddSingleOutputNode(
+            graph,
+            prefix: "softmax",
+            opType: "Softmax",
+            inputs: [input],
+            attributes:
+            [
+                new OnnxAttribute<long>("axis", module.dim),
+            ]
+        );
+    }
+
+    [TorchOp("aten::log_softmax.int")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.LogSoftmax module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        return AddSingleOutputNode(
+            graph,
+            prefix: "log_softmax",
+            opType: "LogSoftmax",
+            inputs: [input],
+            attributes:
+            [
+                new OnnxAttribute<long>("axis", module.dim),
+            ]
+        );
+    }
+
     [TorchOp("aten::max_pool2d")]
     public static IOnnxGraphEdge Export(
         this TorchModules.MaxPool2d module,
@@ -132,11 +321,55 @@ public static class TorchModuleExtensions
                 X = input,
                 KernelShape = TorchHelper.ToLongArray(module.kernel_size),
                 Strides = strides.Length == 0 ? null : strides,
-                Pads = padding.Length == 0 ? null : TorchHelper.ExpandPadding(padding),
+                Pads = padding.Length == 0 ? null : TorchHelper.ExpandPadding(padding, spatialRank: 2),
             }
         );
 
         return result.Y ?? throw new InvalidOperationException("MaxPool export did not produce an output edge.");
+    }
+
+    [TorchOp("aten::max_pool1d")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.MaxPool1d module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        var attributes = new List<OnnxAttribute>
+        {
+            new OnnxAttribute<long[]>("kernel_shape", TorchHelper.ToLongArray(module.kernel_size)),
+        };
+
+        var strides = TorchHelper.ToLongArray(module.stride);
+        if (strides.Length > 0)
+        {
+            attributes.Add(new OnnxAttribute<long[]>("strides", strides));
+        }
+
+        var padding = TorchHelper.ToLongArray(module.padding);
+        if (padding.Length > 0)
+        {
+            attributes.Add(new OnnxAttribute<long[]>("pads", TorchHelper.ExpandPadding(padding, spatialRank: 1)));
+        }
+
+        var dilations = TorchHelper.ToLongArray(module.dilation);
+        if (dilations.Length > 0)
+        {
+            attributes.Add(new OnnxAttribute<long[]>("dilations", dilations));
+        }
+
+        if (module.ceil_mode)
+        {
+            attributes.Add(new OnnxAttribute<long>("ceil_mode", 1));
+        }
+
+        return AddSingleOutputNode(
+            graph,
+            prefix: "maxpool",
+            opType: "MaxPool",
+            inputs: [input],
+            attributes: attributes
+        );
     }
 
     [TorchOp("aten::dropout")]
@@ -190,6 +423,75 @@ public static class TorchModuleExtensions
                 C = bias,
                 TransB = 1,
             }
+        );
+    }
+
+    [TorchOp("aten::avg_pool1d")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.AvgPool1d module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        var attributes = new List<OnnxAttribute>
+        {
+            new OnnxAttribute<long[]>("kernel_shape", TorchHelper.ToLongArray(module.kernel_size)),
+        };
+
+        var strides = TorchHelper.ToLongArray(module.stride);
+        if (strides.Length > 0)
+        {
+            attributes.Add(new OnnxAttribute<long[]>("strides", strides));
+        }
+
+        var padding = TorchHelper.ToLongArray(module.padding);
+        if (padding.Length > 0)
+        {
+            attributes.Add(new OnnxAttribute<long[]>("pads", TorchHelper.ExpandPadding(padding, spatialRank: 1)));
+        }
+
+        if (module.ceil_mode)
+        {
+            attributes.Add(new OnnxAttribute<long>("ceil_mode", 1));
+        }
+
+        if (module.count_include_pad)
+        {
+            attributes.Add(new OnnxAttribute<long>("count_include_pad", 1));
+        }
+
+        return AddSingleOutputNode(
+            graph,
+            prefix: "avgpool",
+            opType: "AveragePool",
+            inputs: [input],
+            attributes: attributes
+        );
+    }
+
+    [TorchOp("aten::flatten.using_ints")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.Flatten module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        if (module.start_dim == 1 && module.end_dim == -1)
+        {
+            return AddSingleOutputNode(
+                graph,
+                prefix: "flatten",
+                opType: "Flatten",
+                inputs: [input],
+                attributes:
+                [
+                    new OnnxAttribute<long>("axis", module.start_dim),
+                ]
+            );
+        }
+
+        throw new NotSupportedException(
+            $"Flatten with start_dim={module.start_dim} and end_dim={module.end_dim} is not supported by the recursive module walker."
         );
     }
 
@@ -507,6 +809,52 @@ public static class TorchModuleExtensions
             YH = finalH,
             YC = finalC,
         };
+    }
+
+    private static IOnnxGraphEdge AddSingleOutputNode(
+        OnnxGraph graph,
+        string prefix,
+        string opType,
+        IEnumerable<IOnnxGraphEdge> inputs,
+        IEnumerable<OnnxAttribute>? attributes = null
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+
+        var name = graph.NextName(prefix);
+        return AddSingleOutputNode(
+            graph,
+            name,
+            opType,
+            outputName: $"{name}_output",
+            inputs,
+            attributes
+        );
+    }
+
+    private static IOnnxGraphEdge AddSingleOutputNode(
+        OnnxGraph graph,
+        string name,
+        string opType,
+        string outputName,
+        IEnumerable<IOnnxGraphEdge> inputs,
+        IEnumerable<OnnxAttribute>? attributes = null
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+
+        var output = graph.AddEdge(outputName);
+        graph.AddNode(
+            name: name,
+            opType: opType,
+            domain: string.Empty,
+            docString: string.Empty,
+            inputs: inputs,
+            outputs: [output],
+            attributes: attributes ?? []
+        );
+
+        return output;
     }
 
     private static string GetWeightIhName(int layer, bool reverse)
