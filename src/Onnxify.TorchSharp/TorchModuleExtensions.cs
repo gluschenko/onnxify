@@ -586,12 +586,40 @@ public static class TorchModuleExtensions
     {
         var name = graph.NextName("prelu");
         var weightTensor = GetRequiredTensorMember(module, "weight", "_weight");
+        var weightShape = TorchHelper.GetShape(weightTensor);
 
-        var slope = graph.AddTensor(
+        IOnnxGraphEdge slope = graph.AddTensor(
             name: $"{name}_slope",
-            shape: TorchHelper.GetShape(weightTensor),
+            shape: weightShape,
             value: TorchHelper.GetFloatData(weightTensor)
         );
+
+        var inputRank = TryGetTensorRank(input);
+        if (inputRank is >= 2 && weightShape.Length == 1)
+        {
+            var reshapeShapeValues = new long[inputRank.Value];
+            reshapeShapeValues[0] = 1;
+            reshapeShapeValues[1] = -1;
+            for (var i = 2; i < reshapeShapeValues.Length; i++)
+            {
+                reshapeShapeValues[i] = 1;
+            }
+
+            var reshapeShape = graph.AddTensor(
+                name: $"{name}_slope_shape",
+                shape: [reshapeShapeValues.Length],
+                value: reshapeShapeValues
+            );
+
+            slope = graph.Reshape(
+                name: $"{name}_slope_reshape",
+                options: new ReshapeInputOptions
+                {
+                    Data = slope,
+                    Shape = reshapeShape,
+                }
+            );
+        }
 
         return graph.PRelu(
             name: name,
@@ -618,7 +646,7 @@ public static class TorchModuleExtensions
             {
                 Input = input,
                 Blocksize = upscaleFactor,
-                Mode = "DCR",
+                Mode = "CRD",
             }
         );
     }
@@ -1611,6 +1639,16 @@ public static class TorchModuleExtensions
     private static long[] ResolvePoolStrides(long[] strides, long[] kernelShape)
     {
         return strides.Length == 0 ? kernelShape : strides;
+    }
+
+    private static int? TryGetTensorRank(IOnnxGraphEdge edge)
+    {
+        if (edge is OnnxValue<OnnxTensorType> value && value.Type.Shape is not null)
+        {
+            return value.Type.Shape.Dimensions.Length;
+        }
+
+        return null;
     }
 
     // PyTorch LSTM gate order: [i, f, g, o]
