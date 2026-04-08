@@ -1,7 +1,7 @@
 # TorchSharp operator coverage
 
 Found: 83.73% (417/498)
-Coverage: 8.03% (40/498)
+Coverage: 8.23% (41/498)
 
 | ONNXScript operator | TorchSharp module | Found | Coverage |
 | --- | --- | --- | --- |
@@ -227,7 +227,7 @@ Coverage: 8.03% (40/498)
 | aten::isnan | TorchSharp.torch+Tensor.isnan | &#10003; |  |
 | aten::isneginf | TorchSharp.torch+Tensor.isneginf | &#10003; |  |
 | aten::isposinf | TorchSharp.torch+Tensor.isposinf | &#10003; |  |
-| aten::layer_norm | TorchSharp.Modules.LayerNorm | &#10003; |  |
+| aten::layer_norm | TorchSharp.Modules.LayerNorm | &#10003; | &#10003; |
 | aten::le.Scalar | TorchSharp.torch+Tensor.le | &#10003; |  |
 | aten::le.Tensor | TorchSharp.torch+Tensor.le | &#10003; |  |
 | aten::leaky_relu | TorchSharp.Modules.LeakyReLU | &#10003; | &#10003; |

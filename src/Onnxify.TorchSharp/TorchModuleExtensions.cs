@@ -51,10 +51,12 @@ public static class TorchModuleExtensions
             TorchModules.Dropout m => m.Export(graph, input),
             TorchModules.Linear m => m.Export(graph, input),
             TorchModules.AvgPool1d m => m.Export(graph, input),
+            TorchModules.AvgPool2d m => m.Export(graph, input),
             TorchModules.AvgPool3d m => m.Export(graph, input),
             TorchModules.Flatten m => m.Export(graph, input),
             TorchModules.AdaptiveAvgPool2d m => m.Export(graph, input),
             TorchModules.Embedding m => m.Export(graph, input),
+            TorchModules.LayerNorm m => m.Export(graph, input),
             _ => throw new NotImplementedException($"Not implemented for '{module.GetType().FullName}'"),
         };
     }
@@ -826,6 +828,29 @@ public static class TorchModuleExtensions
         );
     }
 
+    [TorchOp("aten::avg_pool2d")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.AvgPool2d module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        var strides = TorchHelper.ToLongArray(module.stride);
+        var padding = TorchHelper.ToLongArray(module.padding);
+        return graph.AveragePool(
+            name: graph.NextName("avgpool"),
+            options: new AveragePoolInputOptions
+            {
+                X = input,
+                KernelShape = TorchHelper.ToLongArray(module.kernel_size),
+                Strides = strides.Length == 0 ? null : strides,
+                Pads = padding.Length == 0 ? null : TorchHelper.ExpandPadding(padding, spatialRank: 2),
+                CeilMode = module.ceil_mode ? 1 : 0,
+                CountIncludePad = module.count_include_pad ? 1 : 0,
+            }
+        );
+    }
+
     [TorchOp("aten::avg_pool3d")]
     public static IOnnxGraphEdge Export(
         this TorchModules.AvgPool3d module,
@@ -873,7 +898,7 @@ public static class TorchModuleExtensions
         );
     }
 
-    [TorchOp("aten::avg_pool2d")] // ???
+    [TorchOp("aten::adaptive_avg_pool2d")]
     public static IOnnxGraphEdge Export(
         this TorchModules.AdaptiveAvgPool2d module,
         OnnxGraph graph,
@@ -896,6 +921,54 @@ public static class TorchModuleExtensions
             $"AdaptiveAvgPool2d with output_size [{string.Join(", ", outputSize)}] requires shape-aware " +
             $"lowering and cannot be exported by the recursive module walker."
         );
+    }
+
+    [TorchOp("aten::layer_norm")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.LayerNorm module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        var normalizedShape = module.normalized_shape;
+        if (normalizedShape.Length == 0)
+        {
+            throw new NotSupportedException("LayerNorm requires a non-empty normalized_shape.");
+        }
+
+        var name = graph.NextName("layer_norm");
+
+        var scale = module.weight is not null
+            ? graph.AddTensor(
+                name: $"{name}_scale",
+                shape: TorchHelper.GetShape(module.weight),
+                value: TorchHelper.GetFloatData(module.weight)
+            )
+            : graph.AddTensor(
+                name: $"{name}_scale",
+                shape: normalizedShape,
+                value: CreateFilledFloatArray(normalizedShape, 1f)
+            );
+
+        IOnnxGraphEdge? bias = module.bias is not null
+            ? graph.AddTensor(
+                name: $"{name}_bias",
+                shape: TorchHelper.GetShape(module.bias),
+                value: TorchHelper.GetFloatData(module.bias)
+            )
+            : null;
+
+        return graph.LayerNormalization(
+            name: name,
+            options: new LayerNormalizationInputOptions
+            {
+                X = input,
+                Scale = scale,
+                B = bias,
+                Axis = -normalizedShape.Length,
+                Epsilon = (float)module.eps,
+            }
+        ).Y;
     }
 
     [TorchOp("aten::embedding")]
@@ -1519,6 +1592,14 @@ public static class TorchModuleExtensions
         }
 
         return [Convert.ToInt64(value)];
+    }
+
+    private static float[] CreateFilledFloatArray(long[] shape, float value)
+    {
+        var elementCount = checked((int)shape.Aggregate(1L, (current, dimension) => current * dimension));
+        var data = new float[elementCount];
+        Array.Fill(data, value);
+        return data;
     }
 
     // PyTorch LSTM gate order: [i, f, g, o]
