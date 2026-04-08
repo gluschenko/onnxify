@@ -1,21 +1,20 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Text;
 
 namespace Onnxify.AgentSkillGenerator;
 
-internal class Program
+internal static class Program
 {
-    static void Main(string[] args)
+    private static int Main(string[] args)
     {
         CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
         CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
         CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
         Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
         Console.Title = nameof(Onnxify);
-        Console.InputEncoding = Encoding.Unicode;
-        Console.OutputEncoding = Encoding.Unicode;
+        Console.InputEncoding = Encoding.UTF8;
+        Console.OutputEncoding = Encoding.UTF8;
 
-        Console.WriteLine("Hello, World!");
-        Console.ReadKey();
+        return OperatorSkillGenerator.Run(args);
     }
 }

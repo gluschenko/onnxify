@@ -8,7 +8,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Onnxify.TorchSharp\Onnxify.TorchSharp.csproj" />
     <ProjectReference Include="..\Onnxify\Onnxify.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\Onnxify\Assets\onnx_operators.json" Link="Assets\onnx_operators.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
