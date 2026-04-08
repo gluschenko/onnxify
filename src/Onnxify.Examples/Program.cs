@@ -28,6 +28,9 @@ namespace Onnxify.Examples
             {
                 new ExampleMenuItem("showcase", "TorchSharp export showcase", RunTorchSharpExportShowcase),
                 new ExampleMenuItem("lstm", "Language LSTM export", ExportLanguageLstm),
+                new ExampleMenuItem("gpt2", "Mini GPT-2-like decoder export", RunMiniGpt2LikeExample),
+                new ExampleMenuItem("mobilenet", "MobileNetV1-like classifier export", RunMobileNetV1LikeExample),
+                new ExampleMenuItem("yolo", "Tiny YOLO-like detector export", RunTinyYoloLikeExample),
                 new ExampleMenuItem("alexnet", "AlexNet training and export", TrainAlexNet),
                 new ExampleMenuItem("all", "Run all examples", RunAllExamples),
             };
@@ -103,6 +106,103 @@ namespace Onnxify.Examples
             onnxModel.Save(outputPath, true);
         }
 
+        static void RunMiniGpt2LikeExample()
+        {
+            torch.random.manual_seed(1234);
+
+            var outputDirectory = EnsureAssetsDirectory();
+            var outputPath = Path.Combine(outputDirectory, "mini-gpt2-like.onnx");
+
+            var model = new MiniGpt2LikeModel();
+            model.eval();
+
+            using var tokenIds = torch.tensor(
+                    new long[]
+                    {
+                        1, 5, 7, 9, 11, 13, 15, 17,
+                        2, 4, 6, 8, 10, 12, 14, 16,
+                    },
+                    dtype: ScalarType.Int64,
+                    device: torch.CPU
+                )
+                .reshape(2, model.MaxSequenceLength);
+
+            using var torchOutput = model.forward(tokenIds).cpu();
+
+            var onnxModel = model.Export();
+            onnxModel.Save(outputPath, true);
+
+            using var session = new InferenceSession(outputPath);
+            var onnxOutput = RunOnnxInt64(session, tokenIds);
+
+            Console.WriteLine("Mini GPT-2-like decoder export");
+            Console.WriteLine($"Saved ONNX model: {outputPath}");
+            Console.WriteLine($"Input shape: [{string.Join(", ", tokenIds.shape)}]");
+            Console.WriteLine($"Output shape: [{string.Join(", ", torchOutput.shape)}]");
+            Console.WriteLine($"Max abs diff Torch vs ONNX: {ComputeMaxAbsDiff(torchOutput, onnxOutput):G9}");
+            Console.WriteLine();
+            Console.WriteLine("Architecture:");
+            Console.WriteLine("Token embedding, position embedding, 2 GPT-2-style transformer blocks, fused QKV causal self-attention, GELU MLP, tied output projection");
+        }
+
+        static void RunTinyYoloLikeExample()
+        {
+            torch.random.manual_seed(1234);
+
+            var outputDirectory = EnsureAssetsDirectory();
+            var outputPath = Path.Combine(outputDirectory, "tiny-yolo-like.onnx");
+
+            var model = new TinyYoloLikeDetector();
+            model.eval();
+
+            using var input = torch.randn(new long[] { 2, 3, 64, 64 }, device: torch.CPU);
+            using var torchOutput = model.forward(input).cpu();
+
+            var onnxModel = model.Export();
+            onnxModel.Save(outputPath, true);
+
+            using var session = new InferenceSession(outputPath);
+            var onnxOutput = RunOnnx(session, input);
+
+            Console.WriteLine("Tiny YOLO-like detector export");
+            Console.WriteLine($"Saved ONNX model: {outputPath}");
+            Console.WriteLine($"Input shape: [{string.Join(", ", input.shape)}]");
+            Console.WriteLine($"Output shape: [{string.Join(", ", torchOutput.shape)}]");
+            Console.WriteLine($"Max abs diff Torch vs ONNX: {ComputeMaxAbsDiff(torchOutput, onnxOutput):G9}");
+            Console.WriteLine();
+            Console.WriteLine("Detection layout:");
+            Console.WriteLine($"[batch, {model.PredictionCount}, {model.AttributeCount}] where attrs = (x, y, w, h, objectness, classes...)");
+        }
+
+        static void RunMobileNetV1LikeExample()
+        {
+            torch.random.manual_seed(1234);
+
+            var outputDirectory = EnsureAssetsDirectory();
+            var outputPath = Path.Combine(outputDirectory, "mobilenet-v1-like.onnx");
+
+            var model = new MobileNetV1LikeClassifier();
+            model.eval();
+
+            using var input = torch.randn(new long[] { 2, 3, 96, 96 }, device: torch.CPU);
+            using var torchOutput = model.forward(input).cpu();
+
+            var onnxModel = model.Export();
+            onnxModel.Save(outputPath, true);
+
+            using var session = new InferenceSession(outputPath);
+            var onnxOutput = RunOnnx(session, input);
+
+            Console.WriteLine("MobileNetV1-like classifier export");
+            Console.WriteLine($"Saved ONNX model: {outputPath}");
+            Console.WriteLine($"Input shape: [{string.Join(", ", input.shape)}]");
+            Console.WriteLine($"Output shape: [{string.Join(", ", torchOutput.shape)}]");
+            Console.WriteLine($"Max abs diff Torch vs ONNX: {ComputeMaxAbsDiff(torchOutput, onnxOutput):G9}");
+            Console.WriteLine();
+            Console.WriteLine("Architecture:");
+            Console.WriteLine("Conv-BN-ReLU6 stem, depthwise-separable MobileNet blocks, adaptive average pooling, linear classifier");
+        }
+
         static void TrainAlexNet()
         {
             var datasetDirectory = @"D:\Backups\ML\Ararat";
@@ -171,6 +271,9 @@ namespace Onnxify.Examples
         {
             RunTorchSharpExportShowcase();
             ExportLanguageLstm();
+            RunMiniGpt2LikeExample();
+            RunMobileNetV1LikeExample();
+            RunTinyYoloLikeExample();
             TrainAlexNet();
         }
 
@@ -244,6 +347,19 @@ namespace Onnxify.Examples
             var inputTensor = new DenseTensor<float>(
                 inputData,
                 new[] { (int)input.shape[0], (int)input.shape[1], (int)input.shape[2], (int)input.shape[3] }
+            );
+
+            var inputValue = NamedOnnxValue.CreateFromTensor("input", inputTensor);
+            using IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results = session.Run(new[] { inputValue });
+            return results.Single().AsTensor<float>().ToArray();
+        }
+
+        static float[] RunOnnxInt64(InferenceSession session, Tensor input)
+        {
+            var inputData = input.cpu().data<long>().ToArray();
+            var inputTensor = new DenseTensor<long>(
+                inputData,
+                new[] { (int)input.shape[0], (int)input.shape[1] }
             );
 
             var inputValue = NamedOnnxValue.CreateFromTensor("input", inputTensor);
