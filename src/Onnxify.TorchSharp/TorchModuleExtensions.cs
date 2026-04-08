@@ -684,14 +684,15 @@ public static class TorchModuleExtensions
     )
     {
         var padding = TorchHelper.ToLongArray(module.padding);
-        var strides = TorchHelper.ToLongArray(module.stride);
+        var kernelShape = TorchHelper.ToLongArray(module.kernel_size);
+        var strides = ResolvePoolStrides(TorchHelper.ToLongArray(module.stride), kernelShape);
         var result = graph.MaxPool(
             name: graph.NextName("maxpool"),
             options: new MaxPoolInputOptions
             {
                 X = input,
-                KernelShape = TorchHelper.ToLongArray(module.kernel_size),
-                Strides = strides.Length == 0 ? null : strides,
+                KernelShape = kernelShape,
+                Strides = strides,
                 Pads = padding.Length == 0 ? null : TorchHelper.ExpandPadding(padding, spatialRank: 2),
             }
         );
@@ -706,7 +707,8 @@ public static class TorchModuleExtensions
         IOnnxGraphEdge input
     )
     {
-        var strides = TorchHelper.ToLongArray(module.stride);
+        var kernelShape = TorchHelper.ToLongArray(module.kernel_size);
+        var strides = ResolvePoolStrides(TorchHelper.ToLongArray(module.stride), kernelShape);
         var padding = TorchHelper.ToLongArray(module.padding);
         var dilations = TorchHelper.ToLongArray(module.dilation);
         var result = graph.MaxPool(
@@ -714,8 +716,8 @@ public static class TorchModuleExtensions
             options: new MaxPoolInputOptions
             {
                 X = input,
-                KernelShape = TorchHelper.ToLongArray(module.kernel_size),
-                Strides = strides.Length == 0 ? null : strides,
+                KernelShape = kernelShape,
+                Strides = strides,
                 Pads = padding.Length == 0 ? null : TorchHelper.ExpandPadding(padding, spatialRank: 1),
                 Dilations = dilations.Length == 0 ? null : dilations,
                 CeilMode = module.ceil_mode ? 1 : 0,
@@ -732,7 +734,8 @@ public static class TorchModuleExtensions
         IOnnxGraphEdge input
     )
     {
-        var strides = TorchHelper.ToLongArray(module.stride);
+        var kernelShape = TorchHelper.ToLongArray(module.kernel_size);
+        var strides = ResolvePoolStrides(TorchHelper.ToLongArray(module.stride), kernelShape);
         var padding = TorchHelper.ToLongArray(module.padding);
         var dilations = TorchHelper.ToLongArray(module.dilation);
         var result = graph.MaxPool(
@@ -740,8 +743,8 @@ public static class TorchModuleExtensions
             options: new MaxPoolInputOptions
             {
                 X = input,
-                KernelShape = TorchHelper.ToLongArray(module.kernel_size),
-                Strides = strides.Length == 0 ? null : strides,
+                KernelShape = kernelShape,
+                Strides = strides,
                 Pads = padding.Length == 0 ? null : TorchHelper.ExpandPadding(padding, spatialRank: 3),
                 Dilations = dilations.Length == 0 ? null : dilations,
                 CeilMode = module.ceil_mode ? 1 : 0,
@@ -812,15 +815,16 @@ public static class TorchModuleExtensions
         IOnnxGraphEdge input
     )
     {
-        var strides = TorchHelper.ToLongArray(module.stride);
+        var kernelShape = TorchHelper.ToLongArray(module.kernel_size);
+        var strides = ResolvePoolStrides(TorchHelper.ToLongArray(module.stride), kernelShape);
         var padding = TorchHelper.ToLongArray(module.padding);
         return graph.AveragePool(
             name: graph.NextName("avgpool"),
             options: new AveragePoolInputOptions
             {
                 X = input,
-                KernelShape = TorchHelper.ToLongArray(module.kernel_size),
-                Strides = strides.Length == 0 ? null : strides,
+                KernelShape = kernelShape,
+                Strides = strides,
                 Pads = padding.Length == 0 ? null : TorchHelper.ExpandPadding(padding, spatialRank: 1),
                 CeilMode = module.ceil_mode ? 1 : 0,
                 CountIncludePad = module.count_include_pad ? 1 : 0,
@@ -835,15 +839,16 @@ public static class TorchModuleExtensions
         IOnnxGraphEdge input
     )
     {
-        var strides = TorchHelper.ToLongArray(module.stride);
+        var kernelShape = TorchHelper.ToLongArray(module.kernel_size);
+        var strides = ResolvePoolStrides(TorchHelper.ToLongArray(module.stride), kernelShape);
         var padding = TorchHelper.ToLongArray(module.padding);
         return graph.AveragePool(
             name: graph.NextName("avgpool"),
             options: new AveragePoolInputOptions
             {
                 X = input,
-                KernelShape = TorchHelper.ToLongArray(module.kernel_size),
-                Strides = strides.Length == 0 ? null : strides,
+                KernelShape = kernelShape,
+                Strides = strides,
                 Pads = padding.Length == 0 ? null : TorchHelper.ExpandPadding(padding, spatialRank: 2),
                 CeilMode = module.ceil_mode ? 1 : 0,
                 CountIncludePad = module.count_include_pad ? 1 : 0,
@@ -858,15 +863,16 @@ public static class TorchModuleExtensions
         IOnnxGraphEdge input
     )
     {
-        var strides = TorchHelper.ToLongArray(module.stride);
+        var kernelShape = TorchHelper.ToLongArray(module.kernel_size);
+        var strides = ResolvePoolStrides(TorchHelper.ToLongArray(module.stride), kernelShape);
         var padding = TorchHelper.ToLongArray(module.padding);
         return graph.AveragePool(
             name: graph.NextName("avgpool"),
             options: new AveragePoolInputOptions
             {
                 X = input,
-                KernelShape = TorchHelper.ToLongArray(module.kernel_size),
-                Strides = strides.Length == 0 ? null : strides,
+                KernelShape = kernelShape,
+                Strides = strides,
                 Pads = padding.Length == 0 ? null : TorchHelper.ExpandPadding(padding, spatialRank: 3),
                 CeilMode = module.ceil_mode ? 1 : 0,
                 CountIncludePad = module.count_include_pad ? 1 : 0,
@@ -1600,6 +1606,11 @@ public static class TorchModuleExtensions
         var data = new float[elementCount];
         Array.Fill(data, value);
         return data;
+    }
+
+    private static long[] ResolvePoolStrides(long[] strides, long[] kernelShape)
+    {
+        return strides.Length == 0 ? kernelShape : strides;
     }
 
     // PyTorch LSTM gate order: [i, f, g, o]

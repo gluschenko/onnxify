@@ -20,12 +20,12 @@ namespace Onnxify.Examples.Models
                 ("pad", ReflectionPad2d((1L, 1L, 1L, 1L))),
                 ("conv1", Conv2d(3, 8, kernel_size: 3)),
                 ("gelu", GELU()),
-                ("avgpool", AvgPool2d(2)),
+                ("avgpool", AvgPool2d(kernel_size: 2, stride: 2)),
                 ("conv2", Conv2d(8, 16, kernel_size: 3, padding: 1)),
                 ("mish", Mish()),
                 ("maxpool", MaxPool2d(kernel_size: 2, stride: 2)),
                 ("pixel_unshuffle", PixelUnshuffle(2)),
-                ("prelu", PReLU(64)),
+                ("prelu", PReLU(1)),
                 ("conv3", Conv2d(64, 16, kernel_size: 1)),
                 ("silu", SiLU()),
                 ("pixel_shuffle", PixelShuffle(2)),
@@ -54,7 +54,10 @@ namespace Onnxify.Examples.Models
 
         public OnnxModel Export()
         {
-            var model = OnnxModel.Create(new OnnxModelCreationOptions());
+            var model = OnnxModel.Create(new OnnxModelCreationOptions
+            {
+                Opset = 22,
+            });
             var graph = model.Graph;
 
             var input = graph.AddInput(
