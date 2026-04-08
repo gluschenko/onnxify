@@ -5,10 +5,12 @@
   <Folder Name="/.misc/">
     <File Path=".editorconfig" />
   </Folder>
-  <Folder Name="/libs/">
+  <Folder Name="/generators/">
     <Project Path="Onnxify.AgentSkillGenerator/Onnxify.AgentSkillGenerator.csproj" Id="72e6ec8b-29a2-451f-813c-ae32ff6e8228" />
     <Project Path="Onnxify.ProjectGenerator/Onnxify.ProjectGenerator.csproj" Id="1aa227d0-394a-4013-ba5d-9193f0ab85a3" />
     <Project Path="Onnxify.SourceGenerator/Onnxify.SourceGenerator.csproj" Id="947c739d-8301-49a4-94d1-75976cdf6dea" />
+  </Folder>
+  <Folder Name="/libs/">
     <Project Path="Onnxify.TorchSharp/Onnxify.TorchSharp.csproj" Id="90452197-f039-4f45-a177-04f0af4e1957" />
     <Project Path="Onnxify/Onnxify.csproj" Id="c2d6af74-de08-469c-ae86-91955fc31cb4" />
   </Folder>

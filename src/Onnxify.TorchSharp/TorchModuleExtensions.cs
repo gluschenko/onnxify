@@ -22,6 +22,9 @@ public static class TorchModuleExtensions
             TorchModules.Conv1d m => m.Export(graph, input),
             TorchModules.Conv2d m => m.Export(graph, input),
             TorchModules.Conv3d m => m.Export(graph, input),
+            TorchModules.BatchNorm1d m => m.Export(graph, input),
+            TorchModules.BatchNorm2d m => m.Export(graph, input),
+            TorchModules.BatchNorm3d m => m.Export(graph, input),
             TorchModules.ReLU m => m.Export(graph, input),
             TorchModules.ReLU6 m => m.Export(graph, input),
             TorchModules.LeakyReLU m => m.Export(graph, input),
@@ -57,6 +60,7 @@ public static class TorchModuleExtensions
             TorchModules.AdaptiveAvgPool2d m => m.Export(graph, input),
             TorchModules.Embedding m => m.Export(graph, input),
             TorchModules.LayerNorm m => m.Export(graph, input),
+            TorchModules.Upsample m => m.Export(graph, input),
             _ => throw new NotImplementedException($"Not implemented for '{module.GetType().FullName}'"),
         };
     }
@@ -246,6 +250,84 @@ public static class TorchModuleExtensions
         );
     }
 
+    private static IOnnxGraphEdge ExportBatchNorm(
+        OnnxGraph graph,
+        IOnnxGraphEdge input,
+        Tensor? weight,
+        Tensor? bias,
+        Tensor? runningMean,
+        Tensor? runningVar,
+        double epsilon,
+        bool training
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+
+        if (training)
+        {
+            throw new NotSupportedException("BatchNorm export only supports inference mode.");
+        }
+
+        if (runningMean is null || runningMean.IsInvalid || runningVar is null || runningVar.IsInvalid)
+        {
+            throw new NotSupportedException("BatchNorm export requires valid running statistics.");
+        }
+
+        var name = graph.NextName("batch_norm");
+        var channelCount = checked((int)runningMean.shape[0]);
+
+        var scale = graph.AddTensor(
+            name: $"{name}_scale",
+            shape: [channelCount],
+            value: weight is not null && !weight.IsInvalid
+                ? TorchHelper.GetFloatData(weight)
+                : Enumerable.Repeat(1f, channelCount).ToArray()
+        );
+
+        var shift = graph.AddTensor(
+            name: $"{name}_bias",
+            shape: [channelCount],
+            value: bias is not null && !bias.IsInvalid
+                ? TorchHelper.GetFloatData(bias)
+                : new float[channelCount]
+        );
+
+        var mean = graph.AddTensor(
+            name: $"{name}_mean",
+            shape: TorchHelper.GetShape(runningMean),
+            value: TorchHelper.GetFloatData(runningMean)
+        );
+
+        var variance = graph.AddTensor(
+            name: $"{name}_var",
+            shape: TorchHelper.GetShape(runningVar),
+            value: TorchHelper.GetFloatData(runningVar)
+        );
+
+        var output = graph.AddEdge($"{name}_output");
+        var op = new BatchNormalization(
+            name: name,
+            options: new BatchNormalizationInputOutputOptions
+            {
+                X = input,
+                Scale = scale,
+                B = shift,
+                InputMean = mean,
+                InputVar = variance,
+                Epsilon = (float)epsilon,
+                Momentum = 0.9f,
+                TrainingMode = 0,
+                Y = output,
+                RunningMean = null,
+                RunningVar = null,
+            }
+        );
+
+        graph.AddNode(op);
+        return op.Y;
+    }
+
     [TorchOp("aten::relu6")]
     public static IOnnxGraphEdge Export(
         this TorchModules.ReLU6 module,
@@ -264,6 +346,150 @@ public static class TorchModuleExtensions
                 Input = input,
                 Min = min,
                 Max = max,
+            }
+        );
+    }
+
+    [TorchOp("aten::_native_batch_norm_legit")]
+    [TorchOp("aten::_native_batch_norm_legit.no_stats")]
+    [TorchOp("aten::_native_batch_norm_legit_functional")]
+    [TorchOp("aten::_native_batch_norm_legit_no_training")]
+    [TorchOp("aten::native_batch_norm")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.BatchNorm1d module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        return ExportBatchNorm(
+            graph: graph,
+            input: input,
+            weight: module.weight,
+            bias: module.bias,
+            runningMean: module.running_mean,
+            runningVar: module.running_var,
+            epsilon: module.eps,
+            training: module.training
+        );
+    }
+
+    [TorchOp("aten::_native_batch_norm_legit")]
+    [TorchOp("aten::_native_batch_norm_legit.no_stats")]
+    [TorchOp("aten::_native_batch_norm_legit_functional")]
+    [TorchOp("aten::_native_batch_norm_legit_no_training")]
+    [TorchOp("aten::native_batch_norm")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.BatchNorm2d module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        return ExportBatchNorm(
+            graph: graph,
+            input: input,
+            weight: module.weight,
+            bias: module.bias,
+            runningMean: module.running_mean,
+            runningVar: module.running_var,
+            epsilon: module.eps,
+            training: module.training
+        );
+    }
+
+    [TorchOp("aten::_native_batch_norm_legit")]
+    [TorchOp("aten::_native_batch_norm_legit.no_stats")]
+    [TorchOp("aten::_native_batch_norm_legit_functional")]
+    [TorchOp("aten::_native_batch_norm_legit_no_training")]
+    [TorchOp("aten::native_batch_norm")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.BatchNorm3d module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        return ExportBatchNorm(
+            graph: graph,
+            input: input,
+            weight: module.weight,
+            bias: module.bias,
+            runningMean: module.running_mean,
+            runningVar: module.running_var,
+            epsilon: module.eps,
+            training: module.training
+        );
+    }
+
+    [TorchOp("aten::upsample_nearest1d")]
+    [TorchOp("aten::upsample_nearest1d.vec")]
+    [TorchOp("aten::upsample_nearest2d")]
+    [TorchOp("aten::upsample_nearest2d.vec")]
+    [TorchOp("aten::upsample_nearest3d")]
+    [TorchOp("aten::upsample_nearest3d.vec")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.Upsample module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(module);
+
+        if (module.training)
+        {
+            throw new NotSupportedException("Upsample export only supports inference mode.");
+        }
+
+        if (module.mode != global::TorchSharp.torch.UpsampleMode.Nearest)
+        {
+            throw new NotSupportedException(
+                $"Upsample export currently supports only 'Nearest', got '{module.mode}'."
+            );
+        }
+
+        var name = graph.NextName("resize");
+        var spatialSizes = module.size.ToArray();
+        var spatialScales = module.scale_factor.ToArray();
+
+        if (spatialSizes.Length == 0 && spatialScales.Length == 0)
+        {
+            throw new NotSupportedException("Upsample export requires either 'size' or 'scale_factor'.");
+        }
+
+        var spatialRank = spatialSizes.Length != 0 ? spatialSizes.Length : spatialScales.Length;
+        var axes = Enumerable.Range(2, spatialRank).Select(x => (long)x).ToArray();
+
+        IOnnxGraphEdge? sizes = null;
+        if (spatialSizes.Length != 0)
+        {
+            sizes = graph.AddTensor(
+                name: $"{name}_sizes",
+                shape: [spatialSizes.Length],
+                value: spatialSizes
+            );
+        }
+
+        IOnnxGraphEdge? scales = null;
+        if (sizes is null)
+        {
+            scales = graph.AddTensor(
+                name: $"{name}_scales",
+                shape: [spatialScales.Length],
+                value: Array.ConvertAll(spatialScales, x => (float)x)
+            );
+        }
+
+        return graph.Resize(
+            name: name,
+            options: new ResizeInputOptions
+            {
+                X = input,
+                Sizes = sizes,
+                Scales = scales,
+                Axes = axes,
+                CoordinateTransformationMode = "asymmetric",
+                Mode = "nearest",
+                NearestMode = "floor",
             }
         );
     }
