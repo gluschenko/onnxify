@@ -1,25 +1,34 @@
 ---
 name: onnxify
-description: Use this skill when working with the Onnxify .NET library in this repository: reading or writing ONNX models, inspecting graphs, adding or editing nodes, tensors, attributes, or value types, extending operator wrappers, or validating serialization and project generation behavior under src/Onnxify, src/Onnxify.Tests, src/Onnxify.ConsoleTest, and related projects.
+description: "Use this skill when working with the Onnxify and Onnxify.TorchSharp .NET libraries in this repository: reading or writing ONNX models, inspecting graphs, adding or editing nodes, tensors, attributes, or value types, extending operator wrappers, exporting TorchSharp modules into ONNX graphs, or validating serialization, export, and project generation behavior under src/Onnxify, src/Onnxify.TorchSharp, src/Onnxify.Tests, src/Onnxify.ConsoleTest, src/Onnxify.Examples, and related projects."
 ---
 
 # Onnxify
 
 ## Overview
 
-Use this skill for repository-specific work on Onnxify rather than generic ONNX advice. It is tuned for the object model in `src/Onnxify`, the current tests in `src/Onnxify.Tests`, and the example/playground projects in `src/Onnxify.ConsoleTest` and `src/Onnxify.Examples`.
+Use this skill for repository-specific work on Onnxify rather than generic ONNX advice. It is tuned for the object model in `src/Onnxify`, the TorchSharp export layer in `src/Onnxify.TorchSharp`, the current tests in `src/Onnxify.Tests`, and the example/playground projects in `src/Onnxify.ConsoleTest` and `src/Onnxify.Examples`.
 
-Read [references/api-surface.md](references/api-surface.md) when you need concrete entry points, example file locations, or a quick reminder of which project to touch.
+Read [references/api-surface.md](references/api-surface.md) when you need concrete entry points, TorchSharp export files, example model locations, or a quick reminder of which project to touch.
 
 ## Quick Start
 
 When handling an Onnxify task:
 
-1. Identify the task shape: model load/save, graph editing, operator wrapper work, project generation, or examples/tests.
-2. Read the closest production type first, usually `OnnxModel`, `OnnxGraph`, `OnnxNode`, `OnnxTensor`, `OnnxValue`, or the relevant generated/operator wrapper class.
-3. Read an existing test before changing behavior. Prefer `src/Onnxify.Tests` over guessing expected semantics.
-4. Make the smallest repo-consistent change.
-5. Validate with focused tests. Prefer round-trip coverage for serialization changes.
+1. Identify the task shape: core model load/save, graph editing, operator wrapper work, TorchSharp export work, project generation, or examples/tests.
+2. Decide which layer owns the behavior before editing. Put raw ONNX graph concerns in `src/Onnxify`; put TorchSharp-to-ONNX translation in `src/Onnxify.TorchSharp`.
+3. Read the closest production type first, usually `OnnxModel`, `OnnxGraph`, `OnnxNode`, `OnnxTensor`, `OnnxValue`, or the relevant TorchSharp `Export(...)` extension.
+4. Read an existing test or example before changing behavior. Prefer `src/Onnxify.Tests` for semantics and `src/Onnxify.Examples` for end-to-end export patterns.
+5. Make the smallest repo-consistent change.
+6. Validate with focused tests. Prefer round-trip coverage for serialization changes and structure-preserving checks for TorchSharp export changes.
+
+## Core Principles
+
+- Treat `Onnxify` as the source of truth for ONNX object modeling, graph structure, and protobuf round-tripping.
+- Treat `Onnxify.TorchSharp` as an export adapter layer that translates TorchSharp modules into `OnnxGraph` operations; do not move generic graph concerns into that layer.
+- Preserve the lightweight wrapper model over generated protobuf types instead of introducing a second parallel object model.
+- Prefer explicit graphs, explicit names, and explicit tensor/value types over hidden conventions or reflection-heavy magic unless the existing export layer already relies on that pattern.
+- Reject unsupported semantics loudly with `NotSupportedException` or `NotImplementedException` instead of emitting a lossy or silently wrong graph.
 
 ## 1. Loading And Inspecting Models
 
@@ -33,8 +42,30 @@ When handling an Onnxify task:
 - Create new models with `OnnxModel.Create(new OnnxModelCreationOptions { ... })`.
 - Add graph members through `AddInput`, `AddOutput`, `AddValue`, `AddTensor`, `AddEdge`, and `AddNode`.
 - Respect unique-name constraints. The graph helpers throw on duplicates, so preserve stable names when patching an existing graph.
+- Use `graph.NextName(prefix)` when generating new operator or edge names instead of inventing a parallel naming scheme.
 - When a task is operator-oriented, prefer existing typed helpers or wrapper classes over raw `AddNode` if the repository already exposes them.
 - When no helper exists yet, implement behavior in the most local, consistent layer instead of introducing a parallel abstraction.
+- Keep edge, tensor, and placeholder wiring explicit. In this repo, graph construction is not hidden behind an optimizer or execution tracer.
+
+## 2A. Onnxify Principles
+
+- Keep `OnnxModel` responsible for file I/O, top-level metadata, and protobuf conversion.
+- Keep `OnnxGraph` responsible for owned collections and graph mutation: inputs, outputs, values, initializers, edges, and nodes.
+- Prefer preserving names and metadata when editing an existing model. Avoid accidental renames that break downstream graph references.
+- When changing tensor or attribute conversion behavior, inspect helpers under `src/Onnxify/Helpers` and data types under `src/Onnxify/Data` before patching call sites.
+- When adding new operator wrappers, match the repo's style of strongly named option objects and explicit input/output edges.
+
+## 2B. Onnxify.TorchSharp Principles
+
+- Treat TorchSharp export as inference-oriented graph synthesis, not as runtime tracing or training-time execution.
+- Prefer implementing support as `Export(...)` extension methods on concrete TorchSharp module types in `TorchModuleExtensions.cs`.
+- Keep `TorchModule.Export(graph, input)` as the public dispatch entry point and extend its module switch consistently when adding support.
+- Materialize weights, biases, and constants through `graph.AddTensor(...)` using `TorchHelper` conversions instead of embedding ad hoc tensor-reading logic everywhere.
+- Normalize TorchSharp-specific shapes and options into ONNX form inside the export layer. Existing examples include padding expansion, pool/resize normalization, and LSTM gate reordering.
+- Preserve semantic mismatches explicitly. If ONNX and TorchSharp conventions differ, encode the conversion in one place and document it with a concise comment if the mapping is non-obvious.
+- Keep complex export helpers local to the export layer or example model that owns them. Do not push example-specific graph composition into the core library unless it is broadly reusable.
+- Prefer examples in `src/Onnxify.Examples` when demonstrating composed export pipelines, especially for `Sequential`, `Embedding`, `LayerNorm`, `LSTM`, attention blocks, or tied-weight projections.
+- Remember that some exports are intentionally constrained to inference-safe cases. Existing code rejects unsupported training-mode or missing-statistics scenarios instead of guessing.
 
 ## 3. Serialization And Round Trips
 
@@ -47,8 +78,11 @@ When handling an Onnxify task:
 
 - Put automated behavior checks in `src/Onnxify.Tests`.
 - Use `src/Onnxify.ConsoleTest` only as a manual playground, not as proof that behavior is correct.
+- Use `src/Onnxify.Examples` as a source of realistic export patterns, not as a replacement for focused assertions.
 - Keep tests focused and deterministic. Temporary files are acceptable if cleaned up in `finally`.
 - For generation features, assert on emitted file contents and output paths, as done in project generator tests.
+- For TorchSharp export changes, assert graph structure and exported attributes instead of relying only on visual inspection or manual execution.
+- When touching a complex exporter such as `LSTM`, cover the semantic translation points that are easy to regress: weight order, tensor shapes, batch/sequence layout, and optional outputs.
 
 ## 5. Project Conventions
 
@@ -56,6 +90,7 @@ When handling an Onnxify task:
 - Preserve the lightweight wrapper model over protobuf-generated ONNX classes.
 - Match the existing C# style: explicit names, small helper methods, and straightforward `Fact` tests.
 - If a project looks like a placeholder, avoid building new functionality there unless the user asked for that exact surface.
+- `Onnxify.TorchSharp` is a real integration surface, but it should stay focused on translation glue rather than becoming a second general-purpose graph API.
 
 ## Common Task Mapping
 
@@ -63,6 +98,10 @@ When handling an Onnxify task:
 - Add graph members or wire nodes: start with `src/Onnxify/OnnxGraph.cs`.
 - Debug a node or attribute issue: inspect `OnnxNode`, `OnnxAttribute`, and a nearby round-trip test.
 - Add or adjust higher-level operator APIs: inspect existing operator helper usage in tests and console examples first.
+- Add or fix TorchSharp export support: start with `src/Onnxify.TorchSharp/TorchModuleExtensions.cs`.
+- Adjust Torch tensor conversion helpers: inspect `src/Onnxify.TorchSharp/TorchHelper.cs`.
+- Map a TorchSharp operator or module to an ONNX export surface: inspect `TorchOpAttribute` usage and nearby `Export(...)` implementations before designing a new pattern.
+- Need a realistic export example: inspect `src/Onnxify.Examples/Models/TorchSharpExportShowcase.cs`, `LSTMLIDModel.cs`, or `MiniGpt2LikeModel.cs`.
 - Generate C# from a model: inspect `src/Onnxify.ProjectGenerator`.
 - Need a manual repro with real assets: inspect `src/Onnxify.ConsoleTest/Assets` and `src/Onnxify.ConsoleTest/Program.cs`.
 
@@ -71,4 +110,7 @@ When handling an Onnxify task:
 - Did the change preserve existing naming and graph-linking behavior?
 - Is there a focused automated test for the new or changed behavior?
 - If serialization changed, did you verify save + load instead of only in-memory state?
+- If TorchSharp export changed, did you verify the ONNX graph structure that gets emitted, not only that the source module still runs?
+- If the export relies on module internals or reflection, did you keep the lookup localized and fail clearly when TorchSharp metadata is missing?
+- If ONNX semantics differ from TorchSharp semantics, did you encode the translation explicitly and check the resulting tensor layout or attributes?
 - If the task touched examples or playground code only, did you avoid silently changing library semantics?

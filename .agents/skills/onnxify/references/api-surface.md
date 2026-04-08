@@ -1,6 +1,6 @@
 # Onnxify API Surface
 
-Use this reference when you need concrete entry points for repository work.
+Use this reference when you need concrete entry points for repository work in the core Onnxify library or the TorchSharp export layer.
 
 ## Core Types
 
@@ -15,6 +15,7 @@ Use this reference when you need concrete entry points for repository work.
   - collections: `Inputs`, `Outputs`, `Initializers`, `Placeholders`, `Nodes`
   - lookups: `GetNode(name)`, `GetValue(name)`
   - builders: `AddInput`, `AddOutput`, `AddValue`, `AddTensor`, `AddEdge`, `AddNode`
+  - naming: `NextName(prefix)`
 
 - Other common types
   - `src/Onnxify/OnnxNode.cs`
@@ -22,6 +23,26 @@ Use this reference when you need concrete entry points for repository work.
   - `src/Onnxify/OnnxValue.cs`
   - `src/Onnxify/OnnxValueType.cs`
   - `src/Onnxify/OnnxAttribute.cs`
+
+## TorchSharp Export Surface
+
+- `src/Onnxify.TorchSharp/TorchModuleExtensions.cs`
+  - dispatch entry point: `TorchModule.Export(graph, input)`
+  - concrete exporters for `Sequential`, `Conv*`, `BatchNorm*`, activations, pooling, `Flatten`, `Embedding`, `LayerNorm`, `Upsample`, `Linear`, `LSTM`, and more
+  - translation rules for TorchSharp-specific semantics such as padding expansion, resize options, batch-first handling, and LSTM gate order
+
+- `src/Onnxify.TorchSharp/TorchHelper.cs`
+  - tensor shape extraction: `GetShape(...)`
+  - tensor data extraction: `GetFloatData(...)`
+  - option normalization: `ToLongArray(...)`, `ExpandPadding(...)`
+
+- `src/Onnxify.TorchSharp/TorchOpAttribute.cs`
+  - attaches Torch operator names to export methods
+  - useful when extending or auditing coverage
+
+- `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md`
+  - operator coverage snapshot for TorchSharp-related surfaces
+  - useful when checking whether a module or operator pattern is already represented
 
 ## Best Existing Examples
 
@@ -42,9 +63,24 @@ Use this reference when you need concrete entry points for repository work.
 - `src/Onnxify.Examples/Program.cs`
   - end-to-end example around exporting and evaluating a model
 
+- `src/Onnxify.Examples/Models/TorchSharpExportShowcase.cs`
+  - compact end-to-end example of exporting a `Sequential`-heavy TorchSharp model into ONNX
+  - good first stop for common export conventions
+
+- `src/Onnxify.Examples/Models/LSTMLIDModel.cs`
+  - example of `Embedding` + `LSTM` + `Linear` export
+  - shows how TorchSharp export is composed with manual ONNX graph ops like `ReduceSum` and output wiring
+
+- `src/Onnxify.Examples/Models/MiniGpt2LikeModel.cs`
+  - advanced mixed approach: reusable TorchSharp exports plus custom ONNX graph composition
+  - useful when a model needs higher-level graph logic beyond simple module-to-node translation
+
 ## Useful Heuristics
 
 - If behavior is about raw ONNX persistence, start in the library and tests, not in `ConsoleTest`.
 - If the repo already has a typed operator helper, copy that pattern instead of emitting raw stringly-typed nodes.
+- If behavior is about translating a TorchSharp module into ONNX, start in `TorchModuleExtensions.cs`, not in the example model.
+- If the change is model-specific composition rather than generic module export, keep it in the example or owning project instead of bloating the shared export layer.
+- If the export path depends on inference-only semantics, prefer a clear guard over a silent approximation.
 - If adding a new helper, confirm whether the task belongs in the main library or a placeholder project.
 - For regression-proofing, prefer assertions on names, shapes, attributes, and edge wiring over only checking counts.
