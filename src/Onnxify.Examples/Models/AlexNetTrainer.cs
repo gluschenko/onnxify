@@ -23,6 +23,7 @@ namespace Onnxify.Examples.Models
             int schedulerStepSize = 5,
             float schedulerGamma = 0.5f,
             float minLearningRate = 1e-5f,
+            int shuffleSeed = 42,
             Device? device = null
         )
         {
@@ -53,7 +54,11 @@ namespace Onnxify.Examples.Models
                 var processedSamples = 0;
                 var correctPredictions = 0;
 
-                await foreach (var batch in _reader.BatchAsync(batchSize))
+                await foreach (var batch in _reader.BatchAsync(
+                    batchSize,
+                    shuffle: true,
+                    shuffleSeed: shuffleSeed + epoch - 1
+                ))
                 {
                     TrainBatch(
                         batch,

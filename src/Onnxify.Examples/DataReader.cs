@@ -60,6 +60,7 @@ internal sealed class DataReader
                     f.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||
                     f.EndsWith(".png", StringComparison.OrdinalIgnoreCase);
             })
+            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
             .Take(_count);
     }
 
@@ -136,19 +137,29 @@ internal sealed class DataReader
         return Path.Combine(_cacheDirectory, MD5(_root), $"{MD5(x)}_{_width}x{_height}x{_channels}");
     }
 
-    public async IAsyncEnumerable<Batch> BatchAsync(int batchSize)
+    public async IAsyncEnumerable<Batch> BatchAsync(
+        int batchSize,
+        bool shuffle = false,
+        int? shuffleSeed = null
+    )
     {
         if (!Directory.Exists(_root))
         {
             throw new DirectoryNotFoundException(_root);
         }
 
-        foreach (var imagePaths in GetFiles(_root).Chunk(batchSize))
+        var imagePaths = GetFiles(_root).ToArray();
+        if (shuffle)
+        {
+            Shuffle(imagePaths, shuffleSeed ?? 42);
+        }
+
+        foreach (var batchImagePaths in imagePaths.Chunk(batchSize))
         {
             var images = new List<ImageData>();
             var labels = new List<int>();
 
-            foreach (var imagePath in imagePaths)
+            foreach (var imagePath in batchImagePaths)
             {
                 var label = Path.GetFileName(Path.GetDirectoryName(imagePath) ?? "") ?? "";
                 var cachePath = GetCachePath(imagePath);
@@ -177,6 +188,16 @@ internal sealed class DataReader
             }
 
             yield return new Batch(images, labels);
+        }
+    }
+
+    private static void Shuffle<T>(T[] values, int seed)
+    {
+        var random = new Random(seed);
+        for (var i = values.Length - 1; i > 0; i--)
+        {
+            var j = random.Next(i + 1);
+            (values[i], values[j]) = (values[j], values[i]);
         }
     }
 
