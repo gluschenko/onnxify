@@ -37,7 +37,8 @@ internal sealed class DataReader
         _count = count;
         _labelNames = Directory
             .GetDirectories(_root)
-            .OrderBy(d => d, StringComparer.OrdinalIgnoreCase)
+            .Select(x => Path.GetFileName(x) ?? "")
+            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         _cacheDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".temp");
@@ -86,10 +87,16 @@ internal sealed class DataReader
             current++;
 
             var cachePath = GetCachePath(x);
-
             if (File.Exists(cachePath))
             {
+                yield return new LoadingProgress(current, failed, total);
                 continue;
+            }
+
+            var cacheDir = Path.GetDirectoryName(cachePath);
+            if (cacheDir is not null)
+            {
+                Directory.CreateDirectory(cacheDir);
             }
 
             try

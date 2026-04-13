@@ -1,4 +1,5 @@
-﻿using TorchSharp;
+﻿using System.Diagnostics;
+using TorchSharp;
 using static TorchSharp.torch;
 using static TorchSharp.torch.nn;
 
@@ -25,6 +26,8 @@ namespace Onnxify.Examples.Models
             Device? device = null
         )
         {
+            var stopwatch = Stopwatch.StartNew();
+
             device ??= torch.cuda.is_available() ? CUDA : CPU;
 
             _model.to(device);
@@ -44,7 +47,7 @@ namespace Onnxify.Examples.Models
                 var currentLearningRate = scheduler.GetLearningRate(epoch);
                 scheduler.Apply(optimizer, epoch);
 
-                Console.WriteLine($"Epoch {epoch}/{epochs} | lr {FormatLearningRate(currentLearningRate)}");
+                Console.WriteLine($"[T+{Math.Round(stopwatch.Elapsed.TotalSeconds)}s] Epoch {epoch}/{epochs} | lr {FormatLearningRate(currentLearningRate)}");
 
                 var batchIndex = 0;
                 var processedSamples = 0;

@@ -17,6 +17,7 @@ namespace Onnxify.Examples
         {
             var confusionMatrix = new int[(int)reader.ClassCount, (int)reader.ClassCount];
 
+            model.to(device);
             model.eval();
 
             await foreach (var batch in reader.BatchAsync(batchSize))

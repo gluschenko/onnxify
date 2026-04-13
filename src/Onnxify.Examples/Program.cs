@@ -372,20 +372,22 @@ internal class AlexNetSample : Sample
         var outputDirectory = Utils.EnsureAssetsDirectory();
         var device = cuda.is_available() ? CUDA : CPU;
 
-        var model = new AlexNet("alexnet", 2);
-
         var dataset = new DataReader(
             datasetDirectory,
             width: 227,
             height: 227,
             channels: 3,
-            count: 100
+            count: 10000
         );
+
+        var model = new AlexNet("alexnet", dataset.LabelNames.Count, device);
 
         await foreach (var x in dataset.Convert())
         {
             Console.Write($"\r[Converting] current {x.Current} / {x.All} (failed: {x.Failed})");
         }
+
+        Console.WriteLine();
 
         // dataset.Split(testFraction: 0.2f, seed: 42);
 
