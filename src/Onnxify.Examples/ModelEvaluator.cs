@@ -47,13 +47,7 @@ namespace Onnxify.Examples
             await foreach (var batch in reader.BatchAsync(batchSize))
             {
                 using var d = torch.NewDisposeScope();
-                using var x = batch.GetDataTensor(CPU);
-
-                var inputData = x.data<float>().ToArray();
-                var inputTensor = new DenseTensor<float>(
-                    inputData,
-                    [batch.Size, (int)x.shape[1], (int)x.shape[2], (int)x.shape[3]]
-                );
+                var inputTensor = batch.GetDenseTensor();
 
                 var inputValue = NamedOnnxValue.CreateFromTensor("input", inputTensor);
                 var inputs = new[] { inputValue };
