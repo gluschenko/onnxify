@@ -8,21 +8,21 @@ namespace Onnxify.Examples
 {
     internal static class ModelEvaluator
     {
-        public static EvaluationResult EvaluateTorch(
+        public static async Task<EvaluationResult> EvaluateTorch(
             AlexNet model,
             DataReader reader,
             int batchSize,
             Device device
         )
         {
-            var confusionMatrix = new int[reader.ClassCount, reader.ClassCount];
+            var confusionMatrix = new int[(int)reader.ClassCount, (int)reader.ClassCount];
 
             model.eval();
 
-            foreach (var batch in reader.GetTestBatches(batchSize))
+            await foreach (var batch in reader.BatchAsync(batchSize))
             {
                 using var d = torch.NewDisposeScope();
-                using var x = torch.stack(batch.Data).to(device);
+                using var x = batch.GetDataTensor(device);
                 using var output = model.forward(x);
                 using var predicted = output.argmax(1).cpu();
 
@@ -33,33 +33,33 @@ namespace Onnxify.Examples
             return EvaluationResult.From(confusionMatrix);
         }
 
-        public static EvaluationResult EvaluateOnnx(
+        public static async Task<EvaluationResult> EvaluateOnnx(
             string modelPath,
             DataReader reader,
             int batchSize
         )
         {
-            var confusionMatrix = new int[reader.ClassCount, reader.ClassCount];
+            var confusionMatrix = new int[(int)reader.ClassCount, (int)reader.ClassCount];
 
             using var session = new InferenceSession(modelPath);
 
-            foreach (var batch in reader.GetTestBatches(batchSize))
+            await foreach (var batch in reader.BatchAsync(batchSize))
             {
                 using var d = torch.NewDisposeScope();
-                using var x = torch.stack(batch.Data);
+                using var x = batch.GetDataTensor(CPU);
 
-                var inputData = x.cpu().data<float>().ToArray();
+                var inputData = x.data<float>().ToArray();
                 var inputTensor = new DenseTensor<float>(
                     inputData,
-                    new[] { batch.LabelIndices.Length, (int)x.shape[1], (int)x.shape[2], (int)x.shape[3] }
+                    [batch.Size, (int)x.shape[1], (int)x.shape[2], (int)x.shape[3]]
                 );
 
                 var inputValue = NamedOnnxValue.CreateFromTensor("input", inputTensor);
                 var inputs = new[] { inputValue };
 
-                using IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results = session.Run(inputs);
+                using var results = session.Run(inputs);
                 var outputTensor = results.Single().AsTensor<float>();
-                var predictions = ArgMax(outputTensor, reader.ClassCount);
+                var predictions = ArgMax(outputTensor, (int)reader.ClassCount);
 
                 UpdateConfusionMatrix(confusionMatrix, batch.LabelIndices, predictions);
             }

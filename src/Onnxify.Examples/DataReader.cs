@@ -1,313 +1,272 @@
-﻿using SkiaSharp;
+﻿using System.Text;
+using SkiaSharp;
 using TorchSharp;
 using static TorchSharp.torch;
 
-namespace Onnxify.Examples
+namespace Onnxify.Examples;
+
+internal sealed class DataReader
 {
-    internal sealed class DataReader : IDisposable
+    private readonly string _root;
+    private readonly int _width;
+    private readonly int _height;
+    private readonly int _channels;
+    private readonly int _count;
+    private readonly string[] _labelNames;
+
+    private long _sampleCount;
+    private string _cacheDirectory;
+
+    public DataReader(
+        string root,
+        int width,
+        int height,
+        int channels,
+        int count
+    )
     {
-        private readonly string _root;
-        private readonly IList<torchvision.ITransform> _transforms;
-
-        private readonly List<DatasetSample> _baseSamples = [];
-        private readonly List<DatasetSample> _augmentedTrainSamples = [];
-        private readonly List<DatasetSample> _trainSamples = [];
-        private readonly List<DatasetSample> _testSamples = [];
-        private readonly List<string> _labelNames = [];
-
-        public DataReader(
-            string root,
-            IList<torchvision.ITransform>? transforms = null
-        )
+        if (!Directory.Exists(root))
         {
-            _root = root;
-            _transforms = transforms ?? [];
+            throw new DirectoryNotFoundException(root);
         }
 
-        public IReadOnlyList<string> LabelNames => _labelNames;
+        _root = root;
+        _width = width;
+        _height = height;
+        _channels = channels;
+        _count = count;
+        _labelNames = Directory
+            .GetDirectories(_root)
+            .OrderBy(d => d, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 
-        public int ClassCount => _labelNames.Count;
+        _cacheDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".temp");
+    }
 
-        public int TrainSampleCount => _trainSamples.Count;
+    public IReadOnlyList<string> LabelNames => _labelNames;
 
-        public int TestSampleCount => _testSamples.Count;
+    public long ClassCount => _labelNames.Length;
+    public long SampleCount => _sampleCount;
 
-        public void Load(
-            int width,
-            int height,
-            int channels,
-            int count
-        )
+    private IEnumerable<string> GetFiles(string dir)
+    {
+        return Directory
+            .EnumerateFiles(dir, "*.*", SearchOption.AllDirectories)
+            .Where(f =>
+            {
+                return 
+                    f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                    f.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||
+                    f.EndsWith(".png", StringComparison.OrdinalIgnoreCase);
+            })
+            .Take(_count);
+    }
+
+    public async IAsyncEnumerable<LoadingProgress> Convert()
+    {
+        if (!Directory.Exists(_root))
         {
-            if (!Directory.Exists(_root))
-            {
-                throw new DirectoryNotFoundException(_root);
-            }
-
-            DisposeGeneratedSamples();
-            _baseSamples.ForEach(static sample => sample.Dispose());
-            _baseSamples.Clear();
-            _labelNames.Clear();
-
-            var labelDirs = Directory
-                .GetDirectories(_root)
-                .OrderBy(d => d, StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-
-            _labelNames.AddRange(labelDirs.Select(Path.GetFileName).Where(static x => !string.IsNullOrWhiteSpace(x))!);
-
-            for (var labelIndex = 0; labelIndex < labelDirs.Length; labelIndex++)
-            {
-                var dir = labelDirs[labelIndex];
-                var files = Directory
-                    .EnumerateFiles(dir, "*.*", SearchOption.TopDirectoryOnly)
-                    .Where(static f =>
-                        f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
-                        f.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||
-                        f.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
-                    .Take(count)
-                    .ToArray();
-
-                foreach (var file in files)
-                {
-                    try
-                    {
-                        using var stream = File.OpenRead(file);
-                        using var bitmap = SKBitmap.Decode(stream);
-
-                        if (bitmap == null)
-                        {
-                            continue;
-                        }
-
-                        using var resized = bitmap.Resize(
-                            new SKImageInfo(width, height),
-                            SKFilterQuality.Medium
-                        );
-
-                        if (resized == null)
-                        {
-                            continue;
-                        }
-
-                        var tensor = ImageToTensor(resized, channels);
-                        var labelTensor = torch.tensor(labelIndex, dtype: ScalarType.Int64);
-                        _baseSamples.Add(new DatasetSample(tensor, labelTensor, labelIndex));
-                    }
-                    catch
-                    {
-                        continue;
-                    }
-                }
-            }
+            throw new DirectoryNotFoundException(_root);
         }
 
-        public void Split(
-            float testFraction = 0.2f,
-            int seed = 42
-        )
+        Directory.CreateDirectory(_cacheDirectory);
+
+        var total = 0L;
+        foreach (var x in GetFiles(_root))
         {
-            if (_baseSamples.Count == 0)
+            total++;
+        }
+
+        _sampleCount = total;
+
+        var current = 0L;
+        var failed = 0L;
+        foreach (var x in GetFiles(_root))
+        {
+            current++;
+
+            var cachePath = GetCachePath(x);
+
+            if (File.Exists(cachePath))
             {
-                return;
+                continue;
             }
 
-            DisposeGeneratedSamples();
-
-            var rng = new Random(seed);
-
-            foreach (var group in _baseSamples
-                .Select((sample, index) => new { sample, index })
-                .GroupBy(x => x.sample.LabelIndex)
-                .OrderBy(x => x.Key))
+            try
             {
-                var indices = group
-                    .Select(x => x.index)
-                    .OrderBy(_ => rng.Next())
-                    .ToArray();
+                using var stream = File.OpenRead(x);
+                using var bitmap = SKBitmap.Decode(stream);
 
-                var requestedTestCount = (int)Math.Round(indices.Length * testFraction, MidpointRounding.AwayFromZero);
-                var testCount = indices.Length <= 1
-                    ? 0
-                    : Math.Clamp(requestedTestCount, 1, indices.Length - 1);
-
-                foreach (var index in indices.Take(testCount))
+                if (bitmap == null)
                 {
-                    _testSamples.Add(_baseSamples[index]);
+                    continue;
                 }
 
-                foreach (var index in indices.Skip(testCount))
+                using var resized = bitmap.Resize(
+                    new SKImageInfo(_width, _height),
+                    SKFilterQuality.Medium
+                );
+
+                if (resized == null)
                 {
-                    var baseSample = _baseSamples[index];
-                    _trainSamples.Add(baseSample);
-
-                    foreach (var transform in _transforms)
-                    {
-                        var transformedTensor = transform.call(baseSample.Data);
-                        var labelTensor = torch.tensor(baseSample.LabelIndex, dtype: ScalarType.Int64);
-                        var augmentedSample = new DatasetSample(
-                            transformedTensor,
-                            labelTensor,
-                            baseSample.LabelIndex
-                        );
-
-                        _augmentedTrainSamples.Add(augmentedSample);
-                        _trainSamples.Add(augmentedSample);
-                    }
-                }
-            }
-        }
-
-        public IEnumerable<Batch> GetTrainingBatches(
-            int batchSize,
-            bool shuffle = true,
-            int? seed = null
-        )
-        {
-            return GetBatches(_trainSamples, batchSize, shuffle, seed);
-        }
-
-        public IEnumerable<Batch> GetTestBatches(
-            int batchSize
-        )
-        {
-            return GetBatches(_testSamples, batchSize, shuffle: false, seed: null);
-        }
-
-        public void Dispose()
-        {
-            DisposeGeneratedSamples();
-            _baseSamples.ForEach(static sample => sample.Dispose());
-            _baseSamples.Clear();
-        }
-
-        private IEnumerable<Batch> GetBatches(
-            IReadOnlyList<DatasetSample> samples,
-            int batchSize,
-            bool shuffle,
-            int? seed
-        )
-        {
-            if (samples.Count == 0)
-            {
-                yield break;
-            }
-
-            var ordered = samples.ToArray();
-            if (shuffle)
-            {
-                var rng = seed.HasValue ? new Random(seed.Value) : Random.Shared;
-                for (var i = ordered.Length - 1; i > 0; i--)
-                {
-                    var swapIndex = rng.Next(i + 1);
-                    (ordered[i], ordered[swapIndex]) = (ordered[swapIndex], ordered[i]);
-                }
-            }
-
-            for (var i = 0; i < ordered.Length; i += batchSize)
-            {
-                var size = Math.Min(batchSize, ordered.Length - i);
-                var batchData = new List<Tensor>(size);
-                var batchLabels = new List<Tensor>(size);
-                var labelIndices = new int[size];
-
-                for (var j = 0; j < size; j++)
-                {
-                    var sample = ordered[i + j];
-                    batchData.Add(sample.Data);
-                    batchLabels.Add(sample.LabelTensor);
-                    labelIndices[j] = sample.LabelIndex;
+                    continue;
                 }
 
-                yield return new Batch(batchData, batchLabels, labelIndices);
+                var imageData = ImageData.FromBitmap(resized, _channels);
+                await File.WriteAllBytesAsync(cachePath, imageData.Data);
             }
-        }
-
-        private void DisposeGeneratedSamples()
-        {
-            _augmentedTrainSamples.ForEach(static sample => sample.Dispose());
-            _augmentedTrainSamples.Clear();
-            _trainSamples.Clear();
-            _testSamples.Clear();
-        }
-
-        private static Tensor ImageToTensor(SKBitmap bitmap, int channels)
-        {
-            var width = bitmap.Width;
-            var height = bitmap.Height;
-            var data = new float[channels * height * width];
-
-            for (var y = 0; y < height; y++)
+            catch
             {
-                for (var x = 0; x < width; x++)
-                {
-                    var color = bitmap.GetPixel(x, y);
-                    var index = y * width + x;
-
-                    if (channels == 3)
-                    {
-                        data[index] = color.Red / 255f;
-                        data[height * width + index] = color.Green / 255f;
-                        data[2 * height * width + index] = color.Blue / 255f;
-                    }
-                    else if (channels == 1)
-                    {
-                        data[index] = (color.Red + color.Green + color.Blue) / 3f / 255f;
-                    }
-                    else
-                    {
-                        throw new NotImplementedException($"Not implemented for {nameof(channels)} = {channels}");
-                    }
-                }
+                failed++;
             }
 
-            return torch.tensor(data, [channels, height, width]);
-        }
-
-        internal sealed class Batch
-        {
-            public Batch(
-                List<Tensor> data,
-                List<Tensor> labels,
-                int[] labelIndices
-            )
-            {
-                Data = data;
-                Labels = labels;
-                LabelIndices = labelIndices;
-            }
-
-            public List<Tensor> Data { get; }
-
-            public List<Tensor> Labels { get; }
-
-            public int[] LabelIndices { get; }
-        }
-
-        private sealed class DatasetSample : IDisposable
-        {
-            public DatasetSample(
-                Tensor data,
-                Tensor labelTensor,
-                int labelIndex
-            )
-            {
-                Data = data;
-                LabelTensor = labelTensor;
-                LabelIndex = labelIndex;
-            }
-
-            public Tensor Data { get; }
-
-            public Tensor LabelTensor { get; }
-
-            public int LabelIndex { get; }
-
-            public void Dispose()
-            {
-                Data.Dispose();
-                LabelTensor.Dispose();
-            }
+            yield return new LoadingProgress(current, failed, total);
         }
     }
+
+    private string GetCachePath(string x)
+    {
+        return Path.Combine(_cacheDirectory, MD5(_root), $"{MD5(x)}_{_width}x{_height}x{_channels}");
+    }
+
+    public async IAsyncEnumerable<Batch> BatchAsync(int batchSize)
+    {
+        if (!Directory.Exists(_root))
+        {
+            throw new DirectoryNotFoundException(_root);
+        }
+
+        foreach (var imagePaths in GetFiles(_root).Chunk(batchSize))
+        {
+            var images = new List<ImageData>();
+            var labels = new List<int>();
+
+            foreach (var imagePath in imagePaths)
+            {
+                var label = Path.GetFileName(Path.GetDirectoryName(imagePath) ?? "") ?? "";
+                var cachePath = GetCachePath(imagePath);
+
+                if (!File.Exists(cachePath))
+                {
+                    throw new Exception($"No file in cache: {cachePath}");
+                }
+
+                if (!_labelNames.Contains(label))
+                {
+                    throw new Exception($"No label: {label}");
+                }
+
+                var data = File.ReadAllBytes(cachePath);
+
+                images.Add(new ImageData
+                {
+                    Width = _width,
+                    Height = _height,
+                    Channels = _channels,
+                    Data = data,
+                });
+
+                labels.Add(_labelNames.IndexOf(label));
+            }
+
+            yield return new Batch(images, labels);
+        }
+    }
+
+    internal sealed class Batch
+    {
+        private readonly IReadOnlyList<ImageData> _samples;
+        private readonly IReadOnlyList<int> _labels;
+
+        public IReadOnlyList<int> LabelIndices => _labels;
+
+        public Batch(IReadOnlyList<ImageData> samples, IReadOnlyList<int> labels)
+        {
+            _samples = samples;
+            _labels = labels;
+        }
+
+        public int Size => _samples.Count;
+
+        public Tensor GetDataTensor(Device device)
+        {
+            var tensors = _samples.Select(x => x.AsTensor()).ToArray();
+            var x = torch.stack(tensors).to(device);
+
+            foreach (var y in tensors)
+            {
+                y.Dispose();
+            }
+
+            return x;
+        }
+
+        public Tensor GetLabelTensor(Device device)
+        {
+            var labelTensor = torch.tensor(_labels.ToArray(), dtype: ScalarType.Int64);
+            return labelTensor.to(device);
+        }
+    }
+
+    public static string MD5(string input)
+    {
+        var inputBytes = Encoding.UTF8.GetBytes(input);
+        var hashBytes = System.Security.Cryptography.MD5.HashData(inputBytes);
+        return System.Convert.ToHexString(hashBytes);
+    }
 }
+
+public class ImageData
+{
+    public required int Width { get; set; }
+    public required int Height { get; set; }
+    public required int Channels { get; set; }
+    public required byte[] Data { get; set; }
+
+    public static ImageData FromBitmap(SKBitmap bitmap, int channels)
+    {
+        var width = bitmap.Width;
+        var height = bitmap.Height;
+        var data = new byte[channels * height * width];
+
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = 0; x < width; x++)
+            {
+                var color = bitmap.GetPixel(x, y);
+                var index = y * width + x;
+
+                if (channels == 3)
+                {
+                    data[index] = color.Red;
+                    data[height * width + index] = color.Green;
+                    data[2 * height * width + index] = color.Blue;
+                }
+                else if (channels == 1)
+                {
+                    data[index] = (byte)(((int)color.Red + (int)color.Green + (int)color.Blue) / 3);
+                }
+                else
+                {
+                    throw new NotImplementedException($"Not implemented for {nameof(channels)} = {channels}");
+                }
+            }
+        }
+
+        return new ImageData
+        {
+            Width = width,
+            Height = height,
+            Channels = channels,
+            Data = data,
+        };
+    }
+
+    public Tensor AsTensor()
+    {
+        var data = Data.Select(x => x / 256f).ToArray();
+        return torch.tensor(data, [Channels, Height, Width]);
+    }
+}
+
+public record LoadingProgress(long Current, long Failed, long All);

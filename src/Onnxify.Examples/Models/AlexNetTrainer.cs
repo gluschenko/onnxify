@@ -15,7 +15,7 @@ namespace Onnxify.Examples.Models
             _reader = reader;
         }
 
-        public void Train(
+        public async Task TrainAsync(
             int epochs = 5,
             int batchSize = 32,
             float learningRate = 1e-3f,
@@ -50,7 +50,7 @@ namespace Onnxify.Examples.Models
                 var processedSamples = 0;
                 var correctPredictions = 0;
 
-                foreach (var batch in _reader.GetTrainingBatches(batchSize, shuffle: true))
+                await foreach (var batch in _reader.BatchAsync(batchSize))
                 {
                     TrainBatch(
                         batch,
@@ -84,8 +84,8 @@ namespace Onnxify.Examples.Models
         )
         {
             using var d = torch.NewDisposeScope();
-            using var x = torch.stack(batch.Data).to(device);
-            using var y = torch.stack(batch.Labels).to(device).view(-1);
+            using var x = batch.GetDataTensor(device);
+            using var y = batch.GetLabelTensor(device).view(-1);
 
             optimizer.zero_grad();
 
@@ -98,7 +98,7 @@ namespace Onnxify.Examples.Models
             using var predicted = output.argmax(1);
             using var correct = predicted.eq(y);
 
-            processedSamples += batch.LabelIndices.Length;
+            processedSamples += batch.Size;
             correctPredictions += correct.sum().ToInt32();
 
             var accuracy = processedSamples == 0
