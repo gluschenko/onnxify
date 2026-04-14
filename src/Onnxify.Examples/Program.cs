@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
@@ -13,12 +14,12 @@ internal class Program
 {
     private static readonly Sample[] _samples =
     [
-        new TorchSharpExportShowcaseSample(),
-        new MiniGpt2LikeSample(),
-        new LSTMSample(),
-        new TinyYoloLikeSample(),
-        new MobileNetV1LikeSample(),
         new AlexNetSample(),
+        new MobileNetV1LikeSample(),
+        new TinyYoloLikeSample(),
+        new LSTMSample(),
+        new MiniGpt2LikeSample(),
+        new TorchSharpExportShowcaseSample(),
     ];
 
     static async Task Main(string[] args)
@@ -372,19 +373,43 @@ internal class AlexNetSample : Sample
         var outputDirectory = Utils.EnsureAssetsDirectory();
         var device = cuda.is_available() ? CUDA : CPU;
 
-        var dataset = new DataReader(
-            datasetDirectory,
+        var trainDataset = new DataReader(
+            trainDatasetDirectory,
             width: 227,
             height: 227,
             channels: 3,
-            count: 10000
+            count: 20000
         );
 
-        var model = new AlexNet("alexnet", dataset.LabelNames.Count, device);
+        var testDataset = new DataReader(
+            testDatasetDirectory,
+            width: 227,
+            height: 227,
+            channels: 3,
+            count: 20000
+        );
 
-        await foreach (var x in dataset.Convert())
+        var model = new AlexNet("alexnet", trainDataset.LabelNames.Count, device);
+        var stopwatch = Stopwatch.StartNew();
+
+        await foreach (var x in trainDataset.Convert())
         {
-            Console.Write($"\r[Converting] current {x.Current} / {x.All} (failed: {x.Failed})");
+            Console.Write(
+                $"\r[T+{Math.Round(stopwatch.Elapsed.TotalSeconds)}s] " +
+                $"[Converting] " +
+                $"{x.Current} / {x.All} | classes: {trainDataset.ClassCount} | failed: {x.Failed}"
+            );
+        }
+
+        Console.WriteLine();
+
+        await foreach (var x in testDataset.Convert())
+        {
+            Console.Write(
+                $"\r[T+{Math.Round(stopwatch.Elapsed.TotalSeconds)}s] " +
+                $"[Converting] " +
+                $"{x.Current} / {x.All} | classes: {testDataset.ClassCount} | failed: {x.Failed}"
+            );
         }
 
         Console.WriteLine();
@@ -394,9 +419,9 @@ internal class AlexNetSample : Sample
         // Console.WriteLine($"Train samples: {dataset.TrainSampleCount}");
         // Console.WriteLine($"Test samples:  {dataset.TestSampleCount}");
 
-        var trainer = new AlexNetTrainer(model, dataset);
+        var trainer = new AlexNetTrainer(model, trainDataset);
         await trainer.TrainAsync(
-            epochs: 65,
+            epochs: 35,
             batchSize: 256,
             learningRate: 0.0001f,
             schedulerStepSize: 30,
@@ -409,19 +434,19 @@ internal class AlexNetSample : Sample
         var onnxModel = model.Export();
         onnxModel.Save(outputPath, true);
 
-        var torchEvaluation = await ModelEvaluator.EvaluateTorch(model, dataset, batchSize: 256, device);
-        var onnxEvaluation = await ModelEvaluator.EvaluateOnnx(outputPath, dataset, batchSize: 256);
+        var torchEvaluation = await ModelEvaluator.EvaluateTorch(model, testDataset, batchSize: 256, device);
+        var onnxEvaluation = await ModelEvaluator.EvaluateOnnx(outputPath, testDataset, batchSize: 256);
 
         ModelEvaluator.PrintConfusionMatrix(
             "Torch Confusion Matrix",
             torchEvaluation,
-            dataset.LabelNames
+            trainDataset.LabelNames
         );
 
         ModelEvaluator.PrintConfusionMatrix(
             "ONNX Confusion Matrix",
             onnxEvaluation,
-            dataset.LabelNames
+            trainDataset.LabelNames
         );
     }
 }

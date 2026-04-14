@@ -1,3 +1,4 @@
+﻿using System.Runtime.CompilerServices;
 using System.Text;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using SkiaSharp;
@@ -41,11 +42,13 @@ internal sealed class DataReader
         _height = height;
         _channels = channels;
         _count = count;
+
         _labelNames = Directory
             .GetDirectories(_root)
             .Select(x => Path.GetFileName(x) ?? "")
             .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
             .ToArray();
+
         _labelToIndex = _labelNames
             .Select((label, index) => new KeyValuePair<string, int>(label, index))
             .ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
@@ -76,43 +79,52 @@ internal sealed class DataReader
         var failed = 0L;
         var total = _samples.Length;
 
-        foreach (var sample in _samples)
+        foreach (var sampleChunk in _samples.Chunk(Environment.ProcessorCount * 2))
         {
-            current++;
-
-            if (File.Exists(sample.CachePath))
+            var tasks = sampleChunk.Select(async sample =>
             {
-                yield return new LoadingProgress(current, failed, total);
-                continue;
-            }
+                Interlocked.Increment(ref current);
 
-            try
-            {
-                using var stream = File.OpenRead(sample.SourcePath);
-                using var bitmap = SKBitmap.Decode(stream);
-
-                if (bitmap == null)
+                if (File.Exists(sample.CachePath))
                 {
-                    continue;
+                    return;
                 }
 
-                using var resized = bitmap.Resize(
-                    new SKImageInfo(_width, _height),
-                    SKFilterQuality.Medium
-                );
-
-                if (resized == null)
+                try
                 {
-                    continue;
-                }
+                    using var stream = File.OpenRead(sample.SourcePath);
+                    using var bitmap = SKBitmap.Decode(stream);
 
-                var imageData = ImageData.FromBitmap(resized, _channels);
-                await File.WriteAllBytesAsync(sample.CachePath, imageData.Data);
-            }
-            catch
-            {
-                failed++;
-            }
+                    if (bitmap == null)
+                    {
+                        Interlocked.Increment(ref failed);
+                        return;
+                    }
+
+                    using var resized = bitmap.Resize(
+                        new SKImageInfo(_width, _height),
+                        SKFilterQuality.Medium
+                    );
+
+                    if (resized == null)
+                    {
+                        Interlocked.Increment(ref failed);
+                        return;
+                    }
+
+                    var imageData = ImageData.FromBitmap(resized, _channels);
+
+                    Directory.CreateDirectory(Path.GetDirectoryName(sample.CachePath) ?? "");
+                    await File.WriteAllBytesAsync(sample.CachePath, imageData.Data);
+                }
+                catch (Exception ex)
+                {
+                    Interlocked.Increment(ref failed);
+                    Console.WriteLine($"Failed to convert '{sample.SourcePath}': {ex}");
+                }
+            });
+
+            await Task.WhenAll(tasks);
 
             yield return new LoadingProgress(current, failed, total);
         }
@@ -121,9 +133,14 @@ internal sealed class DataReader
     public async IAsyncEnumerable<Batch> BatchAsync(
         int batchSize,
         bool shuffle = false,
-        int? shuffleSeed = null
+        int shuffleSeed = 42,
+        int prefetchBatches = 2,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
     )
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(batchSize);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(prefetchBatches);
+
         if (!Directory.Exists(_root))
         {
             throw new DirectoryNotFoundException(_root);
@@ -132,19 +149,74 @@ internal sealed class DataReader
         var sampleIndices = Enumerable.Range(0, _samples.Length).ToArray();
         if (shuffle)
         {
-            Shuffle(sampleIndices, shuffleSeed ?? 42);
+            Shuffle(sampleIndices, shuffleSeed);
         }
 
-        for (var batchStart = 0; batchStart < sampleIndices.Length; batchStart += batchSize)
-        {
-            var currentBatchSize = Math.Min(batchSize, sampleIndices.Length - batchStart);
-            var batchData = new float[currentBatchSize * _sampleElementCount];
-            var labels = new int[currentBatchSize];
+        var totalBatches = (sampleIndices.Length + batchSize - 1) / batchSize;
+        var queue = new Queue<Task<Batch>>(prefetchBatches);
 
-            for (var batchOffset = 0; batchOffset < currentBatchSize; batchOffset++)
+        Task<Batch> StartBatchLoad(int batchIndex)
+        {
+            return LoadBatchAsync(batchIndex, batchSize, sampleIndices, cancellationToken);
+        }
+
+        var nextBatchIndex = 0;
+
+        while (nextBatchIndex < totalBatches && queue.Count < prefetchBatches)
+        {
+            queue.Enqueue(StartBatchLoad(nextBatchIndex));
+            nextBatchIndex++;
+        }
+
+        while (queue.Count > 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var currentTask = queue.Dequeue();
+
+            if (nextBatchIndex < totalBatches)
+            {
+                queue.Enqueue(StartBatchLoad(nextBatchIndex));
+                nextBatchIndex++;
+            }
+
+            var batch = await currentTask;
+            yield return batch;
+        }
+    }
+
+    private async Task<Batch> LoadBatchAsync(
+        int batchIndex,
+        int batchSize,
+        int[] sampleIndices,
+        CancellationToken cancellationToken
+    )
+    {
+        var batchStart = batchIndex * batchSize;
+        var currentBatchSize = Math.Min(batchSize, sampleIndices.Length - batchStart);
+
+        var batchData = new float[currentBatchSize * _sampleElementCount];
+        var labels = new int[currentBatchSize];
+
+        await Parallel.ForAsync(
+            fromInclusive: 0,
+            toExclusive: currentBatchSize,
+            parallelOptions: new ParallelOptions
+            {
+                CancellationToken = cancellationToken,
+                MaxDegreeOfParallelism = Environment.ProcessorCount
+            },
+            body: async (batchOffset, ct) =>
             {
                 var sample = _samples[sampleIndices[batchStart + batchOffset]];
-                var bytes = File.ReadAllBytes(sample.CachePath);
+
+                if (!File.Exists(sample.CachePath))
+                {
+                    return;
+                }
+
+                var bytes = await File.ReadAllBytesAsync(sample.CachePath, ct).ConfigureAwait(false);
+
                 if (bytes.Length != _sampleElementCount)
                 {
                     throw new InvalidOperationException(
@@ -155,19 +227,19 @@ internal sealed class DataReader
                 var destinationOffset = batchOffset * _sampleElementCount;
                 for (var i = 0; i < bytes.Length; i++)
                 {
-                    batchData[destinationOffset + i] = bytes[i] / 256f;
+                    batchData[destinationOffset + i] = bytes[i] / 255f;
                 }
 
                 labels[batchOffset] = sample.LabelIndex;
             }
+        );
 
-            yield return new Batch(batchData, labels, _channels, _height, _width);
-            await Task.Yield();
-        }
+        return new Batch(batchData, labels, _channels, _height, _width);
     }
 
     private SampleInfo[] BuildSampleIndex()
     {
+        var random = new Random(42);
         return Directory
             .EnumerateFiles(_root, "*.*", SearchOption.AllDirectories)
             .Where(static path =>
@@ -176,7 +248,10 @@ internal sealed class DataReader
                 path.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
             )
             .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .Select(path => (Path: path, Key: random.NextDouble()))
+            .OrderBy(x => x.Key)
             .Take(_count)
+            .Select(x => x.Path)
             .Select(path =>
             {
                 var label = GetTopLevelLabel(path);
@@ -208,7 +283,10 @@ internal sealed class DataReader
 
     private string GetCachePath(string sourcePath)
     {
-        return Path.Combine(_datasetCacheDirectory, $"{MD5(sourcePath)}_{_width}x{_height}x{_channels}");
+        var hash = MD5(sourcePath);
+        var prefix = hash.Substring(0, 3);
+
+        return Path.Combine(_datasetCacheDirectory, prefix, $"{hash}_{_width}x{_height}x{_channels}");
     }
 
     private static void Shuffle<T>(T[] values, int seed)
@@ -253,8 +331,7 @@ internal sealed class DataReader
 
         public Tensor GetLabelTensor(Device device)
         {
-            var labelTensor = torch.tensor(_labels, dtype: ScalarType.Int64);
-            return labelTensor.to(device);
+            return torch.tensor(_labels, dtype: ScalarType.Int64, device: device);
         }
 
         public DenseTensor<float> GetDenseTensor()
