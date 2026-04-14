@@ -195,7 +195,8 @@ internal sealed class DataReader
         var batchStart = batchIndex * batchSize;
         var currentBatchSize = Math.Min(batchSize, sampleIndices.Length - batchStart);
 
-        var batchData = new float[currentBatchSize * _sampleElementCount];
+        var totalElements = (long)currentBatchSize * _sampleElementCount;
+        var batchData = new float[checked((int)totalElements)];
         var labels = new int[currentBatchSize];
 
         await Parallel.ForAsync(
@@ -204,7 +205,7 @@ internal sealed class DataReader
             parallelOptions: new ParallelOptions
             {
                 CancellationToken = cancellationToken,
-                MaxDegreeOfParallelism = Environment.ProcessorCount
+                MaxDegreeOfParallelism = Environment.ProcessorCount * 2,
             },
             body: async (batchOffset, ct) =>
             {
@@ -212,6 +213,7 @@ internal sealed class DataReader
 
                 if (!File.Exists(sample.CachePath))
                 {
+                    // throw new FileNotFoundException($"Cache file not found: {sample.CachePath}");
                     return;
                 }
 
@@ -224,10 +226,17 @@ internal sealed class DataReader
                     );
                 }
 
-                var destinationOffset = batchOffset * _sampleElementCount;
+                const float SCALE = 1f / 255f;
+                var destinationOffset = (long)batchOffset * (long)_sampleElementCount;
+
                 for (var i = 0; i < bytes.Length; i++)
                 {
-                    batchData[destinationOffset + i] = bytes[i] / 255f;
+                    var offset = destinationOffset + i;
+
+                    if (offset < batchData.Length)
+                    {
+                        batchData[offset] = bytes[i] * SCALE;
+                    }
                 }
 
                 labels[batchOffset] = sample.LabelIndex;

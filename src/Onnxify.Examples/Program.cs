@@ -34,6 +34,9 @@ internal class Program
 
         var selectedItem = SelectExample(_samples, args);
         await selectedItem.RunAsync();
+
+        Console.WriteLine("Press any key to pay respect...");
+        Console.ReadKey();
     }
 
     static Sample SelectExample(
@@ -368,8 +371,10 @@ internal class AlexNetSample : Sample
 
     public override async Task RunAsync()
     {
-        var datasetDirectory = @"D:\Backups\ML\Ararat";
+        // var datasetDirectory = @"D:\Backups\ML\Ararat";
         // var datasetDirectory = @"D:\Backups\ML\microsoft-catsvsdogs-dataset\PetImages";
+
+
         var outputDirectory = Utils.EnsureAssetsDirectory();
         var device = cuda.is_available() ? CUDA : CPU;
 
@@ -378,7 +383,7 @@ internal class AlexNetSample : Sample
             width: 227,
             height: 227,
             channels: 3,
-            count: 20000
+            count: 100000
         );
 
         var testDataset = new DataReader(
@@ -386,7 +391,7 @@ internal class AlexNetSample : Sample
             width: 227,
             height: 227,
             channels: 3,
-            count: 20000
+            count: 5000
         );
 
         var model = new AlexNet("alexnet", trainDataset.LabelNames.Count, device);
@@ -396,7 +401,7 @@ internal class AlexNetSample : Sample
         {
             Console.Write(
                 $"\r[T+{Math.Round(stopwatch.Elapsed.TotalSeconds)}s] " +
-                $"[Converting] " +
+                $"[Train dataset] " +
                 $"{x.Current} / {x.All} | classes: {trainDataset.ClassCount} | failed: {x.Failed}"
             );
         }
@@ -407,30 +412,25 @@ internal class AlexNetSample : Sample
         {
             Console.Write(
                 $"\r[T+{Math.Round(stopwatch.Elapsed.TotalSeconds)}s] " +
-                $"[Converting] " +
+                $"[Test dataset] " +
                 $"{x.Current} / {x.All} | classes: {testDataset.ClassCount} | failed: {x.Failed}"
             );
         }
 
         Console.WriteLine();
 
-        // dataset.Split(testFraction: 0.2f, seed: 42);
-
-        // Console.WriteLine($"Train samples: {dataset.TrainSampleCount}");
-        // Console.WriteLine($"Test samples:  {dataset.TestSampleCount}");
-
         var trainer = new AlexNetTrainer(model, trainDataset);
         await trainer.TrainAsync(
-            epochs: 35,
-            batchSize: 256,
-            learningRate: 0.0001f,
+            epochs: 10,
+            batchSize: 256 + 128,
+            learningRate: 1e-4f,
             schedulerStepSize: 30,
             schedulerGamma: 0.5f,
-            minLearningRate: 1e-5f,
+            minLearningRate: 1e-6f,
             device: device
         );
 
-        var outputPath = Path.Combine(outputDirectory, "alexnet__test.onnx");
+        var outputPath = Path.Combine(outputDirectory, "alexnet.onnx");
         var onnxModel = model.Export();
         onnxModel.Save(outputPath, true);
 
