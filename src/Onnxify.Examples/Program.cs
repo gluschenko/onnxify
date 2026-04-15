@@ -371,8 +371,8 @@ internal class AlexNetSample : Sample
 
     public override async Task RunAsync()
     {
-        var trainDatasetDirectory = @"D:\Backups\ML\.image-classification\Face Shape Classification.v1i.folder\train";
-        var testDatasetDirectory = @"D:\Backups\ML\.image-classification\Face Shape Classification.v1i.folder\test";
+        var trainDatasetDirectory = @"D:\Backups\ML\.image-classification\gender.v1i.folder\train";
+        var testDatasetDirectory = @"D:\Backups\ML\.image-classification\gender.v1i.folder\test";
 
         var outputDirectory = Utils.EnsureAssetsDirectory();
         var device = cuda.is_available() ? CUDA : CPU;

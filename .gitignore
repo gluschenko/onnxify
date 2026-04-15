@@ -403,3 +403,4 @@ FodyWeavers.xsd
 src/out/**
 .dotnet/**
 .nuget/**
+*.xml

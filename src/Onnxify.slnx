@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/.deploy/">
+    <File Path="../.github/workflows/github-ci.yml" />
+  </Folder>
   <Folder Name="/.docs/">
     <File Path="../README.md" />
   </Folder>

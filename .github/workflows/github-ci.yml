@@ -1,0 +1,158 @@
+name: GitHub CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CONFIGURATION: Release
+  DOTNET_VERSION: 10.0.x
+  DOTNET_CLI_HOME: ${{ github.workspace }}/.dotnet
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+
+jobs:
+  build-test:
+    name: Build and Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04
+          - windows-2025
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          cache: true
+          cache-dependency-path: |
+            src/**/*.csproj
+            src/Onnxify.slnx
+
+      - name: Prepare .NET CLI home
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force -Path $env:DOTNET_CLI_HOME | Out-Null
+
+      - name: Restore test project
+        run: dotnet restore src/Onnxify.Tests/Onnxify.Tests.csproj
+
+      - name: Build test project
+        run: dotnet build src/Onnxify.Tests/Onnxify.Tests.csproj --configuration ${{ env.CONFIGURATION }} --no-restore
+
+      - name: Run tests
+        run: dotnet test src/Onnxify.Tests/Onnxify.Tests.csproj --configuration ${{ env.CONFIGURATION }} --no-build --logger "trx;LogFileName=Onnxify.Tests.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: src/Onnxify.Tests/TestResults/**/*.trx
+          if-no-files-found: ignore
+
+  pack:
+    name: Pack ${{ matrix.package.id }}
+    runs-on: ubuntu-24.04
+    needs: build-test
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - id: Onnxify
+            project: src/Onnxify/Onnxify.csproj
+          - id: Onnxify.TorchSharp
+            project: src/Onnxify.TorchSharp/Onnxify.TorchSharp.csproj
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          cache: true
+          cache-dependency-path: |
+            src/**/*.csproj
+            src/Onnxify.slnx
+
+      - name: Prepare .NET CLI home
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force -Path $env:DOTNET_CLI_HOME | Out-Null
+
+      - name: Restore ${{ matrix.package.id }}
+        run: dotnet restore ${{ matrix.package.project }}
+
+      - name: Pack ${{ matrix.package.id }}
+        run: >
+          dotnet pack ${{ matrix.package.project }}
+          --configuration ${{ env.CONFIGURATION }}
+          --no-restore
+          --output ${{ github.workspace }}/artifacts/packages/${{ matrix.package.id }}
+          -p:ContinuousIntegrationBuild=true
+          -p:IncludeSymbols=true
+          -p:SymbolPackageFormat=snupkg
+
+      - name: Upload ${{ matrix.package.id }} artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ matrix.package.id }}
+          path: ${{ github.workspace }}/artifacts/packages/${{ matrix.package.id }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish Packages
+    runs-on: ubuntu-24.04
+    needs: pack
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
+    env:
+      GITHUB_NUGET_SOURCE: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+
+    steps:
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Prepare .NET CLI home
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force -Path $env:DOTNET_CLI_HOME | Out-Null
+
+      - name: Download packed artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: package-*
+          merge-multiple: true
+          path: ${{ github.workspace }}/artifacts/packages
+
+      - name: Publish to GitHub Packages
+        env:
+          NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          find "${{ github.workspace }}/artifacts/packages" -name '*.nupkg' ! -name '*.symbols.nupkg' -print0 | while IFS= read -r -d '' package; do
+            dotnet nuget push "$package" \
+              --api-key "${{ secrets.GITHUB_TOKEN }}" \
+              --skip-duplicate \
+              --source "${{ env.GITHUB_NUGET_SOURCE }}"
+          done
