@@ -22,6 +22,7 @@ public sealed class OnnxProjectGeneratorTests
             model.ModelVersion = 12;
             model.Domain = "ai.onnxify.generator.tests";
             model.Document = "Generated project";
+            model.AddMetadataProps("generator-key", "generator-value");
 
             var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([1, 2], "input-denotation"));
             var hidden = model.Graph.AddValue("hidden", OnnxTensorType.Create<float>([1, 2]));
@@ -78,6 +79,8 @@ public sealed class OnnxProjectGeneratorTests
             Assert.Contains("new OnnxAttribute<long[]>(\"axes\", [0L, 1L])", programText);
             Assert.Contains("new OnnxAttribute<string>(\"note\", \"hello\")", programText);
             Assert.Contains("model.MetadataProps.Add(new StringStringEntryProto", programText);
+            Assert.Contains("Key = \"generator-key\"", programText);
+            Assert.Contains("Value = \"generator-value\"", programText);
             Assert.Contains("model.OpsetImport.Add(new OperatorSetIdProto", programText);
 
             var projectText = File.ReadAllText(result.ProjectFilePath!);

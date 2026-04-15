@@ -15,8 +15,8 @@ public sealed class OnnxModelTests
         Assert.Equal("tests", model.ProducerName);
         Assert.Equal(99, model.IrVersion);
         Assert.Single(model.OpsetImport);
-        Assert.Equal("", model.OpsetImport[0].Key);
-        Assert.Equal(21, model.OpsetImport[0].Value);
+        Assert.Equal("", model.OpsetImport[0].Domain);
+        Assert.Equal(21, model.OpsetImport[0].Version);
         Assert.NotNull(model.Graph);
         Assert.Empty(model.Graph.Nodes);
     }
@@ -109,9 +109,11 @@ public sealed class OnnxModelTests
             var loadedInput = Assert.IsType<OnnxValue<OnnxTensorType>>(loaded.Graph.Inputs[0]);
             Assert.Equal("input", loadedInput.Name);
             Assert.Equal(typeof(float), loadedInput.Type.Type);
-            Assert.Equal(2, loadedInput.Type.Shape.Dimensions.Length);
-            Assert.Equal(1L, Assert.IsType<OnnxDimension<long>>(loadedInput.Type.Shape.Dimensions[0]).Value);
-            Assert.Equal(3L, Assert.IsType<OnnxDimension<long>>(loadedInput.Type.Shape.Dimensions[1]).Value);
+            Assert.NotNull(loadedInput.Type.Shape);
+            var loadedInputShape = loadedInput.Type.Shape!;
+            Assert.Equal(2, loadedInputShape.Dimensions.Length);
+            Assert.Equal(1L, Assert.IsType<OnnxDimension<long>>(loadedInputShape.Dimensions[0]).Value);
+            Assert.Equal(3L, Assert.IsType<OnnxDimension<long>>(loadedInputShape.Dimensions[1]).Value);
 
             Assert.Single(loaded.Graph.Outputs);
             var loadedOutput = Assert.IsType<OnnxValue<OnnxTensorType>>(loaded.Graph.Outputs[0]);
