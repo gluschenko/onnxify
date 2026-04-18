@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Onnxify.Data;
@@ -196,6 +197,12 @@ public sealed class OnnxProjectGenerator
 
         foreach (var node in model.Graph.Nodes)
         {
+            if (TryRenderTypedNodeInvocation(node, GetEdgeVariable, context, out var typedInvocation))
+            {
+                flow.AppendLine(typedInvocation);
+                continue;
+            }
+
             flow.AppendLine(
                 $$"""
                     model.Graph.AddNode(
@@ -375,6 +382,146 @@ public sealed class OnnxProjectGenerator
         return tensor.Shape.Aggregate(1L, static (count, dimension) => checked(count * dimension));
     }
 
+    private static bool TryRenderTypedNodeInvocation(
+        OnnxNode node,
+        Func<IOnnxGraphEdge, string> getEdgeVariable,
+        GenerationContext context,
+        out string invocation)
+    {
+        invocation = string.Empty;
+
+        var nodeType = node.GetType();
+        if (nodeType == typeof(OnnxNode) || nodeType.Namespace is null)
+        {
+            return false;
+        }
+
+        var optionsType = nodeType.Assembly.GetType($"{nodeType.Namespace}.{nodeType.Name}InputOutputOptions", throwOnError: false);
+        if (optionsType is null)
+        {
+            return false;
+        }
+
+        var assignments = new List<string>();
+
+        foreach (var optionsProperty in optionsType
+            .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+            .OrderBy(static x => x.MetadataToken))
+        {
+            var nodeProperty = nodeType.GetProperty(optionsProperty.Name, BindingFlags.Instance | BindingFlags.Public);
+            if (nodeProperty is null)
+            {
+                return false;
+            }
+
+            var value = nodeProperty.GetValue(node);
+            if (value is null)
+            {
+                continue;
+            }
+
+            if (!TryRenderTypedOptionValue(value, optionsProperty.PropertyType, getEdgeVariable, context, out var renderedValue))
+            {
+                return false;
+            }
+
+            assignments.Add($"{optionsProperty.Name} = {renderedValue}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(node.DocString))
+        {
+            context.Warnings.Add($"Node '{node.Name}' docString is not emitted because typed Onnxify wrappers do not expose it.");
+        }
+
+        var domainAccessor = GetDomainAccessor(node.Domain);
+        var optionsTypeName = optionsType.FullName?.Replace("+", ".", StringComparison.Ordinal)
+            ?? throw new InvalidOperationException($"Could not resolve options type name for '{nodeType.FullName}'.");
+
+        invocation = $$"""
+                    {{domainAccessor}}.{{node.OpType}}(
+                        name: {{AsStringLiteral(node.Name)}},
+                        options: new global::{{optionsTypeName}}
+                        {
+                            {{Indent(string.Join("," + Environment.NewLine, assignments), 1)}}
+                        }
+                    );
+
+                """;
+
+        return true;
+    }
+
+    private static bool TryRenderTypedOptionValue(
+        object value,
+        Type declaredType,
+        Func<IOnnxGraphEdge, string> getEdgeVariable,
+        GenerationContext context,
+        out string renderedValue)
+    {
+        if (declaredType == typeof(OnnxTensor) && value is OnnxTensor attributeTensor)
+        {
+            renderedValue = RenderAttributeTensor(attributeTensor, context);
+            return true;
+        }
+
+        switch (value)
+        {
+            case IOnnxGraphEdge edge:
+                renderedValue = getEdgeVariable(edge);
+                return true;
+            case IReadOnlyList<IOnnxGraphEdge> edges:
+                renderedValue = RenderEdgeList(edges.Select(getEdgeVariable));
+                return true;
+            case string text:
+                renderedValue = AsStringLiteral(text);
+                return true;
+            case long longValue:
+                renderedValue = $"{longValue.ToString(CultureInfo.InvariantCulture)}L";
+                return true;
+            case float floatValue:
+                renderedValue = RenderFloat(floatValue);
+                return true;
+            case double doubleValue:
+                renderedValue = RenderDouble(doubleValue);
+                return true;
+            case bool boolValue:
+                renderedValue = boolValue ? "true" : "false";
+                return true;
+            case long[] longValues:
+                renderedValue = RenderLongArray(longValues);
+                return true;
+            case float[] floatValues:
+                renderedValue = RenderFloatArray(floatValues);
+                return true;
+            case string[] stringValues:
+                renderedValue = RenderStringArray(stringValues);
+                return true;
+            case OnnxValueType valueType:
+                renderedValue = RenderValueType(valueType);
+                return true;
+            case OnnxValueType[] valueTypes:
+                renderedValue = $"[{string.Join(", ", valueTypes.Select(RenderValueType))}]";
+                return true;
+            default:
+                renderedValue = string.Empty;
+                return false;
+        }
+    }
+
+    private static string GetDomainAccessor(string domain)
+    {
+        return domain switch
+        {
+            "" => "model.Graph",
+            "ai.onnx.ml" => "model.Graph.ML",
+            "com.microsoft" => "model.Graph.Microsoft",
+            "com.microsoft.nhwc" => "model.Graph.Microsoft.NHWC",
+            "com.microsoft.nchwc" => "model.Graph.Microsoft.NCHWc",
+            "com.ms.internal.nhwc" => "model.Graph.Microsoft.Internal.NHWC",
+            _ => throw new NotSupportedException($"Domain '{domain}' is not supported by Onnxify's typed wrapper surface."),
+        };
+    }
+
     private static string RenderValueType(OnnxValueType valueType)
     {
         return valueType switch
@@ -459,6 +606,26 @@ public sealed class OnnxProjectGenerator
         }
 
         return value.ToString("R", CultureInfo.InvariantCulture) + "F";
+    }
+
+    private static string RenderDouble(double value)
+    {
+        if (double.IsNaN(value))
+        {
+            return "double.NaN";
+        }
+
+        if (double.IsPositiveInfinity(value))
+        {
+            return "double.PositiveInfinity";
+        }
+
+        if (double.IsNegativeInfinity(value))
+        {
+            return "double.NegativeInfinity";
+        }
+
+        return value.ToString("R", CultureInfo.InvariantCulture) + "D";
     }
 
     private static string RenderFloatArray(IEnumerable<float> values)

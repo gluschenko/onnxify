@@ -227,4 +227,101 @@ public sealed class OnnxProjectGeneratorTests
             }
         }
     }
+
+    [Fact]
+    public void Generate_UsesTypedOperatorWrappersWhenAvailable()
+    {
+        var modelPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+        var outputDirectoryPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}");
+
+        try
+        {
+            var model = OnnxModel.Create();
+
+            var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([1, 1, 3, 3]));
+            var output = model.Graph.AddOutput("output", OnnxTensorType.Create<float>([1, 1, 3, 3]));
+            var scale = model.Graph.AddTensor("scale", [1], [1.0f]);
+            var zeroPoint = model.Graph.AddTensor("zero_point", [1], [(byte)0]);
+            var weights = model.Graph.AddTensor("weights", [1, 1, 3, 3], new float[9]);
+            var bias = model.Graph.AddTensor("bias", [1], [0.0f]);
+            var quantized = model.Graph.AddEdge("quantized");
+            var dequantized = model.Graph.AddEdge("dequantized");
+
+            model.Graph.QuantizeLinear(
+                name: "quantize",
+                options: new QuantizeLinearInputOutputOptions
+                {
+                    X = input,
+                    YScale = scale,
+                    YZeroPoint = zeroPoint,
+                    Y = quantized,
+                    Axis = 1,
+                    BlockSize = 0,
+                    OutputDtype = 0,
+                    Precision = 0,
+                    Saturate = 1,
+                });
+
+            model.Graph.DequantizeLinear(
+                name: "dequantize",
+                options: new DequantizeLinearInputOutputOptions
+                {
+                    X = quantized,
+                    XScale = scale,
+                    XZeroPoint = zeroPoint,
+                    Y = dequantized,
+                    Axis = 1,
+                    BlockSize = 0,
+                    OutputDtype = 0,
+                });
+
+            model.Graph.Conv(
+                name: "conv",
+                options: new ConvInputOutputOptions
+                {
+                    X = dequantized,
+                    W = weights,
+                    B = bias,
+                    Y = output,
+                    AutoPad = "NOTSET",
+                    Group = 1,
+                    KernelShape = [3, 3],
+                    Pads = [1, 1, 1, 1],
+                    Strides = [1, 1],
+                });
+
+            model.Save(modelPath);
+
+            var generator = new OnnxProjectGenerator();
+            var result = generator.Generate(new ProjectGeneratorOptions
+            {
+                InputModelPath = modelPath,
+                OutputDirectoryPath = outputDirectoryPath,
+                Overwrite = true,
+            });
+
+            var programText = File.ReadAllText(result.ProgramFilePath);
+            Assert.Contains("model.Graph.QuantizeLinear(", programText);
+            Assert.Contains("options: new global::Onnxify.QuantizeLinearInputOutputOptions", programText);
+            Assert.Contains("Y = quantized", programText);
+            Assert.Contains("model.Graph.DequantizeLinear(", programText);
+            Assert.Contains("options: new global::Onnxify.DequantizeLinearInputOutputOptions", programText);
+            Assert.Contains("model.Graph.Conv(", programText);
+            Assert.Contains("options: new global::Onnxify.ConvInputOutputOptions", programText);
+            Assert.Contains("AutoPad = \"NOTSET\"", programText);
+            Assert.DoesNotContain("model.Graph.AddNode(", programText);
+        }
+        finally
+        {
+            if (File.Exists(modelPath))
+            {
+                File.Delete(modelPath);
+            }
+
+            if (Directory.Exists(outputDirectoryPath))
+            {
+                Directory.Delete(outputDirectoryPath, recursive: true);
+            }
+        }
+    }
 }
