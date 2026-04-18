@@ -51,7 +51,7 @@ This is layer normalization defined in ONNX as function.
       the shape of `Mean` and `InvStdDev` is `[d[0], ..., d[axis-1], 1, ..., 1]`.
       `Y` and `X` have the same shape. This operator supports unidirectional broadcasting
       (tensors `Scale` and `B` should be unidirectional broadcastable to tensor `X`);
-      for more details please check [the doc](Broadcasting.md).
+      for more details please check [the doc](../common/Broadcasting.md).
 
 ## Onnxify Surface
 

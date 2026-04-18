@@ -27,7 +27,7 @@ The following special cases apply when `fmod` is set to `1`:
 - If `y` is `±∞` and `x` is finite, `x` is returned.
 - If either argument is `NaN`, `NaN` is returned.
 
-This operator supports **multidirectional (i.e., NumPy-style) broadcasting**; for more details please check [the doc](Broadcasting.md).
+This operator supports **multidirectional (i.e., NumPy-style) broadcasting**; for more details please check [the doc](../common/Broadcasting.md).
 
 ## Onnxify Surface
 

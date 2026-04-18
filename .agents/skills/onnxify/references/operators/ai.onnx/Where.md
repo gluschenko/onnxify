@@ -16,7 +16,7 @@ Where behaves like
 [numpy.where](https://docs.scipy.org/doc/numpy/reference/generated/numpy.where.html)
 with three parameters.
 
-This operator supports **multidirectional (i.e., Numpy-style) broadcasting**; for more details please check [the doc](Broadcasting.md).
+This operator supports **multidirectional (i.e., Numpy-style) broadcasting**; for more details please check [the doc](../common/Broadcasting.md).
 
 ## Onnxify Surface
 

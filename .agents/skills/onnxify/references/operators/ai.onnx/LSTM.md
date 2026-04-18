@@ -60,7 +60,7 @@ Equations (Default: f=Sigmoid, g=Tanh, h=Tanh):
 * Ct = ft (.) Ct-1 + it (.) ct
 * ot = f(Xt*(Wo^T) + Ht-1*(Ro^T) + Po (.) Ct + Wbo + Rbo)
 * Ht = ot (.) h(Ct)
-This operator has **optional** inputs/outputs. See [the doc](IR.md) for more details about the representation of optional arguments. An empty string may be used in the place of an actual argument's name to indicate a missing argument. Trailing optional arguments (those not followed by an argument that is present) may also be simply omitted.
+This operator has **optional** inputs/outputs. See [the doc](../common/IR.md) for more details about the representation of optional arguments. An empty string may be used in the place of an actual argument's name to indicate a missing argument. Trailing optional arguments (those not followed by an argument that is present) may also be simply omitted.
 
 ## Onnxify Surface
 

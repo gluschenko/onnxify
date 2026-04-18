@@ -7,6 +7,14 @@ Do not hand-edit files in this directory; rerun the generator instead.
 - Operators with at least one Onnxify.TorchSharp converter path: `36`
 - Operator schema source: `src/Onnxify/Assets/onnx_operators.json`
 
+## Table of Contents
+
+- `ai.onnx` - 218 operators
+- `ai.onnx.ml` - 19 operators
+- `com.microsoft` - 209 operators
+- `com.microsoft.nchwc` - 8 operators
+- `com.ms.internal.nhwc` - 19 operators
+
 ## ai.onnx
 
 | Operator | Since | TorchSharp converter | File |
