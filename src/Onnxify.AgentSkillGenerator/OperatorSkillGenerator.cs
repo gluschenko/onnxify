@@ -222,6 +222,7 @@ internal static class OperatorSkillGenerator
             parameter.Name,
             propertyName,
             property is null ? string.Empty : GetFriendlyTypeName(property.PropertyType),
+            GetAllowedSchemaTypes(parameter),
             parameter.Option,
             parameter.MinArity,
             CollapseWhitespace(parameter.Description),
@@ -521,11 +522,11 @@ internal static class OperatorSkillGenerator
         builder.AppendLine();
         builder.AppendLine("## Inputs");
         builder.AppendLine();
-        builder.AppendLine("| JSON name | Onnxify property | Type | Semantics | Description |");
-        builder.AppendLine("| --- | --- | --- | --- | --- |");
+        builder.AppendLine("| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |");
+        builder.AppendLine("| --- | --- | --- | --- | --- | --- |");
         if (op.Schema is null || op.Inputs.Count == 0)
         {
-            builder.AppendLine("| [schema missing] |  |  |  |  |");
+            builder.AppendLine("| [schema missing] |  |  |  |  |  |");
         }
         else
         {
@@ -538,6 +539,8 @@ internal static class OperatorSkillGenerator
                     .Append("` | `")
                     .Append(EscapeMarkdownCell(input.PropertyType))
                     .Append("` | ")
+                    .Append(FormatMarkdownCodeList(input.AllowedSchemaTypes))
+                    .Append(" | ")
                     .Append(EscapeMarkdownCell(FormatParameterSemantics(input.Option, input.MinArity, input.Required)))
                     .Append(" | ")
                     .Append(EscapeMarkdownCell(input.Description))
@@ -548,11 +551,11 @@ internal static class OperatorSkillGenerator
         builder.AppendLine();
         builder.AppendLine("## Outputs");
         builder.AppendLine();
-        builder.AppendLine("| JSON name | Onnxify property | Type | Semantics | Description |");
-        builder.AppendLine("| --- | --- | --- | --- | --- |");
+        builder.AppendLine("| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |");
+        builder.AppendLine("| --- | --- | --- | --- | --- | --- |");
         if (op.Schema is null || op.Outputs.Count == 0)
         {
-            builder.AppendLine("| [schema missing] |  |  |  |  |");
+            builder.AppendLine("| [schema missing] |  |  |  |  |  |");
         }
         else
         {
@@ -565,6 +568,8 @@ internal static class OperatorSkillGenerator
                     .Append("` | `")
                     .Append(EscapeMarkdownCell(output.PropertyType))
                     .Append("` | ")
+                    .Append(FormatMarkdownCodeList(output.AllowedSchemaTypes))
+                    .Append(" | ")
                     .Append(EscapeMarkdownCell(FormatParameterSemantics(output.Option, output.MinArity, output.Required)))
                     .Append(" | ")
                     .Append(EscapeMarkdownCell(output.Description))
@@ -1038,6 +1043,25 @@ internal static class OperatorSkillGenerator
         return Convert.ToString(value, CultureInfo.InvariantCulture) ?? value.ToString() ?? string.Empty;
     }
 
+    private static IReadOnlyList<string> GetAllowedSchemaTypes(OperatorParameter parameter)
+    {
+        return parameter.Types
+            .Select(CollapseWhitespace)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static string FormatMarkdownCodeList(IReadOnlyList<string> values)
+    {
+        if (values.Count == 0)
+        {
+            return "[not specified]";
+        }
+
+        return string.Join("<br>", values.Select(value => $"`{EscapeMarkdownCell(value)}`"));
+    }
+
     private static string CollapseWhitespace(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -1106,6 +1130,7 @@ internal static class OperatorSkillGenerator
         string SchemaName,
         string PropertyName,
         string PropertyType,
+        IReadOnlyList<string> AllowedSchemaTypes,
         FormalParameterOption Option,
         int MinArity,
         string Description,
