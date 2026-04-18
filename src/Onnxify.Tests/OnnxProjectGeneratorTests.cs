@@ -76,7 +76,11 @@ public sealed class OnnxProjectGeneratorTests
             Assert.Contains("model.Graph.AddValue(", programText);
             Assert.Contains("model.Graph.AddOutput(", programText);
             Assert.Contains("model.Graph.AddTensor(", programText);
-            Assert.Contains("TensorDataLoader.LoadArray<float>(\"Assets/weights.bin\")", programText);
+            Assert.DoesNotContain("internal static class TensorDataLoader", programText);
+            Assert.DoesNotContain("using System.Linq;", programText);
+            Assert.DoesNotContain("using System.Runtime.InteropServices;", programText);
+            Assert.DoesNotContain("using System.Text.Json;", programText);
+            Assert.Contains("OnnxExternalDataProvider.Instance.ReadTensorArray<float>(ResolveAssetPath(\"Assets/weights.bin\"))", programText);
             Assert.Contains("new OnnxAttribute<long[]>(\"axes\", [0L, 1L])", programText);
             Assert.Contains("new OnnxAttribute<string>(\"note\", \"hello\")", programText);
             Assert.Contains("model.MetadataProps.Add(new StringStringEntryProto", programText);
@@ -142,11 +146,12 @@ public sealed class OnnxProjectGeneratorTests
 
             var programText = File.ReadAllText(result.ProgramFilePath);
             Assert.Contains("using Onnxify.Data.Numerics;", programText);
-            Assert.Contains("TensorDataLoader.LoadArray<Float8E4M3FN>(\"Assets/float8.bin\")", programText);
-            Assert.Contains("TensorDataLoader.LoadArray<Float4E2M1>(\"Assets/float4.bin\", 3L)", programText);
-            Assert.Contains("TensorDataLoader.LoadArray<UInt4>(\"Assets/uint4.bin\", 3L)", programText);
-            Assert.Contains("TensorDataLoader.LoadArray<Int2>(\"Assets/int2.bin\", 5L)", programText);
-            Assert.Contains("TensorDataLoader.LoadArray<Float8E8M0>(\"Assets/float8e8m0.bin\")", programText);
+            Assert.DoesNotContain("internal static class TensorDataLoader", programText);
+            Assert.Contains("OnnxExternalDataProvider.Instance.ReadTensorArray<Float8E4M3FN>(ResolveAssetPath(\"Assets/float8.bin\"))", programText);
+            Assert.Contains("OnnxExternalDataProvider.Instance.ReadTensorArray<Float4E2M1>(ResolveAssetPath(\"Assets/float4.bin\"), 3L)", programText);
+            Assert.Contains("OnnxExternalDataProvider.Instance.ReadTensorArray<UInt4>(ResolveAssetPath(\"Assets/uint4.bin\"), 3L)", programText);
+            Assert.Contains("OnnxExternalDataProvider.Instance.ReadTensorArray<Int2>(ResolveAssetPath(\"Assets/int2.bin\"), 5L)", programText);
+            Assert.Contains("OnnxExternalDataProvider.Instance.ReadTensorArray<Float8E8M0>(ResolveAssetPath(\"Assets/float8e8m0.bin\"))", programText);
 
             Assert.Equal(2, new FileInfo(Path.Combine(outputDirectoryPath, "Assets", "float8.bin")).Length);
             Assert.Equal(2, new FileInfo(Path.Combine(outputDirectoryPath, "Assets", "float4.bin")).Length);

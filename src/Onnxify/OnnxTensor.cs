@@ -8,6 +8,7 @@ public abstract class OnnxTensor : IOnnxGraphEdge
 {
     public abstract string Name { get; }
     public abstract Type DataType { get; }
+    public abstract long[] Shape { get; }
     internal abstract TensorProto ToProto();
 
     internal static OnnxTensor<T> FromProto<T>(TensorProto tensor, OnnxModelBaseOptions options)
@@ -60,7 +61,7 @@ public class OnnxTensor<T> : OnnxTensor
     public override string Name { get; }
     public override Type DataType { get; }
     public TensorDataLocation DataLocation { get; private set; }
-    public long[] Shape { get; private set; }
+    public override long[] Shape { get; }
     public IEnumerable<T> Value { get; private set; }
 
     private readonly TensorProto _tensor;
