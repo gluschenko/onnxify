@@ -371,8 +371,8 @@ internal class AlexNetSample : Sample
 
     public override async Task RunAsync()
     {
-        var trainDatasetDirectory = @"D:\Backups\ML\.image-classification\gender.v1i.folder\train";
-        var testDatasetDirectory = @"D:\Backups\ML\.image-classification\gender.v1i.folder\test";
+        var trainDatasetDirectory = @"D:\Backups\ML\.image-classification\FoodX-251.v4i.folder\train";
+        var testDatasetDirectory = @"D:\Backups\ML\.image-classification\FoodX-251.v4i.folder\test";
 
         var outputDirectory = Utils.EnsureAssetsDirectory();
         var device = cuda.is_available() ? CUDA : CPU;
@@ -382,7 +382,7 @@ internal class AlexNetSample : Sample
             width: 227,
             height: 227,
             channels: 3,
-            count: 100000
+            count: 200000
         );
 
         var testDataset = new DataReader(
@@ -390,7 +390,7 @@ internal class AlexNetSample : Sample
             width: 227,
             height: 227,
             channels: 3,
-            count: 5000
+            count: 50000
         );
 
         var model = new AlexNet("alexnet", trainDataset.LabelNames.Count, device);
@@ -420,10 +420,10 @@ internal class AlexNetSample : Sample
 
         var trainer = new AlexNetTrainer(model, trainDataset);
         await trainer.TrainAsync(
-            epochs: 100,
+            epochs: 200,
             batchSize: 256 + 128,
             learningRate: 1e-4f,
-            schedulerStepSize: 5,
+            schedulerStepSize: 35,
             schedulerGamma: 0.5f,
             minLearningRate: 1e-6f,
             device: device

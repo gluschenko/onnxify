@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <None Include="..\Onnxify\Assets\onnx_operators.json" Link="Assets\onnx_operators.json" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="..\Onnxify.SourceGenerator\Models\OperatorSchema.cs" Link="Models\OperatorSchema.cs" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

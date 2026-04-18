@@ -1,4 +1,4 @@
-using System.Collections.Frozen;
+﻿using System.Collections.Frozen;
 using System.Globalization;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using Onnxify.TorchSharp;
+using Onnxify.SourceGenerator.Models;
 
 namespace Onnxify.AgentSkillGenerator;
 
@@ -13,14 +14,14 @@ internal static class OperatorSkillGenerator
 {
     private const string NewLine = "\n";
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    private static readonly JsonSerializerOptions _jsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
     };
 
-    private static readonly IReadOnlyDictionary<short, OpCode> SingleByteOpCodes = CreateOpCodeMap(multiByte: false);
-    private static readonly IReadOnlyDictionary<short, OpCode> MultiByteOpCodes = CreateOpCodeMap(multiByte: true);
-    private static readonly FrozenDictionary<string, string> AliasFieldNames = new Dictionary<string, string>(StringComparer.Ordinal)
+    private static readonly IReadOnlyDictionary<short, OpCode> _singleByteOpCodes = CreateOpCodeMap(multiByte: false);
+    private static readonly IReadOnlyDictionary<short, OpCode> _multiByteOpCodes = CreateOpCodeMap(multiByte: true);
+    private static readonly FrozenDictionary<string, string> _aliasFieldNames = new Dictionary<string, string>(StringComparer.Ordinal)
     {
         ["Inputs"] = "In",
         ["Outputs"] = "Out",
@@ -36,7 +37,7 @@ internal static class OperatorSkillGenerator
         string skillRoot = ResolveSkillRoot(repoRoot);
         string outputRoot = Path.Combine(skillRoot, "references", "operators");
 
-        var schemaRoot = JsonSerializer.Deserialize<OperatorSchemaRoot>(File.ReadAllText(schemaPath), JsonOptions)
+        var schemaRoot = JsonSerializer.Deserialize<OperatorSchemaRoot>(File.ReadAllText(schemaPath), _jsonOptions)
             ?? throw new InvalidOperationException($"Failed to parse operator schema file '{schemaPath}'.");
 
         var schemaByKey = schemaRoot.Operators.ToDictionary(
@@ -119,7 +120,8 @@ internal static class OperatorSkillGenerator
     }
 
     private static IReadOnlyList<OnnxOperatorDoc> BuildOnnxOperators(
-        IReadOnlyDictionary<OperatorKey, OperatorSchema> schemaByKey)
+        IReadOnlyDictionary<OperatorKey, OperatorSchema> schemaByKey
+    )
     {
         Assembly assembly = typeof(OnnxModel).Assembly;
 
@@ -145,7 +147,8 @@ internal static class OperatorSkillGenerator
     private static OnnxOperatorDoc? CreateOnnxOperatorDoc(
         Type nodeType,
         IReadOnlyList<MethodInfo> extensionMethods,
-        IReadOnlyDictionary<OperatorKey, OperatorSchema> schemaByKey)
+        IReadOnlyDictionary<OperatorKey, OperatorSchema> schemaByKey
+    )
     {
         string? domain = NamespaceToDomain(nodeType.Namespace);
         if (domain is null)
@@ -202,7 +205,7 @@ internal static class OperatorSkillGenerator
     private static ParameterDoc CreateParameterDoc(
         string operatorName,
         OperatorSchema schema,
-        OperatorParameterSchema parameter,
+        OperatorParameter parameter,
         Type optionsType,
         ParameterKind kind)
     {
@@ -228,8 +231,9 @@ internal static class OperatorSkillGenerator
     private static AttributeDoc CreateAttributeDoc(
         string operatorName,
         OperatorSchema schema,
-        OperatorAttributeSchema attribute,
-        Type optionsType)
+        OperatorAttribute attribute,
+        Type optionsType
+    )
     {
         string propertyName = GetAttributePropertyName(operatorName, schema, attribute.Name);
         PropertyInfo? property = optionsType.GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public);
@@ -240,11 +244,13 @@ internal static class OperatorSkillGenerator
             property is null ? string.Empty : GetFriendlyTypeName(property.PropertyType),
             CollapseWhitespace(attribute.Description),
             attribute.Required || (property is not null && IsRequiredMember(property)),
-            FormatDefaultValue(attribute.Default));
+            FormatDefaultValue(attribute.Default)
+        );
     }
 
     private static IReadOnlyDictionary<OperatorKey, IReadOnlyList<TorchSharpConverterDoc>> BuildTorchSharpCoverage(
-        IReadOnlyList<OnnxOperatorDoc> onnxOperators)
+        IReadOnlyList<OnnxOperatorDoc> onnxOperators
+    )
     {
         Assembly torchSharpAssembly = typeof(TorchOpAttribute).Assembly;
 
@@ -335,7 +341,8 @@ internal static class OperatorSkillGenerator
         MethodBase method,
         Assembly currentAssembly,
         IReadOnlyDictionary<string, OperatorKey> operatorConstructorsByType,
-        IReadOnlyDictionary<string, OperatorKey> wrapperMethodsByHandle)
+        IReadOnlyDictionary<string, OperatorKey> wrapperMethodsByHandle
+    )
     {
         var directOperators = new HashSet<OperatorKey>();
         var internalCalls = new HashSet<string>(StringComparer.Ordinal);
@@ -384,7 +391,8 @@ internal static class OperatorSkillGenerator
 
     private static IReadOnlyDictionary<string, string> BuildGeneratedFiles(
         IReadOnlyList<OnnxOperatorDoc> onnxOperators,
-        IReadOnlyDictionary<OperatorKey, IReadOnlyList<TorchSharpConverterDoc>> converterCoverage)
+        IReadOnlyDictionary<OperatorKey, IReadOnlyList<TorchSharpConverterDoc>> converterCoverage
+    )
     {
         var files = new Dictionary<string, string>(StringComparer.Ordinal);
 
@@ -464,7 +472,8 @@ internal static class OperatorSkillGenerator
 
     private static string BuildOperatorMarkdown(
         OnnxOperatorDoc op,
-        IReadOnlyList<TorchSharpConverterDoc> converters)
+        IReadOnlyList<TorchSharpConverterDoc> converters
+    )
     {
         var builder = new StringBuilder();
         builder.Append("# ").AppendLine(op.Key.Name);
@@ -659,12 +668,12 @@ internal static class OperatorSkillGenerator
         byte first = il[offset++];
         if (first != 0xFE)
         {
-            return SingleByteOpCodes[(short)first];
+            return _singleByteOpCodes[(short)first];
         }
 
         byte second = il[offset++];
         short key = unchecked((short)(0xFE00 | second));
-        return MultiByteOpCodes[key];
+        return _multiByteOpCodes[key];
     }
 
     private static object? ReadOperand(
@@ -789,23 +798,24 @@ internal static class OperatorSkillGenerator
         ParameterInfo[] parameters = method.GetParameters();
         string receiver = GetReceiverExpression(parameters[0].ParameterType);
         string arguments = string.Join(", ", parameters.Skip(1).Select(parameter =>
-            $"{GetFriendlyTypeName(parameter.ParameterType)} {parameter.Name}"));
+        {
+            return $"{GetFriendlyTypeName(parameter.ParameterType)} {parameter.Name}";
+        }));
 
         return $"{receiver}.{method.Name}({arguments}) -> {GetFriendlyTypeName(method.ReturnType)}";
     }
 
     private static string GetConverterDisplaySignature(MethodBase method)
     {
-        string declaringType = method.DeclaringType?.FullName?.Replace("+", ".", StringComparison.Ordinal)
-            ?? "[unknown]";
+        var declaringType = method.DeclaringType?.FullName?.Replace("+", ".", StringComparison.Ordinal) ?? "[unknown]";
 
-        string parameters = string.Join(", ", method.GetParameters().Select((parameter, index) =>
+        var parameters = string.Join(", ", method.GetParameters().Select((parameter, index) =>
         {
-            string prefix = index == 0 && method.IsDefined(typeof(ExtensionAttribute), inherit: false) ? "this " : string.Empty;
+            var prefix = index == 0 && method.IsDefined(typeof(ExtensionAttribute), inherit: false) ? "this " : string.Empty;
             return $"{prefix}{GetFriendlyTypeName(parameter.ParameterType)} {parameter.Name}";
         }));
 
-        string returnType = method is MethodInfo methodInfo ? GetFriendlyTypeName(methodInfo.ReturnType) : "void";
+        var returnType = method is MethodInfo methodInfo ? GetFriendlyTypeName(methodInfo.ReturnType) : "void";
         return $"{declaringType}.{method.Name}({parameters}) -> {returnType}";
     }
 
@@ -841,9 +851,9 @@ internal static class OperatorSkillGenerator
         }
     }
 
-    private static string? NamespaceToDomain(string? @namespace)
+    private static string? NamespaceToDomain(string? namespaceName)
     {
-        return @namespace switch
+        return namespaceName switch
         {
             "Onnxify" => string.Empty,
             "Onnxify.ML" => "ai.onnx.ml",
@@ -895,7 +905,7 @@ internal static class OperatorSkillGenerator
         }
 
         string fieldName = PascalCase(name);
-        if (AliasFieldNames.TryGetValue(fieldName, out string? alias))
+        if (_aliasFieldNames.TryGetValue(fieldName, out string? alias))
         {
             fieldName = alias;
         }
@@ -954,14 +964,14 @@ internal static class OperatorSkillGenerator
 
         if (type.IsGenericType)
         {
-            string genericTypeName = type.Name;
-            int tickIndex = genericTypeName.IndexOf('`');
+            var genericTypeName = type.Name;
+            var tickIndex = genericTypeName.IndexOf('`');
             if (tickIndex >= 0)
             {
                 genericTypeName = genericTypeName[..tickIndex];
             }
 
-            string genericArguments = string.Join(", ", type.GetGenericArguments().Select(GetFriendlyTypeName));
+            var genericArguments = string.Join(", ", type.GetGenericArguments().Select(GetFriendlyTypeName));
             return $"{GetFriendlyTypeNamePrefix(type)}{genericTypeName}<{genericArguments}>";
         }
 
@@ -1107,7 +1117,8 @@ internal static class OperatorSkillGenerator
         string PropertyType,
         string Description,
         bool Required,
-        string DefaultValue);
+        string DefaultValue
+    );
 
     private sealed record OnnxOperatorDoc(
         OperatorKey Key,
@@ -1118,7 +1129,8 @@ internal static class OperatorSkillGenerator
         IReadOnlyList<WrapperMethodDoc> WrapperMethods,
         IReadOnlyList<ParameterDoc> Inputs,
         IReadOnlyList<ParameterDoc> Outputs,
-        IReadOnlyList<AttributeDoc> Attributes);
+        IReadOnlyList<AttributeDoc> Attributes
+    );
 
     private sealed record TorchSharpConverterDoc(string Signature, string[] TorchOps);
 
@@ -1128,7 +1140,8 @@ internal static class OperatorSkillGenerator
         FrozenSet<OperatorKey> DirectOperators,
         FrozenSet<string> InternalCalls,
         string[] TorchOps,
-        bool IsTopLevelConverter);
+        bool IsTopLevelConverter
+    );
 
     private sealed record ResolvedCall(OpCode OpCode, MethodBase? Target);
 
