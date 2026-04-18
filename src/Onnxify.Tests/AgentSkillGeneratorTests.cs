@@ -11,16 +11,20 @@ public sealed class AgentSkillGeneratorTests
         var files = TorchSharpConverterSkillGenerator.BuildGeneratedFiles();
 
         Assert.Contains("index.md", files.Keys);
-        Assert.Contains(Path.Combine("entry-points", "TorchModule.md"), files.Keys);
         Assert.Contains(Path.Combine("composites", "Sequential.md"), files.Keys);
+        Assert.Contains(Path.Combine("composites", "torch.nn.Module_torch.Tensor__torch.Tensor_.md"), files.Keys);
         Assert.Contains(Path.Combine("torch-ops", "Conv2d.md"), files.Keys);
         Assert.Contains(Path.Combine("torch-ops", "LSTM.md"), files.Keys);
 
         var indexMarkdown = files["index.md"];
         Assert.Contains("# Onnxify TorchSharp Converter Instructions", indexMarkdown);
-        Assert.Contains("Dispatch Entry Points", indexMarkdown);
+        Assert.Contains("Composite Converters", indexMarkdown);
         Assert.Contains("Torch-Op-Backed Converters", indexMarkdown);
         Assert.Contains("aten::conv2d", indexMarkdown);
+
+        var moduleMarkdown = files[Path.Combine("composites", "torch.nn.Module_torch.Tensor__torch.Tensor_.md")];
+        Assert.Contains("torch.nn.Module<torch.Tensor, torch.Tensor> Converter", moduleMarkdown);
+        Assert.Contains("Onnxify.TorchSharp.TorchModuleExtensions.Export(this torch.nn.Module<torch.Tensor, torch.Tensor> module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge", moduleMarkdown);
 
         var conv2dMarkdown = files[Path.Combine("torch-ops", "Conv2d.md")];
         Assert.Contains("Conv2d Converter", conv2dMarkdown);
@@ -110,6 +114,11 @@ public sealed class AgentSkillGeneratorTests
             }
 
             if (inCodeFence)
+            {
+                continue;
+            }
+
+            if (line.StartsWith("    ", StringComparison.Ordinal) || line.StartsWith('\t'))
             {
                 continue;
             }
