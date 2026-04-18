@@ -9,6 +9,8 @@ namespace Onnxify.ProjectGenerator;
 
 public sealed class OnnxProjectGenerator
 {
+    private const long InlineTensorElementThreshold = 20L;
+
     public ProjectGenerationResult Generate(ProjectGeneratorOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -165,14 +167,12 @@ public sealed class OnnxProjectGenerator
 
         foreach (var tensor in model.Graph.Initializers)
         {
-            var assetRelativePath = ExportTensorAsset(tensor, context);
-
             flow.AppendLine(
                 $$"""
                 var {{GetEdgeVariable(tensor)}} = model.Graph.AddTensor(
                     name: {{AsStringLiteral(tensor.Name)}},
                     shape: {{RenderLongArray(tensor.Shape)}},
-                    value: {{RenderTensorLoadExpression(tensor, assetRelativePath)}}
+                    value: {{RenderTensorValueExpression(tensor, context)}}
                 );
 
                 """
@@ -334,7 +334,18 @@ public sealed class OnnxProjectGenerator
             : context.WriteBinaryAsset(safeName, "bin", OnnxExternalDataProvider.Instance.EncodeTensorRawData(tensor));
     }
 
-    private static string RenderTensorLoadExpression(OnnxTensor tensor, string relativePath)
+    private static string RenderTensorValueExpression(OnnxTensor tensor, GenerationContext context)
+    {
+        if (GetTensorElementCount(tensor) < InlineTensorElementThreshold)
+        {
+            return RenderTensorInlineExpression(tensor);
+        }
+
+        var assetRelativePath = ExportTensorAsset(tensor, context);
+        return RenderTensorAssetLoadExpression(tensor, assetRelativePath);
+    }
+
+    private static string RenderTensorAssetLoadExpression(OnnxTensor tensor, string relativePath)
     {
         var literalPath = AsStringLiteral(relativePath.Replace('\\', '/'));
         var resolvedPath = $"ResolveAssetPath({literalPath})";
@@ -367,6 +378,40 @@ public sealed class OnnxProjectGenerator
             OnnxTensor<Complex64> => RenderTensorReadExpression<Complex64>(resolvedPath),
             OnnxTensor<Complex128> => RenderTensorReadExpression<Complex128>(resolvedPath),
             OnnxTensor<string> => $"global::System.Text.Json.JsonSerializer.Deserialize<string[]>(File.ReadAllText({resolvedPath})) ?? throw new InvalidOperationException(\"Could not deserialize tensor data.\")",
+            _ => throw CreateUnsupportedTensorException(tensor),
+        };
+    }
+
+    private static string RenderTensorInlineExpression(OnnxTensor tensor)
+    {
+        return tensor switch
+        {
+            OnnxTensor<float> typed => RenderArrayLiteral(typed.Value, RenderFloat),
+            OnnxTensor<double> typed => RenderArrayLiteral(typed.Value, RenderDouble),
+            OnnxTensor<sbyte> typed => RenderArrayLiteral(typed.Value, RenderSByte),
+            OnnxTensor<byte> typed => RenderArrayLiteral(typed.Value, RenderByte),
+            OnnxTensor<short> typed => RenderArrayLiteral(typed.Value, RenderShort),
+            OnnxTensor<ushort> typed => RenderArrayLiteral(typed.Value, RenderUShort),
+            OnnxTensor<int> typed => RenderArrayLiteral(typed.Value, RenderInt),
+            OnnxTensor<uint> typed => RenderArrayLiteral(typed.Value, RenderUInt),
+            OnnxTensor<long> typed => RenderArrayLiteral(typed.Value, RenderLong),
+            OnnxTensor<ulong> typed => RenderArrayLiteral(typed.Value, RenderULong),
+            OnnxTensor<bool> typed => RenderArrayLiteral(typed.Value, RenderBool),
+            OnnxTensor<Half> typed => RenderArrayLiteral(typed.Value, RenderHalf),
+            OnnxTensor<BFloat16> typed => RenderArrayLiteral(typed.Value, RenderBFloat16),
+            OnnxTensor<Float8E4M3FN> typed => RenderArrayLiteral(typed.Value, RenderFloat8E4M3FN),
+            OnnxTensor<Float8E4M3FNUZ> typed => RenderArrayLiteral(typed.Value, RenderFloat8E4M3FNUZ),
+            OnnxTensor<Float8E5M2> typed => RenderArrayLiteral(typed.Value, RenderFloat8E5M2),
+            OnnxTensor<Float8E5M2FNUZ> typed => RenderArrayLiteral(typed.Value, RenderFloat8E5M2FNUZ),
+            OnnxTensor<Float4E2M1> typed => RenderArrayLiteral(typed.Value, RenderFloat4E2M1),
+            OnnxTensor<Float8E8M0> typed => RenderArrayLiteral(typed.Value, RenderFloat8E8M0),
+            OnnxTensor<UInt4> typed => RenderArrayLiteral(typed.Value, RenderUInt4),
+            OnnxTensor<Int4> typed => RenderArrayLiteral(typed.Value, RenderInt4),
+            OnnxTensor<UInt2> typed => RenderArrayLiteral(typed.Value, RenderUInt2),
+            OnnxTensor<Int2> typed => RenderArrayLiteral(typed.Value, RenderInt2),
+            OnnxTensor<Complex64> typed => RenderArrayLiteral(typed.Value, RenderComplex64),
+            OnnxTensor<Complex128> typed => RenderArrayLiteral(typed.Value, RenderComplex128),
+            OnnxTensor<string> typed => RenderArrayLiteral(typed.Value, AsStringLiteral),
             _ => throw CreateUnsupportedTensorException(tensor),
         };
     }
@@ -588,8 +633,7 @@ public sealed class OnnxProjectGenerator
 
     private static string RenderAttributeTensor(OnnxTensor tensor, GenerationContext context)
     {
-        var assetRelativePath = ExportTensorAsset(tensor, context);
-        return $"CreateDetachedTensor({AsStringLiteral(tensor.Name)}, {RenderLongArray(tensor.Shape)}, {RenderTensorLoadExpression(tensor, assetRelativePath)})";
+        return $"CreateDetachedTensor({AsStringLiteral(tensor.Name)}, {RenderLongArray(tensor.Shape)}, {RenderTensorValueExpression(tensor, context)})";
     }
 
     private static string RenderEdgeList(IEnumerable<string> variableNames)
@@ -638,22 +682,71 @@ public sealed class OnnxProjectGenerator
         return value.ToString("R", CultureInfo.InvariantCulture) + "D";
     }
 
+    private static string RenderSByte(sbyte value) => $"(sbyte){value.ToString(CultureInfo.InvariantCulture)}";
+
+    private static string RenderByte(byte value) => $"(byte){value.ToString(CultureInfo.InvariantCulture)}";
+
+    private static string RenderShort(short value) => $"(short){value.ToString(CultureInfo.InvariantCulture)}";
+
+    private static string RenderUShort(ushort value) => $"(ushort){value.ToString(CultureInfo.InvariantCulture)}";
+
+    private static string RenderInt(int value) => value.ToString(CultureInfo.InvariantCulture);
+
+    private static string RenderUInt(uint value) => value.ToString(CultureInfo.InvariantCulture) + "U";
+
+    private static string RenderLong(long value) => value.ToString(CultureInfo.InvariantCulture) + "L";
+
+    private static string RenderULong(ulong value) => value.ToString(CultureInfo.InvariantCulture) + "UL";
+
+    private static string RenderBool(bool value) => value ? "true" : "false";
+
+    private static string RenderHalf(Half value) => $"(Half){RenderFloat((float)value)}";
+
+    private static string RenderBFloat16(BFloat16 value) => $"new BFloat16({RenderFloat(value.ToSingle())})";
+
+    private static string RenderFloat8E4M3FN(Float8E4M3FN value) => $"new Float8E4M3FN({RenderFloat(value.ToSingle())})";
+
+    private static string RenderFloat8E4M3FNUZ(Float8E4M3FNUZ value) => $"new Float8E4M3FNUZ({RenderFloat(value.ToSingle())})";
+
+    private static string RenderFloat8E5M2(Float8E5M2 value) => $"new Float8E5M2({RenderFloat(value.ToSingle())})";
+
+    private static string RenderFloat8E5M2FNUZ(Float8E5M2FNUZ value) => $"new Float8E5M2FNUZ({RenderFloat(value.ToSingle())})";
+
+    private static string RenderFloat4E2M1(Float4E2M1 value) => $"new Float4E2M1({RenderFloat(value.ToSingle())})";
+
+    private static string RenderFloat8E8M0(Float8E8M0 value) => $"new Float8E8M0({RenderFloat(value.ToSingle())})";
+
+    private static string RenderUInt4(UInt4 value) => $"new UInt4({RenderByte(value.ToByte())})";
+
+    private static string RenderInt4(Int4 value) => $"new Int4({RenderSByte(value.ToSByte())})";
+
+    private static string RenderUInt2(UInt2 value) => $"new UInt2({RenderByte(value.ToByte())})";
+
+    private static string RenderInt2(Int2 value) => $"new Int2({RenderSByte(value.ToSByte())})";
+
+    private static string RenderComplex64(Complex64 value) => $"new Complex64({RenderFloat(value.Real)}, {RenderFloat(value.Imaginary)})";
+
+    private static string RenderComplex128(Complex128 value) => $"new Complex128({RenderDouble(value.Real)}, {RenderDouble(value.Imaginary)})";
+
+    private static string RenderArrayLiteral<T>(IEnumerable<T> values, Func<T, string> renderValue)
+    {
+        var rendered = values.Select(renderValue).ToArray();
+        return rendered.Length == 0 ? "[]" : $"[{string.Join(", ", rendered)}]";
+    }
+
     private static string RenderFloatArray(IEnumerable<float> values)
     {
-        var rendered = values.Select(RenderFloat).ToArray();
-        return rendered.Length == 0 ? "[]" : $"[{string.Join(", ", rendered)}]";
+        return RenderArrayLiteral(values, RenderFloat);
     }
 
     private static string RenderLongArray(IEnumerable<long> values)
     {
-        var rendered = values.Select(value => value.ToString(CultureInfo.InvariantCulture) + "L").ToArray();
-        return rendered.Length == 0 ? "[]" : $"[{string.Join(", ", rendered)}]";
+        return RenderArrayLiteral(values, RenderLong);
     }
 
     private static string RenderStringArray(IEnumerable<string> values)
     {
-        var rendered = values.Select(AsStringLiteral).ToArray();
-        return rendered.Length == 0 ? "[]" : $"[{string.Join(", ", rendered)}]";
+        return RenderArrayLiteral(values, AsStringLiteral);
     }
 
     private static string AsStringLiteral(string? value)

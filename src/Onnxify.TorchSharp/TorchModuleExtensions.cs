@@ -1,6 +1,6 @@
 ﻿using System.Reflection;
-using static TorchSharp.torch;
 using System.Runtime.CompilerServices;
+using static TorchSharp.torch;
 
 namespace Onnxify.TorchSharp;
 

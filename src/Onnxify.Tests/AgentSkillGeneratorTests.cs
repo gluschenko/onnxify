@@ -1,5 +1,5 @@
+﻿using System.Text.RegularExpressions;
 using Onnxify.AgentSkillGenerator;
-using System.Text.RegularExpressions;
 
 namespace Onnxify.Tests;
 

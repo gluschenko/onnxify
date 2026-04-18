@@ -1,6 +1,4 @@
-using Onnxify.TorchSharp;
-using TorchSharp;
-using static TorchSharp.torch;
+﻿using Onnxify.TorchSharp;
 using static TorchSharp.torch.nn;
 using Tensor = TorchSharp.torch.Tensor;
 

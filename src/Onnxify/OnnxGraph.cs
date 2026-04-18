@@ -136,7 +136,7 @@ public class OnnxGraph
                 node = GetNode(candidate);
                 value = GetValue(candidate);
 
-                if (node is null && value is null) 
+                if (node is null && value is null)
                 {
                     return candidate;
                 }

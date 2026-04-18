@@ -5,8 +5,8 @@ using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
-using Onnxify.TorchSharp;
 using Onnxify.SourceGenerator.Models;
+using Onnxify.TorchSharp;
 
 namespace Onnxify.AgentSkillGenerator;
 
@@ -811,25 +811,25 @@ internal static class OperatorSkillGenerator
                 offset += 8;
                 return null;
             case OperandType.InlineSwitch:
-            {
-                int count = BitConverter.ToInt32(il, offset);
-                offset += 4 + (count * 4);
-                return null;
-            }
-            case OperandType.InlineMethod:
-            {
-                int token = BitConverter.ToInt32(il, offset);
-                offset += 4;
-
-                try
                 {
-                    return module.ResolveMethod(token, typeArguments, methodArguments);
-                }
-                catch
-                {
+                    int count = BitConverter.ToInt32(il, offset);
+                    offset += 4 + (count * 4);
                     return null;
                 }
-            }
+            case OperandType.InlineMethod:
+                {
+                    int token = BitConverter.ToInt32(il, offset);
+                    offset += 4;
+
+                    try
+                    {
+                        return module.ResolveMethod(token, typeArguments, methodArguments);
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                }
             default:
                 throw new NotSupportedException($"Unsupported IL operand type '{operandType}'.");
         }

@@ -6,7 +6,7 @@ namespace Onnxify.Tests;
 public sealed class OnnxProjectGeneratorTests
 {
     [Fact]
-    public void Generate_WritesProgramProjectAndTensorAssets()
+    public void Generate_InlinesSmallTensorValuesIntoProgram()
     {
         var modelPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
         var outputDirectoryPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}");
@@ -67,7 +67,7 @@ public sealed class OnnxProjectGeneratorTests
 
             Assert.Equal(Path.Combine(outputDirectoryPath, "Program.cs"), result.ProgramFilePath);
             Assert.Equal(Path.Combine(outputDirectoryPath, "SampleGeneratedProject.csproj"), result.ProjectFilePath);
-            Assert.Single(result.TensorFilePaths);
+            Assert.Empty(result.TensorFilePaths);
             Assert.Empty(result.Warnings);
 
             var programText = File.ReadAllText(result.ProgramFilePath);
@@ -86,7 +86,8 @@ public sealed class OnnxProjectGeneratorTests
             Assert.Contains("Opset = 13", programText);
             Assert.Contains("model.ClearOpsetImports();", programText);
             Assert.Contains("model.SetOpsetImport(\"\", 13L);", programText);
-            Assert.Contains("OnnxExternalDataProvider.Instance.ReadTensorValue<float>(ResolveAssetPath(\"Assets/weights.bin\"), offset: 0, length: -1)", programText);
+            Assert.Contains("value: [1F, 2F]", programText);
+            Assert.DoesNotContain("OnnxExternalDataProvider.Instance.ReadTensorValue<float>(ResolveAssetPath(\"Assets/weights.bin\"), offset: 0, length: -1)", programText);
             Assert.Contains("new OnnxAttribute<long[]>(\"axes\", [0L, 1L])", programText);
             Assert.Contains("new OnnxAttribute<string>(\"note\", \"hello\")", programText);
             Assert.Contains("model.AddMetadataProps(\"generator-key\", \"generator-value\");", programText);
@@ -99,9 +100,56 @@ public sealed class OnnxProjectGeneratorTests
             Assert.Contains("<PackageReference Include=\"Onnxify\" Version=\"9.9.9-test\" />", projectText);
             Assert.Contains("<None Include=\"Assets\\**\\*\">", projectText);
 
+        }
+        finally
+        {
+            if (File.Exists(modelPath))
+            {
+                File.Delete(modelPath);
+            }
+
+            if (Directory.Exists(outputDirectoryPath))
+            {
+                Directory.Delete(outputDirectoryPath, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Generate_WritesTensorAssetsForLargeTensors()
+    {
+        var modelPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+        var outputDirectoryPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}");
+
+        try
+        {
+            var model = OnnxModel.Create(new OnnxModelCreationOptions
+            {
+                ProducerName = "large-tensor-generator-tests",
+                IrVersion = 9,
+                Opset = 13,
+            });
+
+            model.Graph.AddTensor("weights", [4, 5], Enumerable.Range(1, 20).Select(static x => (float)x).ToArray());
+
+            model.Save(modelPath);
+
+            var generator = new OnnxProjectGenerator();
+            var result = generator.Generate(new ProjectGeneratorOptions
+            {
+                InputModelPath = modelPath,
+                OutputDirectoryPath = outputDirectoryPath,
+                Overwrite = true,
+            });
+
+            Assert.Single(result.TensorFilePaths);
+
+            var programText = File.ReadAllText(result.ProgramFilePath);
+            Assert.Contains("OnnxExternalDataProvider.Instance.ReadTensorValue<float>(ResolveAssetPath(\"Assets/weights.bin\"), offset: 0, length: -1)", programText);
+
             var tensorFilePath = Assert.Single(result.TensorFilePaths);
             Assert.True(File.Exists(tensorFilePath));
-            Assert.Equal(sizeof(float) * 2, new FileInfo(tensorFilePath).Length);
+            Assert.Equal(sizeof(float) * 20, new FileInfo(tensorFilePath).Length);
         }
         finally
         {
@@ -181,7 +229,7 @@ public sealed class OnnxProjectGeneratorTests
     }
 
     [Fact]
-    public void Generate_SupportsCurrentNumericTensorTypes()
+    public void Generate_InlinesCurrentNumericTensorTypesWhenSmall()
     {
         var modelPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
         var outputDirectoryPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}");
@@ -212,22 +260,17 @@ public sealed class OnnxProjectGeneratorTests
                 OnnxifyPackageVersion = "9.9.9-test",
             });
 
-            Assert.Equal(5, result.TensorFilePaths.Count);
+            Assert.Empty(result.TensorFilePaths);
 
             var programText = File.ReadAllText(result.ProgramFilePath);
             Assert.Contains("using Onnxify.Data.Numerics;", programText);
             Assert.DoesNotContain("internal static class TensorDataLoader", programText);
-            Assert.Contains("OnnxExternalDataProvider.Instance.ReadTensorValue<Float8E4M3FN>(ResolveAssetPath(\"Assets/float8.bin\"), offset: 0, length: -1)", programText);
-            Assert.Contains("(OnnxExternalDataProvider.Instance.ReadTensorValue<Float4E2M1>(ResolveAssetPath(\"Assets/float4.bin\"), offset: 0, length: -1))[..checked((int)3L)]", programText);
-            Assert.Contains("(OnnxExternalDataProvider.Instance.ReadTensorValue<UInt4>(ResolveAssetPath(\"Assets/uint4.bin\"), offset: 0, length: -1))[..checked((int)3L)]", programText);
-            Assert.Contains("(OnnxExternalDataProvider.Instance.ReadTensorValue<Int2>(ResolveAssetPath(\"Assets/int2.bin\"), offset: 0, length: -1))[..checked((int)5L)]", programText);
-            Assert.Contains("OnnxExternalDataProvider.Instance.ReadTensorValue<Float8E8M0>(ResolveAssetPath(\"Assets/float8e8m0.bin\"), offset: 0, length: -1)", programText);
-
-            Assert.Equal(2, new FileInfo(Path.Combine(outputDirectoryPath, "Assets", "float8.bin")).Length);
-            Assert.Equal(2, new FileInfo(Path.Combine(outputDirectoryPath, "Assets", "float4.bin")).Length);
-            Assert.Equal(2, new FileInfo(Path.Combine(outputDirectoryPath, "Assets", "uint4.bin")).Length);
-            Assert.Equal(2, new FileInfo(Path.Combine(outputDirectoryPath, "Assets", "int2.bin")).Length);
-            Assert.Equal(2, new FileInfo(Path.Combine(outputDirectoryPath, "Assets", "float8e8m0.bin")).Length);
+            Assert.Contains("value: [new Float8E4M3FN(", programText);
+            Assert.Contains("value: [new Float4E2M1(", programText);
+            Assert.Contains("value: [new UInt4(", programText);
+            Assert.Contains("value: [new Int2(", programText);
+            Assert.Contains("value: [new Float8E8M0(", programText);
+            Assert.DoesNotContain("ReadTensorValue<Float8E4M3FN>", programText);
         }
         finally
         {
