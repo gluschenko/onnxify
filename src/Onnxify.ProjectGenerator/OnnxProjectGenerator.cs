@@ -98,6 +98,7 @@ public sealed class OnnxProjectGenerator
         var className = SanitizeIdentifier(options.ProgramClassName, "Program");
         var factoryMethodName = SanitizeIdentifier(options.FactoryMethodName, "CreateModel");
         var outputFileName = $"{Path.GetFileNameWithoutExtension(options.InputModelPath)}.generated.onnx";
+        var modelCreationOptions = RenderModelCreationOptions(model, context);
         var flow = new StringBuilder();
         var graphVarNames = new Dictionary<IOnnxGraphEdge, string>(ReferenceEqualityComparer<IOnnxGraphEdge>.Instance);
 
@@ -112,7 +113,7 @@ public sealed class OnnxProjectGenerator
                 ? $"{edge.GetType().Name}_{graphVarNames.Count}"
                 : edge.Name;
 
-            var candidate = SanitizeIdentifier(baseName, $"{edge.GetType().Name}_{graphVarNames.Count}");
+            var candidate = SanitizeLocalIdentifier(baseName, $"{edge.GetType().Name}_{graphVarNames.Count}");
             while (graphVarNames.Values.Contains(candidate, StringComparer.Ordinal))
             {
                 candidate += "_";
@@ -219,7 +220,6 @@ public sealed class OnnxProjectGenerator
         return $$"""
         using System;
         using System.IO;
-        using Onnx;
         using Onnxify;
         using Onnxify.Data;
         using Onnxify.Data.Numerics;
@@ -241,7 +241,7 @@ public sealed class OnnxProjectGenerator
 
             public static OnnxModel {{factoryMethodName}}()
             {
-                var model = OnnxModel.Create(new OnnxModelCreationOptions());
+                var model = OnnxModel.Create({{modelCreationOptions}});
 
                 {{Indent(flow.ToString(), 4)}}
 
@@ -266,14 +266,10 @@ public sealed class OnnxProjectGenerator
     {
         flow.AppendLine(
             $$"""
-                model.ProducerName = {{AsStringLiteral(model.ProducerName)}};
                 model.ProducerVersion = {{AsStringLiteral(model.ProducerVersion)}};
                 model.ModelVersion = {{model.ModelVersion.ToString(CultureInfo.InvariantCulture)}}L;
-                model.IrVersion = {{model.IrVersion.ToString(CultureInfo.InvariantCulture)}}L;
                 model.Domain = {{AsStringLiteral(model.Domain)}};
                 model.Document = {{AsStringLiteral(model.Document)}};
-                model.MetadataProps.Clear();
-                model.OpsetImport.Clear();
 
             """);
 
@@ -281,27 +277,39 @@ public sealed class OnnxProjectGenerator
         {
             flow.AppendLine(
                 $$"""
-                    model.MetadataProps.Add(new StringStringEntryProto
-                    {
-                        Key = {{AsStringLiteral(metadataProp.Key)}},
-                        Value = {{AsStringLiteral(metadataProp.Value)}},
-                    });
+                    model.AddMetadataProps({{AsStringLiteral(metadataProp.Key)}}, {{AsStringLiteral(metadataProp.Value)}});
 
                 """);
         }
+    }
 
-        foreach (var opsetImport in model.OpsetImport)
+    private static string RenderModelCreationOptions(OnnxModel model, GenerationContext context)
+    {
+        var defaultOpset = new OnnxModelCreationOptions().Opset;
+        var defaultOpsetImport = model.OpsetImport.FirstOrDefault(static x => string.IsNullOrEmpty(x.Domain));
+
+        if (defaultOpsetImport is not null)
         {
-            flow.AppendLine(
-                $$"""
-                    model.OpsetImport.Add(new OperatorSetIdProto
-                    {
-                        Domain = {{AsStringLiteral(opsetImport.Domain)}},
-                        Version = {{opsetImport.Version.ToString(CultureInfo.InvariantCulture)}}L,
-                    });
-
-                """);
+            defaultOpset = checked((int)defaultOpsetImport.Version);
         }
+        else if (model.OpsetImport.Count > 0)
+        {
+            context.Warnings.Add("Model uses only non-default opset imports. Generated code falls back to Onnxify's default ai.onnx opset.");
+        }
+
+        foreach (var opsetImport in model.OpsetImport.Where(static x => !string.IsNullOrEmpty(x.Domain)))
+        {
+            context.Warnings.Add($"Opset import '{opsetImport.Domain}' v{opsetImport.Version} is not emitted because Onnxify does not expose a public mutator for custom opset imports.");
+        }
+
+        return $$"""
+        new OnnxModelCreationOptions
+        {
+            ProducerName = {{AsStringLiteral(model.ProducerName)}},
+            IrVersion = {{model.IrVersion.ToString(CultureInfo.InvariantCulture)}}L,
+            Opset = {{defaultOpset.ToString(CultureInfo.InvariantCulture)}},
+        }
+        """;
     }
 
     private static string ExportTensorAsset(OnnxTensor tensor, GenerationContext context)
@@ -319,34 +327,47 @@ public sealed class OnnxProjectGenerator
 
         return tensor switch
         {
-            OnnxTensor<float> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<float>({resolvedPath})",
-            OnnxTensor<double> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<double>({resolvedPath})",
-            OnnxTensor<sbyte> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<sbyte>({resolvedPath})",
-            OnnxTensor<byte> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<byte>({resolvedPath})",
-            OnnxTensor<short> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<short>({resolvedPath})",
-            OnnxTensor<ushort> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<ushort>({resolvedPath})",
-            OnnxTensor<int> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<int>({resolvedPath})",
-            OnnxTensor<uint> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<uint>({resolvedPath})",
-            OnnxTensor<long> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<long>({resolvedPath})",
-            OnnxTensor<ulong> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<ulong>({resolvedPath})",
-            OnnxTensor<bool> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<bool>({resolvedPath})",
-            OnnxTensor<Half> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<Half>({resolvedPath})",
-            OnnxTensor<BFloat16> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<BFloat16>({resolvedPath})",
-            OnnxTensor<Float8E4M3FN> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<Float8E4M3FN>({resolvedPath})",
-            OnnxTensor<Float8E4M3FNUZ> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<Float8E4M3FNUZ>({resolvedPath})",
-            OnnxTensor<Float8E5M2> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<Float8E5M2>({resolvedPath})",
-            OnnxTensor<Float8E5M2FNUZ> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<Float8E5M2FNUZ>({resolvedPath})",
-            OnnxTensor<Float4E2M1> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<Float4E2M1>({resolvedPath}, {GetTensorElementCount(tensor).ToString(CultureInfo.InvariantCulture)}L)",
-            OnnxTensor<Float8E8M0> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<Float8E8M0>({resolvedPath})",
-            OnnxTensor<UInt4> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<UInt4>({resolvedPath}, {GetTensorElementCount(tensor).ToString(CultureInfo.InvariantCulture)}L)",
-            OnnxTensor<Int4> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<Int4>({resolvedPath}, {GetTensorElementCount(tensor).ToString(CultureInfo.InvariantCulture)}L)",
-            OnnxTensor<UInt2> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<UInt2>({resolvedPath}, {GetTensorElementCount(tensor).ToString(CultureInfo.InvariantCulture)}L)",
-            OnnxTensor<Int2> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<Int2>({resolvedPath}, {GetTensorElementCount(tensor).ToString(CultureInfo.InvariantCulture)}L)",
-            OnnxTensor<Complex64> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<Complex64>({resolvedPath})",
-            OnnxTensor<Complex128> => $"OnnxExternalDataProvider.Instance.ReadTensorArray<Complex128>({resolvedPath})",
-            OnnxTensor<string> => $"OnnxExternalDataProvider.Instance.ReadStringArray({resolvedPath})",
+            OnnxTensor<float> => RenderTensorReadExpression<float>(resolvedPath),
+            OnnxTensor<double> => RenderTensorReadExpression<double>(resolvedPath),
+            OnnxTensor<sbyte> => RenderTensorReadExpression<sbyte>(resolvedPath),
+            OnnxTensor<byte> => RenderTensorReadExpression<byte>(resolvedPath),
+            OnnxTensor<short> => RenderTensorReadExpression<short>(resolvedPath),
+            OnnxTensor<ushort> => RenderTensorReadExpression<ushort>(resolvedPath),
+            OnnxTensor<int> => RenderTensorReadExpression<int>(resolvedPath),
+            OnnxTensor<uint> => RenderTensorReadExpression<uint>(resolvedPath),
+            OnnxTensor<long> => RenderTensorReadExpression<long>(resolvedPath),
+            OnnxTensor<ulong> => RenderTensorReadExpression<ulong>(resolvedPath),
+            OnnxTensor<bool> => RenderTensorReadExpression<bool>(resolvedPath),
+            OnnxTensor<Half> => RenderTensorReadExpression<Half>(resolvedPath),
+            OnnxTensor<BFloat16> => RenderTensorReadExpression<BFloat16>(resolvedPath),
+            OnnxTensor<Float8E4M3FN> => RenderTensorReadExpression<Float8E4M3FN>(resolvedPath),
+            OnnxTensor<Float8E4M3FNUZ> => RenderTensorReadExpression<Float8E4M3FNUZ>(resolvedPath),
+            OnnxTensor<Float8E5M2> => RenderTensorReadExpression<Float8E5M2>(resolvedPath),
+            OnnxTensor<Float8E5M2FNUZ> => RenderTensorReadExpression<Float8E5M2FNUZ>(resolvedPath),
+            OnnxTensor<Float4E2M1> => RenderTensorReadExpression<Float4E2M1>(resolvedPath, GetTensorElementCount(tensor)),
+            OnnxTensor<Float8E8M0> => RenderTensorReadExpression<Float8E8M0>(resolvedPath),
+            OnnxTensor<UInt4> => RenderTensorReadExpression<UInt4>(resolvedPath, GetTensorElementCount(tensor)),
+            OnnxTensor<Int4> => RenderTensorReadExpression<Int4>(resolvedPath, GetTensorElementCount(tensor)),
+            OnnxTensor<UInt2> => RenderTensorReadExpression<UInt2>(resolvedPath, GetTensorElementCount(tensor)),
+            OnnxTensor<Int2> => RenderTensorReadExpression<Int2>(resolvedPath, GetTensorElementCount(tensor)),
+            OnnxTensor<Complex64> => RenderTensorReadExpression<Complex64>(resolvedPath),
+            OnnxTensor<Complex128> => RenderTensorReadExpression<Complex128>(resolvedPath),
+            OnnxTensor<string> => $"global::System.Text.Json.JsonSerializer.Deserialize<string[]>(File.ReadAllText({resolvedPath})) ?? throw new InvalidOperationException(\"Could not deserialize tensor data.\")",
             _ => throw CreateUnsupportedTensorException(tensor),
         };
+    }
+
+    private static string RenderTensorReadExpression<T>(string resolvedPath, long? elementCount = null)
+    {
+        var typeName = GetClrTypeName(typeof(T));
+        var readExpression = $"({typeName}[])OnnxExternalDataProvider.Instance.ReadTensorValue({resolvedPath}, offset: 0, length: -1, type: typeof({typeName}))";
+
+        if (elementCount is null)
+        {
+            return readExpression;
+        }
+
+        return $"({readExpression})[..checked((int){elementCount.Value.ToString(CultureInfo.InvariantCulture)}L)]";
     }
 
     private static long GetTensorElementCount(OnnxTensor tensor)
@@ -525,6 +546,53 @@ public sealed class OnnxProjectGenerator
 
         var result = builder.ToString();
         return _keywords.Contains(result) ? "@" + result : result;
+    }
+
+    private static string SanitizeLocalIdentifier(string value, string fallback)
+    {
+        var result = SanitizeIdentifier(value, fallback);
+        var offset = result.StartsWith('@') ? 1 : 0;
+        var chars = result.ToCharArray();
+        var loweredFirstWord = false;
+
+        for (var i = offset; i < chars.Length; i++)
+        {
+            if (chars[i] == '_')
+            {
+                continue;
+            }
+
+            if (!loweredFirstWord)
+            {
+                if (char.IsLetter(chars[i]))
+                {
+                    chars[i] = char.ToLowerInvariant(chars[i]);
+                    loweredFirstWord = true;
+                }
+
+                continue;
+            }
+
+            if (char.IsDigit(chars[i]))
+            {
+                continue;
+            }
+
+            if (char.IsUpper(chars[i]))
+            {
+                if (i + 1 < chars.Length && char.IsLower(chars[i + 1]))
+                {
+                    break;
+                }
+
+                chars[i] = char.ToLowerInvariant(chars[i]);
+                continue;
+            }
+
+            break;
+        }
+
+        return new string(chars);
     }
 
     private static string SanitizeFileName(string value)

@@ -80,13 +80,18 @@ public sealed class OnnxProjectGeneratorTests
             Assert.DoesNotContain("using System.Linq;", programText);
             Assert.DoesNotContain("using System.Runtime.InteropServices;", programText);
             Assert.DoesNotContain("using System.Text.Json;", programText);
-            Assert.Contains("OnnxExternalDataProvider.Instance.ReadTensorArray<float>(ResolveAssetPath(\"Assets/weights.bin\"))", programText);
+            Assert.Contains("var model = OnnxModel.Create(new OnnxModelCreationOptions", programText);
+            Assert.Contains("ProducerName = \"generator-tests\"", programText);
+            Assert.Contains("IrVersion = 9L", programText);
+            Assert.Contains("Opset = 13", programText);
+            Assert.Contains("(float[])OnnxExternalDataProvider.Instance.ReadTensorValue(ResolveAssetPath(\"Assets/weights.bin\"), offset: 0, length: -1, type: typeof(float))", programText);
             Assert.Contains("new OnnxAttribute<long[]>(\"axes\", [0L, 1L])", programText);
             Assert.Contains("new OnnxAttribute<string>(\"note\", \"hello\")", programText);
-            Assert.Contains("model.MetadataProps.Add(new StringStringEntryProto", programText);
-            Assert.Contains("Key = \"generator-key\"", programText);
-            Assert.Contains("Value = \"generator-value\"", programText);
-            Assert.Contains("model.OpsetImport.Add(new OperatorSetIdProto", programText);
+            Assert.Contains("model.AddMetadataProps(\"generator-key\", \"generator-value\");", programText);
+            Assert.DoesNotContain("StringStringEntryProto", programText);
+            Assert.DoesNotContain("OperatorSetIdProto", programText);
+            Assert.DoesNotContain("MetadataProps.Clear()", programText);
+            Assert.DoesNotContain("OpsetImport.Clear()", programText);
 
             var projectText = File.ReadAllText(result.ProjectFilePath!);
             Assert.Contains("<PackageReference Include=\"Onnxify\" Version=\"9.9.9-test\" />", projectText);
@@ -147,17 +152,67 @@ public sealed class OnnxProjectGeneratorTests
             var programText = File.ReadAllText(result.ProgramFilePath);
             Assert.Contains("using Onnxify.Data.Numerics;", programText);
             Assert.DoesNotContain("internal static class TensorDataLoader", programText);
-            Assert.Contains("OnnxExternalDataProvider.Instance.ReadTensorArray<Float8E4M3FN>(ResolveAssetPath(\"Assets/float8.bin\"))", programText);
-            Assert.Contains("OnnxExternalDataProvider.Instance.ReadTensorArray<Float4E2M1>(ResolveAssetPath(\"Assets/float4.bin\"), 3L)", programText);
-            Assert.Contains("OnnxExternalDataProvider.Instance.ReadTensorArray<UInt4>(ResolveAssetPath(\"Assets/uint4.bin\"), 3L)", programText);
-            Assert.Contains("OnnxExternalDataProvider.Instance.ReadTensorArray<Int2>(ResolveAssetPath(\"Assets/int2.bin\"), 5L)", programText);
-            Assert.Contains("OnnxExternalDataProvider.Instance.ReadTensorArray<Float8E8M0>(ResolveAssetPath(\"Assets/float8e8m0.bin\"))", programText);
+            Assert.Contains("(Float8E4M3FN[])OnnxExternalDataProvider.Instance.ReadTensorValue(ResolveAssetPath(\"Assets/float8.bin\"), offset: 0, length: -1, type: typeof(Float8E4M3FN))", programText);
+            Assert.Contains("((Float4E2M1[])OnnxExternalDataProvider.Instance.ReadTensorValue(ResolveAssetPath(\"Assets/float4.bin\"), offset: 0, length: -1, type: typeof(Float4E2M1)))[..checked((int)3L)]", programText);
+            Assert.Contains("((UInt4[])OnnxExternalDataProvider.Instance.ReadTensorValue(ResolveAssetPath(\"Assets/uint4.bin\"), offset: 0, length: -1, type: typeof(UInt4)))[..checked((int)3L)]", programText);
+            Assert.Contains("((Int2[])OnnxExternalDataProvider.Instance.ReadTensorValue(ResolveAssetPath(\"Assets/int2.bin\"), offset: 0, length: -1, type: typeof(Int2)))[..checked((int)5L)]", programText);
+            Assert.Contains("(Float8E8M0[])OnnxExternalDataProvider.Instance.ReadTensorValue(ResolveAssetPath(\"Assets/float8e8m0.bin\"), offset: 0, length: -1, type: typeof(Float8E8M0))", programText);
 
             Assert.Equal(2, new FileInfo(Path.Combine(outputDirectoryPath, "Assets", "float8.bin")).Length);
             Assert.Equal(2, new FileInfo(Path.Combine(outputDirectoryPath, "Assets", "float4.bin")).Length);
             Assert.Equal(2, new FileInfo(Path.Combine(outputDirectoryPath, "Assets", "uint4.bin")).Length);
             Assert.Equal(2, new FileInfo(Path.Combine(outputDirectoryPath, "Assets", "int2.bin")).Length);
             Assert.Equal(2, new FileInfo(Path.Combine(outputDirectoryPath, "Assets", "float8e8m0.bin")).Length);
+        }
+        finally
+        {
+            if (File.Exists(modelPath))
+            {
+                File.Delete(modelPath);
+            }
+
+            if (Directory.Exists(outputDirectoryPath))
+            {
+                Directory.Delete(outputDirectoryPath, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Generate_UsesLowerCamelCaseForGeneratedLocals()
+    {
+        var modelPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+        var outputDirectoryPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}");
+
+        try
+        {
+            var model = OnnxModel.Create();
+
+            var input = model.Graph.AddInput("OC2_DUMMY_0", OnnxTensorType.Create<float>([1]));
+            var output = model.Graph.AddOutput("OC2_DUMMY_0_quantized", OnnxTensorType.Create<float>([1]));
+
+            model.Graph.AddNode(
+                name: "IdentityNode",
+                opType: "Identity",
+                domain: "",
+                docString: "",
+                inputs: [input],
+                outputs: [output],
+                attributes: []);
+
+            model.Save(modelPath);
+
+            var generator = new OnnxProjectGenerator();
+            var result = generator.Generate(new ProjectGeneratorOptions
+            {
+                InputModelPath = modelPath,
+                OutputDirectoryPath = outputDirectoryPath,
+                Overwrite = true,
+            });
+
+            var programText = File.ReadAllText(result.ProgramFilePath);
+            Assert.Contains("var oc2_dummy_0 = model.Graph.AddInput(", programText);
+            Assert.Contains("var oc2_dummy_0_quantized = model.Graph.AddOutput(", programText);
         }
         finally
         {
