@@ -72,6 +72,31 @@ dotnet build src\Onnxify.slnx
 
 If the generated protobuf files already exist in `src/Onnxify/Protobuf`, `protoc` is not required for a normal build. It is only needed when those files must be regenerated.
 
+## Install the Codex Skill
+
+If you use Codex and want repository-specific help for `Onnxify` and `Onnxify.TorchSharp`, you can install the bundled `onnxify` skill directly from GitHub.
+
+You do not need to clone this repository just to install the skill. The installer can download the skill folder from GitHub into your local Codex skills directory. Clone the repository only if you also want the source code, examples, tests, or manual local development.
+
+```powershell
+$codexHome = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $HOME ".codex" }
+
+py -3 "$codexHome\skills\.system\skill-installer\scripts\install-skill-from-github.py" `
+  --repo gluschenko/onnxify `
+  --path .agents/skills/onnxify
+```
+
+You can also install it by URL:
+
+```powershell
+$codexHome = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $HOME ".codex" }
+
+py -3 "$codexHome\skills\.system\skill-installer\scripts\install-skill-from-github.py" `
+  --url "https://github.com/gluschenko/onnxify/tree/main/.agents/skills/onnxify"
+```
+
+Restart Codex after installation so the new skill is picked up.
+
 ## Quick Example
 
 Create a new model:
