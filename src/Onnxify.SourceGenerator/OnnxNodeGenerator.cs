@@ -724,13 +724,7 @@ namespace Onnxify.SourceGenerator
         public static string GetParameterComment(OperatorParameter x)
         {
             var allowedTypes = x.Types
-                .Select(x =>
-                {
-                    var type = MapType(x).Replace("<", "{").Replace(">", "}");
-                    var name = MapType(x).Replace("<", "&lt;").Replace(">", "&gt;");
-
-                    return $"<see cref=\"{type}\">{name}</see>";
-                })
+                .Select(x => FormatDocType(MapType(x)))
                 .ToArray();
 
             var allowedTypeString = string.Join(", ", allowedTypes);
@@ -753,13 +747,7 @@ namespace Onnxify.SourceGenerator
             string[] types = [FromProto(typeEnum)];
 
             var allowedTypes = types
-                .Select(x =>
-                {
-                    var type = MapType(x).Replace("<", "{").Replace(">", "}");
-                    var name = MapType(x).Replace("<", "&lt;").Replace(">", "&gt;");
-
-                    return $"<see cref=\"{type}\">{name}</see>";
-                })
+                .Select(x => FormatDocType(MapType(x)))
                 .ToArray();
 
             var allowedTypeString = string.Join(", ", allowedTypes);
@@ -774,6 +762,12 @@ namespace Onnxify.SourceGenerator
             /// <para>Default: {{GetLiteral(typeEnum, x.Default) ?? "[null]"}}</para>
             /// </summary>
             """;
+        }
+
+        private static string FormatDocType(string type)
+        {
+            var name = type.Replace("<", "&lt;").Replace(">", "&gt;");
+            return $"<c>{name}</c>";
         }
 
         public static string GetFieldName(string name, string prefix)
