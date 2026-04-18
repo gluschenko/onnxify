@@ -1,0 +1,4 @@
+interface:
+  display_name: "Onnxify Internal"
+  short_description: "Maintain the Onnxify repository and generators"
+  default_prompt: "Use $onnxify-internal to update repository structure, skills, generators, or contributor-facing docs in this repo."
