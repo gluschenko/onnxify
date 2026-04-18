@@ -166,6 +166,22 @@ public class OnnxModel
     {
         _metadataProps[key] = new KeyValuePair<string, string>(key, value);
     }
+
+    public void ClearOpsetImports()
+    {
+        _opsetImport.Clear();
+    }
+
+    public void SetOpsetImport(string domain, long version)
+    {
+        ArgumentNullException.ThrowIfNull(domain);
+
+        _opsetImport[domain] = new OperationSet
+        {
+            Domain = domain,
+            Version = version,
+        };
+    }
 }
 
 public interface IOnnxGraphNode

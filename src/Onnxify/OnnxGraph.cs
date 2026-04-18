@@ -6,7 +6,11 @@ namespace Onnxify;
 
 public class OnnxGraph
 {
-    public string Name { get; init; }
+    public string Name
+    {
+        get => _name;
+        set => _name = value ?? string.Empty;
+    }
 
     public IReadOnlyList<OnnxValue> Inputs => _inputs;
     public IReadOnlyList<OnnxValue> Outputs => _outputs;
@@ -19,6 +23,7 @@ public class OnnxGraph
 
     private readonly GraphProto _graph;
     private readonly OnnxModelBaseOptions _options;
+    private string _name = string.Empty;
     private readonly LazyDictionary<string, OnnxValue> _inputs = new(x => x.Name, StringComparer.Ordinal);
     private readonly LazyDictionary<string, OnnxValue> _outputs = new(x => x.Name, StringComparer.Ordinal);
     private readonly LazyDictionary<string, OnnxTensor> _initializers = new(x => x.Name, StringComparer.Ordinal);

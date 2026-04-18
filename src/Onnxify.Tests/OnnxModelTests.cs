@@ -22,6 +22,57 @@ public sealed class OnnxModelTests
     }
 
     [Fact]
+    public void Save_AndLoad_RoundTripsGraphNameAndCustomOpsetImports()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            ProducerName = "graph-name-tests",
+            IrVersion = 9,
+            Opset = 13,
+        });
+
+        model.Graph.Name = "bvlc_alexnet";
+        model.ClearOpsetImports();
+        model.SetOpsetImport("", 13);
+        model.SetOpsetImport("ai.onnx.ml", 2);
+        model.SetOpsetImport("com.microsoft", 1);
+
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+
+        try
+        {
+            model.Save(path);
+            var loaded = OnnxModel.FromFile(path);
+
+            Assert.Equal("bvlc_alexnet", loaded.Graph.Name);
+            Assert.Collection(
+                loaded.OpsetImport,
+                x =>
+                {
+                    Assert.Equal(string.Empty, x.Domain);
+                    Assert.Equal(13, x.Version);
+                },
+                x =>
+                {
+                    Assert.Equal("ai.onnx.ml", x.Domain);
+                    Assert.Equal(2, x.Version);
+                },
+                x =>
+                {
+                    Assert.Equal("com.microsoft", x.Domain);
+                    Assert.Equal(1, x.Version);
+                });
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
     public void FromFile_MissingPath_ThrowsFileNotFoundException()
     {
         var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");

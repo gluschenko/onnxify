@@ -6,13 +6,14 @@ Onnxify is an experimental .NET library for reading, inspecting, and writing ONN
 
 - [x] `Onnxify`
 - [x] `Onnxify.TorchSharp`
-- [ ] `Onnxify.ML`
-- [ ] `Onnxify.ML.TorchSharp`
-- [ ] `Onnxify.ProjectGenerator`
+- [x] `Onnxify.ML`
+- [x] `Onnxify.ML.TorchSharp`
+- [x] `Onnxify.ProjectGenerator`
 - [ ] `Onnxify.Safetensors`
 - [ ] `Onnxify.GGUF`
 - [ ] `Onnxify.TFLite`
 - [ ] `Onnxify.Runtime.LiteRT`
+- [ ] `Onnxify.CLI`
 
 ## TODO
 

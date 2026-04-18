@@ -99,7 +99,7 @@ public sealed class OnnxProjectGenerator
         var className = options.ProgramClassName.SanitizeIdentifier("Program");
         var factoryMethodName = options.FactoryMethodName.SanitizeIdentifier("CreateModel");
         var outputFileName = $"{Path.GetFileNameWithoutExtension(options.InputModelPath)}.generated.onnx";
-        var modelCreationOptions = RenderModelCreationOptions(model, context);
+        var modelCreationOptions = RenderModelCreationOptions(model);
         var flow = new StringBuilder();
         var graphVarNames = new Dictionary<IOnnxGraphEdge, string>(ReferenceEqualityComparer<IOnnxGraphEdge>.Instance);
 
@@ -219,11 +219,6 @@ public sealed class OnnxProjectGenerator
             );
         }
 
-        if (!string.IsNullOrWhiteSpace(model.Graph.Name))
-        {
-            context.Warnings.Add($"Graph.Name '{model.Graph.Name}' is not emitted because Onnxify does not expose a public setter.");
-        }
-
         return $$"""
         using System;
         using System.IO;
@@ -288,9 +283,30 @@ public sealed class OnnxProjectGenerator
 
                 """);
         }
+
+        flow.AppendLine("model.ClearOpsetImports();");
+
+        foreach (var opsetImport in model.OpsetImport)
+        {
+            flow.AppendLine(
+                $$"""
+                model.SetOpsetImport({{AsStringLiteral(opsetImport.Domain)}}, {{opsetImport.Version.ToString(CultureInfo.InvariantCulture)}}L);
+                """);
+        }
+
+        flow.AppendLine();
+
+        if (!string.IsNullOrEmpty(model.Graph.Name))
+        {
+            flow.AppendLine(
+                $$"""
+                model.Graph.Name = {{AsStringLiteral(model.Graph.Name)}};
+
+                """);
+        }
     }
 
-    private static string RenderModelCreationOptions(OnnxModel model, GenerationContext context)
+    private static string RenderModelCreationOptions(OnnxModel model)
     {
         var defaultOpset = new OnnxModelCreationOptions().Opset;
         var defaultOpsetImport = model.OpsetImport.FirstOrDefault(static x => string.IsNullOrEmpty(x.Domain));
@@ -298,15 +314,6 @@ public sealed class OnnxProjectGenerator
         if (defaultOpsetImport is not null)
         {
             defaultOpset = checked((int)defaultOpsetImport.Version);
-        }
-        else if (model.OpsetImport.Count > 0)
-        {
-            context.Warnings.Add("Model uses only non-default opset imports. Generated code falls back to Onnxify's default ai.onnx opset.");
-        }
-
-        foreach (var opsetImport in model.OpsetImport.Where(static x => !string.IsNullOrEmpty(x.Domain)))
-        {
-            context.Warnings.Add($"Opset import '{opsetImport.Domain}' v{opsetImport.Version} is not emitted because Onnxify does not expose a public mutator for custom opset imports.");
         }
 
         return $$"""
