@@ -367,7 +367,7 @@ public sealed class OnnxProjectGenerator
     private static string RenderTensorReadExpression<T>(string resolvedPath, long? elementCount = null)
     {
         var typeName = GetClrTypeName(typeof(T));
-        var readExpression = $"({typeName}[])OnnxExternalDataProvider.Instance.ReadTensorValue({resolvedPath}, offset: 0, length: -1, type: typeof({typeName}))";
+        var readExpression = $"OnnxExternalDataProvider.Instance.ReadTensorValue<{typeName}>({resolvedPath}, offset: 0, length: -1)";
 
         if (elementCount is null)
         {

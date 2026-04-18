@@ -34,32 +34,33 @@ internal static partial class Program
         Console.InputEncoding = Encoding.Unicode;
         Console.OutputEncoding = Encoding.Unicode;
 
-        string repoRoot = FindRepositoryRoot(AppContext.BaseDirectory)
+        var repoRoot = FindRepositoryRoot(AppContext.BaseDirectory)
             ?? throw new DirectoryNotFoundException("Repository root was not found.");
 
-        string opsDirectory = Path.Combine(
+        var opsDirectory = Path.Combine(
             repoRoot,
             "third_party",
             "onnxscript",
             "onnxscript",
             "function_libs",
             "torch_lib",
-            "ops");
+            "ops"
+        );
 
-        string outputPath = args.Length > 0
+        var outputPath = args.Length > 0
             ? Path.GetFullPath(args[0])
             : Path.Combine(repoRoot, "src", "Onnxify.TorchSharp.Observer", "torchsharp-operator-report.md");
 
-        IReadOnlyList<OperatorRecord> operators = LoadOperators(opsDirectory);
-        IReadOnlyList<TorchSharpCandidate> candidates = LoadTorchSharpCandidates();
-        IReadOnlySet<string> coveredOperators = LoadCoveredOperators();
+        var operators = LoadOperators(opsDirectory);
+        var candidates = LoadTorchSharpCandidates();
+        var coveredOperators = LoadCoveredOperators();
 
         var rows = operators
             .Select(op => CreateRow(op, candidates, coveredOperators))
             .OrderBy(row => row.Operator, StringComparer.Ordinal)
             .ToArray();
 
-        string markdown = BuildMarkdown(rows);
+        var markdown = BuildMarkdown(rows);
 
         Console.WriteLine(markdown);
 
@@ -73,12 +74,12 @@ internal static partial class Program
 
     private static string? FindRepositoryRoot(string? currentDirectory)
     {
-        DirectoryInfo? directory = currentDirectory is null ? null : new DirectoryInfo(currentDirectory);
+        var directory = currentDirectory is null ? null : new DirectoryInfo(currentDirectory);
 
         while (directory is not null)
         {
-            bool hasSrc = Directory.Exists(Path.Combine(directory.FullName, "src"));
-            bool hasThirdParty = Directory.Exists(Path.Combine(directory.FullName, "third_party"));
+            var hasSrc = Directory.Exists(Path.Combine(directory.FullName, "src"));
+            var hasThirdParty = Directory.Exists(Path.Combine(directory.FullName, "third_party"));
 
             if (hasSrc && hasThirdParty)
             {

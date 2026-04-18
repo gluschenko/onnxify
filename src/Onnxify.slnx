@@ -12,6 +12,7 @@
     <Project Path="Onnxify.AgentSkillGenerator/Onnxify.AgentSkillGenerator.csproj" Id="72e6ec8b-29a2-451f-813c-ae32ff6e8228" />
     <Project Path="Onnxify.ProjectGenerator/Onnxify.ProjectGenerator.csproj" Id="1aa227d0-394a-4013-ba5d-9193f0ab85a3" />
     <Project Path="Onnxify.SourceGenerator/Onnxify.SourceGenerator.csproj" Id="947c739d-8301-49a4-94d1-75976cdf6dea" />
+    <Project Path="Onnxify.TorchSharp.Observer/Onnxify.TorchSharp.Observer.csproj" Id="a26d657d-9f3f-4c46-a617-7bc76f5ffe4f" />
   </Folder>
   <Folder Name="/libs/">
     <Project Path="Onnxify.ML.TorchSharp/Onnxify.ML.TorchSharp.csproj" Id="46f9c991-61a8-4907-8d07-d3b927c35c01" />
@@ -24,6 +25,5 @@
     <Project Path="Onnxify.ConsoleTest/Onnxify.ConsoleTest.csproj" Id="5c5a0524-cb99-49b6-99af-dc2cdc27ee43" />
     <Project Path="Onnxify.Examples/Onnxify.Examples.csproj" Id="f31ca623-5d5c-498e-b96f-a88cbb5348f8" />
     <Project Path="Onnxify.Tests/Onnxify.Tests.csproj" Id="f5756bb4-50cc-4816-8297-e2e28b5be08e" />
-    <Project Path="Onnxify.TorchSharp.Observer/Onnxify.TorchSharp.Observer.csproj" Id="a26d657d-9f3f-4c46-a617-7bc76f5ffe4f" />
   </Folder>
 </Solution>
