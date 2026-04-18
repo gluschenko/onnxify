@@ -92,6 +92,31 @@ public static class BinaryHelper
         return result;
     }
 
+    internal static ByteString EncodeFloat8E4M3FN(Float8E4M3FN[] data)
+    {
+        return ByteString.CopyFrom(data.Select(static x => x.Value).ToArray());
+    }
+
+    internal static ByteString EncodeFloat8E4M3FNUZ(Float8E4M3FNUZ[] data)
+    {
+        return ByteString.CopyFrom(data.Select(static x => x.Value).ToArray());
+    }
+
+    internal static ByteString EncodeFloat8E5M2(Float8E5M2[] data)
+    {
+        return ByteString.CopyFrom(data.Select(static x => x.Value).ToArray());
+    }
+
+    internal static ByteString EncodeFloat8E5M2FNUZ(Float8E5M2FNUZ[] data)
+    {
+        return ByteString.CopyFrom(data.Select(static x => x.Value).ToArray());
+    }
+
+    internal static ByteString EncodeFloat8E8M0(Float8E8M0[] data)
+    {
+        return ByteString.CopyFrom(data.Select(static x => x.Value).ToArray());
+    }
+
     internal static Float4E2M1[] DecodeFloat4(ReadOnlySpan<byte> span)
     {
         var result = new Float4E2M1[span.Length * 2];
@@ -106,6 +131,23 @@ public static class BinaryHelper
         }
 
         return result;
+    }
+
+    internal static ByteString EncodeFloat4(Float4E2M1[] data)
+    {
+        var buffer = new byte[(data.Length + 1) / 2];
+
+        for (var i = 0; i < data.Length; i += 2)
+        {
+            var low = (byte)(data[i].Value & 0x0F);
+            var high = i + 1 < data.Length
+                ? (byte)((data[i + 1].Value & 0x0F) << 4)
+                : (byte)0;
+
+            buffer[i / 2] = (byte)(low | high);
+        }
+
+        return ByteString.CopyFrom(buffer);
     }
 
     internal static UInt4[] DecodeUInt4(ReadOnlySpan<byte> span)
@@ -138,6 +180,40 @@ public static class BinaryHelper
         }
 
         return result;
+    }
+
+    internal static ByteString EncodeUInt4(UInt4[] data)
+    {
+        var buffer = new byte[(data.Length + 1) / 2];
+
+        for (var i = 0; i < data.Length; i += 2)
+        {
+            var low = (byte)(data[i].Value & 0x0F);
+            var high = i + 1 < data.Length
+                ? (byte)((data[i + 1].Value & 0x0F) << 4)
+                : (byte)0;
+
+            buffer[i / 2] = (byte)(low | high);
+        }
+
+        return ByteString.CopyFrom(buffer);
+    }
+
+    internal static ByteString EncodeInt4(Int4[] data)
+    {
+        var buffer = new byte[(data.Length + 1) / 2];
+
+        for (var i = 0; i < data.Length; i += 2)
+        {
+            var low = (byte)(data[i].Value & 0x0F);
+            var high = i + 1 < data.Length
+                ? (byte)((data[i + 1].Value & 0x0F) << 4)
+                : (byte)0;
+
+            buffer[i / 2] = (byte)(low | high);
+        }
+
+        return ByteString.CopyFrom(buffer);
     }
 
     internal static UInt2[] DecodeUInt2(ReadOnlySpan<byte> span)
@@ -174,6 +250,64 @@ public static class BinaryHelper
         }
 
         return result;
+    }
+
+    internal static ByteString EncodeUInt2(UInt2[] data)
+    {
+        var buffer = new byte[(data.Length + 3) / 4];
+
+        for (var i = 0; i < data.Length; i += 4)
+        {
+            var packed = (byte)(data[i].Value & 0x03);
+
+            if (i + 1 < data.Length)
+            {
+                packed |= (byte)((data[i + 1].Value & 0x03) << 2);
+            }
+
+            if (i + 2 < data.Length)
+            {
+                packed |= (byte)((data[i + 2].Value & 0x03) << 4);
+            }
+
+            if (i + 3 < data.Length)
+            {
+                packed |= (byte)((data[i + 3].Value & 0x03) << 6);
+            }
+
+            buffer[i / 4] = packed;
+        }
+
+        return ByteString.CopyFrom(buffer);
+    }
+
+    internal static ByteString EncodeInt2(Int2[] data)
+    {
+        var buffer = new byte[(data.Length + 3) / 4];
+
+        for (var i = 0; i < data.Length; i += 4)
+        {
+            var packed = (byte)(data[i].Value & 0x03);
+
+            if (i + 1 < data.Length)
+            {
+                packed |= (byte)((data[i + 1].Value & 0x03) << 2);
+            }
+
+            if (i + 2 < data.Length)
+            {
+                packed |= (byte)((data[i + 2].Value & 0x03) << 4);
+            }
+
+            if (i + 3 < data.Length)
+            {
+                packed |= (byte)((data[i + 3].Value & 0x03) << 6);
+            }
+
+            buffer[i / 4] = packed;
+        }
+
+        return ByteString.CopyFrom(buffer);
     }
 
     internal static BFloat16[] DecodeBFloat16(ReadOnlySpan<byte> data)

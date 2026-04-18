@@ -307,6 +307,56 @@ public static class OnnxHelper
                 tensor.RawData = BinaryHelper.EncodeBFloat16(bf);
                 break;
 
+            case Float8E4M3FN[] f8e4m3fn:
+                tensor.DataType = (int)TensorProto.Types.DataType.Float8E4M3Fn;
+                tensor.RawData = BinaryHelper.EncodeFloat8E4M3FN(f8e4m3fn);
+                break;
+
+            case Float8E4M3FNUZ[] f8e4m3fnuz:
+                tensor.DataType = (int)TensorProto.Types.DataType.Float8E4M3Fnuz;
+                tensor.RawData = BinaryHelper.EncodeFloat8E4M3FNUZ(f8e4m3fnuz);
+                break;
+
+            case Float8E5M2[] f8e5m2:
+                tensor.DataType = (int)TensorProto.Types.DataType.Float8E5M2;
+                tensor.RawData = BinaryHelper.EncodeFloat8E5M2(f8e5m2);
+                break;
+
+            case Float8E5M2FNUZ[] f8e5m2fnuz:
+                tensor.DataType = (int)TensorProto.Types.DataType.Float8E5M2Fnuz;
+                tensor.RawData = BinaryHelper.EncodeFloat8E5M2FNUZ(f8e5m2fnuz);
+                break;
+
+            case Float4E2M1[] f4e2m1:
+                tensor.DataType = (int)TensorProto.Types.DataType.Float4E2M1;
+                tensor.RawData = BinaryHelper.EncodeFloat4(f4e2m1);
+                break;
+
+            case Float8E8M0[] f8e8m0:
+                tensor.DataType = (int)TensorProto.Types.DataType.Float8E8M0;
+                tensor.RawData = BinaryHelper.EncodeFloat8E8M0(f8e8m0);
+                break;
+
+            case UInt4[] u4:
+                tensor.DataType = (int)TensorProto.Types.DataType.Uint4;
+                tensor.RawData = BinaryHelper.EncodeUInt4(u4);
+                break;
+
+            case Int4[] i4:
+                tensor.DataType = (int)TensorProto.Types.DataType.Int4;
+                tensor.RawData = BinaryHelper.EncodeInt4(i4);
+                break;
+
+            case UInt2[] u2:
+                tensor.DataType = (int)TensorProto.Types.DataType.Uint2;
+                tensor.RawData = BinaryHelper.EncodeUInt2(u2);
+                break;
+
+            case Int2[] i2:
+                tensor.DataType = (int)TensorProto.Types.DataType.Int2;
+                tensor.RawData = BinaryHelper.EncodeInt2(i2);
+                break;
+
             case Complex64[] c64:
                 tensor.DataType = (int)TensorProto.Types.DataType.Complex64;
                 tensor.RawData = BinaryHelper.EncodeComplex64(c64);

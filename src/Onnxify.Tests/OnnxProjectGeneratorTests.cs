@@ -1,4 +1,5 @@
-﻿using Onnxify.ProjectGenerator;
+using Onnxify.Data.Numerics;
+using Onnxify.ProjectGenerator;
 
 namespace Onnxify.Tests;
 
@@ -90,6 +91,68 @@ public sealed class OnnxProjectGeneratorTests
             var tensorFilePath = Assert.Single(result.TensorFilePaths);
             Assert.True(File.Exists(tensorFilePath));
             Assert.Equal(sizeof(float) * 2, new FileInfo(tensorFilePath).Length);
+        }
+        finally
+        {
+            if (File.Exists(modelPath))
+            {
+                File.Delete(modelPath);
+            }
+
+            if (Directory.Exists(outputDirectoryPath))
+            {
+                Directory.Delete(outputDirectoryPath, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Generate_SupportsCurrentNumericTensorTypes()
+    {
+        var modelPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+        var outputDirectoryPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}");
+
+        try
+        {
+            var model = OnnxModel.Create(new OnnxModelCreationOptions
+            {
+                ProducerName = "numeric-generator-tests",
+                IrVersion = 9,
+                Opset = 13,
+            });
+
+            model.Graph.AddTensor("float8", [2], [new Float8E4M3FN(1.0f), new Float8E4M3FN(-2.0f)]);
+            model.Graph.AddTensor("float4", [3], [new Float4E2M1(0.5f), new Float4E2M1(1.0f), new Float4E2M1(2.0f)]);
+            model.Graph.AddTensor("uint4", [3], [new UInt4(1), new UInt4(2), new UInt4(15)]);
+            model.Graph.AddTensor("int2", [5], [new Int2(-1), new Int2(0), new Int2(1), new Int2(-2), new Int2(1)]);
+            model.Graph.AddTensor("float8e8m0", [2], [new Float8E8M0(1.0f), new Float8E8M0(2.0f)]);
+
+            model.Save(modelPath);
+
+            var generator = new OnnxProjectGenerator();
+            var result = generator.Generate(new ProjectGeneratorOptions
+            {
+                InputModelPath = modelPath,
+                OutputDirectoryPath = outputDirectoryPath,
+                Overwrite = true,
+                OnnxifyPackageVersion = "9.9.9-test",
+            });
+
+            Assert.Equal(5, result.TensorFilePaths.Count);
+
+            var programText = File.ReadAllText(result.ProgramFilePath);
+            Assert.Contains("using Onnxify.Data.Numerics;", programText);
+            Assert.Contains("TensorDataLoader.LoadArray<Float8E4M3FN>(\"Assets/float8.bin\")", programText);
+            Assert.Contains("TensorDataLoader.LoadArray<Float4E2M1>(\"Assets/float4.bin\", 3L)", programText);
+            Assert.Contains("TensorDataLoader.LoadArray<UInt4>(\"Assets/uint4.bin\", 3L)", programText);
+            Assert.Contains("TensorDataLoader.LoadArray<Int2>(\"Assets/int2.bin\", 5L)", programText);
+            Assert.Contains("TensorDataLoader.LoadArray<Float8E8M0>(\"Assets/float8e8m0.bin\")", programText);
+
+            Assert.Equal(2, new FileInfo(Path.Combine(outputDirectoryPath, "Assets", "float8.bin")).Length);
+            Assert.Equal(2, new FileInfo(Path.Combine(outputDirectoryPath, "Assets", "float4.bin")).Length);
+            Assert.Equal(2, new FileInfo(Path.Combine(outputDirectoryPath, "Assets", "uint4.bin")).Length);
+            Assert.Equal(2, new FileInfo(Path.Combine(outputDirectoryPath, "Assets", "int2.bin")).Length);
+            Assert.Equal(2, new FileInfo(Path.Combine(outputDirectoryPath, "Assets", "float8e8m0.bin")).Length);
         }
         finally
         {

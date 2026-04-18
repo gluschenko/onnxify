@@ -227,6 +227,7 @@ public sealed class OnnxProjectGenerator
         using Onnx;
         using Onnxify;
         using Onnxify.Data;
+        using Onnxify.Data.Numerics;
 
         namespace {{namespaceName}};
 
@@ -260,7 +261,7 @@ public sealed class OnnxProjectGenerator
 
         internal static class TensorDataLoader
         {
-            public static T[] LoadArray<T>(string relativePath) where T : struct
+            public static T[] LoadArray<T>(string relativePath, long? expectedElementCount = null) where T : struct
             {
                 var path = ResolvePath(relativePath);
                 var bytes = File.ReadAllBytes(path);
@@ -340,6 +341,56 @@ public sealed class OnnxProjectGenerator
                     return Cast<BFloat16, T>(values);
                 }
 
+                if (typeof(T) == typeof(Float8E4M3FN))
+                {
+                    return Cast<Float8E4M3FN, T>(MemoryMarshal.Cast<byte, Float8E4M3FN>(bytes).ToArray());
+                }
+
+                if (typeof(T) == typeof(Float8E4M3FNUZ))
+                {
+                    return Cast<Float8E4M3FNUZ, T>(MemoryMarshal.Cast<byte, Float8E4M3FNUZ>(bytes).ToArray());
+                }
+
+                if (typeof(T) == typeof(Float8E5M2))
+                {
+                    return Cast<Float8E5M2, T>(MemoryMarshal.Cast<byte, Float8E5M2>(bytes).ToArray());
+                }
+
+                if (typeof(T) == typeof(Float8E5M2FNUZ))
+                {
+                    return Cast<Float8E5M2FNUZ, T>(MemoryMarshal.Cast<byte, Float8E5M2FNUZ>(bytes).ToArray());
+                }
+
+                if (typeof(T) == typeof(Float4E2M1))
+                {
+                    return Cast<Float4E2M1, T>(UnpackNibbles<Float4E2M1>(bytes, expectedElementCount));
+                }
+
+                if (typeof(T) == typeof(Float8E8M0))
+                {
+                    return Cast<Float8E8M0, T>(MemoryMarshal.Cast<byte, Float8E8M0>(bytes).ToArray());
+                }
+
+                if (typeof(T) == typeof(UInt4))
+                {
+                    return Cast<UInt4, T>(UnpackNibbles<UInt4>(bytes, expectedElementCount));
+                }
+
+                if (typeof(T) == typeof(Int4))
+                {
+                    return Cast<Int4, T>(UnpackNibbles<Int4>(bytes, expectedElementCount));
+                }
+
+                if (typeof(T) == typeof(UInt2))
+                {
+                    return Cast<UInt2, T>(UnpackTwoBitValues<UInt2>(bytes, expectedElementCount));
+                }
+
+                if (typeof(T) == typeof(Int2))
+                {
+                    return Cast<Int2, T>(UnpackTwoBitValues<Int2>(bytes, expectedElementCount));
+                }
+
                 if (typeof(T) == typeof(Complex64))
                 {
                     var raw = MemoryMarshal.Cast<byte, float>(bytes).ToArray();
@@ -379,6 +430,55 @@ public sealed class OnnxProjectGenerator
             private static string ResolvePath(string relativePath)
             {
                 return Path.Combine(AppContext.BaseDirectory, relativePath);
+            }
+
+            private static TByteBacked[] UnpackNibbles<TByteBacked>(byte[] bytes, long? expectedElementCount)
+                where TByteBacked : struct
+            {
+                var rawValues = new byte[bytes.Length * 2];
+                var index = 0;
+
+                foreach (var value in bytes)
+                {
+                    rawValues[index++] = (byte)(value & 0x0F);
+                    rawValues[index++] = (byte)(value >> 4);
+                }
+
+                return TrimByteBacked<TByteBacked>(rawValues, expectedElementCount);
+            }
+
+            private static TByteBacked[] UnpackTwoBitValues<TByteBacked>(byte[] bytes, long? expectedElementCount)
+                where TByteBacked : struct
+            {
+                var rawValues = new byte[bytes.Length * 4];
+                var index = 0;
+
+                foreach (var value in bytes)
+                {
+                    rawValues[index++] = (byte)(value & 0x03);
+                    rawValues[index++] = (byte)((value >> 2) & 0x03);
+                    rawValues[index++] = (byte)((value >> 4) & 0x03);
+                    rawValues[index++] = (byte)((value >> 6) & 0x03);
+                }
+
+                return TrimByteBacked<TByteBacked>(rawValues, expectedElementCount);
+            }
+
+            private static TByteBacked[] TrimByteBacked<TByteBacked>(byte[] rawValues, long? expectedElementCount)
+                where TByteBacked : struct
+            {
+                var values = MemoryMarshal.Cast<byte, TByteBacked>(rawValues).ToArray();
+                if (expectedElementCount is not long count)
+                {
+                    return values;
+                }
+
+                if (count < 0 || count > values.LongLength)
+                {
+                    throw new InvalidOperationException($"Tensor payload length mismatch. Expected {count} items, got {values.LongLength}.");
+                }
+
+                return values.AsSpan(0, checked((int)count)).ToArray();
             }
 
             private static TTarget[] Cast<TSource, TTarget>(TSource[] values)
@@ -452,6 +552,16 @@ public sealed class OnnxProjectGenerator
             OnnxTensor<bool> x => context.WriteBinaryAsset(safeName, "bin", x.Value.Select(static value => (byte)(value ? 1 : 0)).ToArray()),
             OnnxTensor<Half> x => context.WriteBinaryAsset(safeName, "bin", PackHalf(x.Value.ToArray())),
             OnnxTensor<BFloat16> x => context.WriteBinaryAsset(safeName, "bin", PackBFloat16(x.Value.ToArray())),
+            OnnxTensor<Float8E4M3FN> x => context.WriteBinaryAsset(safeName, "bin", PackByteBacked(x.Value.ToArray(), static value => value.Value)),
+            OnnxTensor<Float8E4M3FNUZ> x => context.WriteBinaryAsset(safeName, "bin", PackByteBacked(x.Value.ToArray(), static value => value.Value)),
+            OnnxTensor<Float8E5M2> x => context.WriteBinaryAsset(safeName, "bin", PackByteBacked(x.Value.ToArray(), static value => value.Value)),
+            OnnxTensor<Float8E5M2FNUZ> x => context.WriteBinaryAsset(safeName, "bin", PackByteBacked(x.Value.ToArray(), static value => value.Value)),
+            OnnxTensor<Float4E2M1> x => context.WriteBinaryAsset(safeName, "bin", PackNibbles(x.Value.ToArray(), static value => value.Value)),
+            OnnxTensor<Float8E8M0> x => context.WriteBinaryAsset(safeName, "bin", PackByteBacked(x.Value.ToArray(), static value => value.Value)),
+            OnnxTensor<UInt4> x => context.WriteBinaryAsset(safeName, "bin", PackNibbles(x.Value.ToArray(), static value => value.Value)),
+            OnnxTensor<Int4> x => context.WriteBinaryAsset(safeName, "bin", PackNibbles(x.Value.ToArray(), static value => value.Value)),
+            OnnxTensor<UInt2> x => context.WriteBinaryAsset(safeName, "bin", PackTwoBitValues(x.Value.ToArray(), static value => value.Value)),
+            OnnxTensor<Int2> x => context.WriteBinaryAsset(safeName, "bin", PackTwoBitValues(x.Value.ToArray(), static value => value.Value)),
             OnnxTensor<Complex64> x => context.WriteBinaryAsset(safeName, "bin", PackComplex64(x.Value.ToArray())),
             OnnxTensor<Complex128> x => context.WriteBinaryAsset(safeName, "bin", PackComplex128(x.Value.ToArray())),
             OnnxTensor<string> x => context.WriteTextAsset(safeName, "json", JsonSerializer.Serialize(x.Value.ToArray())),
@@ -481,6 +591,57 @@ public sealed class OnnxProjectGenerator
         for (var index = 0; index < values.Length; index++)
         {
             BitConverter.TryWriteBytes(buffer.AsSpan(index * sizeof(ushort), sizeof(ushort)), values[index].Value);
+        }
+
+        return buffer;
+    }
+
+    private static byte[] PackByteBacked<T>(T[] values, Func<T, byte> selector) where T : struct
+    {
+        return values.Select(selector).ToArray();
+    }
+
+    private static byte[] PackNibbles<T>(T[] values, Func<T, byte> selector) where T : struct
+    {
+        var buffer = new byte[(values.Length + 1) / 2];
+
+        for (var index = 0; index < values.Length; index += 2)
+        {
+            var low = (byte)(selector(values[index]) & 0x0F);
+            var high = index + 1 < values.Length
+                ? (byte)((selector(values[index + 1]) & 0x0F) << 4)
+                : (byte)0;
+
+            buffer[index / 2] = (byte)(low | high);
+        }
+
+        return buffer;
+    }
+
+    private static byte[] PackTwoBitValues<T>(T[] values, Func<T, byte> selector) where T : struct
+    {
+        var buffer = new byte[(values.Length + 3) / 4];
+
+        for (var index = 0; index < values.Length; index += 4)
+        {
+            var packed = (byte)(selector(values[index]) & 0x03);
+
+            if (index + 1 < values.Length)
+            {
+                packed |= (byte)((selector(values[index + 1]) & 0x03) << 2);
+            }
+
+            if (index + 2 < values.Length)
+            {
+                packed |= (byte)((selector(values[index + 2]) & 0x03) << 4);
+            }
+
+            if (index + 3 < values.Length)
+            {
+                packed |= (byte)((selector(values[index + 3]) & 0x03) << 6);
+            }
+
+            buffer[index / 4] = packed;
         }
 
         return buffer;
@@ -527,6 +688,16 @@ public sealed class OnnxProjectGenerator
             OnnxTensor<bool> x => x.Shape,
             OnnxTensor<Half> x => x.Shape,
             OnnxTensor<BFloat16> x => x.Shape,
+            OnnxTensor<Float8E4M3FN> x => x.Shape,
+            OnnxTensor<Float8E4M3FNUZ> x => x.Shape,
+            OnnxTensor<Float8E5M2> x => x.Shape,
+            OnnxTensor<Float8E5M2FNUZ> x => x.Shape,
+            OnnxTensor<Float4E2M1> x => x.Shape,
+            OnnxTensor<Float8E8M0> x => x.Shape,
+            OnnxTensor<UInt4> x => x.Shape,
+            OnnxTensor<Int4> x => x.Shape,
+            OnnxTensor<UInt2> x => x.Shape,
+            OnnxTensor<Int2> x => x.Shape,
             OnnxTensor<Complex64> x => x.Shape,
             OnnxTensor<Complex128> x => x.Shape,
             OnnxTensor<string> x => x.Shape,
@@ -553,11 +724,26 @@ public sealed class OnnxProjectGenerator
             OnnxTensor<bool> => $"TensorDataLoader.LoadArray<bool>({literalPath})",
             OnnxTensor<Half> => $"TensorDataLoader.LoadArray<Half>({literalPath})",
             OnnxTensor<BFloat16> => $"TensorDataLoader.LoadArray<BFloat16>({literalPath})",
+            OnnxTensor<Float8E4M3FN> => $"TensorDataLoader.LoadArray<Float8E4M3FN>({literalPath})",
+            OnnxTensor<Float8E4M3FNUZ> => $"TensorDataLoader.LoadArray<Float8E4M3FNUZ>({literalPath})",
+            OnnxTensor<Float8E5M2> => $"TensorDataLoader.LoadArray<Float8E5M2>({literalPath})",
+            OnnxTensor<Float8E5M2FNUZ> => $"TensorDataLoader.LoadArray<Float8E5M2FNUZ>({literalPath})",
+            OnnxTensor<Float4E2M1> => $"TensorDataLoader.LoadArray<Float4E2M1>({literalPath}, {GetTensorElementCount(tensor).ToString(CultureInfo.InvariantCulture)}L)",
+            OnnxTensor<Float8E8M0> => $"TensorDataLoader.LoadArray<Float8E8M0>({literalPath})",
+            OnnxTensor<UInt4> => $"TensorDataLoader.LoadArray<UInt4>({literalPath}, {GetTensorElementCount(tensor).ToString(CultureInfo.InvariantCulture)}L)",
+            OnnxTensor<Int4> => $"TensorDataLoader.LoadArray<Int4>({literalPath}, {GetTensorElementCount(tensor).ToString(CultureInfo.InvariantCulture)}L)",
+            OnnxTensor<UInt2> => $"TensorDataLoader.LoadArray<UInt2>({literalPath}, {GetTensorElementCount(tensor).ToString(CultureInfo.InvariantCulture)}L)",
+            OnnxTensor<Int2> => $"TensorDataLoader.LoadArray<Int2>({literalPath}, {GetTensorElementCount(tensor).ToString(CultureInfo.InvariantCulture)}L)",
             OnnxTensor<Complex64> => $"TensorDataLoader.LoadArray<Complex64>({literalPath})",
             OnnxTensor<Complex128> => $"TensorDataLoader.LoadArray<Complex128>({literalPath})",
             OnnxTensor<string> => $"TensorDataLoader.LoadStringArray({literalPath})",
             _ => throw CreateUnsupportedTensorException(tensor),
         };
+    }
+
+    private static long GetTensorElementCount(OnnxTensor tensor)
+    {
+        return GetTensorShape(tensor).Aggregate(1L, static (count, dimension) => checked(count * dimension));
     }
 
     private static string RenderValueType(OnnxValueType valueType)
@@ -694,6 +880,16 @@ public sealed class OnnxProjectGenerator
         if (type == typeof(string)) return "string";
         if (type == typeof(Half)) return "Half";
         if (type == typeof(BFloat16)) return "BFloat16";
+        if (type == typeof(Float8E4M3FN)) return "Float8E4M3FN";
+        if (type == typeof(Float8E4M3FNUZ)) return "Float8E4M3FNUZ";
+        if (type == typeof(Float8E5M2)) return "Float8E5M2";
+        if (type == typeof(Float8E5M2FNUZ)) return "Float8E5M2FNUZ";
+        if (type == typeof(Float4E2M1)) return "Float4E2M1";
+        if (type == typeof(Float8E8M0)) return "Float8E8M0";
+        if (type == typeof(UInt4)) return "UInt4";
+        if (type == typeof(Int4)) return "Int4";
+        if (type == typeof(UInt2)) return "UInt2";
+        if (type == typeof(Int2)) return "Int2";
         if (type == typeof(Complex64)) return "Complex64";
         if (type == typeof(Complex128)) return "Complex128";
 
