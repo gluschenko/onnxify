@@ -29,20 +29,20 @@ Given an `input` and a flow-field `grid`, computes the `output` using `input` va
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | 4-D tensor of shape (N, C, H, W), where N is the batch size, C is the numbers of channels, H and W are the height and width of the input data. |
 | `Grid` | `Grid` | `IOnnxGraphEdge` | `tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | Input offset, 4-D tensor of shape (N, H_out, W_out, 2), where H_out and W_out are the height and width of grid and output, Grid specifies the sampling pixel locations normalized by the input spatial dimensions. Therefore, it should have most values in the range of [-1, 1]. If grid has values outside the range of [-1, 1], the corresponding outputs will be handled as defined by padding_mode. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 4-D tensor of shape (N, C, H_out, W_out). |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `align_corners` | `AlignCorners` | `long` | no | `0` | If align_corners=1, the extrema (-1 and 1) are considered as referring to the center points of the input's corner pixels. If align_corners=0, they are instead considered as referring to the corner points of the input's corner pixels, making the sampling more resolution agnostic. |
 | `mode` | `Mode` | `string` | no | `bilinear` | Three interpolation modes: bilinear (default), nearest and bicubic. |

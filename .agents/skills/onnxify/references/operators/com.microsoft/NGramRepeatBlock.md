@@ -23,20 +23,20 @@ Enforce no repetition of n-grams. Scores are set to `-inf` for tokens that form 
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input_ids` | `InputIds` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | 2D input tensor with shape (batch_size, sequence_length) |
 | `scores` | `Scores` | `IOnnxGraphEdge` | `tensor(float)` | single, required | 2D input tensor with shape (batch_size, vocab_size) |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `scores_out` | `ScoresOut` | `IOnnxGraphEdge` | `tensor(float)` | single, required | 2D output tensor with shape (batch_size, vocab_size) |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `ngram_size` | `NgramSize` | `long` | yes | `[null]` | The NGram size. |
 

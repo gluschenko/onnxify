@@ -76,7 +76,7 @@ Q*sqrt(scale) K*sqrt(scale) |
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Q` | `Q` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Query tensor. 4D tensor with shape `(batch_size, q_num_heads, q_sequence_length, head_size)` or 3D tensor with shape `(batch_size, q_sequence_length, q_hidden_size)`. For cases with a 3D input tensor, `q_hidden_size = q_num_heads * head_size` |
 | `K` | `K` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Key tensor. 4D tensor with shape `(batch_size, kv_num_heads, kv_sequence_length, head_size)` or 3D tensor with shape `(batch_size, kv_sequence_length, k_hidden_size)`. For cases with a 3D input tensor, `k_hidden_size = kv_num_heads * head_size` |
@@ -88,7 +88,7 @@ Q*sqrt(scale) K*sqrt(scale) |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The output tensor . 4D tensor with shape `(batch_size, q_num_heads, q_sequence_length, v_head_size)` or 3D tensor with shape `(batch_size, q_sequence_length, hidden_size)`. For cases with a 3D input tensor, `hidden_size = q_num_heads * v_head_size` |
 | `present_key` | `PresentKey` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Updated key cache with shape `(batch_size, kv_num_heads, total_sequence_length, head_size)` where `total_sequence_length = past_sequence_length + kv_sequence_length`. |
@@ -97,7 +97,7 @@ Q*sqrt(scale) K*sqrt(scale) |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `is_causal` | `IsCausal` | `long` | no | `0` | If set to `1`, the attention masking is a lower triangular matrix when the mask is a square matrix. The attention masking has the form of the upper left causal bias due to the alignment. |
 | `kv_num_heads` | `KvNumHeads` | `Nullable<long>` | no | `[null]` | Number of heads of key and value. Must be used with 3D inputs of Q, K and V. |

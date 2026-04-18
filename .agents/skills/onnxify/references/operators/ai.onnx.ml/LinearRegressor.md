@@ -28,19 +28,19 @@ Generalized linear regression evaluation.<br>
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int32)`<br>`tensor(int64)` | single, required | Data to be regressed. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Regression outputs (one per target, per example). |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `coefficients` | `Coefficients` | `float[]` | no | `[null]` | Weights of the model(s). |
 | `intercepts` | `Intercepts` | `float[]` | no | `[null]` | Weights of the intercepts, if used. |

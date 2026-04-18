@@ -23,7 +23,7 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `R` | `R` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The initial learning rate. |
 | `T` | `T` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | The update count of "X". It should be a scalar. |
@@ -38,7 +38,7 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `new_T` | `NewT` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | New update count. |
 | `new_moment_1` | `NewMoment1` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | New averaged gradients. |
@@ -49,7 +49,7 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `alpha` | `Alpha` | `float` | no | `0.8999999761581421` | Coefficient of previous gradient in running average. |
 | `beta` | `Beta` | `float` | no | `0.9990000128746033` | Coefficient of previous squared gradient in running average.The effective learning rate is computed by r = R / (1 + T * decay_factor). Default to 0 so that increasing update counts doesn't reduce the learning rate. |

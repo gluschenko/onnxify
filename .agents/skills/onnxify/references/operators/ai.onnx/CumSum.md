@@ -41,20 +41,20 @@ output = [5, 3, 0]
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `x` | `X` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(uint32)`<br>`tensor(uint64)` | single, required | An input tensor that is to be processed. |
 | `axis` | `Axis` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | A 0-D tensor. Must be in the range [-rank(x), rank(x)-1]. Negative value means counting dimensions from the back. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `y` | `Y` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(uint32)`<br>`tensor(uint64)` | single, required | Output tensor of the same type as 'x' with cumulative sums of the x's elements |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `exclusive` | `Exclusive` | `long` | no | `0` | If set to 1 will return exclusive sum in which the top element is not included. In other terms, if set to 1, the j-th output element would be the sum of the first (j-1) elements. Otherwise, it would be the sum of the first j elements. |
 | `reverse` | `Reverse` | `long` | no | `0` | If set to 1 will perform the sums in reverse direction. |

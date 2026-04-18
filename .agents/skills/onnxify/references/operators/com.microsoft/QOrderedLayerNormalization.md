@@ -23,7 +23,7 @@ QOrderedLayerNormalization
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | Input data tensor from the previous layer. |
 | `scale_X` | `ScaleX` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the quantized X |
@@ -33,13 +33,13 @@ QOrderedLayerNormalization
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | Output data tensor. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `axis` | `Axis` | `long` | no | `-1` | The first normalization dimension: normalization will be performed along dimensions axis : rank(inputs). |
 | `epsilon` | `Epsilon` | `float` | no | `9.999999747378752e-06` | The epsilon value to use to avoid division by zero. |

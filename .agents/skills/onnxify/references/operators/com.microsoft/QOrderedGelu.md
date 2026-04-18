@@ -23,7 +23,7 @@ Ordered Quantize Gelu.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | N-dimensional input A |
 | `scale_X` | `ScaleX` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the input A |
@@ -31,13 +31,13 @@ Ordered Quantize Gelu.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | Output of the Gelu |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `order_X` | `OrderX` | `Nullable<long>` | no | `[null]` | cublasLt order of input X. Optional. See the schema of QuantizeWithOrder for order definition. |
 | `order_Y` | `OrderY` | `Nullable<long>` | no | `[null]` | cublasLt order of matrix Y, must be same as order_X if specified together. Optional. |

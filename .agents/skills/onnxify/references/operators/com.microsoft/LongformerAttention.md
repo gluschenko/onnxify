@@ -30,7 +30,7 @@ Global attention flags have value 1 for the tokens attend globally and 0 otherwi
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 3D input tensor with shape (batch_size, sequence_length, hidden_size), hidden_size = num_heads * head_size |
 | `weight` | `Weight` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 2D input tensor with shape (hidden_size, 3 * hidden_size) |
@@ -42,13 +42,13 @@ Global attention flags have value 1 for the tokens attend globally and 0 otherwi
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 3D output tensor with shape (batch_size, sequence_length, hidden_size) |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `num_heads` | `NumHeads` | `long` | yes | `[null]` | Number of attention heads |
 | `window` | `Window` | `long` | yes | `[null]` | One sided attention windows length W, or half of total window length |

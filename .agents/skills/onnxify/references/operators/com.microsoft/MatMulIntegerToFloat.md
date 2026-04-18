@@ -23,7 +23,7 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `A` | `A` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | N-dimensional matrix A |
 | `B` | `B` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | N-dimensional matrix B |
@@ -35,13 +35,13 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Matrix multiply results from A * B |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | [none] |  |  |  |  |  |
 

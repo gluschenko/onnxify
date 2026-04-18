@@ -32,7 +32,7 @@ No matching if found if src tokens contain multiple or zero matching n-grams. Re
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `src_tokens` | `SrcTokens` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Encoder input ids. |
 | `cur_tokens` | `CurTokens` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Decoder input ids. |
@@ -41,14 +41,14 @@ No matching if found if src tokens contain multiple or zero matching n-grams. Re
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `tokens` | `Tokens` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Decoder input ids after merging predicted tokens |
 | `suffix_match_idx` | `SuffixMatchIdx` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | new suffix match index |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `max_ngram_size` | `MaxNgramSize` | `long` | no | `3` | The maximum NGram size for suffix matching. |
 | `min_ngram_size` | `MinNgramSize` | `long` | no | `1` | The minimum NGram size for suffix matching. |

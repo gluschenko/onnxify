@@ -23,19 +23,19 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `shape` | `InputShape` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | The shape of filled tensor |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The filled tensor |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `extra_shape` | `ExtraShape` | `long[]` | no | `[null]` |  |
 | `input_as_shape` | `InputAsShape` | `Nullable<long>` | no | `[null]` |  |

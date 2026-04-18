@@ -23,7 +23,7 @@ Skip and Layer Normalization Fusion
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 3D input tensor with shape (batch_size, sequence_length, hidden_size) |
 | `skip` | `Skip` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 3D skip tensor with shape (batch_size, sequence_length, hidden_size) or (1, sequence_length, hidden_size) or (sequence_length, hidden_size) |
@@ -33,7 +33,7 @@ Skip and Layer Normalization Fusion
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 3D output tensor with shape (batch_size, sequence_length, hidden_size) |
 | `mean` | `Mean` | `IOnnxGraphEdge` | `tensor(float)` | optional | Saved mean used during training to speed up gradient computation |
@@ -42,7 +42,7 @@ Skip and Layer Normalization Fusion
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `epsilon` | `Epsilon` | `float` | no | `9.999999960041972e-13` | The epsilon value to use to avoid division by zero. |
 

@@ -37,21 +37,21 @@ a tiebreaker. That is, the element with the lower index will appear first.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | Tensor of shape [a_0, a_1, ..., a_{n-1}] |
 | `K` | `K` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | A 1-D tensor containing a single positive value corresponding to the number of top elements to retrieve |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Values` | `Values` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | Tensor of shape [a_0, a_1, ..., a_{axis-1}, k, a_{axis+1}, ... a_{n-1}] containing top K values from the input tensor |
 | `Indices` | `Indices` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Tensor of shape [a_0, a_1, ..., a_{axis-1}, k, a_{axis+1}, ... a_{n-1}] containing the corresponding input tensor indices for the top K values. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `axis` | `Axis` | `long` | no | `-1` | Dimension on which to do the sort. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(input). |
 | `largest` | `Largest` | `long` | no | `1` | Whether to return the top-K largest or smallest elements. |

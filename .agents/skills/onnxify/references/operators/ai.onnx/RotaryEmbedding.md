@@ -122,7 +122,7 @@ def rotary_embedding(
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The input tensor representing the token embeddings. 4D tensor with shape `(batch_size, num_heads, sequence_length, head_size)` or 3D tensor with shape `(batch_size, sequence_length, hidden_size)`. For cases with a 4D input tensor, `head_size` has to be even. For cases with a 3D input tensor, `num_heads` attribute must be provided and `hidden_size` must be an even multiple of `num_heads` where `hidden_size = num_heads * head_size` |
 | `cos_cache` | `CosCache` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The cosine values for the rotation. 2D tensor with shape `(max_position_id_plus_1, head_size / 2)` for full rotation or `(max_position_id_plus_1, rotary_embedding_dim / 2)` for partial rotation when `position_ids` are provided. 3D tensor with shape `(batch_size, sequence_length, head_size / 2)` for full rotation or `(batch_size, sequence_length, rotary_embedding_dim / 2)` for partial rotation when `position_ids` are not provided. `max_position_id_plus_1` is a parameter to the model. |
@@ -131,13 +131,13 @@ def rotary_embedding(
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Tensor with same shape as input. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `interleaved` | `Interleaved` | `long` | no | `0` | Rotate using interleaved pattern. Default value is 0 (False). |
 | `num_heads` | `NumHeads` | `Nullable<long>` | no | `[null]` | Number of attention heads. Must be provided when input is a 3D tensor. |

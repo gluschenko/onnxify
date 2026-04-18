@@ -23,7 +23,7 @@ Efficient NMS TensorRT Plugin.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `boxes` | `Boxes` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | The boxes input tensor. |
 | `scores` | `Scores` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | The scores input tensor. |
@@ -31,7 +31,7 @@ Efficient NMS TensorRT Plugin.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `num_detections` | `NumDetections` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | The num_detections output tensor. |
 | `detection_boxes` | `DetectionBoxes` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | The detection_boxes output tensor. |
@@ -40,7 +40,7 @@ Efficient NMS TensorRT Plugin.
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `background_class` | `BackgroundClass` | `long` | yes | `[null]` | Background class ID. |
 | `box_coding` | `BoxCoding` | `long` | yes | `[null]` | Encoding type for the boxes or anchors inputs. |

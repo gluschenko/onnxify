@@ -41,19 +41,19 @@ Maps each element in the input tensor to another value.<br>
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(string)` | single, required | Input data. It must have the same element type as the keys_* attribute set. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(string)` | single, required | Output data. This tensor's element type is based on the values_* attribute set. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `default_float` | `DefaultFloat` | `float` | no | `-0.0` | A float. |
 | `default_int64` | `DefaultInt64` | `long` | no | `-1` | An integer. |

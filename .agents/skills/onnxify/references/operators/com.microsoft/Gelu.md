@@ -27,19 +27,19 @@ inputs by their magnitude, rather than gates inputs by their sign as in ReLUs.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The input data as Tensor. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The output. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | [none] |  |  |  |  |  |
 

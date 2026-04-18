@@ -23,7 +23,7 @@ GatherElementsGrad
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `dY` | `DY` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Tensor of rank r >=1 (same rank and shape as indices) |
 | `shape` | `Shape` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Shape of the GatherElements input data. |
@@ -31,13 +31,13 @@ GatherElementsGrad
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `dX` | `DX` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Tensor of rank r >= 1 (same rank as input). |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `axis` | `Axis` | `long` | no | `0` | Which axis to scatter on. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(data). |
 

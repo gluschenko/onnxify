@@ -23,20 +23,20 @@ Dequantize input matrix to specific layout used in cublaslt. attr to specify out
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | TODO: input tensor of (ROWS, COLS). if less than 2d, will broadcast to (1, X). If 3d, it is treated as (B, ROWS, COS) |
 | `scale_input` | `ScaleInput` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the input |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | output tensor |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `order_input` | `OrderInput` | `long` | yes | `[null]` | cublasLt order of input matrix. See the schema of QuantizeWithOrder for order definition. |
 | `order_output` | `OrderOutput` | `long` | yes | `[null]` | cublasLt order of output matrix |

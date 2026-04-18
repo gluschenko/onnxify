@@ -23,13 +23,13 @@ Compute scaled input into outputs with different scaling factors (no broadcastin
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | input tensor |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output_0` | `Output0` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | output tensor |
 | `output_1` | `Output1` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | output tensor |
@@ -37,7 +37,7 @@ Compute scaled input into outputs with different scaling factors (no broadcastin
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `scale_0` | `Scale0` | `float` | yes | `[null]` | Scale for input_0. |
 | `scale_1` | `Scale1` | `float` | yes | `[null]` | Scale for input_1. |

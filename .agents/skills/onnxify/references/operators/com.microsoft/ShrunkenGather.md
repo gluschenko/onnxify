@@ -26,20 +26,20 @@ Having this op allows runtime to do operator re-ordering to reduce compute FLOPs
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `data` | `Data` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | Tensor of rank r >= 1. |
 | `indices` | `Indices` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | Tensor of int64 indices, with rank = 1. All index values are expected to be within bounds [-s, s-1] along axis of size s. It is an error if any of the index values are out of bounds.The number of elements in indices must be less than the number of elements in the input tensor,which is the reason why this op is called ShrunkenGather. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | Tensor of rank r. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `axis` | `Axis` | `long` | no | `0` | Which axis to gather on. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(data). |
 

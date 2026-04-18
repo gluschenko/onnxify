@@ -23,7 +23,7 @@ output, dropout_mask = Dropout(data + bias, ratio) + residual, Intended to speci
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `data` | `Data` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The input data as Tensor. |
 | `bias` | `Bias` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The bias input, a vector with the same shape as last dim of data OR same shape with data |
@@ -33,14 +33,14 @@ output, dropout_mask = Dropout(data + bias, ratio) + residual, Intended to speci
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The output. |
 | `mask` | `Mask` | `IOnnxGraphEdge` | `tensor(bool)` | optional | The output mask of dropout. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `seed` | `Seed` | `Nullable<long>` | no | `[null]` | (Optional) Seed to the random generator, if not specified we will auto generate one. |
 

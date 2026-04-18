@@ -30,7 +30,7 @@ The returned MelWeightMatrix can be used to right-multiply a spectrogram S of sh
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `num_mel_bins` | `NumMelBins` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | The number of bands in the mel spectrum. |
 | `dft_length` | `DftLength` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | The size of the original DFT. The size of the original DFT is used to infer the size of the onesided DFT, which is understood to be floor(dft_length/2) + 1, i.e. the spectrogram only contains the nonredundant DFT bins. |
@@ -40,13 +40,13 @@ The returned MelWeightMatrix can be used to right-multiply a spectrogram S of sh
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | The Mel Weight Matrix. The output has the shape: [floor(dft_length/2) + 1][num_mel_bins]. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output_datatype` | `OutputDatatype` | `long` | no | `1` | The data type of the output tensor. Strictly must be one of the values from DataType enum in TensorProto whose values correspond to T3. The default value is 1 = FLOAT. |
 

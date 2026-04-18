@@ -25,19 +25,19 @@ If scale is not provided, crop the borders as provided.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Input tensor of shape [N,C,H,W] |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Result, has same type as input, with H and W dimensions reduced. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `border` | `Border` | `long[]` | yes | `[null]` | A 1-D values of (leftBorder, topBorder, rightBorder, bottomBorder). |
 | `scale` | `Scale` | `long[]` | no | `[null]` | A 1-D values of (height, width). |

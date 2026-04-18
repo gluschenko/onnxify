@@ -24,19 +24,19 @@ Scale takes one input data (Tensor<float>) and produces one output data
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Input data to be scaled |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Output data after scaling |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `scale` | `AttributeScale` | `float` | no | `1.0` | The scale to apply. |
 

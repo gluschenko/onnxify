@@ -26,20 +26,20 @@ This operator supports **unidirectional broadcasting** (tensor slope should be u
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(uint32)`<br>`tensor(uint64)` | single, required | Input tensor |
 | `slope` | `Slope` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(uint32)`<br>`tensor(uint64)` | single, required | Slope tensor. The shape of slope can be smaller than first input X; if so, its shape must be unidirectional broadcastable to X |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(uint32)`<br>`tensor(uint64)` | single, required | Output tensor (same size as X) |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | [none] |  |  |  |  |  |
 

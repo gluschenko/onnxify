@@ -23,19 +23,19 @@ InplaceClipGradNorm operator, taking multiple gradients as inputs (seq<tensor>).
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `gradients` | `Gradients` | `IOnnxGraphEdge` | `seq(tensor(double))`<br>`seq(tensor(float))`<br>`seq(tensor(float16))` | single, required | Sequence of gradients computed in this iteration. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `clipped_gradients` | `ClippedGradients` | `IOnnxGraphEdge` | `seq(tensor(double))`<br>`seq(tensor(float))`<br>`seq(tensor(float16))` | single, required | Gradients after being clipped as per given inputs and attributes. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `max_norm` | `MaxNorm` | `float` | no | `1.0` | Coefficient of previously accumulated gradient in running average. |
 | `norm_type` | `NormType` | `string` | no | `fro` | Type of normalization to perform during execution of clip grad norm.Currently, the only norm supported is the frobenius norm (which is also the default). |

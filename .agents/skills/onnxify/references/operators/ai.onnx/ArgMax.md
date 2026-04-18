@@ -29,19 +29,19 @@ The type of the output tensor is integer.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `data` | `Data` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | An input tensor. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `reduced` | `Reduced` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Reduced output tensor with integer data type. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `axis` | `Axis` | `long` | no | `0` | The axis in which to compute the arg indices. Accepted range is [-r, r-1] where r = rank(data). |
 | `keepdims` | `Keepdims` | `long` | no | `1` | Keep the reduced dimension or not, default 1 means keep reduced dimension. |

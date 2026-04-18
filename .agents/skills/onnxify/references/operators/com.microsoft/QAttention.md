@@ -23,7 +23,7 @@ Quantization of Multi-Head Self Attention.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | 3D input tensor with shape (batch_size, sequence_length, input_hidden_size) |
 | `weight` | `Weight` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | 2D input tensor with shape (input_hidden_size, 3 * hidden_size), hidden_size = num_heads * head_size |
@@ -37,14 +37,14 @@ Quantization of Multi-Head Self Attention.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 3D output tensor with shape (batch_size, sequence_length, hidden_size) |
 | `present` | `Present` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | present state for key and value with shape (2, batch_size, num_heads, past_sequence_length + sequence_length, head_size) |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `do_rotary` | `DoRotary` | `Nullable<long>` | no | `[null]` | Whether to use rotary position embedding. Default value is 0. |
 | `mask_filter_value` | `MaskFilterValue` | `Nullable<float>` | no | `[null]` | The value to be filled in the attention mask. Default value is -10000.0f |

@@ -23,21 +23,21 @@ Returns the reduction axes for computing gradients of s0 op s1 with broadcast.Th
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `a_shape` | `AShape` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | The 1st input shape as Tensor. |
 | `b_shape` | `BShape` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | The 2nd input shape as Tensor. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `a_axes` | `AAxes` | `IOnnxGraphEdge` | `tensor(int64)` | optional | The reduction axes for 1st input, last to first. |
 | `b_axes` | `BAxes` | `IOnnxGraphEdge` | `tensor(int64)` | optional | The reduction axes for 2nd input, last to first. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | [none] |  |  |  |  |  |
 

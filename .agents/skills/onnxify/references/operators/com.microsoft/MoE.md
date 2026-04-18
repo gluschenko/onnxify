@@ -36,7 +36,7 @@ Mixture of experts. Examples: Switch transformer(https://arxiv.org/pdf/2101.0396
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 2D input tensor with shape (num_tokens, hidden_size) or 3D input tensor with shape (batch_size, sequence_length, hidden_size) |
 | `router_probs` | `RouterProbs` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 2D input tensor with shape (num_tokens, num_experts) |
@@ -49,13 +49,13 @@ Mixture of experts. Examples: Switch transformer(https://arxiv.org/pdf/2101.0396
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 2D input tensor with shape (num_tokens, hidden_size) or 3D input tensor with shape (batch_size, sequence_length, hidden_size) |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `activation_alpha` | `ActivationAlpha` | `float` | no | `1.0` | Alpha parameter used in activation function. |
 | `activation_beta` | `ActivationBeta` | `float` | no | `0.0` | Beta parameter used in activation function. |

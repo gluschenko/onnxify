@@ -23,7 +23,7 @@ Concatenate a list of tensors into a single tensor.All input tensors must have t
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y_scale` | `YScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Y's scale. |
 | `Y_zero_point` | `YZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Y's zero point. |
@@ -31,13 +31,13 @@ Concatenate a list of tensors into a single tensor.All input tensors must have t
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Concatenated tensor |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `axis` | `Axis` | `long` | yes | `[null]` | Which axis to concat on |
 

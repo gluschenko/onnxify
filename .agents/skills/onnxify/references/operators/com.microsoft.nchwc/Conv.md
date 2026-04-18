@@ -23,7 +23,7 @@ For internal use.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(float)` | single, required |  |
 | `W` | `W` | `IOnnxGraphEdge` | `tensor(float)` | single, required |  |
@@ -32,13 +32,13 @@ For internal use.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(float)` | single, required |  |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `activation` | `Activation` | `string` | no | `[null]` |  |
 | `activation_params` | `ActivationParams` | `float[]` | no | `[null]` |  |

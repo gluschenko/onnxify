@@ -36,20 +36,20 @@ This operator is DEPRECATED. Please use TreeEnsemble with provides similar funct
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int32)`<br>`tensor(int64)` | single, required | Input of shape [N,F] |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int64)`<br>`tensor(string)` | single, required | N, Top class for each point |
 | `Z` | `Z` | `IOnnxGraphEdge` | `tensor(float)` | single, required | The class score for each class, for each point, a tensor of shape [N,E]. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `base_values` | `BaseValues` | `float[]` | no | `[null]` | Base values for classification, added to final class score; the size must be the same as the classes or can be left unassigned (assumed 0) |
 | `base_values_as_tensor` | `BaseValuesAsTensor` | `OnnxTensor` | no | `[null]` | Base values for classification, added to final class score; the size must be the same as the classes or can be left unassigned (assumed 0) |

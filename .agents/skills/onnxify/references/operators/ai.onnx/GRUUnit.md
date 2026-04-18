@@ -28,7 +28,7 @@ value at X[t][n] >= seqLengths[n].
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `hidden_prev` | `HiddenPrev` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The previous GRU hidden state. |
 | `gates` | `Gates` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Unactivated gate outputs from forget, update, and output gates, pre-activation. |
@@ -37,13 +37,13 @@ value at X[t][n] >= seqLengths[n].
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `hidden` | `Hidden` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The new GRU hidden state calculated by this op. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `drop_states` | `DropStates` | `Nullable<long>` | no | `[null]` | Bool to determine if hidden state is zeroes or passed along for timesteps past the given sequence_length. |
 

@@ -52,7 +52,7 @@ MatMulBnb4 is a MatMul with weight quantized with 4 bits using either FP4 or NF4
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `A` | `A` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The input tensor, not quantized |
 | `B` | `B` | `IOnnxGraphEdge` | `tensor(uint8)` | single, required | 1-dimensional quantized data for weight |
@@ -60,13 +60,13 @@ MatMulBnb4 is a MatMul with weight quantized with 4 bits using either FP4 or NF4
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | tensor. The output tensor has the same rank as the input. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `K` | `K` | `long` | yes | `[null]` | size of each input feature |
 | `N` | `N` | `long` | yes | `[null]` | size of each output feature |

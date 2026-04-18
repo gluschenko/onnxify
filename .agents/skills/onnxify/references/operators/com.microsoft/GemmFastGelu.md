@@ -23,7 +23,7 @@ It's a fusion of MatMul and FastGelu.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | input tensor |
 | `W` | `W` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | input tensor |
@@ -31,13 +31,13 @@ It's a fusion of MatMul and FastGelu.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | output tensor |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | [none] |  |  |  |  |  |
 

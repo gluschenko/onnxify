@@ -97,7 +97,7 @@ output  = [[[5, 5, 5, 5], [6, 6, 6, 6], [7, 7, 7, 7], [8, 8, 8, 8]],
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `data` | `Data` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | Tensor of rank r >= 1. |
 | `indices` | `Indices` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Tensor of rank q >= 1. |
@@ -105,13 +105,13 @@ output  = [[[5, 5, 5, 5], [6, 6, 6, 6], [7, 7, 7, 7], [8, 8, 8, 8]],
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | Tensor of rank r >= 1. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `reduction` | `Reduction` | `string` | no | `none` | Type of reduction to apply: none (default), add, mul, max, min. 'none': no reduction applied. 'add': reduction using the addition operation. 'mul': reduction using the addition operation. 'max': reduction using the maximum operation.'min': reduction using the minimum operation. |
 

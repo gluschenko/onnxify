@@ -22,19 +22,19 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge[]` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | variadic, min arity 1 | tensors to be reduced |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge[]` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | variadic, min arity 1 | reduced tensors |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `reduce_algo` | `ReduceAlgo` | `long` | no | `0` | Algorithms for Adasum. Valid values are: CpuReduction(1) or GpuHierarchicalReduction(2) |
 

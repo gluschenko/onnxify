@@ -23,20 +23,20 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `A` | `A` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | single, required | 2D matrix with shape (M,N) |
 | `B` | `B` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | single, required | 2D matrix with shape (K,N) |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `C` | `C` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | single, required | A 2D Matrix that represents the distance between each pair of the two collections of inputs. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `metric` | `Metric` | `string` | no | `sqeuclidean` | The distance metric to use. If a string, the distance function can be "braycurtis", "canberra", "chebyshev", "cityblock", "correlation", "cosine", "dice", "euclidean", "hamming", "jaccard", "jensenshannon", "kulsinski", "mahalanobis", "matching", "minkowski", "rogerstanimoto", "russellrao", "seuclidean", "sokalmichener", "sokalsneath", "sqeuclidean", "wminkowski", "yule". |
 

@@ -24,7 +24,7 @@ activation and leaky_relu_alpha.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `A` | `A` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(uint32)`<br>`tensor(uint64)` | single, required | Input tensor A. The shape of A should be (M, K) if transA is 0, or (K, M) if transA is non-zero. |
 | `B` | `B` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(uint32)`<br>`tensor(uint64)` | single, required | Input tensor B. The shape of B should be (K, N) if transB is 0, or (N, K) if transB is non-zero. |
@@ -32,13 +32,13 @@ activation and leaky_relu_alpha.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(uint32)`<br>`tensor(uint64)` | single, required | Output tensor of shape (M, N). |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `activation` | `Activation` | `string` | no | `[null]` |  |
 | `activation_alpha` | `ActivationAlpha` | `Nullable<float>` | no | `[null]` |  |

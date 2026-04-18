@@ -22,20 +22,20 @@ MixedPrecisionScale
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `S` | `S` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | scale |
 | `X` | `X` | `IOnnxGraphEdge[]` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | variadic, min arity 1 | inputs |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge[]` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | variadic, min arity 1 | output |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `fuse_outputs` | `FuseOutputs` | `long` | no | `0` | If true, fuse all outputs into one continuous buffer. |
 | `to` | `To` | `long` | yes | `[null]` | The data type to which the elements of the input tensor are cast. Strictly must be one of the types from DataType enum in TensorProto |

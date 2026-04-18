@@ -29,7 +29,7 @@ no offset
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `A` | `A` | `IOnnxGraphEdge` | `tensor(float)` | single, required | N-dimensional matrix A |
 | `B` | `B` | `IOnnxGraphEdge` | `tensor(uint8)` | single, required | 1-dimensional data blob |
@@ -37,13 +37,13 @@ no offset
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Matrix multiply results from A * B |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `blk_quant_type` | `BlkQuantType` | `long` | no | `1` | Quantization type |
 

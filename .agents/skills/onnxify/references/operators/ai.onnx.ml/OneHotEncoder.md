@@ -30,19 +30,19 @@ Replace each input element with an array of ones and zeros, where a single
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(string)` | single, required | Data to be encoded. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Encoded output data, having one more dimension than X. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `cats_int64s` | `CatsInt64s` | `long[]` | no | `[null]` | List of categories, ints.<br>One and only one of the 'cats_*' attributes must be defined. |
 | `cats_strings` | `CatsStrings` | `string[]` | no | `[null]` | List of categories, strings.<br>One and only one of the 'cats_*' attributes must be defined. |

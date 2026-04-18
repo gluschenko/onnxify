@@ -34,20 +34,20 @@ in 'split' must be equal to the dimension size of input tensor on 'axis'.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | The tensor to split |
 | `split` | `Split` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | optional | Length of each output. It can be either a scalar(tensor of empty shape), or a 1-D tensor. All values must be >= 0. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output_sequence` | `OutputSequence` | `IOnnxGraphEdge` | `seq(tensor(bfloat16))`<br>`seq(tensor(bool))`<br>`seq(tensor(complex128))`<br>`seq(tensor(complex64))`<br>`seq(tensor(double))`<br>`seq(tensor(float))`<br>`seq(tensor(float16))`<br>`seq(tensor(int16))`<br>`seq(tensor(int32))`<br>`seq(tensor(int64))`<br>`seq(tensor(int8))`<br>`seq(tensor(string))`<br>`seq(tensor(uint16))`<br>`seq(tensor(uint32))`<br>`seq(tensor(uint64))`<br>`seq(tensor(uint8))` | single, required | One or more outputs forming a sequence of tensors after splitting |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `axis` | `Axis` | `long` | no | `0` | Which axis to split on. A negative value means counting dimensions from the back. Accepted range is [-rank, rank-1]. |
 | `keepdims` | `Keepdims` | `long` | no | `1` | Keep the split dimension or not. Default 1, which means we keep split dimension. If input 'split' is specified, this attribute is ignored. |

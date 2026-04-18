@@ -27,7 +27,7 @@ If mask is provided, mask index (that is position of first 0 in mask, or number 
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input_ids` | `InputIds` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | 2D words IDs with shape (batch_size, sequence_length) |
 | `segment_ids` | `SegmentIds` | `IOnnxGraphEdge` | `tensor(int32)` | optional | 2D segment IDs with shape (batch_size, sequence_length) |
@@ -50,14 +50,14 @@ If mask is provided, mask index (that is position of first 0 in mask, or number 
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `layernorm_out` | `LayernormOut` | `IOnnxGraphEdge` | `tensor(float)` | single, required | LayerNorm Output |
 | `mask_index_out` | `MaskIndexOut` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | Mask Index Output |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `epsilon` | `Epsilon` | `float` | no | `9.999999960041972e-13` | The epsilon value to use to avoid division by zero. |
 

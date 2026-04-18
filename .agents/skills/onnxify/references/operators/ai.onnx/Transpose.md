@@ -32,19 +32,19 @@ where `n` is the rank of the input tensor.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `data` | `Data` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(float4e2m1)`<br>`tensor(float8e4m3fn)`<br>`tensor(float8e4m3fnuz)`<br>`tensor(float8e5m2)`<br>`tensor(float8e5m2fnuz)`<br>`tensor(float8e8m0)`<br>`tensor(int16)`<br>`tensor(int2)`<br>`tensor(int32)`<br>`tensor(int4)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint2)`<br>`tensor(uint32)`<br>`tensor(uint4)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | An input tensor. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `transposed` | `Transposed` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(float4e2m1)`<br>`tensor(float8e4m3fn)`<br>`tensor(float8e4m3fnuz)`<br>`tensor(float8e5m2)`<br>`tensor(float8e5m2fnuz)`<br>`tensor(float8e8m0)`<br>`tensor(int16)`<br>`tensor(int2)`<br>`tensor(int32)`<br>`tensor(int4)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint2)`<br>`tensor(uint32)`<br>`tensor(uint4)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | Transposed output. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `perm` | `Perm` | `long[]` | no | `[null]` | A list of integers. By default, reverse the dimensions, otherwise permute the axes according to the values given. Its length must be equal to the rank of the input. |
 

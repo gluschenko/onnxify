@@ -24,7 +24,7 @@ The production MUST never overflow. The accumulation may overflow if and only if
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `A` | `A` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | N-dimensional matrix A |
 | `B` | `B` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | N-dimensional matrix B |
@@ -33,13 +33,13 @@ The production MUST never overflow. The accumulation may overflow if and only if
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | Matrix multiply results from A * B |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | [none] |  |  |  |  |  |
 

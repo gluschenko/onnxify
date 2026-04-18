@@ -23,19 +23,19 @@ IsAllFinite
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge[]` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | variadic, min arity 1 | Input tensors to check. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | The output scalar. Its value is true if all input tensors are finite. Otherwise, the output value would be false. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `isinf_only` | `IsinfOnly` | `long` | no | `0` | If true, check only for Inf, -Inf. |
 | `isnan_only` | `IsnanOnly` | `long` | no | `0` | If true, check only for NaN. |

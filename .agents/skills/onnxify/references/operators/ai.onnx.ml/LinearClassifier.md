@@ -23,20 +23,20 @@ Linear classifier
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int32)`<br>`tensor(int64)` | single, required | Data to be classified. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int64)`<br>`tensor(string)` | single, required | Classification outputs (one class per example). |
 | `Z` | `Z` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Classification scores ([N,E] - one score for each class and example |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `classlabels_ints` | `ClasslabelsInts` | `long[]` | no | `[null]` | Class labels when using integer labels. One and only one 'classlabels' attribute must be defined. |
 | `classlabels_strings` | `ClasslabelsStrings` | `string[]` | no | `[null]` | Class labels when using string labels. One and only one 'classlabels' attribute must be defined. |

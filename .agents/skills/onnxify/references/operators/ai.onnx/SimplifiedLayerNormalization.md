@@ -23,21 +23,21 @@ SimplifiedLayerNormalization
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Input data tensor from the previous layer. |
 | `scale` | `Scale` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Scale tensor. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Output data tensor. |
 | `inv_std_var` | `InvStdVar` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | optional | Saved inverse standard variance used during training to speed up gradient computation. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `axis` | `Axis` | `long` | no | `-1` | The first normalization dimension: normalization will be performed along dimensions axis : rank(inputs). |
 | `epsilon` | `Epsilon` | `float` | no | `9.999999747378752e-06` | The epsilon value to use to avoid division by zero. |

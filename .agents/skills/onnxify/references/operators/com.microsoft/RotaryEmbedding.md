@@ -24,7 +24,7 @@ that are multiplied to query and key before the inner product of query and key i
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 3D tensor with shape (batch_size, sequence_length, hidden_size) or 4D with shape (batch_size, num_heads, sequence_length, head_size) |
 | `position_ids` | `PositionIds` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | 1D tensor with shape (1) or 2D tensor with shape (batch_size, sequence_length) |
@@ -33,13 +33,13 @@ that are multiplied to query and key before the inner product of query and key i
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | tensor with same shape as input. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `interleaved` | `Interleaved` | `Nullable<long>` | no | `[null]` | Indicates whether the input has real and imaginary parts interleaved. Default value is 0 (False), meaning the first half of the input consists of real values and the second half consists of imaginary values. |
 | `is_packed_batching` | `IsPackedBatching` | `Nullable<long>` | no | `[null]` | ragged batch inputs or not. Default value is 0 |

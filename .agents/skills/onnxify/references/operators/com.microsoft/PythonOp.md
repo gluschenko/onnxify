@@ -22,20 +22,20 @@ Wrapper of PyTorch's autograd.Function implementation.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `inputs` | `In` | `IOnnxGraphEdge[]` | `tensor(bfloat16)`<br>`tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | variadic, min arity 1 | Module outputs to be returned to PyTorch. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `context` | `Context` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Address of context created in this operator. It can be used in backward. |
 | `outputs` | `Out` | `IOnnxGraphEdge[]` | `tensor(bfloat16)`<br>`tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | variadic, min arity 1 | Outputs returned from PyTorch. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `bw_tensor_reuse_map` | `BwTensorReuseMap` | `long[]` | no | `[null]` | Used for backward op only.A int array indicating whether output at each index is reusing specific input or now.If the given index is -1, it means the output is not reusing any input.For example, there are 3 inputs (including ctx) and 2 outputs, tensor_reuse_map = [2, 1] means- the output 0 reuses the input 2.- the output 1 reuses the input 1.Be noted: the input 0 is ctx. |
 | `comment` | `Comment` | `string` | no | `[null]` | comment only for debugging purposes. |

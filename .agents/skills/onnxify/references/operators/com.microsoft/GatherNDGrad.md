@@ -23,7 +23,7 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `shape` | `Shape` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | The shape of source data input of GatherND. |
 | `indices` | `Indices` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Tensor of rank q >= 1. |
@@ -31,13 +31,13 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Tensor gradient of the input. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `batch_dims` | `BatchDims` | `long` | no | `0` | The number of batch dims. The gather of indexing starts from dimension of data[batch_dims+1:] |
 

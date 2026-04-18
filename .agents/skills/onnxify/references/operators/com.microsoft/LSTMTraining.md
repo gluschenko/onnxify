@@ -23,7 +23,7 @@ LSTMTraining operator is adapted from LSTM operator (https://github.com/onnx/onn
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Original input to the LSTM cell. |
 | `W` | `W` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Input weight parameters to the LSTM cell. |
@@ -36,7 +36,7 @@ LSTMTraining operator is adapted from LSTM operator (https://github.com/onnx/onn
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `HAll` | `HAll` | `IOnnxGraphEdge` | `tensor(float)` | optional | Hidden states over all sequence steps. |
 | `HFinal` | `HFinal` | `IOnnxGraphEdge` | `tensor(float)` | optional | Final hidden state. |
@@ -46,7 +46,7 @@ LSTMTraining operator is adapted from LSTM operator (https://github.com/onnx/onn
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `activation_alpha` | `ActivationAlpha` | `float[]` | no | `[null]` | Optional scaling values used by some activation functions. The values are consumed in the order of activation functions, for example (f, g, h) in LSTMTraining. Default values are the same as of corresponding ONNX operators.For example with LeakyRelu, the default alpha is 0.01. |
 | `activation_beta` | `ActivationBeta` | `float[]` | no | `[null]` | Optional scaling values used by some activation functions. The values are consumed in the order of activation functions, for example (f, g, h) in LSTMTraining. Default values are the same as of corresponding ONNX operators. |

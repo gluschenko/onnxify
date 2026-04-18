@@ -61,7 +61,7 @@ This operator has **optional** inputs/outputs. See [the doc](IR.md) for more det
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Input data tensor from the previous operator; dimensions are in the form of (N x C x D1 x D2 ... Dn), where N is the batch size, C is the number of channels. Statistics are computed for every channel of C over N and D1 to Dn dimensions. For image data, input dimensions become (N x C x H x W). The op also accepts single dimension input of size N in which case C is assumed to be 1 |
 | `scale` | `Scale` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Scale tensor of shape (C). |
@@ -71,7 +71,7 @@ This operator has **optional** inputs/outputs. See [the doc](IR.md) for more det
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The output tensor of the same shape as X |
 | `running_mean` | `RunningMean` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | The running mean after the BatchNormalization operator. |
@@ -79,7 +79,7 @@ This operator has **optional** inputs/outputs. See [the doc](IR.md) for more det
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `epsilon` | `Epsilon` | `float` | no | `9.999999747378752e-06` | The epsilon value to use to avoid division by zero. |
 | `momentum` | `Momentum` | `float` | no | `0.8999999761581421` | Factor used in computing the running mean and variance.e.g., running_mean = running_mean * momentum + mean * (1 - momentum). |

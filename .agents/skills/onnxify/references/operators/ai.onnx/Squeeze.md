@@ -26,20 +26,20 @@ the shape. If an axis is selected with shape entry not equal to one, an error is
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `data` | `Data` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(float4e2m1)`<br>`tensor(float8e4m3fn)`<br>`tensor(float8e4m3fnuz)`<br>`tensor(float8e5m2)`<br>`tensor(float8e5m2fnuz)`<br>`tensor(float8e8m0)`<br>`tensor(int16)`<br>`tensor(int2)`<br>`tensor(int32)`<br>`tensor(int4)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint2)`<br>`tensor(uint32)`<br>`tensor(uint4)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | Tensors with at least max(dims) dimensions. |
 | `axes` | `Axes` | `IOnnxGraphEdge` | `tensor(int64)` | optional | 1D tensor of integers indicating the dimensions to squeeze. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(data). |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `squeezed` | `Squeezed` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(float4e2m1)`<br>`tensor(float8e4m3fn)`<br>`tensor(float8e4m3fnuz)`<br>`tensor(float8e5m2)`<br>`tensor(float8e5m2fnuz)`<br>`tensor(float8e8m0)`<br>`tensor(int16)`<br>`tensor(int2)`<br>`tensor(int32)`<br>`tensor(int4)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint2)`<br>`tensor(uint32)`<br>`tensor(uint4)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | Reshaped tensor with same data as input. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | [none] |  |  |  |  |  |
 

@@ -23,7 +23,7 @@ GRUTraining operator is adapted from GRU operator (https://github.com/onnx/onnx/
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Original input to the GRU cell. |
 | `W` | `W` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Input weight parameters to the GRU cell. |
@@ -34,7 +34,7 @@ GRUTraining operator is adapted from GRU operator (https://github.com/onnx/onnx/
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `HAll` | `HAll` | `IOnnxGraphEdge` | `tensor(float)` | optional | Hidden states over all sequence steps. |
 | `HFinal` | `HFinal` | `IOnnxGraphEdge` | `tensor(float)` | optional | Final hidden state. |
@@ -42,7 +42,7 @@ GRUTraining operator is adapted from GRU operator (https://github.com/onnx/onnx/
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `activation_alpha` | `ActivationAlpha` | `float[]` | no | `[null]` | Optional scaling values used by some activation functions. The values are consumed in the order of activation functions, for example (f, g) in GRUTraining. Default values are the same as of corresponding ONNX operators.For example with LeakyRelu, the default alpha is 0.01. |
 | `activation_beta` | `ActivationBeta` | `float[]` | no | `[null]` | Optional scaling values used by some activation functions. The values are consumed in the order of activation functions, for example (f, g) in GRUTraining. Default values are the same as of corresponding ONNX operators. |

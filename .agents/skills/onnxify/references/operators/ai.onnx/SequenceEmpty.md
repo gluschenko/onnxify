@@ -23,19 +23,19 @@ Construct an empty tensor sequence, with given data type.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | [schema missing] |  |  |  |  |  |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `seq(tensor(bool))`<br>`seq(tensor(complex128))`<br>`seq(tensor(complex64))`<br>`seq(tensor(double))`<br>`seq(tensor(float))`<br>`seq(tensor(float16))`<br>`seq(tensor(int16))`<br>`seq(tensor(int32))`<br>`seq(tensor(int64))`<br>`seq(tensor(int8))`<br>`seq(tensor(string))`<br>`seq(tensor(uint16))`<br>`seq(tensor(uint32))`<br>`seq(tensor(uint64))`<br>`seq(tensor(uint8))` | single, required | Empty sequence. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `dtype` | `Dtype` | `Nullable<long>` | no | `[null]` | (Optional) The data type of the tensors in the output sequence. The default type is 'float'. |
 

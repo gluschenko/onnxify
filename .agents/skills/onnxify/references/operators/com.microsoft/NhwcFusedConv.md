@@ -24,7 +24,7 @@ Only has fp16 implementation as of 2023/04/15.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(float16)` | single, required |  |
 | `W` | `W` | `IOnnxGraphEdge` | `tensor(float16)` | single, required |  |
@@ -33,13 +33,13 @@ Only has fp16 implementation as of 2023/04/15.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(float16)` | single, required |  |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `activation` | `Activation` | `string` | no | `[null]` |  |
 | `activation_params` | `ActivationParams` | `float[]` | no | `[null]` |  |

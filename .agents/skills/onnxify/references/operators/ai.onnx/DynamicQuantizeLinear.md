@@ -49,13 +49,13 @@ y = saturate (round (x / y_scale) + y_zero_point)
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `x` | `X` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Input tensor |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `y` | `Y` | `IOnnxGraphEdge` | `tensor(uint8)` | single, required | Quantized output tensor |
 | `y_scale` | `YScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Output scale. It's a scalar, which means a per-tensor/layer quantization. |
@@ -63,7 +63,7 @@ y = saturate (round (x / y_scale) + y_zero_point)
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | [none] |  |  |  |  |  |
 

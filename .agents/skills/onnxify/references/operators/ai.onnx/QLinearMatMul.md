@@ -33,7 +33,7 @@ Production must never overflow, and accumulation may overflow if and only if in 
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `a` | `A` | `IOnnxGraphEdge` | `tensor(float8e4m3fn)`<br>`tensor(float8e4m3fnuz)`<br>`tensor(float8e5m2)`<br>`tensor(float8e5m2fnuz)`<br>`tensor(int8)`<br>`tensor(uint8)` | single, required | N-dimensional quantized matrix a |
 | `a_scale` | `AScale` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | scale of quantized input a |
@@ -46,13 +46,13 @@ Production must never overflow, and accumulation may overflow if and only if in 
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `y` | `Y` | `IOnnxGraphEdge` | `tensor(float8e4m3fn)`<br>`tensor(float8e4m3fnuz)`<br>`tensor(float8e5m2)`<br>`tensor(float8e5m2fnuz)`<br>`tensor(int8)`<br>`tensor(uint8)` | single, required | Quantized matrix multiply results from a * b |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | [none] |  |  |  |  |  |
 

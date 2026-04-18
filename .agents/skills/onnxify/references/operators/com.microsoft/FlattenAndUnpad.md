@@ -23,21 +23,21 @@ FlattenAndUnpad operator flattens the first two dims of input tensor, and unpad 
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int32)`<br>`tensor(int64)` | single, required | input data of rank N + 1, shape is [M1, M2, d2, ..., dN] |
 | `indices` | `Indices` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | 1D Tensor of int32/int64 indices, shape is [d1], each element's value ranges in [0, M1*M2). |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int32)`<br>`tensor(int64)` | single, required | output data of rank N, [d1, d2, ..., dN] |
 | `unflatten_dims` | `UnflattenDims` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | 1D tensor with two values, [M1, M2]. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | [none] |  |  |  |  |  |
 

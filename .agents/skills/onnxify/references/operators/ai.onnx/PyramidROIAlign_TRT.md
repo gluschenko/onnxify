@@ -23,7 +23,7 @@ Pyramid ROI Align TensorRT Plugin.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `boxes` | `Boxes` | `IOnnxGraphEdge` | `tensor(float)` | single, required | The boxes input tensor. |
 | `feature_map_0` | `FeatureMap0` | `IOnnxGraphEdge` | `tensor(float)` | single, required | The first feature map input tensor. |
@@ -33,13 +33,13 @@ Pyramid ROI Align TensorRT Plugin.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `patches` | `Patches` | `IOnnxGraphEdge` | `tensor(float)` | single, required | The cropped patches output tensor. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `plugin_version` | `PluginVersion` | `string` | yes | `[null]` | Version number of the TRT plugin. |
 | `pooled_size` | `PooledSize` | `long` | yes | `[null]` | Pooled size. |

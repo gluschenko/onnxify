@@ -31,7 +31,7 @@ GatherBlockQuantized is a Gather with data quantized. It is similar to Gather (h
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `data` | `Data` | `IOnnxGraphEdge` | `tensor(int4)`<br>`tensor(uint4)`<br>`tensor(uint8)` | single, required | Tensor of rank r >= 1. Block-wise quantized. |
 | `indices` | `Indices` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | Tensor of int32/int64 indices, of any rank q. All index values are expected to be within bounds [-s, s-1] along axis of size s. It is an error if any of the index values are out of bounds. |
@@ -40,13 +40,13 @@ GatherBlockQuantized is a Gather with data quantized. It is similar to Gather (h
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Dequantized output tensor of rank q + (r - 1). |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `bits` | `Bits` | `long` | no | `4` | Number of bits used for weight quantization. Must be either 4 or 8. |
 | `block_size` | `BlockSize` | `long` | no | `128` | (Optional) block size used for weight quantization. It needs to be a power of 2 and not smaller than 16. |

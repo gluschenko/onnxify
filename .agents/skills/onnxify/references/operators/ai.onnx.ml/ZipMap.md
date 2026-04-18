@@ -26,19 +26,19 @@ Creates a map from the input and the attributes.<br>
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(float)` | single, required | The input values |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Z` | `Z` | `IOnnxGraphEdge` | `seq(map(int64,tensor(float)))`<br>`seq(map(string,tensor(float)))` | single, required | The output map |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `classlabels_int64s` | `ClasslabelsInt64s` | `long[]` | no | `[null]` | The keys when using int keys.<br>One and only one of the 'classlabels_*' attributes must be defined. |
 | `classlabels_strings` | `ClasslabelsStrings` | `string[]` | no | `[null]` | The keys when using string keys.<br>One and only one of the 'classlabels_*' attributes must be defined. |

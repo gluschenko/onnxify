@@ -33,7 +33,7 @@ is the same as `x_scale`. The output type also determines the precision of the m
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `x` | `X` | `IOnnxGraphEdge` | `tensor(float4e2m1)`<br>`tensor(float8e4m3fn)`<br>`tensor(float8e4m3fnuz)`<br>`tensor(float8e5m2)`<br>`tensor(float8e5m2fnuz)`<br>`tensor(int16)`<br>`tensor(int2)`<br>`tensor(int32)`<br>`tensor(int4)`<br>`tensor(int8)`<br>`tensor(uint16)`<br>`tensor(uint2)`<br>`tensor(uint4)`<br>`tensor(uint8)` | single, required | N-D quantized input tensor to be de-quantized. |
 | `x_scale` | `XScale` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(float8e8m0)` | single, required | Scale for input `x`. For per-tensor/layer dequantization the scale is a scalar, for per per-axis dequantization it is a 1-D Tensor and for blocked dequantization it has the same shape as the input, except for one dimension in which blocking is performed. |
@@ -41,13 +41,13 @@ is the same as `x_scale`. The output type also determines the precision of the m
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `y` | `Y` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | N-D full precision output tensor. It has the same shape as input `x`. The data type is specified by the `output_dtype` attribute or, in its absence, the type of `x_scale`. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `axis` | `Axis` | `long` | no | `1` | (Optional) The axis of the dequantizing dimension of the input tensor. Used for per-axis and blocked quantization. Negative value means counting dimensions from the back. Accepted range is `[-r, r-1]` where `r = rank(input)`. |
 | `block_size` | `BlockSize` | `long` | no | `0` | (Optional) The size of the quantization block (number of times every scale is replicated). Used only for blocked quantization. The block size is a positive integer. Given `x` shape `(D0, ..., Di, ..., Dn)`, `y_scale` shape `(S0, ... Si, ...Sn)` and `axis=i`, the accepted range is `[ceil(Di/Si), ceil(Di/(Si-1))-1]` |

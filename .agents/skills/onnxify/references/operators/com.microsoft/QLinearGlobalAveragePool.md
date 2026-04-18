@@ -25,7 +25,7 @@ equal to the spatial dimension of input tensor. Input is of type uint8_t or int8
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Input data tensor from the previous operator; According to channels_last, dimensions for image case are (N x C x H x W), or (N x H x W x C) where N is the batch size, C is the number of channels, and H and W are the height and the width of the data. For non image case, the dimensions are in the form of (N x C x D1 x D2 ... Dn), or (N x D1 X D2 ... Dn x C) where N is the batch size. |
 | `x_scale` | `XScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Scale of quantized input 'X'. It must be a scalar. |
@@ -35,13 +35,13 @@ equal to the spatial dimension of input tensor. Input is of type uint8_t or int8
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Output data tensor from pooling across the input tensor. The output tensor has the same rank as the input. with the N and C value keep it value, while the otherdimensions are all 1. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `channels_last` | `ChannelsLast` | `long` | no | `0` |  |
 

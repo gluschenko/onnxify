@@ -52,7 +52,7 @@ Output: [10, 8, 6]
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `start` | `Start` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)` | single, required | Scalar. First entry for the range of output values. |
 | `limit` | `Limit` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)` | single, required | Scalar. Exclusive upper limit for the range of output values. |
@@ -60,13 +60,13 @@ Output: [10, 8, 6]
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)` | single, required | A 1-D tensor with same type as the inputs containing generated range of values. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | [none] |  |  |  |  |  |
 

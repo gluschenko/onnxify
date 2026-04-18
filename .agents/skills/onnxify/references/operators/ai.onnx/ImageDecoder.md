@@ -45,19 +45,19 @@ also referred as "smooth" or "fancy" upsampling.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `encoded_stream` | `EncodedStream` | `IOnnxGraphEdge` | `tensor(uint8)` | single, required | Encoded stream |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `image` | `Image` | `IOnnxGraphEdge` | `tensor(uint8)` | single, required | Decoded image |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `pixel_format` | `PixelFormat` | `string` | no | `RGB` | Pixel format. Can be one of "RGB", "BGR", or "Grayscale". |
 

@@ -32,7 +32,7 @@ Support per column quantized weight, ie, scale_B is 1-D vector of size [#cols of
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `A` | `A` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | 3-dimensional matrix A |
 | `scale_A` | `ScaleA` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the input A. |
@@ -45,13 +45,13 @@ Support per column quantized weight, ie, scale_B is 1-D vector of size [#cols of
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | Matrix multiply results from A * B |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `order_A` | `OrderA` | `long` | yes | `[null]` | cublasLt order of matrix A. See the schema of QuantizeWithOrder for order definition. |
 | `order_B` | `OrderB` | `long` | yes | `[null]` | cublasLt order of matrix B |

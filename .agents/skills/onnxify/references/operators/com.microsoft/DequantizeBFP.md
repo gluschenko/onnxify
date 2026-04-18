@@ -25,7 +25,7 @@ More documentation on the BFP format can be found in this paper: https://www.mic
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `x` | `X` | `IOnnxGraphEdge` | `tensor(uint8)` | single, required | 1-D, contiguous, raw, BFP data to be de-quantized. |
 | `shape` | `Shape` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | shape of the original tensor. |
@@ -33,13 +33,13 @@ More documentation on the BFP format can be found in this paper: https://www.mic
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `y` | `Y` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | de-quantized tensor. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `bfp_type` | `BfpType` | `long` | yes | `[null]` | The type of BFP - must match with the BFPType enum |
 | `block_dim` | `BlockDim` | `long` | no | `-1` | Each bounding box spans this dimension.Typically, the block dimension corresponds to the reduction dimension of the matrix multipication that consumes the output of this operator.For example, for a 2D matrix multiplication A@W, QuantizeBFP(A) would use block_dim 1 and QuantizeBFP(W) would use block_dim 0.The default is the last dimension. |

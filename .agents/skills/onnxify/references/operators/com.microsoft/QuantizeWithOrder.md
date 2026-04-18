@@ -23,20 +23,20 @@ Quantize input matrix to specific layout used in cublaslt.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | TODO: input tensor of (ROWS, COLS). if less than 2d, will broadcast to (1, X). If 3d, it is treated as (B, ROWS, COS) |
 | `scale_input` | `ScaleInput` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the input |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | output tensor |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `order_input` | `OrderInput` | `long` | yes | `[null]` | cublasLt order of input matrix. ORDER_COL = 0, ORDER_ROW = 1, ORDER_COL32 = 2, ORDER_COL4_4R2_8C = 3, ORDER_COL32_2R_4R4 = 4. Please refer https://docs.nvidia.com/cuda/cublas/index.html#cublasLtOrder_t for their meaning. |
 | `order_output` | `OrderOutput` | `long` | yes | `[null]` | cublasLt order of output matrix. |

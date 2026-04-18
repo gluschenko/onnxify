@@ -23,7 +23,7 @@ Return elements, either from X or Y, depending on condition.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `condition` | `Condition` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | When True (nonzero), yield x, otherwise yield y |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Y's zero point. |
@@ -37,13 +37,13 @@ Return elements, either from X or Y, depending on condition.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Z` | `Z` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Tensor of shape equal to the broadcasted shape of condition, X, and Y |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | [none] |  |  |  |  |  |
 

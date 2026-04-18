@@ -23,7 +23,7 @@ Variant of BatchNormalization with additional output for saved_mean/inv_std_dev.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Input tensor. |
 | `scale` | `Scale` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Scale tensor of shape (C). |
@@ -33,7 +33,7 @@ Variant of BatchNormalization with additional output for saved_mean/inv_std_dev.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The output tensor of the same shape as X |
 | `running_mean` | `RunningMean` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | The running mean after BN. |
@@ -43,7 +43,7 @@ Variant of BatchNormalization with additional output for saved_mean/inv_std_dev.
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `epsilon` | `Epsilon` | `float` | no | `9.999999747378752e-06` | epsilon value |
 | `momentum` | `Momentum` | `float` | no | `0.8999999761581421` | momentum value |

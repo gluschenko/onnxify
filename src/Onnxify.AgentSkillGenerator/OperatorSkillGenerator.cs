@@ -522,7 +522,7 @@ internal static class OperatorSkillGenerator
         builder.AppendLine();
         builder.AppendLine("## Inputs");
         builder.AppendLine();
-        builder.AppendLine("| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |");
+        builder.AppendLine("| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |");
         builder.AppendLine("| --- | --- | --- | --- | --- | --- |");
         if (op.Schema is null || op.Inputs.Count == 0)
         {
@@ -551,7 +551,7 @@ internal static class OperatorSkillGenerator
         builder.AppendLine();
         builder.AppendLine("## Outputs");
         builder.AppendLine();
-        builder.AppendLine("| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |");
+        builder.AppendLine("| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |");
         builder.AppendLine("| --- | --- | --- | --- | --- | --- |");
         if (op.Schema is null || op.Outputs.Count == 0)
         {
@@ -580,7 +580,7 @@ internal static class OperatorSkillGenerator
         builder.AppendLine();
         builder.AppendLine("## Attributes");
         builder.AppendLine();
-        builder.AppendLine("| JSON name | Onnxify property | Type | Required | Default | Description |");
+        builder.AppendLine("| Name | Onnxify property | Type | Required | Default | Description |");
         builder.AppendLine("| --- | --- | --- | --- | --- | --- |");
         if (op.Schema is null)
         {

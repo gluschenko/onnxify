@@ -25,19 +25,19 @@ Converts a map to a tensor.<br>The map key must be an int64 and the values will 
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `map(int64,tensor(float))`<br>`map(int64,tensor(string))` | single, required | The input map that is to be cast to a tensor |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(int64)`<br>`tensor(string)` | single, required | A tensor representing the same data as the input map, ordered by their keys |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `cast_to` | `CastTo` | `string` | no | `TO_FLOAT` | A string indicating the desired element type of the output tensor, one of 'TO_FLOAT', 'TO_STRING', 'TO_INT64'. |
 | `map_form` | `MapForm` | `string` | no | `DENSE` | Indicates whether to only output as many values as are in the input (dense), or position the input based on using the key of the map as the index of the output (sparse).<br>One of 'DENSE', 'SPARSE'. |

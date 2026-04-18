@@ -27,7 +27,7 @@ Negative value means counting positions from the back.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input_sequence` | `InputSequence` | `IOnnxGraphEdge` | `seq(tensor(bool))`<br>`seq(tensor(complex128))`<br>`seq(tensor(complex64))`<br>`seq(tensor(double))`<br>`seq(tensor(float))`<br>`seq(tensor(float16))`<br>`seq(tensor(int16))`<br>`seq(tensor(int32))`<br>`seq(tensor(int64))`<br>`seq(tensor(int8))`<br>`seq(tensor(string))`<br>`seq(tensor(uint16))`<br>`seq(tensor(uint32))`<br>`seq(tensor(uint64))`<br>`seq(tensor(uint8))` | single, required | Input sequence. |
 | `tensor` | `Tensor` | `IOnnxGraphEdge` | `tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | Input tensor to be inserted into the input sequence. |
@@ -35,13 +35,13 @@ Negative value means counting positions from the back.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output_sequence` | `OutputSequence` | `IOnnxGraphEdge` | `seq(tensor(bool))`<br>`seq(tensor(complex128))`<br>`seq(tensor(complex64))`<br>`seq(tensor(double))`<br>`seq(tensor(float))`<br>`seq(tensor(float16))`<br>`seq(tensor(int16))`<br>`seq(tensor(int32))`<br>`seq(tensor(int64))`<br>`seq(tensor(int8))`<br>`seq(tensor(string))`<br>`seq(tensor(uint16))`<br>`seq(tensor(uint32))`<br>`seq(tensor(uint64))`<br>`seq(tensor(uint8))` | single, required | Output sequence that contains the inserted tensor at given position. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | [none] |  |  |  |  |  |
 

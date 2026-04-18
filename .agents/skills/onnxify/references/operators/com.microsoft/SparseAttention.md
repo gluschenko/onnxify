@@ -54,7 +54,7 @@ For performance, past_key and present_key share same memory buffer, and past_val
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `query` | `Query` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Query with shape (batch_size, sequence_length, num_heads * head_size), or packed QKV with shape is(batch_size, sequence_length, d) where d is (num_heads + 2 * kv_num_heads) * head_size. |
 | `key` | `Key` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Key with shape (batch_size, sequence_length, kv_num_heads * head_size) |
@@ -70,7 +70,7 @@ For performance, past_key and present_key share same memory buffer, and past_val
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 3D output tensor with shape (batch_size, sequence_length, num_heads * head_size) |
 | `present_key` | `PresentKey` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Updated key cache with shape (batch_size, kv_num_heads, max_cache_sequence_length, head_size). |
@@ -78,7 +78,7 @@ For performance, past_key and present_key share same memory buffer, and past_val
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `do_rotary` | `DoRotary` | `Nullable<long>` | no | `[null]` | Whether to use rotary position embedding. Default value is 0. |
 | `kv_num_heads` | `KvNumHeads` | `long` | yes | `[null]` | Number of attention heads for key and value |

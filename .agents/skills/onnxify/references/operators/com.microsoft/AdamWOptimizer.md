@@ -23,7 +23,7 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `lr` | `Lr` | `IOnnxGraphEdge` | `tensor(float)` | single, required | The learning rate. |
 | `step` | `Step` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | The update count of weights. It should be a scalar. |
@@ -35,7 +35,7 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `updated_flag` | `UpdatedFlag` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | Whether gradient is applied or not. |
 | `updated_weights` | `UpdatedWeights` | `IOnnxGraphEdge` | `seq(tensor(double))`<br>`seq(tensor(float))`<br>`seq(tensor(float16))` | optional | Sequence of weights after optimize. |
@@ -44,7 +44,7 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `adam_mode` | `AdamMode` | `long` | no | `0` | Modes for applying bias correction and weight decay (default 0) 0 : Weight decay is applied before weight is updated. Computation aligned with Torch AdamW. In this mode, correct_bias should be 1 to keep aligned with PyTorch.1 : Weight decay is applied after weight is updated. Computation is aligned with Huggingface AdamW. |
 | `alpha` | `Alpha` | `float` | no | `0.8999999761581421` | Coefficient of previously accumulated gradient in running average. |

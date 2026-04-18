@@ -34,7 +34,7 @@ This operator has **optional** inputs/outputs. See [the doc](IR.md) for more det
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `A` | `A` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(uint32)`<br>`tensor(uint64)` | single, required | Input tensor A. The shape of A should be (M, K) if transA is 0, or (K, M) if transA is non-zero. |
 | `B` | `B` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(uint32)`<br>`tensor(uint64)` | single, required | Input tensor B. The shape of B should be (K, N) if transB is 0, or (N, K) if transB is non-zero. |
@@ -42,13 +42,13 @@ This operator has **optional** inputs/outputs. See [the doc](IR.md) for more det
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(uint32)`<br>`tensor(uint64)` | single, required | Output tensor of shape (M, N). |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `alpha` | `Alpha` | `float` | no | `1.0` | Scalar multiplier for the product of input tensors A * B. |
 | `beta` | `Beta` | `float` | no | `1.0` | Scalar multiplier for input tensor C. |

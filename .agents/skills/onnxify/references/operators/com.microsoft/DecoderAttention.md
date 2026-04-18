@@ -24,7 +24,7 @@ Some boolean parameters are passed by runtime input for generic purpose
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `query` | `Query` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 3D input tensor with shape (sequence_length, batch_size, hidden_size), hidden_size = num_heads * head_size |
 | `key` | `Key` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 3D input tensor with shape (total_sequence_length, batch_size, hidden_size) |
@@ -41,7 +41,7 @@ Some boolean parameters are passed by runtime input for generic purpose
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 3D output tensor with shape (sequence_length, batch_size, hidden_size) |
 | `new_key_cache` | `NewKeyCache` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | output tensor with shape (batch_size, num_heads, new sequence_length, head_size) |
@@ -49,7 +49,7 @@ Some boolean parameters are passed by runtime input for generic purpose
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `mask_filter_value` | `MaskFilterValue` | `Nullable<float>` | no | `[null]` | The value to be filled in the attention mask. Default value is -10000.0f |
 | `num_heads` | `NumHeads` | `long` | yes | `[null]` | Number of attention heads |

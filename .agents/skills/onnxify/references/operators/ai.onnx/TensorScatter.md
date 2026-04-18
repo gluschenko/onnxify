@@ -48,7 +48,7 @@ in the batch.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `past_cache` | `PastCache` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(float4e2m1)`<br>`tensor(float8e4m3fn)`<br>`tensor(float8e4m3fnuz)`<br>`tensor(float8e5m2)`<br>`tensor(float8e5m2fnuz)`<br>`tensor(float8e8m0)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int4)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint4)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | Past state cache for key or value with shape `(batch_size, D1, D2, ..., max_sequence_length, ..., Dn)`. |
 | `update` | `Update` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(float4e2m1)`<br>`tensor(float8e4m3fn)`<br>`tensor(float8e4m3fnuz)`<br>`tensor(float8e5m2)`<br>`tensor(float8e5m2fnuz)`<br>`tensor(float8e8m0)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int4)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint4)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | New update tensor with shape `(batch_size, D1, D2, ..., sequence_length, ..., Dn)`. |
@@ -56,13 +56,13 @@ in the batch.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `present_cache` | `PresentCache` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(float4e2m1)`<br>`tensor(float8e4m3fn)`<br>`tensor(float8e4m3fnuz)`<br>`tensor(float8e5m2)`<br>`tensor(float8e5m2fnuz)`<br>`tensor(float8e8m0)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int4)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint4)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | Updated cache. Same shape as `past_cache`. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `axis` | `Axis` | `long` | no | `-2` | Sequence dimension of the `past_cache` and `update` tensors. It cannot be 0 (the batch dimension). Default is -2. |
 | `mode` | `Mode` | `string` | no | `linear` | Write mode of cache update. Supported modes include `linear` and `circular`. `linear` mode requires write_indices+sequence_length<=max_sequence_length. For `circular` mode, the updates happen in wrap-around fashion, ie, the update index is modulo `max_sequence_length` |

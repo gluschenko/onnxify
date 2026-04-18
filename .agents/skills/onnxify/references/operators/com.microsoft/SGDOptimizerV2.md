@@ -23,7 +23,7 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `lr` | `Lr` | `IOnnxGraphEdge` | `tensor(float)` | single, required | The learning rate. |
 | `weights` | `Weights` | `IOnnxGraphEdge` | `seq(tensor(double))`<br>`seq(tensor(float))`<br>`seq(tensor(float16))` | single, required | Sequence of weights to optimize. |
@@ -32,14 +32,14 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `update_completed` | `UpdateCompleted` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | Whether gradient is applied or not. |
 | `updated_weights` | `UpdatedWeights` | `IOnnxGraphEdge` | `seq(tensor(double))`<br>`seq(tensor(float))`<br>`seq(tensor(float16))` | optional | Sequence of weights after optimize. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | [none] |  |  |  |  |  |
 

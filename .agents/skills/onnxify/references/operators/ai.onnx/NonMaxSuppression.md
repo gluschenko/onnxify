@@ -29,7 +29,7 @@ The bounding box coordinates corresponding to the selected indices can then be o
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `boxes` | `Boxes` | `IOnnxGraphEdge` | `tensor(float)` | single, required | An input tensor with shape [num_batches, spatial_dimension, 4]. The single box data format is indicated by center_point_box. |
 | `scores` | `Scores` | `IOnnxGraphEdge` | `tensor(float)` | single, required | An input tensor with shape [num_batches, num_classes, spatial_dimension] |
@@ -39,13 +39,13 @@ The bounding box coordinates corresponding to the selected indices can then be o
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `selected_indices` | `SelectedIndices` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | selected indices from the boxes tensor. [num_selected_indices, 3], the selected index format is [batch_index, class_index, box_index]. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `center_point_box` | `CenterPointBox` | `long` | no | `0` | Integer indicate the format of the box data. The default is 0. 0 - the box data is supplied as [y1, x1, y2, x2] where (y1, x1) and (y2, x2) are the coordinates of any diagonal pair of box corners and the coordinates can be provided as normalized (i.e., lying in the interval [0, 1]) or absolute. Mostly used for TF models. 1 - the box data is supplied as [x_center, y_center, width, height]. Mostly used for Pytorch models. |
 

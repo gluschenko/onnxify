@@ -23,20 +23,20 @@ Support Vector Machine classifier
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int32)`<br>`tensor(int64)` | single, required | Data to be classified. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int64)`<br>`tensor(string)` | single, required | Classification outputs (one class per example). |
 | `Z` | `Z` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Class scores (one per class per example), if prob_a and prob_b are provided they are probabilities for each class, otherwise they are raw scores. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `classlabels_ints` | `ClasslabelsInts` | `long[]` | no | `[null]` | Class labels if using integer labels.<br>One and only one of the 'classlabels_*' attributes must be defined. |
 | `classlabels_strings` | `ClasslabelsStrings` | `string[]` | no | `[null]` | Class labels if using string labels.<br>One and only one of the 'classlabels_*' attributes must be defined. |

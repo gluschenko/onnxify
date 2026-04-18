@@ -31,7 +31,7 @@ The activation attribute can be used to enable activation after group normalizat
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Input data tensor. Dimensions are (N x H x W x C) when channels_last is 1 or (N x C x H x W) otherwise, where N is the batch size, C is the number of channels, and H and W are the height and width of the data |
 | `gamma` | `Gamma` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 1D gamma tensor for normalization with shape (C), where C is number of channels |
@@ -39,13 +39,13 @@ The activation attribute can be used to enable activation after group normalizat
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | The output tensor of the same shape as X |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `activation` | `Activation` | `long` | yes | `[null]` | Activation after group normalization: 0 for None, 1 for SiLU |
 | `channels_last` | `ChannelsLast` | `long` | no | `1` | 1 if the input and output are in the NHWC layout, 0 if it is in the NCHW layout. Defaults to 1. |

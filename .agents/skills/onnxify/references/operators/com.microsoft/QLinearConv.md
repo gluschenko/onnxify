@@ -23,7 +23,7 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `x` | `X` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required |  |
 | `x_scale` | `XScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required |  |
@@ -37,13 +37,13 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `y` | `Y` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required |  |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `auto_pad` | `AutoPad` | `string` | no | `NOTSET` |  |
 | `channels_last` | `ChannelsLast` | `long` | no | `0` |  |

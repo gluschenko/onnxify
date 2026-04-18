@@ -23,7 +23,7 @@ Compute scaled sum of multiple tensors in same shape (no broadcasting).Formula: 
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input_0` | `Input0` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | input tensor |
 | `input_1` | `Input1` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | input tensor |
@@ -31,13 +31,13 @@ Compute scaled sum of multiple tensors in same shape (no broadcasting).Formula: 
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | output tensor |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `scale_0` | `Scale0` | `float` | yes | `[null]` | Scale for input_0. |
 | `scale_1` | `Scale1` | `float` | yes | `[null]` | Scale for input_1. |

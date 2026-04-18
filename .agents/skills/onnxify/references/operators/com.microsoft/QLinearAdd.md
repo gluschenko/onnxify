@@ -25,7 +25,7 @@ C = (A_scale * (A - A_zero_point) + B_scale * (B - B_zero_point))/C_scale + C_ze
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `A` | `A` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | First operand. |
 | `A_scale` | `AScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Input A's scale. It's a scalar, which means a per-tensor/layer quantization. |
@@ -38,13 +38,13 @@ C = (A_scale * (A - A_zero_point) + B_scale * (B - B_zero_point))/C_scale + C_ze
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `C` | `C` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Result, has same element type as two inputs |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | [none] |  |  |  |  |  |
 

@@ -42,7 +42,7 @@ onnx_model = gemma_rotary_embedding.to_model_proto()
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `emb` | `Emb` | `IOnnxGraphEdge` | `tensor(float)` | single, required | embedding - 3D tensor with shape (batch_size, seq_len, dim) |
 | `q` | `Q` | `IOnnxGraphEdge` | `tensor(float16)` | single, required | q state - 4D tensor with shape (batch_size, num_heads, seq_len, dim) |
@@ -52,14 +52,14 @@ onnx_model = gemma_rotary_embedding.to_model_proto()
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output1` | `Output1` | `IOnnxGraphEdge` | `tensor(float16)` | single, required | 4D tensor with shape (batch_size, num_heads, seq_len, dim) |
 | `output2` | `Output2` | `IOnnxGraphEdge` | `tensor(float16)` | single, required | 4D tensor with shape (batch_size, num_heads, seq_len, dim) |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | [none] |  |  |  |  |  |
 

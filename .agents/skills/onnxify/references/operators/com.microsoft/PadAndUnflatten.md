@@ -23,7 +23,7 @@ PadAndUnflatten operator pads zero on the first axis, and unflatten the axis int
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | input data of rank N, shape is [d1, d2, ..., dN] |
 | `indices` | `Indices` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | 1D Tensor of int32/int64 indices, shape is [d1], each element's value ranges in [0, M1*M2). |
@@ -31,13 +31,13 @@ PadAndUnflatten operator pads zero on the first axis, and unflatten the axis int
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | output data of rank N+1, [M1, M2, d2, ..., dN] |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | [none] |  |  |  |  |  |
 

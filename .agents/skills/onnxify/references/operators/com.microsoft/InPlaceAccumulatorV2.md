@@ -23,7 +23,7 @@ In-place accumulator for tensors. Differs from older op by adding `overwrite_fla
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `accumulation_buffer` | `AccumulationBuffer` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | historical result of accumulator |
 | `value` | `Value` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | the value that will be added to the accumulator |
@@ -31,14 +31,14 @@ In-place accumulator for tensors. Differs from older op by adding `overwrite_fla
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `updated_flag` | `UpdatedFlag` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | Whether the update was completed |
 | `accumulation_buffer_out` | `AccumulationBufferOut` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | updated result of accumulator |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | [none] |  |  |  |  |  |
 

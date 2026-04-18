@@ -123,7 +123,7 @@ loss = np.sum(loss) / weight_total
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Input tensor of shape (N, C) or (N, C, d1, d2, ..., dk). |
 | `target` | `Target` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | Target tensor of shape (N) or (N, d1, d2, ..., dk). Target element value shall be in range of [0, C). If ignore_index is specified, it may have a value outside [0, C) and the target values should either be in the range [0, C) or have the value ignore_index. |
@@ -131,13 +131,13 @@ loss = np.sum(loss) / weight_total
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `loss` | `Loss` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The negative log likelihood loss |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `ignore_index` | `IgnoreIndex` | `Nullable<long>` | no | `[null]` | Specifies a target value that is ignored and does not contribute to the input gradient. It's an optional value. |
 | `reduction` | `Reduction` | `string` | no | `mean` | Type of reduction to apply to loss: none, sum, mean (default). 'none': the output is the loss for each sample. 'sum': the output will be summed. 'mean': the sum of the output will be divided by the sum of applied weights. |

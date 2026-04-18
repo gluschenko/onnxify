@@ -23,19 +23,19 @@ The underlying implementation is MurmurHash3_x86_32 generating low latency 32bit
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(string)`<br>`tensor(uint32)`<br>`tensor(uint64)` | single, required | An input tensor to hash. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(uint32)` | single, required | 32-bit hash value. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `positive` | `Positive` | `long` | no | `1` | If value is 1, output type is uint32_t, else int32_t. Default value is 1. |
 | `seed` | `Seed` | `long` | no | `0` | Seed for the hashing algorithm, unsigned 32-bit integer, default to 0. |

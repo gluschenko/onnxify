@@ -31,19 +31,19 @@ if input shape is [C] and shape [1, 1] if input shape is [1, C].
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(string)` | single, required | UTF-8 strings to normalize |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(string)` | single, required | UTF-8 Normalized strings |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `case_change_action` | `CaseChangeAction` | `string` | no | `NONE` | string enum that cases output to be lowercased/uppercases/unchanged. Valid values are "LOWER", "UPPER", "NONE". Default is "NONE" |
 | `is_case_sensitive` | `IsCaseSensitive` | `long` | no | `0` | Boolean. Whether the identification of stop words in X is case-sensitive. Default is false |

@@ -52,19 +52,19 @@ of [N, 0] then [N, 0].
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(string)` | single, required | Strings to tokenize |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(string)` | single, required | Tokenized strings |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `mark` | `Mark` | `long` | yes | `[null]` | Boolean whether to mark the beginning/end character with start of text character (0x02)/end of text character (0x03). |
 | `mincharnum` | `Mincharnum` | `long` | yes | `[null]` | Minimum number of characters allowed in the output. For example, if mincharnum is 2, tokens such as "A" and "B" would be ignored |

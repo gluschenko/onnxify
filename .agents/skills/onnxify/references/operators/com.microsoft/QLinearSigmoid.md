@@ -25,7 +25,7 @@ Wwhere the function `Sigmoid(x) = 1 / (1 + exp(-x))`
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Input tensor |
 | `X_scale` | `XScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Input X's scale. It's a scalar, which means a per-tensor/layer quantization. |
@@ -35,13 +35,13 @@ Wwhere the function `Sigmoid(x) = 1 / (1 + exp(-x))`
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Output tensor |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | [none] |  |  |  |  |  |
 

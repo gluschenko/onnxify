@@ -23,7 +23,7 @@ FakeQuant operator that fuses quantization->dequantization pattern into a single
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Tensor to be fake quantized. |
 | `scale` | `Scale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Quantization scale. It must be a scalar, which implies per-tensor quantization. The scalar value must be greater than 0. |
@@ -31,14 +31,14 @@ FakeQuant operator that fuses quantization->dequantization pattern into a single
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Input tensor after it has been fake quantized. It has the same shape as the input. |
 | `mask` | `Mask` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | Mask where values indicate if the quantized value was in qmin, qmax range. Needed for gradient computation. It has the same shape as the input. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `quant_max` | `QuantMax` | `long` | no | `255` | Maximum quantization value. |
 | `quant_min` | `QuantMin` | `long` | no | `0` | Minimum quantization value. |

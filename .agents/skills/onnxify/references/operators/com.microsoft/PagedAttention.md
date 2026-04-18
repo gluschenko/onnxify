@@ -43,7 +43,7 @@ cumulative_sequence_length records cumulated length of each sequence length.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `query` | `Query` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float16)` | single, required | Query with shape (num_tokens, hidden_size), or packed QKV with shape (num_tokens, d) where d is (num_heads * head_size + 2 * kv_num_heads * head_size). |
 | `key` | `Key` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float16)` | optional | Key with shape (num_tokens, kv_hidden_size) |
@@ -58,7 +58,7 @@ cumulative_sequence_length records cumulated length of each sequence length.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float16)` | single, required | 3D output tensor with shape (num_tokens, hidden_size) |
 | `key_cache_out` | `KeyCacheOut` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float16)` | optional | Block-based key cache with shape (num_blocks, block_size, kv_num_heads, head_size). This is always the same tensor as key_cache. |
@@ -66,7 +66,7 @@ cumulative_sequence_length records cumulated length of each sequence length.
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `do_rotary` | `DoRotary` | `Nullable<long>` | no | `[null]` | Whether to use rotary position embedding. Default value is 0. |
 | `kv_num_heads` | `KvNumHeads` | `long` | yes | `[null]` | Number of attention heads for k and v |

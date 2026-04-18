@@ -23,20 +23,20 @@ ReduceSumTraining
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `data` | `Data` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(uint32)`<br>`tensor(uint64)` | single, required | An input tensor. |
 | `axes` | `Axes` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | A list of integers, along which to reduce. The default is to reduce over all the dimensions of the input tensor. Accepted range is [-r, r-1] where r = rank(data). |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `reduced` | `Reduced` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(uint32)`<br>`tensor(uint64)` | single, required | Reduced output tensor. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `keepdims` | `Keepdims` | `long` | no | `1` | Keep the reduced dimension or not, default 1 mean keep reduced dimension. |
 | `noop_with_empty_axes` | `NoopWithEmptyAxes` | `long` | no | `0` | Perform reduction or not when axes is empty, default false mean perform reduction.when axes is empty and this attribute is set to true, input tensor will not be reduced,thus output tensor would be equivalent to input tensor. |

@@ -23,19 +23,19 @@ SummaryScalar
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(bool)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The scalar tensor to summarize as simple values. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `summary` | `Summary` | `IOnnxGraphEdge` | `tensor(string)` | single, required | The serialized Tensorboard Summary. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `tags` | `Tags` | `string[]` | yes | `[null]` | The tags corresponding to each input scalar. |
 

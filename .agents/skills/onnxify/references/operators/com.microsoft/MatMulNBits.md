@@ -36,7 +36,7 @@ For example, for 4 bits, the first 4 bits are stored in the lower 4 bits of a by
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `A` | `A` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The input tensor, not quantized. |
 | `B` | `B` | `IOnnxGraphEdge` | `tensor(uint8)` | single, required | Packed uint8 tensor of shape (N, k_blocks, blob_size), where k_blocks = ceil(K / block_size) and blob_size = (block_size * bits / 8). The quantized weights are stored in a bit-packed format along the K dimension, packed within each block_size. |
@@ -47,13 +47,13 @@ For example, for 4 bits, the first 4 bits are stored in the lower 4 bits of a by
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | tensor. The output tensor has the same rank as the input. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `K` | `K` | `long` | yes | `[null]` | Input feature dimension of the weight matrix. |
 | `N` | `N` | `long` | yes | `[null]` | Output feature dimension of the weight matrix. |

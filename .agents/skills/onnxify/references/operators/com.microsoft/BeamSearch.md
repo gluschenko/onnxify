@@ -23,7 +23,7 @@ Beam Search for text generation. Supports GPT-2 decoder.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input_ids` | `InputIds` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)`<br>`tensor(int32)` | single, required | The sequence used as a prompt for the generation in the encoder subgraph. Shape is (batch_size, sequence_length) |
 | `max_length` | `MaxLength` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | The maximum length of the sequence to be generated. Shape is (1) |
@@ -40,7 +40,7 @@ Beam Search for text generation. Supports GPT-2 decoder.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `sequences` | `Sequences` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | Word IDs of generated sequences. Shape is (batch_size, num_return_sequences, max_sequence_length) |
 | `sequences_scores` | `SequencesScores` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | Final beam score of the generated sequences. Shape is (batch_size, num_return_sequences) |
@@ -48,7 +48,7 @@ Beam Search for text generation. Supports GPT-2 decoder.
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `decoder` | `Decoder` | `OnnxGraph` | yes | `[null]` | Decoder subgraph to execute in a loop. |
 | `decoder_start_token_id` | `DecoderStartTokenId` | `long` | no | `-1` | The id of the token that indicates decoding starts. |

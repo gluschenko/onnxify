@@ -41,7 +41,7 @@ The operator only supports BERT like model with padding on right now.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Input tensor with shape (token_count, input_hidden_size) |
 | `weights` | `Weights` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Merged Q/K/V weights with shape (input_hidden_size, hidden_size + hidden_size + v_hidden_size) |
@@ -52,13 +52,13 @@ The operator only supports BERT like model with padding on right now.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 2D output tensor with shape (token_count, v_hidden_size) |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `num_heads` | `NumHeads` | `long` | yes | `[null]` | Number of attention heads |
 | `qkv_hidden_sizes` | `QkvHiddenSizes` | `long[]` | no | `[null]` | Hidden dimension of Q, K, V: hidden_size, hidden_size and v_hidden_size |

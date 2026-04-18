@@ -22,19 +22,19 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge[]` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | variadic, min arity 1 | tensors to be reduced |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge[]` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | variadic, min arity 1 | reduced tensors |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `group_type` | `GroupType` | `long` | no | `0` | 0 - global parallel group, 1 - data parallel group, 2 - node local data parallel group, 3 - cross node data parallel group, 4 - horozontal parallel, 5 - model parallel. |
 

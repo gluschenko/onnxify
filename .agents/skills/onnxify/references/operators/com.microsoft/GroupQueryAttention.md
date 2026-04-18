@@ -30,7 +30,7 @@ Supports continuous decoding for batch_size == 1 for CPU and CUDA.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `query` | `Query` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Query with shape (batch_size, sequence_length, hidden_size), or packed QKV with shape(batch_size, sequence_length, d) where d is (num_heads * head_size + 2 * kv_num_heads * head_size). |
 | `key` | `Key` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Key with shape (batch_size, kv_sequence_length, kv_hidden_size) |
@@ -47,7 +47,7 @@ Supports continuous decoding for batch_size == 1 for CPU and CUDA.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 3D output tensor with shape (batch_size, sequence_length, hidden_size) |
 | `present_key` | `PresentKey` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | present state key with support for format BNSH. When past_key uses same tensor as present_key(k-v buffer), it is of length max_sequence_length... otherwise of length past_sequence_length +kv_sequence_length. |
@@ -56,7 +56,7 @@ Supports continuous decoding for batch_size == 1 for CPU and CUDA.
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `do_rotary` | `DoRotary` | `Nullable<long>` | no | `[null]` | Whether to use rotary position embedding. Default value is 0. |
 | `kv_num_heads` | `KvNumHeads` | `long` | yes | `[null]` | Number of attention heads for k and v |

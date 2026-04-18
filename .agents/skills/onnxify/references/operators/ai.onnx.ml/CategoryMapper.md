@@ -30,19 +30,19 @@ Converts strings to integers and vice versa.<br>
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(int64)`<br>`tensor(string)` | single, required | Input data |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int64)`<br>`tensor(string)` | single, required | Output data. If strings are input, the output values are integers, and vice versa. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `cats_int64s` | `CatsInt64s` | `long[]` | no | `[null]` | The integers of the map. This sequence must be the same length as the 'cats_strings' sequence. |
 | `cats_strings` | `CatsStrings` | `string[]` | no | `[null]` | The strings of the map. This sequence must be the same length as the 'cats_int64s' sequence |

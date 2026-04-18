@@ -29,14 +29,14 @@ a list of batch_size * sequence_length elements, which is reshaped to 2D for con
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Input tensor with shape (batch_size, sequence_length, hidden_size) |
 | `sequence_token_count` | `SequenceTokenCount` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | Number of non-padding tokens in each sequence with shape (batch_size). |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | output tensor with shape (total_tokens, hidden_size) |
 | `token_offset` | `TokenOffset` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | Offset of non-padding tokens, and those of padding tokens. Its shape is (batch_size, sequence_length) |
@@ -45,7 +45,7 @@ a list of batch_size * sequence_length elements, which is reshaped to 2D for con
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | [none] |  |  |  |  |  |
 

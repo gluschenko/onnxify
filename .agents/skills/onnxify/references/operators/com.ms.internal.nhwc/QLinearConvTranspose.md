@@ -35,7 +35,7 @@ output_shape can also be explicitly specified in which case pads values are auto
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `x` | `X` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Input data tensor from previous layer; has size (N x C x H x W), where N is the batch size, C is the number of channels, and H and W are the height and width. Note that this is for the 2D image. Otherwise the size is (N x C x D1 x D2 ... x Dn) |
 | `x_scale` | `XScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Scale tensor for input 'x'. It's a scalar, which means a per-tensor/layer quantization. |
@@ -49,13 +49,13 @@ output_shape can also be explicitly specified in which case pads values are auto
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `y` | `Y` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Output data tensor that contains the result of the convolution. The output dimensions are functions of the kernel size, stride size, and pad lengths. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `auto_pad` | `AutoPad` | `string` | no | `NOTSET` | auto_pad must be either NOTSET, SAME_UPPER, SAME_LOWER or VALID. Where default value is NOTSET |
 | `dilations` | `Dilations` | `long[]` | no | `[null]` | dilation value along each spatial axis of the filter. If not present, the dilation defaults to 1 along each spatial axis. |

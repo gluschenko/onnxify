@@ -23,19 +23,19 @@ SummaryText
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge` | `tensor(string)` | single, required | The string tensor to render in the Tensorboard Text dashboard. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `summary` | `Summary` | `IOnnxGraphEdge` | `tensor(string)` | single, required | The serialized Tensorboard Summary. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `tag` | `Tag` | `string` | yes | `[null]` | The tag corresponding to the text data. |
 

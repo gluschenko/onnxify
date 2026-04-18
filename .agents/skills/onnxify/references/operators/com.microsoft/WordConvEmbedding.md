@@ -23,7 +23,7 @@ The WordConvEmbedding takes in a batch of sequence words and embed each word to 
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Sequence` | `Sequence` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | Specify batchs of sequence words to embedding |
 | `W` | `W` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Specify weights of conv |
@@ -32,13 +32,13 @@ The WordConvEmbedding takes in a batch of sequence words and embed each word to 
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(float)` | single, required | output |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `char_embedding_size` | `CharEmbeddingSize` | `Nullable<long>` | no | `[null]` | Integer representing the embedding vector size for each char.If not provide, use the char embedding size of embedding vector. |
 | `conv_window_size` | `ConvWindowSize` | `Nullable<long>` | no | `[null]` | This operator applies convolution to word from left to right with window equal to conv_window_size and stride to 1.Take word 'example' for example, with conv_window_size equal to 2, conv is applied to [ex],[xa], [am], [mp]...If not provide, use the first dimension of conv kernel shape. |

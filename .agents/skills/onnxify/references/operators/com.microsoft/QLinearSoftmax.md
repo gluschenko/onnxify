@@ -28,7 +28,7 @@ The output tensor has the same shape.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | The input tensor |
 | `X_scale` | `XScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Scale of quantized input 'X'. It must be a scalar. |
@@ -38,13 +38,13 @@ The output tensor has the same shape.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Output data tensor from pooling across the input tensor. The output tensor has the same rank as the input. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `axis` | `Axis` | `long` | no | `-1` | apply softmax to elements for dimensions axis,or all dims along with axis according to op-version |
 | `opset` | `Opset` | `long` | yes | `[null]` | opset version of corresponding SoftMax. |

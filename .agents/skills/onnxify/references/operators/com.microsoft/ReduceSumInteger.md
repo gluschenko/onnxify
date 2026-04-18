@@ -26,19 +26,19 @@ with the exception that numpy default keepdims to False instead of True.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `data` | `Data` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | An input tensor. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `reduced` | `Reduced` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(uint32)` | single, required | Reduced output tensor. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `axes` | `Axes` | `long[]` | yes | `[null]` | A list of integers, along which to reduce. The default is to reduce over all the dimensions of the input tensor. |
 | `keepdims` | `Keepdims` | `long` | yes | `[null]` | Keep the reduced dimension or not, default 1 mean keep reduced dimension. |

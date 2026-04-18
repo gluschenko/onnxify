@@ -23,7 +23,7 @@ Quantized version of Longformer Self Attention (using int8 with specific matrix 
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | 3D input tensor with shape (batch_size, sequence_length, hidden_size), hidden_size = num_heads * head_size |
 | `scale_input` | `ScaleInput` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the input |
@@ -42,13 +42,13 @@ Quantized version of Longformer Self Attention (using int8 with specific matrix 
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | 3D output tensor with shape (batch_size, sequence_length, hidden_size) |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `num_heads` | `NumHeads` | `long` | yes | `[null]` | Number of attention heads |
 | `order_global_weight` | `OrderGlobalWeight` | `long` | yes | `[null]` | cublasLt order of weight matrix |

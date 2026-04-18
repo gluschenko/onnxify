@@ -33,7 +33,7 @@ TODO: Support them if needed in the future.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input` | `Input` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | 3D input tensor with shape (batch_size, sequence_length, input_hidden_size) |
 | `scale_input` | `ScaleInput` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the input, scalar value (per tensor) currently. |
@@ -58,13 +58,13 @@ TODO: Support them if needed in the future.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | 3D output tensor with shape (batch_size, sequence_length, hidden_size) |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `num_heads` | `NumHeads` | `long` | yes | `[null]` | Number of attention heads |
 | `order_input` | `OrderInput` | `long` | yes | `[null]` | cublasLt order of input matrix. See the schema of QuantizeWithOrder for order definition. |

@@ -43,7 +43,7 @@ The operator only supports BERT like model with padding on right now.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `query` | `Query` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Query with shape (token_count, hidden_size) or packed qkv with shape (token_count, num_heads, 3, head_size) |
 | `key` | `Key` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | Key with shape (token_count, hidden_size) |
@@ -55,13 +55,13 @@ The operator only supports BERT like model with padding on right now.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | output tensor with shape (token_count, v_hidden_size) |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `mask_filter_value` | `MaskFilterValue` | `Nullable<float>` | no | `[null]` | The value to be filled in the attention mask. Default value is -10000.0f |
 | `num_heads` | `NumHeads` | `long` | yes | `[null]` | Number of attention heads |

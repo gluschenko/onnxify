@@ -22,21 +22,21 @@ Receive a tensor from the the specified source.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `InputSignal` | `InputSignal` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | Input control signal. It must be a scalar. |
 | `Remote` | `Remote` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Remote src rank. It must be a scalar. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `OutputSignal` | `OutputSignal` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | Output control signal. It must be a scalar. |
 | `Data` | `Data` | `IOnnxGraphEdge[]` | `tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | variadic, min arity 1 | The Received tensors. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `element_types` | `ElementTypes` | `long[]` | yes | `[null]` | Element types of the received tensors. |
 | `tag` | `Tag` | `long` | yes | `[null]` | The tag of the message carrying Data. |

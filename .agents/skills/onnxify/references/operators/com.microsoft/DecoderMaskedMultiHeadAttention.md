@@ -25,7 +25,7 @@ This op supports both Self and Cross Attention.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `query` | `Query` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Query with shape (batch_size, 1, hidden_size) or packed QKV with shape (batch_size, 1, 2 * hidden_size + v_hidden_size) |
 | `key` | `Key` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | Key with shape (batch_size, 1, hidden_size) for self attention or past_key with shape (batch_size, num_heads, kv_sequence_length, head_size) for cross attention |
@@ -41,7 +41,7 @@ This op supports both Self and Cross Attention.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 3D output tensor with shape (batch_size, sequence_length, v_hidden_size) |
 | `present_key` | `PresentKey` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | present state for key with shape (batch_size, num_heads, total_sequence_length, head_size). If past_present_share_buffer is set, its shape is (batch_size, num_heads, max_sequence_length, head_size), while effective_seq_length = (past_sequence_length + kv_sequence_length). |
@@ -50,7 +50,7 @@ This op supports both Self and Cross Attention.
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `mask_filter_value` | `MaskFilterValue` | `Nullable<float>` | no | `[null]` | The value to be filled in the attention mask. Default value is -10000.0f |
 | `num_heads` | `NumHeads` | `long` | yes | `[null]` | Number of attention heads |

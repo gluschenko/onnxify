@@ -27,7 +27,7 @@ will be calculated.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `input_ids` | `InputIds` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | 2D words IDs with shape (batch_size, sequence_length) |
 | `segment_ids` | `SegmentIds` | `IOnnxGraphEdge` | `tensor(int32)` | optional | 2D segment IDs with shape (batch_size, sequence_length) |
@@ -41,7 +41,7 @@ will be calculated.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 3D output tensor with shape (batch_size, sequence_length, hidden_size) |
 | `mask_index` | `MaskIndex` | `IOnnxGraphEdge` | `tensor(int32)` | optional | 1D mask_index tensor with shape (batch_size) |
@@ -49,7 +49,7 @@ will be calculated.
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `epsilon` | `Epsilon` | `float` | no | `9.999999960041972e-13` | The epsilon value to use to avoid division by zero. |
 | `mask_index_type` | `MaskIndexType` | `Nullable<long>` | no | `[null]` | The mask index tensor type for shape inference (0: None, 1: 1D mask_index) |

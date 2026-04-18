@@ -23,20 +23,20 @@ FakeQuantGrad op that computes the partial derivative of the loss with respect t
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `dY` | `DY` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Gradient of loss with respect to the output Y of the FakeQuant op (fake quantized output) |
 | `gradient_mask` | `GradientMask` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | Gradient mask that indicates whether the quantized value is within the quantization range. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `dX` | `DX` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Gradient of loss with respect to the input X (of the FakeQuant node). |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | [none] |  |  |  |  |  |
 

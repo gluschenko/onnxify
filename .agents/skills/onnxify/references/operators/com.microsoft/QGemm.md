@@ -23,7 +23,7 @@ Quantized Gemm
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `A` | `A` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Input tensor A. The shape of A should be (M, K) if transA is 0, or (K, M) if transA is non-zero. |
 | `a_scale` | `AScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Scale of quantized input 'A'. It is a scalar,which means a per-tensor quantization. |
@@ -37,13 +37,13 @@ Quantized Gemm
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(int8)`<br>`tensor(uint8)` | single, required | Output tensor of shape (M, N). |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `alpha` | `Alpha` | `float` | no | `1.0` | Scalar multiplier for the product of input tensors A * B. |
 | `transA` | `TransA` | `long` | no | `0` | Whether A should be transposed |

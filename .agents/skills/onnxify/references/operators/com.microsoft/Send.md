@@ -23,7 +23,7 @@ Send data tensor to the specified destination.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `InputSignal` | `InputSignal` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | Input control signal. It must be a scalar. |
 | `Remote` | `Remote` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Remote dst rank. It must be a scalar. |
@@ -31,13 +31,13 @@ Send data tensor to the specified destination.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `OutputSignal` | `OutputSignal` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | Output control signal. It must be a scalar. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `element_types` | `ElementTypes` | `long[]` | yes | `[null]` | Element types of the sent tensors. |
 | `tag` | `Tag` | `long` | yes | `[null]` | The tag of the message carrying Data. |

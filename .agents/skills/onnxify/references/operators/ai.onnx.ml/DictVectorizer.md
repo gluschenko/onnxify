@@ -33,19 +33,19 @@ Uses an index mapping to convert a dictionary to an array.<br>
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `X` | `X` | `IOnnxGraphEdge` | `map(int64,tensor(double))`<br>`map(int64,tensor(float))`<br>`map(int64,tensor(string))`<br>`map(string,tensor(double))`<br>`map(string,tensor(float))`<br>`map(string,tensor(int64))` | single, required | A dictionary. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int64)`<br>`tensor(string)` | single, required | A 1-D tensor holding values from the input dictionary. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `int64_vocabulary` | `Int64Vocabulary` | `long[]` | no | `[null]` | An integer vocabulary array.<br>One and only one of the vocabularies must be defined. |
 | `string_vocabulary` | `StringVocabulary` | `string[]` | no | `[null]` | A string vocabulary array.<br>One and only one of the vocabularies must be defined. |

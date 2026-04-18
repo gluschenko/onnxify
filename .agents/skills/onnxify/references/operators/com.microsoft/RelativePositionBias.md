@@ -23,7 +23,7 @@ Compute binned relative position bias for T5 model. ref: https://arxiv.org/abs/1
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `bias_table` | `BiasTable` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 2D input tensor with shape (num_buckets, num_heads), COL-major(See UT for example) |
 | `query_length` | `QueryLength` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | The length of query. Self Attention requires query_length = key_length |
@@ -31,13 +31,13 @@ Compute binned relative position bias for T5 model. ref: https://arxiv.org/abs/1
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 4D output tensor with shape (1, num_heads, sequence_length, sequence_length) |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `is_bidirectional` | `IsBidirectional` | `long` | no | `0` | Default value is 0. |
 | `max_distance` | `MaxDistance` | `long` | yes | `[null]` | Max distance |

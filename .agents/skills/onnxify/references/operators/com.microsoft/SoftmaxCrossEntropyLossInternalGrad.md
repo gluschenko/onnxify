@@ -23,7 +23,7 @@ SoftmaxCrossEntropyLossInternalGrad
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `dY` | `DY` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | gradient of Y |
 | `log_prob` | `LogProb` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | logsoftmax(logits), (N+1)-D input of shape (batch_size). |
@@ -34,13 +34,13 @@ SoftmaxCrossEntropyLossInternalGrad
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `d_logits` | `DLogits` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | gradient of logits |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output_type` | `OutputType` | `Nullable<long>` | no | `[null]` | (Optional) The data type for the output tensor. If not provided, output tensor has the same type as input tensor.Strictly must be one of the types from DataType enum in TensorProto |
 | `reduction` | `Reduction` | `string` | no | `mean` | Type of reduction to apply to loss: none, sum, mean(default). 'none': the output is the loss for each sample in the batch.'sum': the output will be summed. 'mean': the sum of the output will be divided by the batch_size. |

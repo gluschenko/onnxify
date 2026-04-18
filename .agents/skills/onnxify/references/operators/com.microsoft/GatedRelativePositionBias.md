@@ -28,7 +28,7 @@ query_layer = (query_layer + query_bias).reshape(batch_size, seq_len, num_heads,
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `query_layer` | `QueryLayer` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | tensor with shape (batch_size, seq_len, num_heads x head_size) or (token_count, num_heads x head_size) |
 | `query_bias` | `QueryBias` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 1-d tensor with shape (num_heads x head_size) |
@@ -40,13 +40,13 @@ query_layer = (query_layer + query_bias).reshape(batch_size, seq_len, num_heads,
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `output` | `Output` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | output tensor with shape (batch_size, num_heads, seq_len, seq_len) |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `num_heads` | `NumHeads` | `long` | yes | `[null]` | Number of attention heads |
 

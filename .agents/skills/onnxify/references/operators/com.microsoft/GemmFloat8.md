@@ -23,7 +23,7 @@ Generic Gemm for float and float 8.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `A` | `A` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(float8e4m3fn)`<br>`tensor(float8e5m2)` | single, required | Input tensor A. The shape of A should be (M, K) if transA is 0, or (K, M) if transA is non-zero. |
 | `B` | `B` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(float8e4m3fn)`<br>`tensor(float8e5m2)` | single, required | Input tensor B. The shape of B should be (K, N) if transB is 0, or (N, K) if transB is non-zero. |
@@ -34,13 +34,13 @@ Generic Gemm for float and float 8.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(float8e4m3fn)`<br>`tensor(float8e5m2)` | single, required | Output tensor of shape (M, N). |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `activation` | `Activation` | `string` | no | `[null]` | Activation function, RELU or GELU or NONE (default). |
 | `alpha` | `Alpha` | `float` | no | `1.0` | Scalar multiplier for the product of input tensors A * B. |

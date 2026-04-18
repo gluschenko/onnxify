@@ -24,7 +24,7 @@ up to but not including `limit`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `start` | `Start` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)` | single, required | Tensor(scalar, or dims=[1]). First entry in the range. |
 | `limit` | `Limit` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)` | single, required | Tensor(scalar, or dims=[1]). Upper limit of sequence, exclusive. |
@@ -32,13 +32,13 @@ up to but not including `limit`.
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `Y` | `Y` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)` | single, required | 1-D Tensor of the range. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | [none] |  |  |  |  |  |
 

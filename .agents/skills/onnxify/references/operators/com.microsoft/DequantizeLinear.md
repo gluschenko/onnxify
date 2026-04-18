@@ -25,7 +25,7 @@ Scale and zero point must have same shape. They must be either scalar (per tenso
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `x` | `X` | `IOnnxGraphEdge` | `tensor(int16)`<br>`tensor(int32)`<br>`tensor(int4)`<br>`tensor(int8)`<br>`tensor(uint16)`<br>`tensor(uint4)`<br>`tensor(uint8)` | single, required | N-D quantized Input tensor to be de-quantized. |
 | `x_scale` | `XScale` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Scale for input 'x'. It can be a scalar, which means a per-tensor/layer dequantization, or a 1-D tensor for per-axis dequantization. |
@@ -33,13 +33,13 @@ Scale and zero point must have same shape. They must be either scalar (per tenso
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| Name | Onnxify property | Type | Allowed schema types | Semantics | Description |
 | --- | --- | --- | --- | --- | --- |
 | `y` | `Y` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | N-D full precision output tensor. It has same shape as input 'x'. |
 
 ## Attributes
 
-| JSON name | Onnxify property | Type | Required | Default | Description |
+| Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `axis` | `Axis` | `Nullable<long>` | no | `[null]` | The axis along which same quantization parameters are applied. It's optional.If it's not specified, it means per-tensor quantization and input 'x_scale' and 'x_zero_point' must be scalars.If it's specified, it means per 'axis' quantization and input 'x_scale' and 'x_zero_point' must be 1-D tensors. |
 
