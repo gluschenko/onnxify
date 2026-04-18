@@ -23,15 +23,15 @@ This function computes the n-point one dimensional Fourier transform for a real-
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | input tensor of size n in the signal dim |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | input tensor of size n in the signal dim |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | output tensor of size (n//2 + 1) in the signal dim and 2 in the last dimension for the real and complex parts |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | output tensor of size (n//2 + 1) in the signal dim and 2 in the last dimension for the real and complex parts |
 
 ## Attributes
 

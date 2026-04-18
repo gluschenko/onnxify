@@ -31,17 +31,17 @@ The activation attribute can be used to enable activation after group normalizat
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | Input data tensor. Dimensions are (N x H x W x C) when channels_last is 1 or (N x C x H x W) otherwise, where N is the batch size, C is the number of channels, and H and W are the height and width of the data |
-| `gamma` | `Gamma` | `IOnnxGraphEdge` | single, required | 1D gamma tensor for normalization with shape (C), where C is number of channels |
-| `beta` | `Beta` | `IOnnxGraphEdge` | single, required | 1D beta tensor for normalization with shape (C), where C is number of channels |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Input data tensor. Dimensions are (N x H x W x C) when channels_last is 1 or (N x C x H x W) otherwise, where N is the batch size, C is the number of channels, and H and W are the height and width of the data |
+| `gamma` | `Gamma` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 1D gamma tensor for normalization with shape (C), where C is number of channels |
+| `beta` | `Beta` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 1D beta tensor for normalization with shape (C), where C is number of channels |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | The output tensor of the same shape as X |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | The output tensor of the same shape as X |
 
 ## Attributes
 

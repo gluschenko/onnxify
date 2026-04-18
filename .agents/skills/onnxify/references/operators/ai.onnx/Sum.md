@@ -25,15 +25,15 @@ This operator supports **multidirectional (i.e., Numpy-style) broadcasting**; fo
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `data_0` | `Data0` | `IOnnxGraphEdge[]` | variadic, min arity 1 | List of tensors for sum. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `data_0` | `Data0` | `IOnnxGraphEdge[]` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | variadic, min arity 1 | List of tensors for sum. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `sum` | `OutputSum` | `IOnnxGraphEdge` | single, required | Output tensor. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `sum` | `OutputSum` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Output tensor. |
 
 ## Attributes
 

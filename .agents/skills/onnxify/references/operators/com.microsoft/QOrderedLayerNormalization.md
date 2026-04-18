@@ -23,19 +23,19 @@ QOrderedLayerNormalization
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | Input data tensor from the previous layer. |
-| `scale_X` | `ScaleX` | `IOnnxGraphEdge` | single, required | scale of the quantized X |
-| `scale` | `Scale` | `IOnnxGraphEdge` | single, required | Scale tensor, i.e., gamma vector. |
-| `B` | `B` | `IOnnxGraphEdge` | optional | Bias tensor. |
-| `scale_Y` | `ScaleY` | `IOnnxGraphEdge` | single, required | scale of the quantized X |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | Input data tensor from the previous layer. |
+| `scale_X` | `ScaleX` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the quantized X |
+| `scale` | `Scale` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Scale tensor, i.e., gamma vector. |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | Bias tensor. |
+| `scale_Y` | `ScaleY` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the quantized X |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | Output data tensor. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | Output data tensor. |
 
 ## Attributes
 

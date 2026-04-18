@@ -51,17 +51,17 @@ In all cases, `y_zero_point` must have the same shape as `y_scale`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `x` | `X` | `IOnnxGraphEdge` | single, required | N-D full precision Input tensor to be quantized. |
-| `y_scale` | `YScale` | `IOnnxGraphEdge` | single, required | Scale for doing quantization to get `y`. For per-tensor/layer quantization the scale is a scalar, for per-axis quantization it is a 1-D Tensor and for blocked quantization it has the same shape as the input, except for one dimension in which blocking is performed. |
-| `y_zero_point` | `YZeroPoint` | `IOnnxGraphEdge` | optional | Zero point for doing quantization to get `y`. Shape must match `y_scale`. Default is uint8 with zero point of 0 if it's not specified. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `x` | `X` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int32)` | single, required | N-D full precision Input tensor to be quantized. |
+| `y_scale` | `YScale` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(float8e8m0)`<br>`tensor(int32)` | single, required | Scale for doing quantization to get `y`. For per-tensor/layer quantization the scale is a scalar, for per-axis quantization it is a 1-D Tensor and for blocked quantization it has the same shape as the input, except for one dimension in which blocking is performed. |
+| `y_zero_point` | `YZeroPoint` | `IOnnxGraphEdge` | `tensor(float4e2m1)`<br>`tensor(float8e4m3fn)`<br>`tensor(float8e4m3fnuz)`<br>`tensor(float8e5m2)`<br>`tensor(float8e5m2fnuz)`<br>`tensor(int16)`<br>`tensor(int2)`<br>`tensor(int4)`<br>`tensor(int8)`<br>`tensor(uint16)`<br>`tensor(uint2)`<br>`tensor(uint4)`<br>`tensor(uint8)` | optional | Zero point for doing quantization to get `y`. Shape must match `y_scale`. Default is uint8 with zero point of 0 if it's not specified. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `y` | `Y` | `IOnnxGraphEdge` | single, required | N-D quantized output tensor. It has same shape as input `x`. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `y` | `Y` | `IOnnxGraphEdge` | `tensor(float4e2m1)`<br>`tensor(float8e4m3fn)`<br>`tensor(float8e4m3fnuz)`<br>`tensor(float8e5m2)`<br>`tensor(float8e5m2fnuz)`<br>`tensor(int16)`<br>`tensor(int2)`<br>`tensor(int4)`<br>`tensor(int8)`<br>`tensor(uint16)`<br>`tensor(uint2)`<br>`tensor(uint4)`<br>`tensor(uint8)` | single, required | N-D quantized output tensor. It has same shape as input `x`. |
 
 ## Attributes
 

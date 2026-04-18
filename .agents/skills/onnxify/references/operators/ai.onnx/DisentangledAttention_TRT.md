@@ -23,17 +23,17 @@ Disentangled Attention TensorRT Plugin.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `c2c_attention` | `C2cAttention` | `IOnnxGraphEdge` | single, required | content-to-content attention tensor, QcKc^T. |
-| `c2p_attention` | `C2pAttention` | `IOnnxGraphEdge` | single, required | content-to-position attention tensor, QcKr^T. |
-| `p2c_attention` | `P2cAttention` | `IOnnxGraphEdge` | single, required | position-to-content attention tensor, KcQr^T. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `c2c_attention` | `C2cAttention` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | content-to-content attention tensor, QcKc^T. |
+| `c2p_attention` | `C2pAttention` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | content-to-position attention tensor, QcKr^T. |
+| `p2c_attention` | `P2cAttention` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | position-to-content attention tensor, KcQr^T. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `disentangled_attention` | `DisentangledAttention` | `IOnnxGraphEdge` | single, required | The disentangled attention output tensor. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `disentangled_attention` | `DisentangledAttention` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | The disentangled attention output tensor. |
 
 ## Attributes
 

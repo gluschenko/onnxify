@@ -23,26 +23,26 @@ LSTMTraining operator is adapted from LSTM operator (https://github.com/onnx/onn
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | Original input to the LSTM cell. |
-| `W` | `W` | `IOnnxGraphEdge` | single, required | Input weight parameters to the LSTM cell. |
-| `R` | `R` | `IOnnxGraphEdge` | single, required | Input recurrence weight parameters to the LSTM cell. |
-| `B` | `B` | `IOnnxGraphEdge` | optional | Input bias parameters to the LSTM cell. |
-| `SL` | `SL` | `IOnnxGraphEdge` | optional | Sequence lengths of the input sequence. |
-| `Ht0` | `Ht0` | `IOnnxGraphEdge` | optional | Initial hidden state input to the LSTM cell |
-| `Ct0` | `Ct0` | `IOnnxGraphEdge` | optional | Initial cell state input to the LSTM cell |
-| `P` | `P` | `IOnnxGraphEdge` | optional | Input peephole weight parameters to the LSTM cell. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Original input to the LSTM cell. |
+| `W` | `W` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Input weight parameters to the LSTM cell. |
+| `R` | `R` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Input recurrence weight parameters to the LSTM cell. |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(float)` | optional | Input bias parameters to the LSTM cell. |
+| `SL` | `SL` | `IOnnxGraphEdge` | `tensor(int32)` | optional | Sequence lengths of the input sequence. |
+| `Ht0` | `Ht0` | `IOnnxGraphEdge` | `tensor(float)` | optional | Initial hidden state input to the LSTM cell |
+| `Ct0` | `Ct0` | `IOnnxGraphEdge` | `tensor(float)` | optional | Initial cell state input to the LSTM cell |
+| `P` | `P` | `IOnnxGraphEdge` | `tensor(float)` | optional | Input peephole weight parameters to the LSTM cell. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `HAll` | `HAll` | `IOnnxGraphEdge` | optional | Hidden states over all sequence steps. |
-| `HFinal` | `HFinal` | `IOnnxGraphEdge` | optional | Final hidden state. |
-| `CFinal` | `CFinal` | `IOnnxGraphEdge` | optional | Final cell state. |
-| `CAll` | `CAll` | `IOnnxGraphEdge` | optional | Cell states over all sequence steps. |
-| `iofc` | `Iofc` | `IOnnxGraphEdge` | optional | Intermediate gate computations for all sequence steps. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `HAll` | `HAll` | `IOnnxGraphEdge` | `tensor(float)` | optional | Hidden states over all sequence steps. |
+| `HFinal` | `HFinal` | `IOnnxGraphEdge` | `tensor(float)` | optional | Final hidden state. |
+| `CFinal` | `CFinal` | `IOnnxGraphEdge` | `tensor(float)` | optional | Final cell state. |
+| `CAll` | `CAll` | `IOnnxGraphEdge` | `tensor(float)` | optional | Cell states over all sequence steps. |
+| `iofc` | `Iofc` | `IOnnxGraphEdge` | `tensor(float)` | optional | Intermediate gate computations for all sequence steps. |
 
 ## Attributes
 

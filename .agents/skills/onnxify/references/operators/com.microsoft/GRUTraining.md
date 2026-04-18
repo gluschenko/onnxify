@@ -23,22 +23,22 @@ GRUTraining operator is adapted from GRU operator (https://github.com/onnx/onnx/
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | Original input to the GRU cell. |
-| `W` | `W` | `IOnnxGraphEdge` | single, required | Input weight parameters to the GRU cell. |
-| `R` | `R` | `IOnnxGraphEdge` | single, required | Input recurrence weight parameters to the GRU cell. |
-| `B` | `B` | `IOnnxGraphEdge` | optional | Input bias parameters to the GRU cell. |
-| `SL` | `SL` | `IOnnxGraphEdge` | optional | Sequence lengths of the input sequence. |
-| `Ht0` | `Ht0` | `IOnnxGraphEdge` | optional | Initial hidden state input to the GRU cell |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Original input to the GRU cell. |
+| `W` | `W` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Input weight parameters to the GRU cell. |
+| `R` | `R` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Input recurrence weight parameters to the GRU cell. |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(float)` | optional | Input bias parameters to the GRU cell. |
+| `SL` | `SL` | `IOnnxGraphEdge` | `tensor(int32)` | optional | Sequence lengths of the input sequence. |
+| `Ht0` | `Ht0` | `IOnnxGraphEdge` | `tensor(float)` | optional | Initial hidden state input to the GRU cell |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `HAll` | `HAll` | `IOnnxGraphEdge` | optional | Hidden states over all sequence steps. |
-| `HFinal` | `HFinal` | `IOnnxGraphEdge` | optional | Final hidden state. |
-| `ZRH` | `ZRH` | `IOnnxGraphEdge` | optional | Intermediate gate computations for all sequence steps. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `HAll` | `HAll` | `IOnnxGraphEdge` | `tensor(float)` | optional | Hidden states over all sequence steps. |
+| `HFinal` | `HFinal` | `IOnnxGraphEdge` | `tensor(float)` | optional | Final hidden state. |
+| `ZRH` | `ZRH` | `IOnnxGraphEdge` | `tensor(float)` | optional | Intermediate gate computations for all sequence steps. |
 
 ## Attributes
 

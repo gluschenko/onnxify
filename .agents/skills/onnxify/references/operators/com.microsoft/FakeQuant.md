@@ -23,18 +23,18 @@ FakeQuant operator that fuses quantization->dequantization pattern into a single
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `input` | `Input` | `IOnnxGraphEdge` | single, required | Tensor to be fake quantized. |
-| `scale` | `Scale` | `IOnnxGraphEdge` | single, required | Quantization scale. It must be a scalar, which implies per-tensor quantization. The scalar value must be greater than 0. |
-| `zero_point` | `ZeroPoint` | `IOnnxGraphEdge` | single, required | Quantization zero point as non quantized type. It must be a scalar, which implies per-tensor quantization. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `input` | `Input` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Tensor to be fake quantized. |
+| `scale` | `Scale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Quantization scale. It must be a scalar, which implies per-tensor quantization. The scalar value must be greater than 0. |
+| `zero_point` | `ZeroPoint` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Quantization zero point as non quantized type. It must be a scalar, which implies per-tensor quantization. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | Input tensor after it has been fake quantized. It has the same shape as the input. |
-| `mask` | `Mask` | `IOnnxGraphEdge` | single, required | Mask where values indicate if the quantized value was in qmin, qmax range. Needed for gradient computation. It has the same shape as the input. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Input tensor after it has been fake quantized. It has the same shape as the input. |
+| `mask` | `Mask` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | Mask where values indicate if the quantized value was in qmin, qmax range. Needed for gradient computation. It has the same shape as the input. |
 
 ## Attributes
 

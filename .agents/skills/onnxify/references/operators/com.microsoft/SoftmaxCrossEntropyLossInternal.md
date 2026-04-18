@@ -23,19 +23,19 @@ SoftmaxCrossEntropyLossInternal
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `scores` | `Scores` | `IOnnxGraphEdge` | single, required | The predicted outputs with shape [batch_size, class_size], or [batch_size, class_size, D1, D2 , ..., Dk], where K is the number of dimensions. |
-| `labels` | `Labels` | `IOnnxGraphEdge` | single, required | The ground truth output tensor, with shape [batch_size], or [batch_size, D1, D2, ..., Dk], where K is the number of dimensions. Labels element value shall be in range of [0, C). If ignore_index is specified, it may have a value outside [0, C) and the label values should either be in the range [0, C) or have the value ignore_index. |
-| `weights` | `Weights` | `IOnnxGraphEdge` | optional | A manual rescaling weight given to each class. If given, it has to be a 1D Tensor assigning weight to each of the classes. Otherwise, it is treated as if having all ones. |
-| `ignore_index` | `IgnoreIndex` | `IOnnxGraphEdge` | optional | Scalar tensor to specify a target value that is ignored and does not contribute to the input gradient. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `scores` | `Scores` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The predicted outputs with shape [batch_size, class_size], or [batch_size, class_size, D1, D2 , ..., Dk], where K is the number of dimensions. |
+| `labels` | `Labels` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | The ground truth output tensor, with shape [batch_size], or [batch_size, D1, D2, ..., Dk], where K is the number of dimensions. Labels element value shall be in range of [0, C). If ignore_index is specified, it may have a value outside [0, C) and the label values should either be in the range [0, C) or have the value ignore_index. |
+| `weights` | `Weights` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | A manual rescaling weight given to each class. If given, it has to be a 1D Tensor assigning weight to each of the classes. Otherwise, it is treated as if having all ones. |
+| `ignore_index` | `IgnoreIndex` | `IOnnxGraphEdge` | `tensor(int64)` | optional | Scalar tensor to specify a target value that is ignored and does not contribute to the input gradient. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | Weighted loss float Tensor. If reduction is 'none', this has the shape of [batch_size], or [batch_size, D1, D2, ..., Dk] in case of K-dimensional loss. Otherwise, it is a scalar. |
-| `log_prob` | `LogProb` | `IOnnxGraphEdge` | single, required | Log probability tensor. If the output of softmax is prob, its value is log(prob). |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Weighted loss float Tensor. If reduction is 'none', this has the shape of [batch_size], or [batch_size, D1, D2, ..., Dk] in case of K-dimensional loss. Otherwise, it is a scalar. |
+| `log_prob` | `LogProb` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Log probability tensor. If the output of softmax is prob, its value is log(prob). |
 
 ## Attributes
 

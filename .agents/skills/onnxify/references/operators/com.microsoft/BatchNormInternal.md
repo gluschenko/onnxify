@@ -23,23 +23,23 @@ Variant of BatchNormalization with additional output for saved_mean/inv_std_dev.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | Input tensor. |
-| `scale` | `Scale` | `IOnnxGraphEdge` | single, required | Scale tensor of shape (C). |
-| `B` | `B` | `IOnnxGraphEdge` | single, required | Bias tensor of shape (C). |
-| `input_mean` | `InputMean` | `IOnnxGraphEdge` | single, required | running mean tensor of shape (C). |
-| `input_var` | `InputVar` | `IOnnxGraphEdge` | single, required | running variance tensor of shape (C). |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Input tensor. |
+| `scale` | `Scale` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Scale tensor of shape (C). |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Bias tensor of shape (C). |
+| `input_mean` | `InputMean` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | running mean tensor of shape (C). |
+| `input_var` | `InputVar` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | running variance tensor of shape (C). |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | The output tensor of the same shape as X |
-| `running_mean` | `RunningMean` | `IOnnxGraphEdge` | optional | The running mean after BN. |
-| `running_var` | `RunningVar` | `IOnnxGraphEdge` | optional | Running var after BN |
-| `saved_mean` | `SavedMean` | `IOnnxGraphEdge` | optional | Mean of the batch |
-| `saved_inv_std` | `SavedInvStd` | `IOnnxGraphEdge` | optional | Inverse standard deviation for the batch |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The output tensor of the same shape as X |
+| `running_mean` | `RunningMean` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | The running mean after BN. |
+| `running_var` | `RunningVar` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Running var after BN |
+| `saved_mean` | `SavedMean` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Mean of the batch |
+| `saved_inv_std` | `SavedInvStd` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Inverse standard deviation for the batch |
 
 ## Attributes
 

@@ -24,15 +24,15 @@ All tensors in 'inputs' must have the same data type.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `inputs` | `In` | `IOnnxGraphEdge[]` | variadic, min arity 1 | Tensors. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `inputs` | `In` | `IOnnxGraphEdge[]` | `tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | variadic, min arity 1 | Tensors. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output_sequence` | `OutputSequence` | `IOnnxGraphEdge` | single, required | Sequence enclosing the input tensors. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output_sequence` | `OutputSequence` | `IOnnxGraphEdge` | `seq(tensor(bool))`<br>`seq(tensor(complex128))`<br>`seq(tensor(complex64))`<br>`seq(tensor(double))`<br>`seq(tensor(float))`<br>`seq(tensor(float16))`<br>`seq(tensor(int16))`<br>`seq(tensor(int32))`<br>`seq(tensor(int64))`<br>`seq(tensor(int8))`<br>`seq(tensor(string))`<br>`seq(tensor(uint16))`<br>`seq(tensor(uint32))`<br>`seq(tensor(uint64))`<br>`seq(tensor(uint8))` | single, required | Sequence enclosing the input tensors. |
 
 ## Attributes
 

@@ -23,17 +23,17 @@ Ordered Quantize Gelu.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | N-dimensional input A |
-| `scale_X` | `ScaleX` | `IOnnxGraphEdge` | single, required | scale of the input A |
-| `scale_Y` | `ScaleY` | `IOnnxGraphEdge` | single, required | scale of the output Y |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | N-dimensional input A |
+| `scale_X` | `ScaleX` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the input A |
+| `scale_Y` | `ScaleY` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the output Y |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | Output of the Gelu |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | Output of the Gelu |
 
 ## Attributes
 

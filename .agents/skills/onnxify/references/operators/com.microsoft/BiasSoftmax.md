@@ -23,16 +23,16 @@ Y = softmax(scores + bias)) with simple broadcast on bias. Intended to specializ
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `data` | `Data` | `IOnnxGraphEdge` | single, required | The input data as Tensor. |
-| `bias` | `Bias` | `IOnnxGraphEdge` | single, required | The bias (or mask) as Tensor. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `data` | `Data` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The input data as Tensor. |
+| `bias` | `Bias` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The bias (or mask) as Tensor. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | The output. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The output. |
 
 ## Attributes
 

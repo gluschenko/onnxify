@@ -23,23 +23,23 @@ Quantized Gemm
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `A` | `A` | `IOnnxGraphEdge` | single, required | Input tensor A. The shape of A should be (M, K) if transA is 0, or (K, M) if transA is non-zero. |
-| `a_scale` | `AScale` | `IOnnxGraphEdge` | single, required | Scale of quantized input 'A'. It is a scalar,which means a per-tensor quantization. |
-| `a_zero_point` | `AZeroPoint` | `IOnnxGraphEdge` | single, required | Zero point tensor for input 'A'. It is a scalar. |
-| `B` | `B` | `IOnnxGraphEdge` | single, required | Input tensor B. The shape of B should be (K, N) if transB is 0, or (N, K) if transB is non-zero. |
-| `b_scale` | `BScale` | `IOnnxGraphEdge` | single, required | Scale of quantized input 'B'. It could be a scalar or a 1-D tensor, which means a per-tensor or per-column quantization. If it's a 1-D tensor, its number of elements should be equal to the number of columns of input 'B'. |
-| `b_zero_point` | `BZeroPoint` | `IOnnxGraphEdge` | single, required | Zero point tensor for input 'B'. It's optional and default value is 0. It could be a scalar or a 1-D tensor, which means a per-tensor or per-column quantization. If it's a 1-D tensor, its number of elements should be equal to the number of columns of input 'B'. |
-| `C` | `C` | `IOnnxGraphEdge` | optional | Optional input tensor C. If not specified, the computation is done as if C is a scalar 0. The shape of C should be unidirectional broadcastable to (M, N). Its type is int32_t and must be quantized with zero_point = 0 and scale = alpha / beta * a_scale * b_scale. |
-| `y_scale` | `YScale` | `IOnnxGraphEdge` | optional | Scale of output 'Y'. It is a scalar, which means a per-tensor quantization. It is optional. The output is full precision(float32) if it is not provided. Or the output is quantized. |
-| `y_zero_point` | `YZeroPoint` | `IOnnxGraphEdge` | optional | Zero point tensor for output 'Y'. It is a scalar, which means a per-tensor quantization. It is optional. The output is full precision(float32) if it is not provided. Or the output is quantized. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `A` | `A` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Input tensor A. The shape of A should be (M, K) if transA is 0, or (K, M) if transA is non-zero. |
+| `a_scale` | `AScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Scale of quantized input 'A'. It is a scalar,which means a per-tensor quantization. |
+| `a_zero_point` | `AZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Zero point tensor for input 'A'. It is a scalar. |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Input tensor B. The shape of B should be (K, N) if transB is 0, or (N, K) if transB is non-zero. |
+| `b_scale` | `BScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Scale of quantized input 'B'. It could be a scalar or a 1-D tensor, which means a per-tensor or per-column quantization. If it's a 1-D tensor, its number of elements should be equal to the number of columns of input 'B'. |
+| `b_zero_point` | `BZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Zero point tensor for input 'B'. It's optional and default value is 0. It could be a scalar or a 1-D tensor, which means a per-tensor or per-column quantization. If it's a 1-D tensor, its number of elements should be equal to the number of columns of input 'B'. |
+| `C` | `C` | `IOnnxGraphEdge` | `tensor(int32)` | optional | Optional input tensor C. If not specified, the computation is done as if C is a scalar 0. The shape of C should be unidirectional broadcastable to (M, N). Its type is int32_t and must be quantized with zero_point = 0 and scale = alpha / beta * a_scale * b_scale. |
+| `y_scale` | `YScale` | `IOnnxGraphEdge` | `tensor(float)` | optional | Scale of output 'Y'. It is a scalar, which means a per-tensor quantization. It is optional. The output is full precision(float32) if it is not provided. Or the output is quantized. |
+| `y_zero_point` | `YZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | optional | Zero point tensor for output 'Y'. It is a scalar, which means a per-tensor quantization. It is optional. The output is full precision(float32) if it is not provided. Or the output is quantized. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | Output tensor of shape (M, N). |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(int8)`<br>`tensor(uint8)` | single, required | Output tensor of shape (M, N). |
 
 ## Attributes
 

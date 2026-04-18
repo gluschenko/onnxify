@@ -23,29 +23,29 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `R` | `R` | `IOnnxGraphEdge` | single, required | The initial learning rate. |
-| `T` | `T` | `IOnnxGraphEdge` | single, required | The update count of "X". It should be a scalar. |
-| `weights` | `Weights` | `IOnnxGraphEdge` | single, required | weights to optimize. |
-| `gradients` | `Gradients` | `IOnnxGraphEdge` | single, required | gradients computed in this iteration. |
-| `moment_1` | `Moment1` | `IOnnxGraphEdge` | single, required | exponentially averaged historical gradients. |
-| `moment_2` | `Moment2` | `IOnnxGraphEdge` | single, required | exponentially averaged historical squared gradients. |
-| `mixed_precision_weights` | `MixedPrecisionWeights` | `IOnnxGraphEdge` | optional | FP16 or BFloat16 weights to optimize. |
-| `loss_scale` | `LossScale` | `IOnnxGraphEdge` | optional | loss scale for mixed precision training |
-| `global_gradient_norm` | `GlobalGradientNorm` | `IOnnxGraphEdge` | optional | Global gradient norm. |
-| `update_signal` | `UpdateSignal` | `IOnnxGraphEdge` | optional | This signal indicates if weight tensors should be updated. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `R` | `R` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The initial learning rate. |
+| `T` | `T` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | The update count of "X". It should be a scalar. |
+| `weights` | `Weights` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | single, required | weights to optimize. |
+| `gradients` | `Gradients` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | gradients computed in this iteration. |
+| `moment_1` | `Moment1` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | exponentially averaged historical gradients. |
+| `moment_2` | `Moment2` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | exponentially averaged historical squared gradients. |
+| `mixed_precision_weights` | `MixedPrecisionWeights` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float16)` | optional | FP16 or BFloat16 weights to optimize. |
+| `loss_scale` | `LossScale` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | optional | loss scale for mixed precision training |
+| `global_gradient_norm` | `GlobalGradientNorm` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Global gradient norm. |
+| `update_signal` | `UpdateSignal` | `IOnnxGraphEdge` | `tensor(bool)` | optional | This signal indicates if weight tensors should be updated. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `new_T` | `NewT` | `IOnnxGraphEdge` | single, required | New update count. |
-| `new_moment_1` | `NewMoment1` | `IOnnxGraphEdge` | single, required | New averaged gradients. |
-| `new_moment_2` | `NewMoment2` | `IOnnxGraphEdge` | single, required | New averaged squared gradients. |
-| `new_weights` | `NewWeights` | `IOnnxGraphEdge` | optional | New weights. |
-| `new_gradients` | `NewGradients` | `IOnnxGraphEdge` | optional | New gradients. |
-| `new_mixed_precision_weights` | `NewMixedPrecisionWeights` | `IOnnxGraphEdge` | optional | New FP16 or BFloat16 weights |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `new_T` | `NewT` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | New update count. |
+| `new_moment_1` | `NewMoment1` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | New averaged gradients. |
+| `new_moment_2` | `NewMoment2` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | New averaged squared gradients. |
+| `new_weights` | `NewWeights` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | optional | New weights. |
+| `new_gradients` | `NewGradients` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | New gradients. |
+| `new_mixed_precision_weights` | `NewMixedPrecisionWeights` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float16)` | optional | New FP16 or BFloat16 weights |
 
 ## Attributes
 

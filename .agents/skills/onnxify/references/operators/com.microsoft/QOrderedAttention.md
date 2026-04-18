@@ -33,34 +33,34 @@ TODO: Support them if needed in the future.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `input` | `Input` | `IOnnxGraphEdge` | single, required | 3D input tensor with shape (batch_size, sequence_length, input_hidden_size) |
-| `scale_input` | `ScaleInput` | `IOnnxGraphEdge` | single, required | scale of the input, scalar value (per tensor) currently. |
-| `scale_Q_gemm` | `ScaleQGemm` | `IOnnxGraphEdge` | single, required | scale of the gemm - scalar (per-tensor quantization) |
-| `scale_K_gemm` | `ScaleKGemm` | `IOnnxGraphEdge` | single, required | scale of the gemm - scalar (per-tensor quantization) |
-| `scale_V_gemm` | `ScaleVGemm` | `IOnnxGraphEdge` | single, required | scale of the gemm - scalar (per-tensor quantization) |
-| `Q_weight` | `QWeight` | `IOnnxGraphEdge` | single, required | 2D input tensor with shape (input_hidden_size, hidden_size), where hidden_size = num_heads * head_size |
-| `K_weight` | `KWeight` | `IOnnxGraphEdge` | single, required | 2D input tensor with shape (input_hidden_size, hidden_size), where hidden_size = num_heads * head_size |
-| `V_weight` | `VWeight` | `IOnnxGraphEdge` | single, required | 2D input tensor with shape (input_hidden_size, hidden_size), where hidden_size = num_heads * head_size |
-| `scale_Q_weight` | `ScaleQWeight` | `IOnnxGraphEdge` | single, required | scale of the weight (scalar for per-tensor quantization or 1-D of dims [hidden_size] for per-channel quantization) |
-| `scale_K_weight` | `ScaleKWeight` | `IOnnxGraphEdge` | single, required | scale of the weight (scalar for per-tensor quantization or 1-D of dims [hidden_size] for per-channel quantization) |
-| `scale_V_weight` | `ScaleVWeight` | `IOnnxGraphEdge` | single, required | scale of the weight (scalar for per-tensor quantization or 1-D of dims [hidden_size] for per-channel quantization) |
-| `Q_bias` | `QBias` | `IOnnxGraphEdge` | single, required | 1D input tensor with shape (hidden_size) |
-| `K_bias` | `KBias` | `IOnnxGraphEdge` | single, required | 1D input tensor with shape (hidden_size) |
-| `V_bias` | `VBias` | `IOnnxGraphEdge` | single, required | 1D input tensor with shape (hidden_size) |
-| `scale_QKT_gemm` | `ScaleQKTGemm` | `IOnnxGraphEdge` | optional | scale of the gemm - scalar (per-tensor quantization) |
-| `scale_QKT_softmax` | `ScaleQKTSoftmax` | `IOnnxGraphEdge` | optional | scale of the softmax result - scalar (per-tensor quantization) |
-| `scale_values_gemm` | `ScaleValuesGemm` | `IOnnxGraphEdge` | single, required | scale of the gemm - scalar (per-tensor quantization). Also this is the output scale for the operator. |
-| `mask_index` | `MaskIndex` | `IOnnxGraphEdge` | optional | Attention mask with shape (batch_size, 1, max_sequence_length, max_sequence_length), (batch_size, past_sequence_length + sequence_length)or (batch_size, sequence_length, past_sequence_length + sequence_length), or index with shape (batch_size) or (2 * batch_size). |
-| `past` | `Past` | `IOnnxGraphEdge` | optional | past state for key and value with shape (2, batch_size, num_heads, past_sequence_length, head_size). |
-| `attention_bias` | `AttentionBias` | `IOnnxGraphEdge` | optional | additional add to QxK' with shape (batch_size or 1, num_heads or 1, sequence_length, total_sequence_length). |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `input` | `Input` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | 3D input tensor with shape (batch_size, sequence_length, input_hidden_size) |
+| `scale_input` | `ScaleInput` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the input, scalar value (per tensor) currently. |
+| `scale_Q_gemm` | `ScaleQGemm` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the gemm - scalar (per-tensor quantization) |
+| `scale_K_gemm` | `ScaleKGemm` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the gemm - scalar (per-tensor quantization) |
+| `scale_V_gemm` | `ScaleVGemm` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the gemm - scalar (per-tensor quantization) |
+| `Q_weight` | `QWeight` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | 2D input tensor with shape (input_hidden_size, hidden_size), where hidden_size = num_heads * head_size |
+| `K_weight` | `KWeight` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | 2D input tensor with shape (input_hidden_size, hidden_size), where hidden_size = num_heads * head_size |
+| `V_weight` | `VWeight` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | 2D input tensor with shape (input_hidden_size, hidden_size), where hidden_size = num_heads * head_size |
+| `scale_Q_weight` | `ScaleQWeight` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the weight (scalar for per-tensor quantization or 1-D of dims [hidden_size] for per-channel quantization) |
+| `scale_K_weight` | `ScaleKWeight` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the weight (scalar for per-tensor quantization or 1-D of dims [hidden_size] for per-channel quantization) |
+| `scale_V_weight` | `ScaleVWeight` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the weight (scalar for per-tensor quantization or 1-D of dims [hidden_size] for per-channel quantization) |
+| `Q_bias` | `QBias` | `IOnnxGraphEdge` | `tensor(float)` | single, required | 1D input tensor with shape (hidden_size) |
+| `K_bias` | `KBias` | `IOnnxGraphEdge` | `tensor(float)` | single, required | 1D input tensor with shape (hidden_size) |
+| `V_bias` | `VBias` | `IOnnxGraphEdge` | `tensor(float)` | single, required | 1D input tensor with shape (hidden_size) |
+| `scale_QKT_gemm` | `ScaleQKTGemm` | `IOnnxGraphEdge` | `tensor(float)` | optional | scale of the gemm - scalar (per-tensor quantization) |
+| `scale_QKT_softmax` | `ScaleQKTSoftmax` | `IOnnxGraphEdge` | `tensor(float)` | optional | scale of the softmax result - scalar (per-tensor quantization) |
+| `scale_values_gemm` | `ScaleValuesGemm` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the gemm - scalar (per-tensor quantization). Also this is the output scale for the operator. |
+| `mask_index` | `MaskIndex` | `IOnnxGraphEdge` | `tensor(int32)` | optional | Attention mask with shape (batch_size, 1, max_sequence_length, max_sequence_length), (batch_size, past_sequence_length + sequence_length)or (batch_size, sequence_length, past_sequence_length + sequence_length), or index with shape (batch_size) or (2 * batch_size). |
+| `past` | `Past` | `IOnnxGraphEdge` | `tensor(int8)` | optional | past state for key and value with shape (2, batch_size, num_heads, past_sequence_length, head_size). |
+| `attention_bias` | `AttentionBias` | `IOnnxGraphEdge` | `tensor(float)` | optional | additional add to QxK' with shape (batch_size or 1, num_heads or 1, sequence_length, total_sequence_length). |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | 3D output tensor with shape (batch_size, sequence_length, hidden_size) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | 3D output tensor with shape (batch_size, sequence_length, hidden_size) |
 
 ## Attributes
 

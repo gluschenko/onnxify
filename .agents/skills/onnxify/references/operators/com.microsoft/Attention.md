@@ -44,22 +44,22 @@ For cross attention, query and key might have different lengths.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `input` | `Input` | `IOnnxGraphEdge` | single, required | Input tensor with shape (batch_size, sequence_length, input_hidden_size) |
-| `weights` | `Weights` | `IOnnxGraphEdge` | single, required | Merged Q/K/V weights with shape (input_hidden_size, hidden_size + hidden_size + v_hidden_size) |
-| `bias` | `Bias` | `IOnnxGraphEdge` | optional | Bias tensor with shape (hidden_size + hidden_size + v_hidden_size) for input projection |
-| `mask_index` | `MaskIndex` | `IOnnxGraphEdge` | optional | Attention mask with shape (batch_size, 1, max_sequence_length, max_sequence_length), (batch_size, total_sequence_length) or (batch_size, sequence_length, total_sequence_length), or index with shape (batch_size) or (2 * batch_size) or (3 * batch_size + 2) |
-| `past` | `Past` | `IOnnxGraphEdge` | optional | past state for key and value with shape (2, batch_size, num_heads, past_sequence_length, head_size)When past_present_share_buffer is set, its shape is (2, batch_size, num_heads, max_sequence_length, head_size) |
-| `attention_bias` | `AttentionBias` | `IOnnxGraphEdge` | optional | additional add to QxK' with shape (batch_size or 1, num_heads or 1, sequence_length, total_sequence_length) |
-| `past_sequence_length` | `PastSequenceLength` | `IOnnxGraphEdge` | optional | When past_present_share_buffer is used, it is required to specify past_sequence_length (could be 0). |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `input` | `Input` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Input tensor with shape (batch_size, sequence_length, input_hidden_size) |
+| `weights` | `Weights` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Merged Q/K/V weights with shape (input_hidden_size, hidden_size + hidden_size + v_hidden_size) |
+| `bias` | `Bias` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Bias tensor with shape (hidden_size + hidden_size + v_hidden_size) for input projection |
+| `mask_index` | `MaskIndex` | `IOnnxGraphEdge` | `tensor(int32)` | optional | Attention mask with shape (batch_size, 1, max_sequence_length, max_sequence_length), (batch_size, total_sequence_length) or (batch_size, sequence_length, total_sequence_length), or index with shape (batch_size) or (2 * batch_size) or (3 * batch_size + 2) |
+| `past` | `Past` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | past state for key and value with shape (2, batch_size, num_heads, past_sequence_length, head_size)When past_present_share_buffer is set, its shape is (2, batch_size, num_heads, max_sequence_length, head_size) |
+| `attention_bias` | `AttentionBias` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | additional add to QxK' with shape (batch_size or 1, num_heads or 1, sequence_length, total_sequence_length) |
+| `past_sequence_length` | `PastSequenceLength` | `IOnnxGraphEdge` | `tensor(int32)` | optional | When past_present_share_buffer is used, it is required to specify past_sequence_length (could be 0). |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | 3D output tensor with shape (batch_size, sequence_length, v_hidden_size) |
-| `present` | `Present` | `IOnnxGraphEdge` | optional | past state for key and value with shape (2, batch_size, num_heads, total_sequence_length, head_size). If past_present_share_buffer is set, its shape is (2, batch_size, num_heads, max_sequence_length, head_size), while effective_seq_length = (past_sequence_length + kv_sequence_length). |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 3D output tensor with shape (batch_size, sequence_length, v_hidden_size) |
+| `present` | `Present` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | past state for key and value with shape (2, batch_size, num_heads, total_sequence_length, head_size). If past_present_share_buffer is set, its shape is (2, batch_size, num_heads, max_sequence_length, head_size), while effective_seq_length = (past_sequence_length + kv_sequence_length). |
 
 ## Attributes
 

@@ -23,17 +23,17 @@ SimplifiedLayerNormalization
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | Input data tensor from the previous layer. |
-| `scale` | `Scale` | `IOnnxGraphEdge` | single, required | Scale tensor. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Input data tensor from the previous layer. |
+| `scale` | `Scale` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Scale tensor. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | Output data tensor. |
-| `inv_std_var` | `InvStdVar` | `IOnnxGraphEdge` | optional | Saved inverse standard variance used during training to speed up gradient computation. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Output data tensor. |
+| `inv_std_var` | `InvStdVar` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | optional | Saved inverse standard variance used during training to speed up gradient computation. |
 
 ## Attributes
 

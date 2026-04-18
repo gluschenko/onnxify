@@ -26,15 +26,15 @@ with the exception that numpy default keepdims to False instead of True.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `data` | `Data` | `IOnnxGraphEdge` | single, required | An input tensor. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `data` | `Data` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | An input tensor. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `reduced` | `Reduced` | `IOnnxGraphEdge` | single, required | Reduced output tensor. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `reduced` | `Reduced` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(uint32)` | single, required | Reduced output tensor. |
 
 ## Attributes
 

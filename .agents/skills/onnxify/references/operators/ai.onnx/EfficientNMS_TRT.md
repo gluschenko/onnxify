@@ -23,20 +23,20 @@ Efficient NMS TensorRT Plugin.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `boxes` | `Boxes` | `IOnnxGraphEdge` | single, required | The boxes input tensor. |
-| `scores` | `Scores` | `IOnnxGraphEdge` | single, required | The scores input tensor. |
-| `anchors` | `Anchors` | `IOnnxGraphEdge` | optional | The anchors input tensor. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `boxes` | `Boxes` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | The boxes input tensor. |
+| `scores` | `Scores` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | The scores input tensor. |
+| `anchors` | `Anchors` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | The anchors input tensor. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `num_detections` | `NumDetections` | `IOnnxGraphEdge` | single, required | The num_detections output tensor. |
-| `detection_boxes` | `DetectionBoxes` | `IOnnxGraphEdge` | single, required | The detection_boxes output tensor. |
-| `detection_scores` | `DetectionScores` | `IOnnxGraphEdge` | single, required | The detection_scores output tensor. |
-| `detection_classes` | `DetectionClasses` | `IOnnxGraphEdge` | single, required | The detection_classes output tensor. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `num_detections` | `NumDetections` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | The num_detections output tensor. |
+| `detection_boxes` | `DetectionBoxes` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | The detection_boxes output tensor. |
+| `detection_scores` | `DetectionScores` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | The detection_scores output tensor. |
+| `detection_classes` | `DetectionClasses` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | The detection_classes output tensor. |
 
 ## Attributes
 

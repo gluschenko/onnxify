@@ -23,23 +23,23 @@ Return elements, either from X or Y, depending on condition.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `condition` | `Condition` | `IOnnxGraphEdge` | single, required | When True (nonzero), yield x, otherwise yield y |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | Y's zero point. |
-| `x_scale` | `XScale` | `IOnnxGraphEdge` | single, required | X's scale. |
-| `x_zero_point` | `XZeroPoint` | `IOnnxGraphEdge` | single, required | X's zero point. |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | Y's zero point. |
-| `y_scale` | `YScale` | `IOnnxGraphEdge` | single, required | Y's scale. |
-| `y_zero_point` | `YZeroPoint` | `IOnnxGraphEdge` | single, required | Y's zero point. |
-| `z_scale` | `ZScale` | `IOnnxGraphEdge` | single, required | Z's scale. |
-| `z_zero_point` | `ZZeroPoint` | `IOnnxGraphEdge` | single, required | Z's zero point. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `condition` | `Condition` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | When True (nonzero), yield x, otherwise yield y |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Y's zero point. |
+| `x_scale` | `XScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | X's scale. |
+| `x_zero_point` | `XZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | X's zero point. |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Y's zero point. |
+| `y_scale` | `YScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Y's scale. |
+| `y_zero_point` | `YZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Y's zero point. |
+| `z_scale` | `ZScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Z's scale. |
+| `z_zero_point` | `ZZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Z's zero point. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Z` | `Z` | `IOnnxGraphEdge` | single, required | Tensor of shape equal to the broadcasted shape of condition, X, and Y |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Z` | `Z` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Tensor of shape equal to the broadcasted shape of condition, X, and Y |
 
 ## Attributes
 

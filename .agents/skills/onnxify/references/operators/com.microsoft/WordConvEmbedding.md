@@ -23,18 +23,18 @@ The WordConvEmbedding takes in a batch of sequence words and embed each word to 
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Sequence` | `Sequence` | `IOnnxGraphEdge` | single, required | Specify batchs of sequence words to embedding |
-| `W` | `W` | `IOnnxGraphEdge` | single, required | Specify weights of conv |
-| `B` | `B` | `IOnnxGraphEdge` | single, required | Specify bias of conv |
-| `C` | `C` | `IOnnxGraphEdge` | single, required | Specify embedding vector of char |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Sequence` | `Sequence` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | Specify batchs of sequence words to embedding |
+| `W` | `W` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Specify weights of conv |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Specify bias of conv |
+| `C` | `C` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Specify embedding vector of char |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | output |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(float)` | single, required | output |
 
 ## Attributes
 

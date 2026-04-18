@@ -23,28 +23,28 @@ Quantized version of Longformer Self Attention (using int8 with specific matrix 
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `input` | `Input` | `IOnnxGraphEdge` | single, required | 3D input tensor with shape (batch_size, sequence_length, hidden_size), hidden_size = num_heads * head_size |
-| `scale_input` | `ScaleInput` | `IOnnxGraphEdge` | single, required | scale of the input |
-| `weight` | `Weight` | `IOnnxGraphEdge` | single, required | 2D input tensor with shape (hidden_size, 3 * hidden_size) |
-| `scale_weight` | `ScaleWeight` | `IOnnxGraphEdge` | single, required | scale of the weight |
-| `bias` | `Bias` | `IOnnxGraphEdge` | single, required | 1D input tensor with shape (3 * hidden_size), fp32 only currently. |
-| `scale_bias` | `ScaleBias` | `IOnnxGraphEdge` | single, required | reserved. (not used as add bias need float value in cublasLt for normal order.) |
-| `scale_qkv_gemm` | `ScaleQkvGemm` | `IOnnxGraphEdge` | single, required | scale of the output for fused kqv gemm |
-| `mask` | `Mask` | `IOnnxGraphEdge` | single, required | Attention mask with shape (batch_size, sequence_length) |
-| `global_weight` | `GlobalWeight` | `IOnnxGraphEdge` | single, required | 2D input tensor with shape (hidden_size, 3 * hidden_size) |
-| `scale_global_weight` | `ScaleGlobalWeight` | `IOnnxGraphEdge` | single, required | scale of the global_weight |
-| `global_bias` | `GlobalBias` | `IOnnxGraphEdge` | single, required | 1D input tensor with shape (3 * hidden_size) |
-| `scale_global_gemm` | `ScaleGlobalGemm` | `IOnnxGraphEdge` | single, required | scale of the global_qkv_gemm |
-| `global` | `Global` | `IOnnxGraphEdge` | single, required | Global attention flags with shape (batch_size, sequence_length) |
-| `scale_output` | `ScaleOutput` | `IOnnxGraphEdge` | single, required | scale of the output |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `input` | `Input` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | 3D input tensor with shape (batch_size, sequence_length, hidden_size), hidden_size = num_heads * head_size |
+| `scale_input` | `ScaleInput` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the input |
+| `weight` | `Weight` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | 2D input tensor with shape (hidden_size, 3 * hidden_size) |
+| `scale_weight` | `ScaleWeight` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the weight |
+| `bias` | `Bias` | `IOnnxGraphEdge` | `tensor(float)` | single, required | 1D input tensor with shape (3 * hidden_size), fp32 only currently. |
+| `scale_bias` | `ScaleBias` | `IOnnxGraphEdge` | `tensor(float)` | single, required | reserved. (not used as add bias need float value in cublasLt for normal order.) |
+| `scale_qkv_gemm` | `ScaleQkvGemm` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the output for fused kqv gemm |
+| `mask` | `Mask` | `IOnnxGraphEdge` | `tensor(float16)` | single, required | Attention mask with shape (batch_size, sequence_length) |
+| `global_weight` | `GlobalWeight` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | 2D input tensor with shape (hidden_size, 3 * hidden_size) |
+| `scale_global_weight` | `ScaleGlobalWeight` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the global_weight |
+| `global_bias` | `GlobalBias` | `IOnnxGraphEdge` | `tensor(float)` | single, required | 1D input tensor with shape (3 * hidden_size) |
+| `scale_global_gemm` | `ScaleGlobalGemm` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the global_qkv_gemm |
+| `global` | `Global` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | Global attention flags with shape (batch_size, sequence_length) |
+| `scale_output` | `ScaleOutput` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the output |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | 3D output tensor with shape (batch_size, sequence_length, hidden_size) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | 3D output tensor with shape (batch_size, sequence_length, hidden_size) |
 
 ## Attributes
 

@@ -23,18 +23,18 @@ SparseSoftmaxCrossEntropy
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `logits` | `Logits` | `IOnnxGraphEdge` | single, required | Unscaled log probabilities, (N+1)-D input of shape (-1, num_classes). |
-| `label` | `Label` | `IOnnxGraphEdge` | single, required | label is N-D input whose shape should match that of logits. It is a tensor of nonnegative integers, where each element is the nonnegative integer label for the element of the batch. |
-| `weight` | `Weight` | `IOnnxGraphEdge` | optional | weight for each sample. The shape is the same as label's |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `logits` | `Logits` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Unscaled log probabilities, (N+1)-D input of shape (-1, num_classes). |
+| `label` | `Label` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | label is N-D input whose shape should match that of logits. It is a tensor of nonnegative integers, where each element is the nonnegative integer label for the element of the batch. |
+| `weight` | `Weight` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | weight for each sample. The shape is the same as label's |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | loss. |
-| `log_prob` | `LogProb` | `IOnnxGraphEdge` | optional | logsoftmax(logits) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | loss. |
+| `log_prob` | `LogProb` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | logsoftmax(logits) |
 
 ## Attributes
 

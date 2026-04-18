@@ -23,18 +23,18 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `ETA` | `ETA` | `IOnnxGraphEdge` | single, required | Learning Rate |
-| `W` | `W` | `IOnnxGraphEdge` | single, required | Original weight(s) |
-| `G` | `G` | `IOnnxGraphEdge` | single, required | Gradient of Weight(s) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `ETA` | `ETA` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Learning Rate |
+| `W` | `W` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Original weight(s) |
+| `G` | `G` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Gradient of Weight(s) |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `NW` | `NW` | `IOnnxGraphEdge` | optional | Updated weight(s) |
-| `NG` | `NG` | `IOnnxGraphEdge` | optional | Updated gradients(s) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `NW` | `NW` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Updated weight(s) |
+| `NG` | `NG` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Updated gradients(s) |
 
 ## Attributes
 

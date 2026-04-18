@@ -47,28 +47,28 @@ Quantized mixture of experts (MoE).
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `input` | `Input` | `IOnnxGraphEdge` | single, required | 2D tensor with shape (num_tokens, hidden_size), or 3D tensor with shape (batch_size, sequence_length, hidden_size) |
-| `router_probs` | `RouterProbs` | `IOnnxGraphEdge` | single, required | 2D tensor with shape (num_tokens, num_experts) |
-| `fc1_experts_weights` | `Fc1ExpertsWeights` | `IOnnxGraphEdge` | single, required | 3D tensor with shape (num_experts, fusion_size * inter_size, hidden_size / pack_size), The fusion_size is 2 for fused swiglu, or 1 otherwise. The pack_size is 8 / expert_weight_bits. |
-| `fc1_scales` | `Fc1Scales` | `IOnnxGraphEdge` | single, required | 2D tensor with shape (num_experts, fusion_size * inter_size), or 3D tensor with shape (num_experts, fusion_size * inter_size, hidden_size / block_size) when block_size is provided. |
-| `fc1_experts_bias` | `Fc1ExpertsBias` | `IOnnxGraphEdge` | optional | 2D optional tensor with shape (num_experts, fusion_size * inter_size) |
-| `fc2_experts_weights` | `Fc2ExpertsWeights` | `IOnnxGraphEdge` | single, required | 3D tensor with shape (num_experts, hidden_size, inter_size / pack_size) |
-| `fc2_scales` | `Fc2Scales` | `IOnnxGraphEdge` | single, required | 2D tensor with shape (num_experts, hidden_size), or 3D tensor with shape (num_experts, hidden_size, inter_size / block_size) when block_size is provided. |
-| `fc2_experts_bias` | `Fc2ExpertsBias` | `IOnnxGraphEdge` | optional | 2D optional tensor with shape (num_experts, hidden_size) |
-| `fc3_experts_weights` | `Fc3ExpertsWeights` | `IOnnxGraphEdge` | optional | 3D optional tensor with shape (num_experts, inter_size, hidden_size / pack_size) |
-| `fc3_scales` | `Fc3Scales` | `IOnnxGraphEdge` | optional | 2D optional tensor with shape (num_experts, inter_size), or 3D optional tensor with shape (num_experts, inter_size, hidden_size / block_size) when block_size is provided. |
-| `fc3_experts_bias` | `Fc3ExpertsBias` | `IOnnxGraphEdge` | optional | 2D optional tensor with shape (num_experts, inter_size) |
-| `fc1_zero_points` | `Fc1ZeroPoints` | `IOnnxGraphEdge` | optional | 2D tensor with shape (num_experts, fusion_size * inter_size / pack_size), or 3D tensor with shape (num_experts, fusion_size * inter_size, hidden_size / block_size / pack_size) when block_size is provided. |
-| `fc2_zero_points` | `Fc2ZeroPoints` | `IOnnxGraphEdge` | optional | 2D tensor with shape (num_experts, hidden_size / pack_size), or 3D tensor with shape (num_experts, hidden_size, inter_size / block_size / pack_size) when block_size is provided. |
-| `fc3_zero_points` | `Fc3ZeroPoints` | `IOnnxGraphEdge` | optional | 2D optional tensor with shape (num_experts, inter_size / pack_size), or 3D optional tensor with shape (num_experts, inter_size, hidden_size / block_size / pack_size) when block_size is provided. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `input` | `Input` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 2D tensor with shape (num_tokens, hidden_size), or 3D tensor with shape (batch_size, sequence_length, hidden_size) |
+| `router_probs` | `RouterProbs` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 2D tensor with shape (num_tokens, num_experts) |
+| `fc1_experts_weights` | `Fc1ExpertsWeights` | `IOnnxGraphEdge` | `tensor(uint8)` | single, required | 3D tensor with shape (num_experts, fusion_size * inter_size, hidden_size / pack_size), The fusion_size is 2 for fused swiglu, or 1 otherwise. The pack_size is 8 / expert_weight_bits. |
+| `fc1_scales` | `Fc1Scales` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 2D tensor with shape (num_experts, fusion_size * inter_size), or 3D tensor with shape (num_experts, fusion_size * inter_size, hidden_size / block_size) when block_size is provided. |
+| `fc1_experts_bias` | `Fc1ExpertsBias` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | 2D optional tensor with shape (num_experts, fusion_size * inter_size) |
+| `fc2_experts_weights` | `Fc2ExpertsWeights` | `IOnnxGraphEdge` | `tensor(uint8)` | single, required | 3D tensor with shape (num_experts, hidden_size, inter_size / pack_size) |
+| `fc2_scales` | `Fc2Scales` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 2D tensor with shape (num_experts, hidden_size), or 3D tensor with shape (num_experts, hidden_size, inter_size / block_size) when block_size is provided. |
+| `fc2_experts_bias` | `Fc2ExpertsBias` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | 2D optional tensor with shape (num_experts, hidden_size) |
+| `fc3_experts_weights` | `Fc3ExpertsWeights` | `IOnnxGraphEdge` | `tensor(uint8)` | optional | 3D optional tensor with shape (num_experts, inter_size, hidden_size / pack_size) |
+| `fc3_scales` | `Fc3Scales` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | 2D optional tensor with shape (num_experts, inter_size), or 3D optional tensor with shape (num_experts, inter_size, hidden_size / block_size) when block_size is provided. |
+| `fc3_experts_bias` | `Fc3ExpertsBias` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | 2D optional tensor with shape (num_experts, inter_size) |
+| `fc1_zero_points` | `Fc1ZeroPoints` | `IOnnxGraphEdge` | `tensor(uint8)` | optional | 2D tensor with shape (num_experts, fusion_size * inter_size / pack_size), or 3D tensor with shape (num_experts, fusion_size * inter_size, hidden_size / block_size / pack_size) when block_size is provided. |
+| `fc2_zero_points` | `Fc2ZeroPoints` | `IOnnxGraphEdge` | `tensor(uint8)` | optional | 2D tensor with shape (num_experts, hidden_size / pack_size), or 3D tensor with shape (num_experts, hidden_size, inter_size / block_size / pack_size) when block_size is provided. |
+| `fc3_zero_points` | `Fc3ZeroPoints` | `IOnnxGraphEdge` | `tensor(uint8)` | optional | 2D optional tensor with shape (num_experts, inter_size / pack_size), or 3D optional tensor with shape (num_experts, inter_size, hidden_size / block_size / pack_size) when block_size is provided. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | output tensor with same shape of input |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | output tensor with same shape of input |
 
 ## Attributes
 

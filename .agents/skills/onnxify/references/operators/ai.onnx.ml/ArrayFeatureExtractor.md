@@ -24,16 +24,16 @@ Select elements of the input tensor based on the indices passed.<br>
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | Data to be selected |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | The indices, based on 0 as the first index of any dimension. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(string)` | single, required | Data to be selected |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | The indices, based on 0 as the first index of any dimension. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Z` | `Z` | `IOnnxGraphEdge` | single, required | Selected output data as an array |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Z` | `Z` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(string)` | single, required | Selected output data as an array |
 
 ## Attributes
 

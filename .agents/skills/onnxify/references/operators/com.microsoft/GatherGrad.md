@@ -23,17 +23,17 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `shape` | `Shape` | `IOnnxGraphEdge` | single, required | Shape of the Gather input X. |
-| `indices` | `Indices` | `IOnnxGraphEdge` | single, required | Tensor of int32/int64 indices, of any rank q. |
-| `dY` | `DY` | `IOnnxGraphEdge` | single, required | Gradient of output |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `shape` | `Shape` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | Shape of the Gather input X. |
+| `indices` | `Indices` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | Tensor of int32/int64 indices, of any rank q. |
+| `dY` | `DY` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Gradient of output |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `dX` | `DX` | `IOnnxGraphEdge` | single, required | Gradient of input |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `dX` | `DX` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Gradient of input |
 
 ## Attributes
 

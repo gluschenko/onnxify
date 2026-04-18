@@ -22,15 +22,15 @@ Onnx node for SNPE.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `inputs` | `In` | `IOnnxGraphEdge[]` | variadic, min arity 1 | List of tensors for SNPE DLC input |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `inputs` | `In` | `IOnnxGraphEdge[]` | `tensor(float)`<br>`tensor(uint16)`<br>`tensor(uint8)` | variadic, min arity 1 | List of tensors for SNPE DLC input |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `outputs` | `Out` | `IOnnxGraphEdge[]` | variadic, min arity 1 | One or more outputs, list of tensors for DLC output |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `outputs` | `Out` | `IOnnxGraphEdge[]` | `tensor(float)`<br>`tensor(uint16)`<br>`tensor(uint8)` | variadic, min arity 1 | One or more outputs, list of tensors for DLC output |
 
 ## Attributes
 

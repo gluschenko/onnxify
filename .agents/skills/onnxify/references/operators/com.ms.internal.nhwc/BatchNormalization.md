@@ -61,21 +61,21 @@ This operator has **optional** inputs/outputs. See [the doc](IR.md) for more det
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | Input data tensor from the previous operator; dimensions are in the form of (N x C x D1 x D2 ... Dn), where N is the batch size, C is the number of channels. Statistics are computed for every channel of C over N and D1 to Dn dimensions. For image data, input dimensions become (N x C x H x W). The op also accepts single dimension input of size N in which case C is assumed to be 1 |
-| `scale` | `Scale` | `IOnnxGraphEdge` | single, required | Scale tensor of shape (C). |
-| `B` | `B` | `IOnnxGraphEdge` | single, required | Bias tensor of shape (C). |
-| `input_mean` | `InputMean` | `IOnnxGraphEdge` | single, required | running (training) or estimated (testing) mean tensor of shape (C). |
-| `input_var` | `InputVar` | `IOnnxGraphEdge` | single, required | running (training) or estimated (testing) variance tensor of shape (C). |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Input data tensor from the previous operator; dimensions are in the form of (N x C x D1 x D2 ... Dn), where N is the batch size, C is the number of channels. Statistics are computed for every channel of C over N and D1 to Dn dimensions. For image data, input dimensions become (N x C x H x W). The op also accepts single dimension input of size N in which case C is assumed to be 1 |
+| `scale` | `Scale` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Scale tensor of shape (C). |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Bias tensor of shape (C). |
+| `input_mean` | `InputMean` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | running (training) or estimated (testing) mean tensor of shape (C). |
+| `input_var` | `InputVar` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | running (training) or estimated (testing) variance tensor of shape (C). |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | The output tensor of the same shape as X |
-| `running_mean` | `RunningMean` | `IOnnxGraphEdge` | optional | The running mean after the BatchNormalization operator. |
-| `running_var` | `RunningVar` | `IOnnxGraphEdge` | optional | The running variance after the BatchNormalization operator. This op uses the population size (N) for calculating variance, and not the sample size N-1. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The output tensor of the same shape as X |
+| `running_mean` | `RunningMean` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | The running mean after the BatchNormalization operator. |
+| `running_var` | `RunningVar` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | The running variance after the BatchNormalization operator. This op uses the population size (N) for calculating variance, and not the sample size N-1. |
 
 ## Attributes
 

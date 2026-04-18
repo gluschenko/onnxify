@@ -29,19 +29,19 @@ a list of batch_size * sequence_length elements, which is reshaped to 2D for con
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `input` | `Input` | `IOnnxGraphEdge` | single, required | Input tensor with shape (batch_size, sequence_length, hidden_size) |
-| `sequence_token_count` | `SequenceTokenCount` | `IOnnxGraphEdge` | single, required | Number of non-padding tokens in each sequence with shape (batch_size). |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `input` | `Input` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Input tensor with shape (batch_size, sequence_length, hidden_size) |
+| `sequence_token_count` | `SequenceTokenCount` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | Number of non-padding tokens in each sequence with shape (batch_size). |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | output tensor with shape (total_tokens, hidden_size) |
-| `token_offset` | `TokenOffset` | `IOnnxGraphEdge` | single, required | Offset of non-padding tokens, and those of padding tokens. Its shape is (batch_size, sequence_length) |
-| `cumulated_seq_len` | `CumulatedSeqLen` | `IOnnxGraphEdge` | single, required | Cumulated sequence lengths. Its shape is (batch_size + 1) |
-| `max_seq_len` | `MaxSeqLen` | `IOnnxGraphEdge` | single, required | Max sequence length without padding. Its shape is (1) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | output tensor with shape (total_tokens, hidden_size) |
+| `token_offset` | `TokenOffset` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | Offset of non-padding tokens, and those of padding tokens. Its shape is (batch_size, sequence_length) |
+| `cumulated_seq_len` | `CumulatedSeqLen` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | Cumulated sequence lengths. Its shape is (batch_size + 1) |
+| `max_seq_len` | `MaxSeqLen` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | Max sequence length without padding. Its shape is (1) |
 
 ## Attributes
 

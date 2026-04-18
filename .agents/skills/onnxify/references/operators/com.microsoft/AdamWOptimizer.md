@@ -23,24 +23,24 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `lr` | `Lr` | `IOnnxGraphEdge` | single, required | The learning rate. |
-| `step` | `Step` | `IOnnxGraphEdge` | single, required | The update count of weights. It should be a scalar. |
-| `weights` | `Weights` | `IOnnxGraphEdge` | single, required | Sequence of weights to optimize. |
-| `gradients` | `Gradients` | `IOnnxGraphEdge` | single, required | Sequence of gradients computed in this iteration. |
-| `momentums_1` | `Momentums1` | `IOnnxGraphEdge` | single, required | Sequence of exponentially averaged historical gradients. |
-| `momentums_2` | `Momentums2` | `IOnnxGraphEdge` | single, required | Sequence of exponentially averaged historical squared gradients. |
-| `update_signal` | `UpdateSignal` | `IOnnxGraphEdge` | optional | This signal indicates if weight updates are skipped, applicable to gradient infinity check in mixed precision training. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `lr` | `Lr` | `IOnnxGraphEdge` | `tensor(float)` | single, required | The learning rate. |
+| `step` | `Step` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | The update count of weights. It should be a scalar. |
+| `weights` | `Weights` | `IOnnxGraphEdge` | `seq(tensor(double))`<br>`seq(tensor(float))`<br>`seq(tensor(float16))` | single, required | Sequence of weights to optimize. |
+| `gradients` | `Gradients` | `IOnnxGraphEdge` | `seq(tensor(double))`<br>`seq(tensor(float))`<br>`seq(tensor(float16))` | single, required | Sequence of gradients computed in this iteration. |
+| `momentums_1` | `Momentums1` | `IOnnxGraphEdge` | `seq(tensor(double))`<br>`seq(tensor(float))`<br>`seq(tensor(float16))` | single, required | Sequence of exponentially averaged historical gradients. |
+| `momentums_2` | `Momentums2` | `IOnnxGraphEdge` | `seq(tensor(double))`<br>`seq(tensor(float))`<br>`seq(tensor(float16))` | single, required | Sequence of exponentially averaged historical squared gradients. |
+| `update_signal` | `UpdateSignal` | `IOnnxGraphEdge` | `tensor(bool)` | optional | This signal indicates if weight updates are skipped, applicable to gradient infinity check in mixed precision training. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `updated_flag` | `UpdatedFlag` | `IOnnxGraphEdge` | single, required | Whether gradient is applied or not. |
-| `updated_weights` | `UpdatedWeights` | `IOnnxGraphEdge` | optional | Sequence of weights after optimize. |
-| `updated_momentums_1` | `UpdatedMomentums1` | `IOnnxGraphEdge` | optional | Sequence of momentum_1 after optimize. |
-| `updated_momentums_2` | `UpdatedMomentums2` | `IOnnxGraphEdge` | optional | Sequence of momentum_2 after optimize. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `updated_flag` | `UpdatedFlag` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | Whether gradient is applied or not. |
+| `updated_weights` | `UpdatedWeights` | `IOnnxGraphEdge` | `seq(tensor(double))`<br>`seq(tensor(float))`<br>`seq(tensor(float16))` | optional | Sequence of weights after optimize. |
+| `updated_momentums_1` | `UpdatedMomentums1` | `IOnnxGraphEdge` | `seq(tensor(double))`<br>`seq(tensor(float))`<br>`seq(tensor(float16))` | optional | Sequence of momentum_1 after optimize. |
+| `updated_momentums_2` | `UpdatedMomentums2` | `IOnnxGraphEdge` | `seq(tensor(double))`<br>`seq(tensor(float))`<br>`seq(tensor(float16))` | optional | Sequence of momentum_2 after optimize. |
 
 ## Attributes
 

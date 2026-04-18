@@ -23,18 +23,18 @@ NegativeLogLikelihoodLossInternal
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `input` | `Input` | `IOnnxGraphEdge` | single, required | Input tensor of shape (N, C) or (N, C, d1, d2, ..., dk). |
-| `target` | `Target` | `IOnnxGraphEdge` | single, required | Target tensor of shape (N) or (N, d1, d2, ..., dk). Target element value shall be in range of [0, C). If ignore_index is specified, it may have a value outside [0, C) and the target values should either be in the range [0, C) or have the value ignore_index. |
-| `weight` | `Weight` | `IOnnxGraphEdge` | optional | Optional rescaling weight tensor. If given, it has to be a tensor of size C. Otherwise, it is treated as if having all ones. |
-| `ignore_index` | `IgnoreIndex` | `IOnnxGraphEdge` | optional | Scalar tensor to specify a target value that is ignored and does not contribute to the input gradient. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `input` | `Input` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Input tensor of shape (N, C) or (N, C, d1, d2, ..., dk). |
+| `target` | `Target` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | Target tensor of shape (N) or (N, d1, d2, ..., dk). Target element value shall be in range of [0, C). If ignore_index is specified, it may have a value outside [0, C) and the target values should either be in the range [0, C) or have the value ignore_index. |
+| `weight` | `Weight` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Optional rescaling weight tensor. If given, it has to be a tensor of size C. Otherwise, it is treated as if having all ones. |
+| `ignore_index` | `IgnoreIndex` | `IOnnxGraphEdge` | `tensor(int64)` | optional | Scalar tensor to specify a target value that is ignored and does not contribute to the input gradient. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `loss` | `Loss` | `IOnnxGraphEdge` | single, required | The negative log likelihood loss |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `loss` | `Loss` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The negative log likelihood loss |
 
 ## Attributes
 

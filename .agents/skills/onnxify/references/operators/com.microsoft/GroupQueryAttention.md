@@ -30,29 +30,29 @@ Supports continuous decoding for batch_size == 1 for CPU and CUDA.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `query` | `Query` | `IOnnxGraphEdge` | single, required | Query with shape (batch_size, sequence_length, hidden_size), or packed QKV with shape(batch_size, sequence_length, d) where d is (num_heads * head_size + 2 * kv_num_heads * head_size). |
-| `key` | `Key` | `IOnnxGraphEdge` | optional | Key with shape (batch_size, kv_sequence_length, kv_hidden_size) |
-| `value` | `Value` | `IOnnxGraphEdge` | optional | Value with shape (batch_size, kv_sequence_length, kv_hidden_size) |
-| `past_key` | `PastKey` | `IOnnxGraphEdge` | optional | past state key with support for format BNSH. When past_key uses same tensor as present_key(k-v cache), it is of length max_sequence_length... otherwise of length past_sequence_length. |
-| `past_value` | `PastValue` | `IOnnxGraphEdge` | optional | past state value with support for format BNSH. When past_value uses same tensor as present_value(k-v cache), it is of length max_sequence_length... otherwise of length past_sequence_length. |
-| `seqlens_k` | `SeqlensK` | `IOnnxGraphEdge` | single, required | 1D Tensor of shape (batch_size). Equivalent to (total_sequence_lengths - 1). |
-| `total_sequence_length` | `TotalSequenceLength` | `IOnnxGraphEdge` | single, required | Scalar tensor equivalent to the maximum total sequence length (past + new) of the batch. Used for checking inputs and determining prompt vs token generation case. |
-| `cos_cache` | `CosCache` | `IOnnxGraphEdge` | optional | 2D tensor with shape (max_sequence_length, head_size / 2). |
-| `sin_cache` | `SinCache` | `IOnnxGraphEdge` | optional | 2D tensor with shape (max_sequence_length, head_size / 2). |
-| `position_ids` | `PositionIds` | `IOnnxGraphEdge` | optional | 2D tensor with shape (batch_size, sequence_length). When processing the first prompt the kernel uses only the first element |
-| `attention_bias` | `AttentionBias` | `IOnnxGraphEdge` | optional | additional add to QxK' with shape (batch_size or 1, num_heads or 1, sequence_length, total_sequence_length) |
-| `head_sink` | `HeadSink` | `IOnnxGraphEdge` | optional | 1D tensor with shape (num_heads). Each head has a smooth factor adding to the denominator of softmax. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `query` | `Query` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Query with shape (batch_size, sequence_length, hidden_size), or packed QKV with shape(batch_size, sequence_length, d) where d is (num_heads * head_size + 2 * kv_num_heads * head_size). |
+| `key` | `Key` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Key with shape (batch_size, kv_sequence_length, kv_hidden_size) |
+| `value` | `Value` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Value with shape (batch_size, kv_sequence_length, kv_hidden_size) |
+| `past_key` | `PastKey` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | past state key with support for format BNSH. When past_key uses same tensor as present_key(k-v cache), it is of length max_sequence_length... otherwise of length past_sequence_length. |
+| `past_value` | `PastValue` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | past state value with support for format BNSH. When past_value uses same tensor as present_value(k-v cache), it is of length max_sequence_length... otherwise of length past_sequence_length. |
+| `seqlens_k` | `SeqlensK` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | 1D Tensor of shape (batch_size). Equivalent to (total_sequence_lengths - 1). |
+| `total_sequence_length` | `TotalSequenceLength` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | Scalar tensor equivalent to the maximum total sequence length (past + new) of the batch. Used for checking inputs and determining prompt vs token generation case. |
+| `cos_cache` | `CosCache` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | 2D tensor with shape (max_sequence_length, head_size / 2). |
+| `sin_cache` | `SinCache` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | 2D tensor with shape (max_sequence_length, head_size / 2). |
+| `position_ids` | `PositionIds` | `IOnnxGraphEdge` | `tensor(int64)` | optional | 2D tensor with shape (batch_size, sequence_length). When processing the first prompt the kernel uses only the first element |
+| `attention_bias` | `AttentionBias` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | additional add to QxK' with shape (batch_size or 1, num_heads or 1, sequence_length, total_sequence_length) |
+| `head_sink` | `HeadSink` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | 1D tensor with shape (num_heads). Each head has a smooth factor adding to the denominator of softmax. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | 3D output tensor with shape (batch_size, sequence_length, hidden_size) |
-| `present_key` | `PresentKey` | `IOnnxGraphEdge` | single, required | present state key with support for format BNSH. When past_key uses same tensor as present_key(k-v buffer), it is of length max_sequence_length... otherwise of length past_sequence_length +kv_sequence_length. |
-| `present_value` | `PresentValue` | `IOnnxGraphEdge` | single, required | present state value with support for format BNSH. When past_value uses same tensor as present_value(k-v buffer), it is of length max_sequence_length... otherwise of length past_sequence_length +kv_sequence_length. |
-| `output_qk` | `OutputQk` | `IOnnxGraphEdge` | optional | Values of QK matrix multiplication, either before or after softmax normalization |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 3D output tensor with shape (batch_size, sequence_length, hidden_size) |
+| `present_key` | `PresentKey` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | present state key with support for format BNSH. When past_key uses same tensor as present_key(k-v buffer), it is of length max_sequence_length... otherwise of length past_sequence_length +kv_sequence_length. |
+| `present_value` | `PresentValue` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | present state value with support for format BNSH. When past_value uses same tensor as present_value(k-v buffer), it is of length max_sequence_length... otherwise of length past_sequence_length +kv_sequence_length. |
+| `output_qk` | `OutputQk` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Values of QK matrix multiplication, either before or after softmax normalization |
 
 ## Attributes
 

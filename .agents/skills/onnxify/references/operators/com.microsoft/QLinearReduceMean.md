@@ -33,19 +33,19 @@ This helps to improve accuracy as after ReduceMean operation the range of the ou
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `data` | `Data` | `IOnnxGraphEdge` | single, required | An input tensor. |
-| `data_scale` | `DataScale` | `IOnnxGraphEdge` | single, required | Input scale. It's a scalar, which means a per-tensor/layer quantization. |
-| `data_zero_point` | `DataZeroPoint` | `IOnnxGraphEdge` | optional | Input zero point. Default value is 0 if it's not specified. It's a scalar, which means a per-tensor/layer quantization. |
-| `reduced_scale` | `ReducedScale` | `IOnnxGraphEdge` | single, required | Output scale. It's a scalar, which means a per-tensor/layer quantization. |
-| `reduced_zero_point` | `ReducedZeroPoint` | `IOnnxGraphEdge` | optional | Output zero point. Default value is 0 if it's not specified. It's a scalar, which means a per-tensor/layer quantization. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `data` | `Data` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | An input tensor. |
+| `data_scale` | `DataScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Input scale. It's a scalar, which means a per-tensor/layer quantization. |
+| `data_zero_point` | `DataZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | optional | Input zero point. Default value is 0 if it's not specified. It's a scalar, which means a per-tensor/layer quantization. |
+| `reduced_scale` | `ReducedScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Output scale. It's a scalar, which means a per-tensor/layer quantization. |
+| `reduced_zero_point` | `ReducedZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | optional | Output zero point. Default value is 0 if it's not specified. It's a scalar, which means a per-tensor/layer quantization. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `reduced` | `Reduced` | `IOnnxGraphEdge` | single, required | Reduced output tensor. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `reduced` | `Reduced` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Reduced output tensor. |
 
 ## Attributes
 

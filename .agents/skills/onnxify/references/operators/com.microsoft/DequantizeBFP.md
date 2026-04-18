@@ -25,17 +25,17 @@ More documentation on the BFP format can be found in this paper: https://www.mic
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `x` | `X` | `IOnnxGraphEdge` | single, required | 1-D, contiguous, raw, BFP data to be de-quantized. |
-| `shape` | `Shape` | `IOnnxGraphEdge` | single, required | shape of the original tensor. |
-| `strides` | `Strides` | `IOnnxGraphEdge` | single, required | strides of the original tensor. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `x` | `X` | `IOnnxGraphEdge` | `tensor(uint8)` | single, required | 1-D, contiguous, raw, BFP data to be de-quantized. |
+| `shape` | `Shape` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | shape of the original tensor. |
+| `strides` | `Strides` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | strides of the original tensor. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `y` | `Y` | `IOnnxGraphEdge` | single, required | de-quantized tensor. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `y` | `Y` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | de-quantized tensor. |
 
 ## Attributes
 

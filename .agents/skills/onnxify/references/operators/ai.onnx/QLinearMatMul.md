@@ -33,22 +33,22 @@ Production must never overflow, and accumulation may overflow if and only if in 
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `a` | `A` | `IOnnxGraphEdge` | single, required | N-dimensional quantized matrix a |
-| `a_scale` | `AScale` | `IOnnxGraphEdge` | single, required | scale of quantized input a |
-| `a_zero_point` | `AZeroPoint` | `IOnnxGraphEdge` | single, required | zero point of quantized input a |
-| `b` | `B` | `IOnnxGraphEdge` | single, required | N-dimensional quantized matrix b |
-| `b_scale` | `BScale` | `IOnnxGraphEdge` | single, required | scale of quantized input b |
-| `b_zero_point` | `BZeroPoint` | `IOnnxGraphEdge` | single, required | zero point of quantized input b |
-| `y_scale` | `YScale` | `IOnnxGraphEdge` | single, required | scale of quantized output y |
-| `y_zero_point` | `YZeroPoint` | `IOnnxGraphEdge` | single, required | zero point of quantized output y |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `a` | `A` | `IOnnxGraphEdge` | `tensor(float8e4m3fn)`<br>`tensor(float8e4m3fnuz)`<br>`tensor(float8e5m2)`<br>`tensor(float8e5m2fnuz)`<br>`tensor(int8)`<br>`tensor(uint8)` | single, required | N-dimensional quantized matrix a |
+| `a_scale` | `AScale` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | scale of quantized input a |
+| `a_zero_point` | `AZeroPoint` | `IOnnxGraphEdge` | `tensor(float8e4m3fn)`<br>`tensor(float8e4m3fnuz)`<br>`tensor(float8e5m2)`<br>`tensor(float8e5m2fnuz)`<br>`tensor(int8)`<br>`tensor(uint8)` | single, required | zero point of quantized input a |
+| `b` | `B` | `IOnnxGraphEdge` | `tensor(float8e4m3fn)`<br>`tensor(float8e4m3fnuz)`<br>`tensor(float8e5m2)`<br>`tensor(float8e5m2fnuz)`<br>`tensor(int8)`<br>`tensor(uint8)` | single, required | N-dimensional quantized matrix b |
+| `b_scale` | `BScale` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | scale of quantized input b |
+| `b_zero_point` | `BZeroPoint` | `IOnnxGraphEdge` | `tensor(float8e4m3fn)`<br>`tensor(float8e4m3fnuz)`<br>`tensor(float8e5m2)`<br>`tensor(float8e5m2fnuz)`<br>`tensor(int8)`<br>`tensor(uint8)` | single, required | zero point of quantized input b |
+| `y_scale` | `YScale` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | scale of quantized output y |
+| `y_zero_point` | `YZeroPoint` | `IOnnxGraphEdge` | `tensor(float8e4m3fn)`<br>`tensor(float8e4m3fnuz)`<br>`tensor(float8e5m2)`<br>`tensor(float8e5m2fnuz)`<br>`tensor(int8)`<br>`tensor(uint8)` | single, required | zero point of quantized output y |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `y` | `Y` | `IOnnxGraphEdge` | single, required | Quantized matrix multiply results from a * b |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `y` | `Y` | `IOnnxGraphEdge` | `tensor(float8e4m3fn)`<br>`tensor(float8e4m3fnuz)`<br>`tensor(float8e5m2)`<br>`tensor(float8e5m2fnuz)`<br>`tensor(int8)`<br>`tensor(uint8)` | single, required | Quantized matrix multiply results from a * b |
 
 ## Attributes
 

@@ -25,22 +25,22 @@ C = (A_scale * (A - A_zero_point) + B_scale * (B - B_zero_point))/C_scale + C_ze
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `A` | `A` | `IOnnxGraphEdge` | single, required | First operand. |
-| `A_scale` | `AScale` | `IOnnxGraphEdge` | single, required | Input A's scale. It's a scalar, which means a per-tensor/layer quantization. |
-| `A_zero_point` | `AZeroPoint` | `IOnnxGraphEdge` | optional | Input A zero point. Default value is 0 if it's not specified. It's a scalar, which means a per-tensor/layer quantization. |
-| `B` | `B` | `IOnnxGraphEdge` | single, required | Second operand. |
-| `B_scale` | `BScale` | `IOnnxGraphEdge` | single, required | Input B's scale. It's a scalar, which means a per-tensor/layer quantization. |
-| `B_zero_point` | `BZeroPoint` | `IOnnxGraphEdge` | optional | Input B zero point. Default value is 0 if it's not specified. It's a scalar, which means a per-tensor/layer quantization. |
-| `C_scale` | `CScale` | `IOnnxGraphEdge` | single, required | Output scale. It's a scalar, which means a per-tensor/layer quantization. |
-| `C_zero_point` | `CZeroPoint` | `IOnnxGraphEdge` | optional | Output zero point. Default value is 0 if it's not specified. It's a scalar, which means a per-tensor/layer quantization. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `A` | `A` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | First operand. |
+| `A_scale` | `AScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Input A's scale. It's a scalar, which means a per-tensor/layer quantization. |
+| `A_zero_point` | `AZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | optional | Input A zero point. Default value is 0 if it's not specified. It's a scalar, which means a per-tensor/layer quantization. |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Second operand. |
+| `B_scale` | `BScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Input B's scale. It's a scalar, which means a per-tensor/layer quantization. |
+| `B_zero_point` | `BZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | optional | Input B zero point. Default value is 0 if it's not specified. It's a scalar, which means a per-tensor/layer quantization. |
+| `C_scale` | `CScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Output scale. It's a scalar, which means a per-tensor/layer quantization. |
+| `C_zero_point` | `CZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | optional | Output zero point. Default value is 0 if it's not specified. It's a scalar, which means a per-tensor/layer quantization. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `C` | `C` | `IOnnxGraphEdge` | single, required | Result, has same element type as two inputs |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `C` | `C` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Result, has same element type as two inputs |
 
 ## Attributes
 

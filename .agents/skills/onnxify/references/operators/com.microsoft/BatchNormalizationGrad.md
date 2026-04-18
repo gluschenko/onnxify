@@ -23,21 +23,21 @@ BatchNormalizationGrad
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `dY` | `DY` | `IOnnxGraphEdge` | single, required | Gradient output from previous node |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | Input |
-| `scale` | `Scale` | `IOnnxGraphEdge` | single, required | Scale tensor |
-| `mean` | `Mean` | `IOnnxGraphEdge` | single, required | Mean of X |
-| `variance` | `Variance` | `IOnnxGraphEdge` | single, required | Variance of X |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `dY` | `DY` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Gradient output from previous node |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Input |
+| `scale` | `Scale` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Scale tensor |
+| `mean` | `Mean` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Mean of X |
+| `variance` | `Variance` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Variance of X |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X_grad` | `XGrad` | `IOnnxGraphEdge` | single, required | Gradient of the input |
-| `scale_grad` | `ScaleGrad` | `IOnnxGraphEdge` | single, required | Gradient of the scale |
-| `bias_grad` | `BiasGrad` | `IOnnxGraphEdge` | single, required | Gradient of the bias |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X_grad` | `XGrad` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Gradient of the input |
+| `scale_grad` | `ScaleGrad` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Gradient of the scale |
+| `bias_grad` | `BiasGrad` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Gradient of the bias |
 
 ## Attributes
 

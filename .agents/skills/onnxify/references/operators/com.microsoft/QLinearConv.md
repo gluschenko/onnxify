@@ -23,23 +23,23 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `x` | `X` | `IOnnxGraphEdge` | single, required |  |
-| `x_scale` | `XScale` | `IOnnxGraphEdge` | single, required |  |
-| `x_zero_point` | `XZeroPoint` | `IOnnxGraphEdge` | single, required |  |
-| `w` | `W` | `IOnnxGraphEdge` | single, required |  |
-| `w_scale` | `WScale` | `IOnnxGraphEdge` | single, required |  |
-| `w_zero_point` | `WZeroPoint` | `IOnnxGraphEdge` | single, required |  |
-| `y_scale` | `YScale` | `IOnnxGraphEdge` | single, required |  |
-| `y_zero_point` | `YZeroPoint` | `IOnnxGraphEdge` | single, required |  |
-| `B` | `B` | `IOnnxGraphEdge` | optional |  |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `x` | `X` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required |  |
+| `x_scale` | `XScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required |  |
+| `x_zero_point` | `XZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required |  |
+| `w` | `W` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required |  |
+| `w_scale` | `WScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required |  |
+| `w_zero_point` | `WZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required |  |
+| `y_scale` | `YScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required |  |
+| `y_zero_point` | `YZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required |  |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(int32)` | optional |  |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `y` | `Y` | `IOnnxGraphEdge` | single, required |  |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `y` | `Y` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required |  |
 
 ## Attributes
 

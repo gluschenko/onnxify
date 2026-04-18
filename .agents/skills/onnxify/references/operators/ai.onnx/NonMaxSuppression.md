@@ -29,19 +29,19 @@ The bounding box coordinates corresponding to the selected indices can then be o
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `boxes` | `Boxes` | `IOnnxGraphEdge` | single, required | An input tensor with shape [num_batches, spatial_dimension, 4]. The single box data format is indicated by center_point_box. |
-| `scores` | `Scores` | `IOnnxGraphEdge` | single, required | An input tensor with shape [num_batches, num_classes, spatial_dimension] |
-| `max_output_boxes_per_class` | `MaxOutputBoxesPerClass` | `IOnnxGraphEdge` | optional | Integer representing the maximum number of boxes to be selected per batch per class. It is a scalar. Default to 0, which means no output. |
-| `iou_threshold` | `IouThreshold` | `IOnnxGraphEdge` | optional | Float representing the threshold for deciding whether boxes overlap too much with respect to IOU. It is scalar. Value range [0, 1]. Default to 0. |
-| `score_threshold` | `ScoreThreshold` | `IOnnxGraphEdge` | optional | Float representing the threshold for deciding when to remove boxes based on score. It is a scalar. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `boxes` | `Boxes` | `IOnnxGraphEdge` | `tensor(float)` | single, required | An input tensor with shape [num_batches, spatial_dimension, 4]. The single box data format is indicated by center_point_box. |
+| `scores` | `Scores` | `IOnnxGraphEdge` | `tensor(float)` | single, required | An input tensor with shape [num_batches, num_classes, spatial_dimension] |
+| `max_output_boxes_per_class` | `MaxOutputBoxesPerClass` | `IOnnxGraphEdge` | `tensor(int64)` | optional | Integer representing the maximum number of boxes to be selected per batch per class. It is a scalar. Default to 0, which means no output. |
+| `iou_threshold` | `IouThreshold` | `IOnnxGraphEdge` | `tensor(float)` | optional | Float representing the threshold for deciding whether boxes overlap too much with respect to IOU. It is scalar. Value range [0, 1]. Default to 0. |
+| `score_threshold` | `ScoreThreshold` | `IOnnxGraphEdge` | `tensor(float)` | optional | Float representing the threshold for deciding when to remove boxes based on score. It is a scalar. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `selected_indices` | `SelectedIndices` | `IOnnxGraphEdge` | single, required | selected indices from the boxes tensor. [num_selected_indices, 3], the selected index format is [batch_index, class_index, box_index]. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `selected_indices` | `SelectedIndices` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | selected indices from the boxes tensor. [num_selected_indices, 3], the selected index format is [batch_index, class_index, box_index]. |
 
 ## Attributes
 

@@ -23,15 +23,15 @@ SummaryScalar
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `input` | `Input` | `IOnnxGraphEdge` | single, required | The scalar tensor to summarize as simple values. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `input` | `Input` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(bool)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The scalar tensor to summarize as simple values. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `summary` | `Summary` | `IOnnxGraphEdge` | single, required | The serialized Tensorboard Summary. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `summary` | `Summary` | `IOnnxGraphEdge` | `tensor(string)` | single, required | The serialized Tensorboard Summary. |
 
 ## Attributes
 

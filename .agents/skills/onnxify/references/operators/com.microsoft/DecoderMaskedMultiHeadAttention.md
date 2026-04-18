@@ -25,28 +25,28 @@ This op supports both Self and Cross Attention.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `query` | `Query` | `IOnnxGraphEdge` | single, required | Query with shape (batch_size, 1, hidden_size) or packed QKV with shape (batch_size, 1, 2 * hidden_size + v_hidden_size) |
-| `key` | `Key` | `IOnnxGraphEdge` | optional | Key with shape (batch_size, 1, hidden_size) for self attention or past_key with shape (batch_size, num_heads, kv_sequence_length, head_size) for cross attention |
-| `value` | `Value` | `IOnnxGraphEdge` | optional | Value with shape (batch_size, 1, v_hidden_size) for self attention or past_value with shape (batch_size, num_heads, kv_sequence_length, head_size) for cross attention |
-| `mask_index` | `MaskIndex` | `IOnnxGraphEdge` | optional | Mask values of shape (batch_size, total_sequence_length) or (batch_size, kv_sequence_length) |
-| `attention_bias` | `AttentionBias` | `IOnnxGraphEdge` | optional | additional add to QxK' with shape (batch_size or 1, num_heads or 1, sequence_length, total_sequence_length) |
-| `past_key` | `PastKey` | `IOnnxGraphEdge` | optional | past state for key with shape (batch_size, num_heads, past_sequence_length, head_size) for self attentionWhen past_present_share_buffer is set, its shape is (batch_size, num_heads, max_sequence_length, head_size). The keys buffer is re-ordered in such a way that its virtual sub-tensor of shape (batch_size, num_heads, max_sequence_length, head_size) which may be perceived as being of shape (batch_size, num_heads, max_sequence_length, head_size / x, x) is reordered to become (batch_size, num_heads, head_size / x, max_sequence_length, x) where `x = 16 / sizeof(T)`. |
-| `past_value` | `PastValue` | `IOnnxGraphEdge` | optional | past state for value with shape (batch_size, num_heads, past_sequence_length, head_size) for self attentionWhen past_present_share_buffer is set, its shape is (batch_size, num_heads, max_sequence_length, head_size). |
-| `past_sequence_length` | `PastSequenceLength` | `IOnnxGraphEdge` | optional | When past_present_share_buffer is used, it is required to specify past_sequence_length (could be 0).Cross Attention doesn't need this input. |
-| `beam_width` | `BeamWidth` | `IOnnxGraphEdge` | optional | The beam width that is being used while decoding. If not provided, the beam width will be assumed to be 1. |
-| `cache_indirection` | `CacheIndirection` | `IOnnxGraphEdge` | optional | A buffer of shape [batch_size, beam_width, max_output_length] where an `[i, j, k]` entry specifies which beam the `k`-th token came from for the `j`-th beam for batch `i` in the current iteration |
-| `bias` | `Bias` | `IOnnxGraphEdge` | optional | Bias tensor with shape (hidden_size + hidden_size + v_hidden_size) from input projection |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `query` | `Query` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Query with shape (batch_size, 1, hidden_size) or packed QKV with shape (batch_size, 1, 2 * hidden_size + v_hidden_size) |
+| `key` | `Key` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | Key with shape (batch_size, 1, hidden_size) for self attention or past_key with shape (batch_size, num_heads, kv_sequence_length, head_size) for cross attention |
+| `value` | `Value` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | Value with shape (batch_size, 1, v_hidden_size) for self attention or past_value with shape (batch_size, num_heads, kv_sequence_length, head_size) for cross attention |
+| `mask_index` | `MaskIndex` | `IOnnxGraphEdge` | `tensor(int32)` | optional | Mask values of shape (batch_size, total_sequence_length) or (batch_size, kv_sequence_length) |
+| `attention_bias` | `AttentionBias` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | additional add to QxK' with shape (batch_size or 1, num_heads or 1, sequence_length, total_sequence_length) |
+| `past_key` | `PastKey` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | past state for key with shape (batch_size, num_heads, past_sequence_length, head_size) for self attentionWhen past_present_share_buffer is set, its shape is (batch_size, num_heads, max_sequence_length, head_size). The keys buffer is re-ordered in such a way that its virtual sub-tensor of shape (batch_size, num_heads, max_sequence_length, head_size) which may be perceived as being of shape (batch_size, num_heads, max_sequence_length, head_size / x, x) is reordered to become (batch_size, num_heads, head_size / x, max_sequence_length, x) where `x = 16 / sizeof(T)`. |
+| `past_value` | `PastValue` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | past state for value with shape (batch_size, num_heads, past_sequence_length, head_size) for self attentionWhen past_present_share_buffer is set, its shape is (batch_size, num_heads, max_sequence_length, head_size). |
+| `past_sequence_length` | `PastSequenceLength` | `IOnnxGraphEdge` | `tensor(int32)` | optional | When past_present_share_buffer is used, it is required to specify past_sequence_length (could be 0).Cross Attention doesn't need this input. |
+| `beam_width` | `BeamWidth` | `IOnnxGraphEdge` | `tensor(int32)` | optional | The beam width that is being used while decoding. If not provided, the beam width will be assumed to be 1. |
+| `cache_indirection` | `CacheIndirection` | `IOnnxGraphEdge` | `tensor(int32)` | optional | A buffer of shape [batch_size, beam_width, max_output_length] where an `[i, j, k]` entry specifies which beam the `k`-th token came from for the `j`-th beam for batch `i` in the current iteration |
+| `bias` | `Bias` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | Bias tensor with shape (hidden_size + hidden_size + v_hidden_size) from input projection |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | 3D output tensor with shape (batch_size, sequence_length, v_hidden_size) |
-| `present_key` | `PresentKey` | `IOnnxGraphEdge` | optional | present state for key with shape (batch_size, num_heads, total_sequence_length, head_size). If past_present_share_buffer is set, its shape is (batch_size, num_heads, max_sequence_length, head_size), while effective_seq_length = (past_sequence_length + kv_sequence_length). |
-| `present_value` | `PresentValue` | `IOnnxGraphEdge` | optional | present state for value with shape (batch_size, num_heads, total_sequence_length, head_size). If past_present_share_buffer is set, its shape is (batch_size, num_heads, max_sequence_length, head_size), while effective_seq_length = (past_sequence_length + kv_sequence_length). |
-| `qk` | `Qk` | `IOnnxGraphEdge` | optional | normalized Q * K, of shape (batch_size, num_heads, 1, total_sequence_length). |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 3D output tensor with shape (batch_size, sequence_length, v_hidden_size) |
+| `present_key` | `PresentKey` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | present state for key with shape (batch_size, num_heads, total_sequence_length, head_size). If past_present_share_buffer is set, its shape is (batch_size, num_heads, max_sequence_length, head_size), while effective_seq_length = (past_sequence_length + kv_sequence_length). |
+| `present_value` | `PresentValue` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | present state for value with shape (batch_size, num_heads, total_sequence_length, head_size). If past_present_share_buffer is set, its shape is (batch_size, num_heads, max_sequence_length, head_size), while effective_seq_length = (past_sequence_length + kv_sequence_length). |
+| `qk` | `Qk` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | normalized Q * K, of shape (batch_size, num_heads, 1, total_sequence_length). |
 
 ## Attributes
 

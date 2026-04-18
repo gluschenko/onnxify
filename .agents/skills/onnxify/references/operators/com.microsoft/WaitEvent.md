@@ -22,16 +22,16 @@ Wait for an event to be recorded.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `EventIdentifier` | `EventIdentifier` | `IOnnxGraphEdge` | single, required | Event identifier to record. |
-| `InputData` | `InputData` | `IOnnxGraphEdge[]` | variadic, min arity 1 | Input data. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `EventIdentifier` | `EventIdentifier` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Event identifier to record. |
+| `InputData` | `InputData` | `IOnnxGraphEdge[]` | `tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | variadic, min arity 1 | Input data. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `OutputData` | `OutputData` | `IOnnxGraphEdge[]` | variadic, min arity 1 | Output data. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `OutputData` | `OutputData` | `IOnnxGraphEdge[]` | `tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | variadic, min arity 1 | Output data. |
 
 ## Attributes
 

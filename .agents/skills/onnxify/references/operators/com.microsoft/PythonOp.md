@@ -22,16 +22,16 @@ Wrapper of PyTorch's autograd.Function implementation.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `inputs` | `In` | `IOnnxGraphEdge[]` | variadic, min arity 1 | Module outputs to be returned to PyTorch. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `inputs` | `In` | `IOnnxGraphEdge[]` | `tensor(bfloat16)`<br>`tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | variadic, min arity 1 | Module outputs to be returned to PyTorch. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `context` | `Context` | `IOnnxGraphEdge` | single, required | Address of context created in this operator. It can be used in backward. |
-| `outputs` | `Out` | `IOnnxGraphEdge[]` | variadic, min arity 1 | Outputs returned from PyTorch. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `context` | `Context` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Address of context created in this operator. It can be used in backward. |
+| `outputs` | `Out` | `IOnnxGraphEdge[]` | `tensor(bfloat16)`<br>`tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | variadic, min arity 1 | Outputs returned from PyTorch. |
 
 ## Attributes
 

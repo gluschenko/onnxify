@@ -41,20 +41,20 @@ The operator only supports BERT like model with padding on right now.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `input` | `Input` | `IOnnxGraphEdge` | single, required | Input tensor with shape (token_count, input_hidden_size) |
-| `weights` | `Weights` | `IOnnxGraphEdge` | single, required | Merged Q/K/V weights with shape (input_hidden_size, hidden_size + hidden_size + v_hidden_size) |
-| `bias` | `Bias` | `IOnnxGraphEdge` | single, required | Bias tensor with shape (hidden_size + hidden_size + v_hidden_size) for input projection |
-| `token_offset` | `TokenOffset` | `IOnnxGraphEdge` | single, required | In packing mode, it specifies the offset of each token(batch_size, sequence_length). |
-| `cumulative_sequence_length` | `CumulativeSequenceLength` | `IOnnxGraphEdge` | single, required | A tensor with shape (batch_size + 1). It specifies the cumulative sequence length. |
-| `attention_bias` | `AttentionBias` | `IOnnxGraphEdge` | optional | A tensor with shape (batch_size or 1, num_heads or 1, sequence_length, sequence_length).It specifies the additional bias to QxK' |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `input` | `Input` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Input tensor with shape (token_count, input_hidden_size) |
+| `weights` | `Weights` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Merged Q/K/V weights with shape (input_hidden_size, hidden_size + hidden_size + v_hidden_size) |
+| `bias` | `Bias` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Bias tensor with shape (hidden_size + hidden_size + v_hidden_size) for input projection |
+| `token_offset` | `TokenOffset` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | In packing mode, it specifies the offset of each token(batch_size, sequence_length). |
+| `cumulative_sequence_length` | `CumulativeSequenceLength` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | A tensor with shape (batch_size + 1). It specifies the cumulative sequence length. |
+| `attention_bias` | `AttentionBias` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | A tensor with shape (batch_size or 1, num_heads or 1, sequence_length, sequence_length).It specifies the additional bias to QxK' |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | 2D output tensor with shape (token_count, v_hidden_size) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 2D output tensor with shape (token_count, v_hidden_size) |
 
 ## Attributes
 

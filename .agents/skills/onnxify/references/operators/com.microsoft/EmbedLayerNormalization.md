@@ -27,25 +27,25 @@ will be calculated.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `input_ids` | `InputIds` | `IOnnxGraphEdge` | single, required | 2D words IDs with shape (batch_size, sequence_length) |
-| `segment_ids` | `SegmentIds` | `IOnnxGraphEdge` | optional | 2D segment IDs with shape (batch_size, sequence_length) |
-| `word_embedding` | `WordEmbedding` | `IOnnxGraphEdge` | single, required | 2D with shape (,hidden_size) |
-| `position_embedding` | `PositionEmbedding` | `IOnnxGraphEdge` | single, required | 2D with shape (, hidden_size) |
-| `segment_embedding` | `SegmentEmbedding` | `IOnnxGraphEdge` | optional | 2D with shape (, hidden_size) |
-| `gamma` | `Gamma` | `IOnnxGraphEdge` | single, required | 1D gamma tensor for layer normalization with shape (hidden_size) |
-| `beta` | `Beta` | `IOnnxGraphEdge` | single, required | 1D beta tensor for layer normalization with shape (hidden_size) |
-| `mask` | `Mask` | `IOnnxGraphEdge` | optional | 2D attention mask with shape (batch_size, sequence_length) |
-| `position_ids` | `PositionIds` | `IOnnxGraphEdge` | optional | 2D position ids with shape (batch_size, sequence_length) or (1, sequence_length) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `input_ids` | `InputIds` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | 2D words IDs with shape (batch_size, sequence_length) |
+| `segment_ids` | `SegmentIds` | `IOnnxGraphEdge` | `tensor(int32)` | optional | 2D segment IDs with shape (batch_size, sequence_length) |
+| `word_embedding` | `WordEmbedding` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 2D with shape (,hidden_size) |
+| `position_embedding` | `PositionEmbedding` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 2D with shape (, hidden_size) |
+| `segment_embedding` | `SegmentEmbedding` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | 2D with shape (, hidden_size) |
+| `gamma` | `Gamma` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 1D gamma tensor for layer normalization with shape (hidden_size) |
+| `beta` | `Beta` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 1D beta tensor for layer normalization with shape (hidden_size) |
+| `mask` | `Mask` | `IOnnxGraphEdge` | `tensor(int32)` | optional | 2D attention mask with shape (batch_size, sequence_length) |
+| `position_ids` | `PositionIds` | `IOnnxGraphEdge` | `tensor(int32)` | optional | 2D position ids with shape (batch_size, sequence_length) or (1, sequence_length) |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | 3D output tensor with shape (batch_size, sequence_length, hidden_size) |
-| `mask_index` | `MaskIndex` | `IOnnxGraphEdge` | optional | 1D mask_index tensor with shape (batch_size) |
-| `embedding_sum` | `EmbeddingSum` | `IOnnxGraphEdge` | optional | sum of word_embedding and position_embedding without layer normalization |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 3D output tensor with shape (batch_size, sequence_length, hidden_size) |
+| `mask_index` | `MaskIndex` | `IOnnxGraphEdge` | `tensor(int32)` | optional | 1D mask_index tensor with shape (batch_size) |
+| `embedding_sum` | `EmbeddingSum` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | sum of word_embedding and position_embedding without layer normalization |
 
 ## Attributes
 

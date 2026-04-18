@@ -32,19 +32,19 @@ No matching if found if src tokens contain multiple or zero matching n-grams. Re
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `src_tokens` | `SrcTokens` | `IOnnxGraphEdge` | single, required | Encoder input ids. |
-| `cur_tokens` | `CurTokens` | `IOnnxGraphEdge` | single, required | Decoder input ids. |
-| `prev_suffix_match_idx` | `PrevSuffixMatchIdx` | `IOnnxGraphEdge` | single, required | Previous suffix match index |
-| `pred_tokens` | `PredTokens` | `IOnnxGraphEdge` | optional | Predicted token ids from aggressive decoding |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `src_tokens` | `SrcTokens` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Encoder input ids. |
+| `cur_tokens` | `CurTokens` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Decoder input ids. |
+| `prev_suffix_match_idx` | `PrevSuffixMatchIdx` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Previous suffix match index |
+| `pred_tokens` | `PredTokens` | `IOnnxGraphEdge` | `tensor(int64)` | optional | Predicted token ids from aggressive decoding |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `tokens` | `Tokens` | `IOnnxGraphEdge` | single, required | Decoder input ids after merging predicted tokens |
-| `suffix_match_idx` | `SuffixMatchIdx` | `IOnnxGraphEdge` | single, required | new suffix match index |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `tokens` | `Tokens` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Decoder input ids after merging predicted tokens |
+| `suffix_match_idx` | `SuffixMatchIdx` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | new suffix match index |
 
 ## Attributes
 

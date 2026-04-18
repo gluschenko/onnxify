@@ -26,15 +26,15 @@ Creates a map from the input and the attributes.<br>
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | The input values |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(float)` | single, required | The input values |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Z` | `Z` | `IOnnxGraphEdge` | single, required | The output map |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Z` | `Z` | `IOnnxGraphEdge` | `seq(map(int64,tensor(float)))`<br>`seq(map(string,tensor(float)))` | single, required | The output map |
 
 ## Attributes
 

@@ -24,17 +24,17 @@ More documentation on the BFP format can be found in this paper: https://www.mic
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `x` | `X` | `IOnnxGraphEdge` | single, required | N-D full precision input tensor to be quantized. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `x` | `X` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | N-D full precision input tensor to be quantized. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `y` | `Y` | `IOnnxGraphEdge` | single, required | 1-D, contiguous BFP data |
-| `shape` | `Shape` | `IOnnxGraphEdge` | single, required | Shape of x |
-| `strides` | `Strides` | `IOnnxGraphEdge` | single, required | Strides of x |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `y` | `Y` | `IOnnxGraphEdge` | `tensor(uint8)` | single, required | 1-D, contiguous BFP data |
+| `shape` | `Shape` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Shape of x |
+| `strides` | `Strides` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Strides of x |
 
 ## Attributes
 

@@ -23,19 +23,19 @@ dropout_output, mask, softmax_output = Dropout(Softmax(data + bias), ratio), Int
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `data` | `Data` | `IOnnxGraphEdge` | single, required | The input data as Tensor. |
-| `bias` | `Bias` | `IOnnxGraphEdge` | single, required | The bias (or mask) as Tensor. |
-| `ratio` | `Ratio` | `IOnnxGraphEdge` | optional | The ratio of random dropout, with value in [0, 1). If this input was not set, or if it was set to 0, the output would be a simple copy of the input. If it's non-zero, output will be a random dropout of the scaled input, which is typically the case during training. It is an optional value, if not specified it will default to 0.5. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `data` | `Data` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The input data as Tensor. |
+| `bias` | `Bias` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The bias (or mask) as Tensor. |
+| `ratio` | `Ratio` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | The ratio of random dropout, with value in [0, 1). If this input was not set, or if it was set to 0, the output would be a simple copy of the input. If it's non-zero, output will be a random dropout of the scaled input, which is typically the case during training. It is an optional value, if not specified it will default to 0.5. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `dropout_output` | `DropoutOutput` | `IOnnxGraphEdge` | single, required | The dropout output. |
-| `mask` | `Mask` | `IOnnxGraphEdge` | single, required | The output mask of dropout. |
-| `softmax_output` | `SoftmaxOutput` | `IOnnxGraphEdge` | single, required | The Softmax output for backward. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `dropout_output` | `DropoutOutput` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The dropout output. |
+| `mask` | `Mask` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | The output mask of dropout. |
+| `softmax_output` | `SoftmaxOutput` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The Softmax output for backward. |
 
 ## Attributes
 

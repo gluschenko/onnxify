@@ -23,17 +23,17 @@ Compute binned relative position bias for T5 model. ref: https://arxiv.org/abs/1
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `bias_table` | `BiasTable` | `IOnnxGraphEdge` | single, required | 2D input tensor with shape (num_buckets, num_heads), COL-major(See UT for example) |
-| `query_length` | `QueryLength` | `IOnnxGraphEdge` | single, required | The length of query. Self Attention requires query_length = key_length |
-| `key_length` | `KeyLength` | `IOnnxGraphEdge` | single, required | The length of key. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `bias_table` | `BiasTable` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 2D input tensor with shape (num_buckets, num_heads), COL-major(See UT for example) |
+| `query_length` | `QueryLength` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | The length of query. Self Attention requires query_length = key_length |
+| `key_length` | `KeyLength` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | The length of key. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | 4D output tensor with shape (1, num_heads, sequence_length, sequence_length) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 4D output tensor with shape (1, num_heads, sequence_length, sequence_length) |
 
 ## Attributes
 

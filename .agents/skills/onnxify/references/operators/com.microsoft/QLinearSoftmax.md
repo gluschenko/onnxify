@@ -28,19 +28,19 @@ The output tensor has the same shape.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | The input tensor |
-| `X_scale` | `XScale` | `IOnnxGraphEdge` | single, required | Scale of quantized input 'X'. It must be a scalar. |
-| `x_zero_point` | `XZeroPoint` | `IOnnxGraphEdge` | optional | Zero point tensor for input 'X'.It must be a scalar. |
-| `y_scale` | `YScale` | `IOnnxGraphEdge` | single, required | Scale of quantized output 'Y'. It must be a scalar. |
-| `y_zero_point` | `YZeroPoint` | `IOnnxGraphEdge` | single, required | Zero point tensor for output 'Y'. It must be a scalar. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | The input tensor |
+| `X_scale` | `XScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Scale of quantized input 'X'. It must be a scalar. |
+| `x_zero_point` | `XZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | optional | Zero point tensor for input 'X'.It must be a scalar. |
+| `y_scale` | `YScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Scale of quantized output 'Y'. It must be a scalar. |
+| `y_zero_point` | `YZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Zero point tensor for output 'Y'. It must be a scalar. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | Output data tensor from pooling across the input tensor. The output tensor has the same rank as the input. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Output data tensor from pooling across the input tensor. The output tensor has the same rank as the input. |
 
 ## Attributes
 

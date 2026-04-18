@@ -23,20 +23,20 @@ SoftmaxCrossEntropyLossInternalGrad
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `dY` | `DY` | `IOnnxGraphEdge` | single, required | gradient of Y |
-| `log_prob` | `LogProb` | `IOnnxGraphEdge` | single, required | logsoftmax(logits), (N+1)-D input of shape (batch_size). |
-| `label` | `Label` | `IOnnxGraphEdge` | single, required | label is N-D input whose shape should match that of logits. It is a tensor of nonnegative integers, where each element is the nonnegative integer label for the element of the batch. |
-| `weight` | `Weight` | `IOnnxGraphEdge` | optional | weight for each sample. The shape is 1-D tensor. |
-| `ignore_index` | `IgnoreIndex` | `IOnnxGraphEdge` | optional | Scalar tensor to specify a target value that is ignored and does not contribute to the input gradient. |
-| `bias` | `Bias` | `IOnnxGraphEdge` | optional | data to be non-broadcasting added to the gradient. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `dY` | `DY` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | gradient of Y |
+| `log_prob` | `LogProb` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | logsoftmax(logits), (N+1)-D input of shape (batch_size). |
+| `label` | `Label` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | label is N-D input whose shape should match that of logits. It is a tensor of nonnegative integers, where each element is the nonnegative integer label for the element of the batch. |
+| `weight` | `Weight` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | weight for each sample. The shape is 1-D tensor. |
+| `ignore_index` | `IgnoreIndex` | `IOnnxGraphEdge` | `tensor(int64)` | optional | Scalar tensor to specify a target value that is ignored and does not contribute to the input gradient. |
+| `bias` | `Bias` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | data to be non-broadcasting added to the gradient. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `d_logits` | `DLogits` | `IOnnxGraphEdge` | single, required | gradient of logits |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `d_logits` | `DLogits` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | gradient of logits |
 
 ## Attributes
 

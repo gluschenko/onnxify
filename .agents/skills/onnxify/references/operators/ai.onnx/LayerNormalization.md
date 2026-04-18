@@ -63,19 +63,19 @@ This is layer normalization defined in ONNX as function.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | Tensor to be normalized. |
-| `Scale` | `Scale` | `IOnnxGraphEdge` | single, required | Scale tensor. |
-| `B` | `B` | `IOnnxGraphEdge` | optional | Bias tensor. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Tensor to be normalized. |
+| `Scale` | `Scale` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Scale tensor. |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Bias tensor. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | Normalized tensor. |
-| `Mean` | `Mean` | `IOnnxGraphEdge` | optional | Saved mean used during training to speed up gradient computation |
-| `InvStdDev` | `InvStdDev` | `IOnnxGraphEdge` | optional | Saved inverse standard deviation used during training to speed up gradient computation. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Normalized tensor. |
+| `Mean` | `Mean` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)` | optional | Saved mean used during training to speed up gradient computation |
+| `InvStdDev` | `InvStdDev` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)` | optional | Saved inverse standard deviation used during training to speed up gradient computation. |
 
 ## Attributes
 

@@ -23,32 +23,32 @@ LSTMGrad operator that computes the partial derivative of the loss with respect 
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | Original input to the LSTM cell. |
-| `W` | `W` | `IOnnxGraphEdge` | single, required | Input weight parameters to the LSTM cell. |
-| `R` | `R` | `IOnnxGraphEdge` | single, required | Input recurrent weight parameters to the LSTM cell. |
-| `SL` | `SL` | `IOnnxGraphEdge` | optional | Input sequence length of the input sequence. |
-| `Ht0` | `Ht0` | `IOnnxGraphEdge` | optional | Initial hidden state input to the LSTM cell |
-| `Ct0` | `Ct0` | `IOnnxGraphEdge` | optional | Initial cell state input to the LSTM cell |
-| `HAll` | `HAll` | `IOnnxGraphEdge` | optional | Hidden states over all sequence steps output from LSTMTraining. |
-| `CAll` | `CAll` | `IOnnxGraphEdge` | optional | Cell states over all sequence steps output from LSTMTraining. |
-| `iofc` | `Iofc` | `IOnnxGraphEdge` | optional | Intermediate gate computations for all sequence steps output from LSTMTraining. |
-| `dHAll` | `DHAll` | `IOnnxGraphEdge` | optional | Gradient of loss with respect to the output Y of the LSTM cell |
-| `dHFinal` | `DHFinal` | `IOnnxGraphEdge` | optional | Gradient of loss with respect to the output Y_h of the LSTM cell |
-| `dCFinal` | `DCFinal` | `IOnnxGraphEdge` | optional | Gradient of loss with respect to the output Y_c of the LSTM cell |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Original input to the LSTM cell. |
+| `W` | `W` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Input weight parameters to the LSTM cell. |
+| `R` | `R` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Input recurrent weight parameters to the LSTM cell. |
+| `SL` | `SL` | `IOnnxGraphEdge` | `tensor(int32)` | optional | Input sequence length of the input sequence. |
+| `Ht0` | `Ht0` | `IOnnxGraphEdge` | `tensor(float)` | optional | Initial hidden state input to the LSTM cell |
+| `Ct0` | `Ct0` | `IOnnxGraphEdge` | `tensor(float)` | optional | Initial cell state input to the LSTM cell |
+| `HAll` | `HAll` | `IOnnxGraphEdge` | `tensor(float)` | optional | Hidden states over all sequence steps output from LSTMTraining. |
+| `CAll` | `CAll` | `IOnnxGraphEdge` | `tensor(float)` | optional | Cell states over all sequence steps output from LSTMTraining. |
+| `iofc` | `Iofc` | `IOnnxGraphEdge` | `tensor(float)` | optional | Intermediate gate computations for all sequence steps output from LSTMTraining. |
+| `dHAll` | `DHAll` | `IOnnxGraphEdge` | `tensor(float)` | optional | Gradient of loss with respect to the output Y of the LSTM cell |
+| `dHFinal` | `DHFinal` | `IOnnxGraphEdge` | `tensor(float)` | optional | Gradient of loss with respect to the output Y_h of the LSTM cell |
+| `dCFinal` | `DCFinal` | `IOnnxGraphEdge` | `tensor(float)` | optional | Gradient of loss with respect to the output Y_c of the LSTM cell |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `dX` | `DX` | `IOnnxGraphEdge` | optional | Gradient of loss with respect to the input (to the LSTM cell). |
-| `dW` | `DW` | `IOnnxGraphEdge` | optional | Gradient of loss with respect to the weight parameters (of the LSTM cell). |
-| `dR` | `DR` | `IOnnxGraphEdge` | optional | Gradient of loss with respect to the recurrence weight parameters (of the LSTM cell). |
-| `dB` | `DB` | `IOnnxGraphEdge` | optional | Gradient of loss with respect to the bias parameters (of the LSTM cell). |
-| `dH0` | `DH0` | `IOnnxGraphEdge` | optional | Gradient of loss with respect to the previous hidden state (of the LSTM cell). |
-| `dC0` | `DC0` | `IOnnxGraphEdge` | optional | Gradient of loss with respect to the previous cell state (of the LSTM cell). |
-| `dP` | `DP` | `IOnnxGraphEdge` | optional | Gradient of loss with respect to the peephole parameters (of the LSTM cell). |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `dX` | `DX` | `IOnnxGraphEdge` | `tensor(float)` | optional | Gradient of loss with respect to the input (to the LSTM cell). |
+| `dW` | `DW` | `IOnnxGraphEdge` | `tensor(float)` | optional | Gradient of loss with respect to the weight parameters (of the LSTM cell). |
+| `dR` | `DR` | `IOnnxGraphEdge` | `tensor(float)` | optional | Gradient of loss with respect to the recurrence weight parameters (of the LSTM cell). |
+| `dB` | `DB` | `IOnnxGraphEdge` | `tensor(float)` | optional | Gradient of loss with respect to the bias parameters (of the LSTM cell). |
+| `dH0` | `DH0` | `IOnnxGraphEdge` | `tensor(float)` | optional | Gradient of loss with respect to the previous hidden state (of the LSTM cell). |
+| `dC0` | `DC0` | `IOnnxGraphEdge` | `tensor(float)` | optional | Gradient of loss with respect to the previous cell state (of the LSTM cell). |
+| `dP` | `DP` | `IOnnxGraphEdge` | `tensor(float)` | optional | Gradient of loss with respect to the peephole parameters (of the LSTM cell). |
 
 ## Attributes
 

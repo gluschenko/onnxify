@@ -23,18 +23,18 @@ BitmaskDropoutGrad
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `dy` | `Dy` | `IOnnxGraphEdge` | single, required | The gradient tensor from output. |
-| `mask` | `Mask` | `IOnnxGraphEdge` | single, required | The mask output of the dropout. |
-| `ratio` | `Ratio` | `IOnnxGraphEdge` | optional | Same value as the ratio input supplied to the dropout op with value in [0, 1). If this input is not specified, a default value of 0.5 is used. |
-| `training_mode` | `TrainingMode` | `IOnnxGraphEdge` | optional | Same value as the training_mode input supplied to the dropout op. If this input is not specified, a default value of false is used. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `dy` | `Dy` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The gradient tensor from output. |
+| `mask` | `Mask` | `IOnnxGraphEdge` | `tensor(uint32)` | single, required | The mask output of the dropout. |
+| `ratio` | `Ratio` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Same value as the ratio input supplied to the dropout op with value in [0, 1). If this input is not specified, a default value of 0.5 is used. |
+| `training_mode` | `TrainingMode` | `IOnnxGraphEdge` | `tensor(bool)` | optional | Same value as the training_mode input supplied to the dropout op. If this input is not specified, a default value of false is used. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `dx` | `Dx` | `IOnnxGraphEdge` | single, required | Gradient of the input. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `dx` | `Dx` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Gradient of the input. |
 
 ## Attributes
 

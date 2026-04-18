@@ -23,21 +23,21 @@ Greedy Search for text generation.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `input_ids` | `InputIds` | `IOnnxGraphEdge` | single, required | The sequence used as a prompt for the generation. Shape is (batch_size, sequence_length) |
-| `max_length` | `MaxLength` | `IOnnxGraphEdge` | single, required | The maximum length of the sequence to be generated. Shape is (1) |
-| `min_length` | `MinLength` | `IOnnxGraphEdge` | optional | The minimum length below which the score of eos_token_id is set to -Inf. Shape is (1) |
-| `repetition_penalty` | `RepetitionPenalty` | `IOnnxGraphEdge` | optional | The parameter for repetition penalty. Default value 1.0 means no penalty. Accepts value > 0.0. Shape is (1) |
-| `vocab_mask` | `VocabMask` | `IOnnxGraphEdge` | optional | Mask of vocabulary. Words that masked with 0 are not allowed to be generated, and 1 is allowed. Shape is (vocab_size) |
-| `prefix_vocab_mask` | `PrefixVocabMask` | `IOnnxGraphEdge` | optional | Mask of vocabulary for first step. Words that masked with 0 are not allowed to be generated, and 1 is allowed. Shape is (batch_size, vocab_size) |
-| `attention_mask` | `AttentionMask` | `IOnnxGraphEdge` | optional | Custom attention mask. Shape is (batch_size, sequence_length) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `input_ids` | `InputIds` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | The sequence used as a prompt for the generation. Shape is (batch_size, sequence_length) |
+| `max_length` | `MaxLength` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | The maximum length of the sequence to be generated. Shape is (1) |
+| `min_length` | `MinLength` | `IOnnxGraphEdge` | `tensor(int32)` | optional | The minimum length below which the score of eos_token_id is set to -Inf. Shape is (1) |
+| `repetition_penalty` | `RepetitionPenalty` | `IOnnxGraphEdge` | `tensor(float)` | optional | The parameter for repetition penalty. Default value 1.0 means no penalty. Accepts value > 0.0. Shape is (1) |
+| `vocab_mask` | `VocabMask` | `IOnnxGraphEdge` | `tensor(int32)` | optional | Mask of vocabulary. Words that masked with 0 are not allowed to be generated, and 1 is allowed. Shape is (vocab_size) |
+| `prefix_vocab_mask` | `PrefixVocabMask` | `IOnnxGraphEdge` | `tensor(int32)` | optional | Mask of vocabulary for first step. Words that masked with 0 are not allowed to be generated, and 1 is allowed. Shape is (batch_size, vocab_size) |
+| `attention_mask` | `AttentionMask` | `IOnnxGraphEdge` | `tensor(int32)` | optional | Custom attention mask. Shape is (batch_size, sequence_length) |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `sequences` | `Sequences` | `IOnnxGraphEdge` | single, required | Word IDs of generated sequences. Shape is (batch_size, max_sequence_length) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `sequences` | `Sequences` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | Word IDs of generated sequences. Shape is (batch_size, max_sequence_length) |
 
 ## Attributes
 

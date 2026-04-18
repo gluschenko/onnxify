@@ -35,23 +35,23 @@ output_shape can also be explicitly specified in which case pads values are auto
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `x` | `X` | `IOnnxGraphEdge` | single, required | Input data tensor from previous layer; has size (N x C x H x W), where N is the batch size, C is the number of channels, and H and W are the height and width. Note that this is for the 2D image. Otherwise the size is (N x C x D1 x D2 ... x Dn) |
-| `x_scale` | `XScale` | `IOnnxGraphEdge` | single, required | Scale tensor for input 'x'. It's a scalar, which means a per-tensor/layer quantization. |
-| `x_zero_point` | `XZeroPoint` | `IOnnxGraphEdge` | single, required | Zero point tensor for input 'x'. It's a scalar, which means a per-tensor/layer quantization. |
-| `w` | `W` | `IOnnxGraphEdge` | single, required | The weight tensor that will be used in the convolutions; has size (C x M/group x kH x kW), where C is the number of channels, and kH and kW are the height and width of the kernel, and M is the number of feature maps. |
-| `w_scale` | `WScale` | `IOnnxGraphEdge` | single, required | Scale tensor for input 'w'. It could be a scalar or a 1-D tensor, which means a per-tensor/layer or per output channel quantization. If it's a 1-D tensor, its number of elements should be equal to the number of output channels (M). |
-| `w_zero_point` | `WZeroPoint` | `IOnnxGraphEdge` | single, required | Zero point tensor for input 'w'. It could be a scalar or a 1-D tensor, which means a per-tensor/layer or per output channel quantization. If it's a 1-D tensor, its number of elements should be equal to the number of output channels (M). |
-| `y_scale` | `YScale` | `IOnnxGraphEdge` | single, required | Scale tensor for output 'y'. It's a scalar, which means a per-tensor/layer quantization. |
-| `y_zero_point` | `YZeroPoint` | `IOnnxGraphEdge` | single, required | Zero point tensor for output 'y'. It's a scalar, which means a per-tensor/layer quantization. |
-| `B` | `B` | `IOnnxGraphEdge` | optional | Optional 1D bias to be added to the convolution, has size of M. Bias must be quantized using scale = x_scale * w_scale and zero_point = 0 |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `x` | `X` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Input data tensor from previous layer; has size (N x C x H x W), where N is the batch size, C is the number of channels, and H and W are the height and width. Note that this is for the 2D image. Otherwise the size is (N x C x D1 x D2 ... x Dn) |
+| `x_scale` | `XScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Scale tensor for input 'x'. It's a scalar, which means a per-tensor/layer quantization. |
+| `x_zero_point` | `XZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Zero point tensor for input 'x'. It's a scalar, which means a per-tensor/layer quantization. |
+| `w` | `W` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | The weight tensor that will be used in the convolutions; has size (C x M/group x kH x kW), where C is the number of channels, and kH and kW are the height and width of the kernel, and M is the number of feature maps. |
+| `w_scale` | `WScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Scale tensor for input 'w'. It could be a scalar or a 1-D tensor, which means a per-tensor/layer or per output channel quantization. If it's a 1-D tensor, its number of elements should be equal to the number of output channels (M). |
+| `w_zero_point` | `WZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Zero point tensor for input 'w'. It could be a scalar or a 1-D tensor, which means a per-tensor/layer or per output channel quantization. If it's a 1-D tensor, its number of elements should be equal to the number of output channels (M). |
+| `y_scale` | `YScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Scale tensor for output 'y'. It's a scalar, which means a per-tensor/layer quantization. |
+| `y_zero_point` | `YZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Zero point tensor for output 'y'. It's a scalar, which means a per-tensor/layer quantization. |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(int32)` | optional | Optional 1D bias to be added to the convolution, has size of M. Bias must be quantized using scale = x_scale * w_scale and zero_point = 0 |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `y` | `Y` | `IOnnxGraphEdge` | single, required | Output data tensor that contains the result of the convolution. The output dimensions are functions of the kernel size, stride size, and pad lengths. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `y` | `Y` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Output data tensor that contains the result of the convolution. The output dimensions are functions of the kernel size, stride size, and pad lengths. |
 
 ## Attributes
 

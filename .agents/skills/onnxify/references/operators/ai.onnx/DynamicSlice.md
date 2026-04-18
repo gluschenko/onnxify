@@ -53,18 +53,18 @@ Example 2:
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `data` | `Data` | `IOnnxGraphEdge` | single, required | Tensor of data to extract slices from. |
-| `starts` | `Starts` | `IOnnxGraphEdge` | single, required | 1-D tensor of starting indices of corresponding axis in `axes` |
-| `ends` | `Ends` | `IOnnxGraphEdge` | single, required | 1-D tensor of ending indices (exclusive) of corresponding axis in axes |
-| `axes` | `Axes` | `IOnnxGraphEdge` | optional | 1-D tensor of axes that `starts` and `ends` apply to. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `data` | `Data` | `IOnnxGraphEdge` | `tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | Tensor of data to extract slices from. |
+| `starts` | `Starts` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | 1-D tensor of starting indices of corresponding axis in `axes` |
+| `ends` | `Ends` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | 1-D tensor of ending indices (exclusive) of corresponding axis in axes |
+| `axes` | `Axes` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | optional | 1-D tensor of axes that `starts` and `ends` apply to. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | Sliced data tensor. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | Sliced data tensor. |
 
 ## Attributes
 

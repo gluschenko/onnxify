@@ -27,33 +27,33 @@ If mask is provided, mask index (that is position of first 0 in mask, or number 
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `input_ids` | `InputIds` | `IOnnxGraphEdge` | single, required | 2D words IDs with shape (batch_size, sequence_length) |
-| `segment_ids` | `SegmentIds` | `IOnnxGraphEdge` | optional | 2D segment IDs with shape (batch_size, sequence_length) |
-| `word_embedding_quant` | `WordEmbeddingQuant` | `IOnnxGraphEdge` | single, required | 2D with shape (,hidden_size) |
-| `position_embedding_quant` | `PositionEmbeddingQuant` | `IOnnxGraphEdge` | single, required | 2D with shape (, hidden_size) |
-| `segment_embedding` | `SegmentEmbedding` | `IOnnxGraphEdge` | optional | 2D with shape (, hidden_size) |
-| `gamma_quant` | `GammaQuant` | `IOnnxGraphEdge` | single, required | 1D gamma tensor for layer normalization with shape (hidden_size) |
-| `beta_quant` | `BetaQuant` | `IOnnxGraphEdge` | single, required | 1D beta tensor for layer normalization with shape (hidden_size) |
-| `mask` | `Mask` | `IOnnxGraphEdge` | optional | Mask |
-| `word_embedding_scale` | `WordEmbeddingScale` | `IOnnxGraphEdge` | single, required | Scale for word embeddings |
-| `position_embedding_scale` | `PositionEmbeddingScale` | `IOnnxGraphEdge` | single, required | Scale for position embeddings |
-| `segment_embedding_scale` | `SegmentEmbeddingScale` | `IOnnxGraphEdge` | optional | Scale for segment embeddings |
-| `gamma_scale` | `GammaScale` | `IOnnxGraphEdge` | single, required | Scale for 1D gamma tensor |
-| `beta_scale` | `BetaScale` | `IOnnxGraphEdge` | single, required | Scale for 1D beta tensor |
-| `word_embedding_zero_point` | `WordEmbeddingZeroPoint` | `IOnnxGraphEdge` | single, required | Zero point for word embeddings |
-| `position_embedding_zero_point` | `PositionEmbeddingZeroPoint` | `IOnnxGraphEdge` | single, required | Zero point for position embeddings |
-| `segment_embedding_zero_point` | `SegmentEmbeddingZeroPoint` | `IOnnxGraphEdge` | optional | Zero Point for segment embeddings |
-| `gamma_zero_point` | `GammaZeroPoint` | `IOnnxGraphEdge` | single, required | Zero Point for 1D gamma tensor |
-| `beta_zero_point` | `BetaZeroPoint` | `IOnnxGraphEdge` | single, required | Zero Point for 1D beta tensor |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `input_ids` | `InputIds` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | 2D words IDs with shape (batch_size, sequence_length) |
+| `segment_ids` | `SegmentIds` | `IOnnxGraphEdge` | `tensor(int32)` | optional | 2D segment IDs with shape (batch_size, sequence_length) |
+| `word_embedding_quant` | `WordEmbeddingQuant` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | 2D with shape (,hidden_size) |
+| `position_embedding_quant` | `PositionEmbeddingQuant` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | 2D with shape (, hidden_size) |
+| `segment_embedding` | `SegmentEmbedding` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | optional | 2D with shape (, hidden_size) |
+| `gamma_quant` | `GammaQuant` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | 1D gamma tensor for layer normalization with shape (hidden_size) |
+| `beta_quant` | `BetaQuant` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | 1D beta tensor for layer normalization with shape (hidden_size) |
+| `mask` | `Mask` | `IOnnxGraphEdge` | `tensor(int32)` | optional | Mask |
+| `word_embedding_scale` | `WordEmbeddingScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Scale for word embeddings |
+| `position_embedding_scale` | `PositionEmbeddingScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Scale for position embeddings |
+| `segment_embedding_scale` | `SegmentEmbeddingScale` | `IOnnxGraphEdge` | `tensor(float)` | optional | Scale for segment embeddings |
+| `gamma_scale` | `GammaScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Scale for 1D gamma tensor |
+| `beta_scale` | `BetaScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Scale for 1D beta tensor |
+| `word_embedding_zero_point` | `WordEmbeddingZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Zero point for word embeddings |
+| `position_embedding_zero_point` | `PositionEmbeddingZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Zero point for position embeddings |
+| `segment_embedding_zero_point` | `SegmentEmbeddingZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | optional | Zero Point for segment embeddings |
+| `gamma_zero_point` | `GammaZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Zero Point for 1D gamma tensor |
+| `beta_zero_point` | `BetaZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Zero Point for 1D beta tensor |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `layernorm_out` | `LayernormOut` | `IOnnxGraphEdge` | single, required | LayerNorm Output |
-| `mask_index_out` | `MaskIndexOut` | `IOnnxGraphEdge` | single, required | Mask Index Output |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `layernorm_out` | `LayernormOut` | `IOnnxGraphEdge` | `tensor(float)` | single, required | LayerNorm Output |
+| `mask_index_out` | `MaskIndexOut` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | Mask Index Output |
 
 ## Attributes
 

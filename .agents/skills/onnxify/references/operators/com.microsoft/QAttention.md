@@ -23,24 +23,24 @@ Quantization of Multi-Head Self Attention.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `input` | `Input` | `IOnnxGraphEdge` | single, required | 3D input tensor with shape (batch_size, sequence_length, input_hidden_size) |
-| `weight` | `Weight` | `IOnnxGraphEdge` | single, required | 2D input tensor with shape (input_hidden_size, 3 * hidden_size), hidden_size = num_heads * head_size |
-| `bias` | `Bias` | `IOnnxGraphEdge` | single, required | 1D input tensor with shape (3 * hidden_size) |
-| `input_scale` | `InputScale` | `IOnnxGraphEdge` | single, required | scale of quantized input tensor. It's a scalar, which means a per-tensor/layer quantization. |
-| `weight_scale` | `WeightScale` | `IOnnxGraphEdge` | single, required | scale of weight scale. It's a scalar or a 1D tensor, which means a per-tensor/per-column quantization.Its size should be 3 * hidden_size if it is per-column quantization |
-| `mask_index` | `MaskIndex` | `IOnnxGraphEdge` | optional | Attention mask index with shape (batch_size) |
-| `input_zero_point` | `InputZeroPoint` | `IOnnxGraphEdge` | optional | zero point of quantized input tensor.It's a scalar, which means a per-tensor/layer quantization. |
-| `weight_zero_point` | `WeightZeroPoint` | `IOnnxGraphEdge` | optional | zero point of quantized weight tensor. It's a scalar or a 1D tensor, which means a per-tensor/per-column quantization.Its size should be 3 * hidden_size if it is per-column quantization |
-| `past` | `Past` | `IOnnxGraphEdge` | optional | past state for key and value with shape (2, batch_size, num_heads, past_sequence_length, head_size). |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `input` | `Input` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | 3D input tensor with shape (batch_size, sequence_length, input_hidden_size) |
+| `weight` | `Weight` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | 2D input tensor with shape (input_hidden_size, 3 * hidden_size), hidden_size = num_heads * head_size |
+| `bias` | `Bias` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 1D input tensor with shape (3 * hidden_size) |
+| `input_scale` | `InputScale` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | scale of quantized input tensor. It's a scalar, which means a per-tensor/layer quantization. |
+| `weight_scale` | `WeightScale` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | scale of weight scale. It's a scalar or a 1D tensor, which means a per-tensor/per-column quantization.Its size should be 3 * hidden_size if it is per-column quantization |
+| `mask_index` | `MaskIndex` | `IOnnxGraphEdge` | `tensor(int32)` | optional | Attention mask index with shape (batch_size) |
+| `input_zero_point` | `InputZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | optional | zero point of quantized input tensor.It's a scalar, which means a per-tensor/layer quantization. |
+| `weight_zero_point` | `WeightZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | optional | zero point of quantized weight tensor. It's a scalar or a 1D tensor, which means a per-tensor/per-column quantization.Its size should be 3 * hidden_size if it is per-column quantization |
+| `past` | `Past` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | past state for key and value with shape (2, batch_size, num_heads, past_sequence_length, head_size). |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | 3D output tensor with shape (batch_size, sequence_length, hidden_size) |
-| `present` | `Present` | `IOnnxGraphEdge` | optional | present state for key and value with shape (2, batch_size, num_heads, past_sequence_length + sequence_length, head_size) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 3D output tensor with shape (batch_size, sequence_length, hidden_size) |
+| `present` | `Present` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | present state for key and value with shape (2, batch_size, num_heads, past_sequence_length + sequence_length, head_size) |
 
 ## Attributes
 

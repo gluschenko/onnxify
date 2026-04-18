@@ -23,28 +23,28 @@ Beam Search for text generation. Supports GPT-2 decoder.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `input_ids` | `InputIds` | `IOnnxGraphEdge` | single, required | The sequence used as a prompt for the generation in the encoder subgraph. Shape is (batch_size, sequence_length) |
-| `max_length` | `MaxLength` | `IOnnxGraphEdge` | single, required | The maximum length of the sequence to be generated. Shape is (1) |
-| `min_length` | `MinLength` | `IOnnxGraphEdge` | optional | The minimum length below which the score of eos_token_id is set to -Inf. Shape is (1) |
-| `num_beams` | `NumBeams` | `IOnnxGraphEdge` | single, required | Number of beams for beam search. 1 means no beam search. Shape is (1) |
-| `num_return_sequences` | `NumReturnSequences` | `IOnnxGraphEdge` | single, required | The number of returned sequences in the batch. Shape is (1) |
-| `length_penalty` | `LengthPenalty` | `IOnnxGraphEdge` | optional | Exponential penalty to the length. Default value 1.0 means no penalty.Value > 1.0 encourages longer sequences, while values < 1.0 produces shorter sequences.Shape is (1,) |
-| `repetition_penalty` | `RepetitionPenalty` | `IOnnxGraphEdge` | optional | The parameter for repetition penalty. Default value 1.0 means no penalty. Accepts value > 0.0. Shape is (1) |
-| `vocab_mask` | `VocabMask` | `IOnnxGraphEdge` | optional | Mask of vocabulary. Words that masked with 0 are not allowed to be generated, and 1 is allowed. Shape is (vocab_size) |
-| `prefix_vocab_mask` | `PrefixVocabMask` | `IOnnxGraphEdge` | optional | Mask of vocabulary for first step. Words that masked with 0 are not allowed to be generated, and 1 is allowed. Shape is (batch_size, vocab_size) |
-| `attention_mask` | `AttentionMask` | `IOnnxGraphEdge` | optional | Custom attention mask. Shape is (batch_size, sequence_length) |
-| `decoder_input_ids` | `DecoderInputIds` | `IOnnxGraphEdge` | optional | The forced input id sequence for the decoder subgraph. Shape is (batch_size, initial_sequence_length) |
-| `logits_processor` | `LogitsProcessor` | `IOnnxGraphEdge` | optional | Specific logits processor for different types of beamsearch models. Default value 0 means no specific logit processor. Accepts value >= 0. Shape is (1) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `input_ids` | `InputIds` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)`<br>`tensor(int32)` | single, required | The sequence used as a prompt for the generation in the encoder subgraph. Shape is (batch_size, sequence_length) |
+| `max_length` | `MaxLength` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | The maximum length of the sequence to be generated. Shape is (1) |
+| `min_length` | `MinLength` | `IOnnxGraphEdge` | `tensor(int32)` | optional | The minimum length below which the score of eos_token_id is set to -Inf. Shape is (1) |
+| `num_beams` | `NumBeams` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | Number of beams for beam search. 1 means no beam search. Shape is (1) |
+| `num_return_sequences` | `NumReturnSequences` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | The number of returned sequences in the batch. Shape is (1) |
+| `length_penalty` | `LengthPenalty` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | Exponential penalty to the length. Default value 1.0 means no penalty.Value > 1.0 encourages longer sequences, while values < 1.0 produces shorter sequences.Shape is (1,) |
+| `repetition_penalty` | `RepetitionPenalty` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | The parameter for repetition penalty. Default value 1.0 means no penalty. Accepts value > 0.0. Shape is (1) |
+| `vocab_mask` | `VocabMask` | `IOnnxGraphEdge` | `tensor(int32)` | optional | Mask of vocabulary. Words that masked with 0 are not allowed to be generated, and 1 is allowed. Shape is (vocab_size) |
+| `prefix_vocab_mask` | `PrefixVocabMask` | `IOnnxGraphEdge` | `tensor(int32)` | optional | Mask of vocabulary for first step. Words that masked with 0 are not allowed to be generated, and 1 is allowed. Shape is (batch_size, vocab_size) |
+| `attention_mask` | `AttentionMask` | `IOnnxGraphEdge` | `tensor(int32)` | optional | Custom attention mask. Shape is (batch_size, sequence_length) |
+| `decoder_input_ids` | `DecoderInputIds` | `IOnnxGraphEdge` | `tensor(int32)` | optional | The forced input id sequence for the decoder subgraph. Shape is (batch_size, initial_sequence_length) |
+| `logits_processor` | `LogitsProcessor` | `IOnnxGraphEdge` | `tensor(int32)` | optional | Specific logits processor for different types of beamsearch models. Default value 0 means no specific logit processor. Accepts value >= 0. Shape is (1) |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `sequences` | `Sequences` | `IOnnxGraphEdge` | single, required | Word IDs of generated sequences. Shape is (batch_size, num_return_sequences, max_sequence_length) |
-| `sequences_scores` | `SequencesScores` | `IOnnxGraphEdge` | optional | Final beam score of the generated sequences. Shape is (batch_size, num_return_sequences) |
-| `scores` | `Scores` | `IOnnxGraphEdge` | optional | Processed beam scores for each vocabulary token at each generation step.Beam scores consisting of log softmax scores for each vocabulary token and sum of log softmax of previously generated tokens in this beam.Shape is (max_length - sequence_length, batch_size, num_beams, vocab_size) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `sequences` | `Sequences` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | Word IDs of generated sequences. Shape is (batch_size, num_return_sequences, max_sequence_length) |
+| `sequences_scores` | `SequencesScores` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | Final beam score of the generated sequences. Shape is (batch_size, num_return_sequences) |
+| `scores` | `Scores` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | Processed beam scores for each vocabulary token at each generation step.Beam scores consisting of log softmax scores for each vocabulary token and sum of log softmax of previously generated tokens in this beam.Shape is (max_length - sequence_length, batch_size, num_beams, vocab_size) |
 
 ## Attributes
 

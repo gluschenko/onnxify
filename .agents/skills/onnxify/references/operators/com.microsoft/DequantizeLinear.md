@@ -25,17 +25,17 @@ Scale and zero point must have same shape. They must be either scalar (per tenso
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `x` | `X` | `IOnnxGraphEdge` | single, required | N-D quantized Input tensor to be de-quantized. |
-| `x_scale` | `XScale` | `IOnnxGraphEdge` | single, required | Scale for input 'x'. It can be a scalar, which means a per-tensor/layer dequantization, or a 1-D tensor for per-axis dequantization. |
-| `x_zero_point` | `XZeroPoint` | `IOnnxGraphEdge` | optional | Zero point for input 'x'. Shape must match x_scale. It's optional. Zero point is 0 when it's not specified. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `x` | `X` | `IOnnxGraphEdge` | `tensor(int16)`<br>`tensor(int32)`<br>`tensor(int4)`<br>`tensor(int8)`<br>`tensor(uint16)`<br>`tensor(uint4)`<br>`tensor(uint8)` | single, required | N-D quantized Input tensor to be de-quantized. |
+| `x_scale` | `XScale` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Scale for input 'x'. It can be a scalar, which means a per-tensor/layer dequantization, or a 1-D tensor for per-axis dequantization. |
+| `x_zero_point` | `XZeroPoint` | `IOnnxGraphEdge` | `tensor(int16)`<br>`tensor(int32)`<br>`tensor(int4)`<br>`tensor(int8)`<br>`tensor(uint16)`<br>`tensor(uint4)`<br>`tensor(uint8)` | optional | Zero point for input 'x'. Shape must match x_scale. It's optional. Zero point is 0 when it's not specified. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `y` | `Y` | `IOnnxGraphEdge` | single, required | N-D full precision output tensor. It has same shape as input 'x'. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `y` | `Y` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | N-D full precision output tensor. It has same shape as input 'x'. |
 
 ## Attributes
 

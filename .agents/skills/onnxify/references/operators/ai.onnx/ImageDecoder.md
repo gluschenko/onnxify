@@ -45,15 +45,15 @@ also referred as "smooth" or "fancy" upsampling.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `encoded_stream` | `EncodedStream` | `IOnnxGraphEdge` | single, required | Encoded stream |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `encoded_stream` | `EncodedStream` | `IOnnxGraphEdge` | `tensor(uint8)` | single, required | Encoded stream |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `image` | `Image` | `IOnnxGraphEdge` | single, required | Decoded image |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `image` | `Image` | `IOnnxGraphEdge` | `tensor(uint8)` | single, required | Decoded image |
 
 ## Attributes
 

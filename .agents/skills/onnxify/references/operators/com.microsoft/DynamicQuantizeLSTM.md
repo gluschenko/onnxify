@@ -23,28 +23,28 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | The input sequences packed (and potentially padded) into one 3-D tensor with the shape of `[seq_length, batch_size, input_size]`. |
-| `W` | `W` | `IOnnxGraphEdge` | single, required | The weight tensor for the gates. Concatenation of `W[iofc]` and `WB[iofc]` (if bidirectional) along dimension 0. The tensor has shape `[num_directions, input_size, 4*hidden_size]`. |
-| `R` | `R` | `IOnnxGraphEdge` | single, required | The recurrence weight tensor. Concatenation of `R[iofc]` and `RB[iofc]` (if bidirectional) along dimension 0. This tensor has shape `[num_directions, hidden_size, 4*hidden_size]`. |
-| `B` | `B` | `IOnnxGraphEdge` | optional | The bias tensor for input gate. Concatenation of `[Wb[iofc], Rb[iofc]]`, and `[WBb[iofc], RBb[iofc]]` (if bidirectional) along dimension 0. This tensor has shape `[num_directions, 8*hidden_size]`. Optional: If not specified - assumed to be 0. |
-| `sequence_lens` | `SequenceLens` | `IOnnxGraphEdge` | optional | Optional tensor specifying lengths of the sequences in a batch. If not specified - assumed all sequences in the batch to have length `seq_length`. It has shape `[batch_size]`. |
-| `initial_h` | `InitialH` | `IOnnxGraphEdge` | optional | Optional initial value of the hidden. If not specified - assumed to be 0. It has shape `[num_directions, batch_size, hidden_size]`. |
-| `initial_c` | `InitialC` | `IOnnxGraphEdge` | optional | Optional initial value of the cell. If not specified - assumed to be 0. It has shape `[num_directions, batch_size, hidden_size]`. |
-| `P` | `P` | `IOnnxGraphEdge` | optional | The weight tensor for peepholes. Concatenation of `P[iof]` and `PB[iof]` (if bidirectional) along dimension 0. It has shape `[num_directions, 3*hidde_size]`. Optional: If not specified - assumed to be 0. |
-| `W_scale` | `WScale` | `IOnnxGraphEdge` | single, required | W's scale. Its size is [num_directions] for per-tensor/layer quantization, or [num_directions, 4*hidden_size] for per-channel quantization on the axis input_size. |
-| `W_zero_point` | `WZeroPoint` | `IOnnxGraphEdge` | single, required | W's zero point. Its size is [num_directions] for per-tensor/layer quantization, or [num_directions, 4*hidden_size] for per-channel quantization on the axis input_size. |
-| `R_scale` | `RScale` | `IOnnxGraphEdge` | single, required | R's scale. Its size is [num_directions] for per-tensor/layer quantization, or [num_directions, 4*hidden_size] for per-channel quantization on the axis input_size. |
-| `R_zero_point` | `RZeroPoint` | `IOnnxGraphEdge` | single, required | R's zero point. Its size is [num_directions] for per-tensor/layer quantization, or [num_directions, 4*hidden_size] for per-channel quantization on the axis input_size. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(float)` | single, required | The input sequences packed (and potentially padded) into one 3-D tensor with the shape of `[seq_length, batch_size, input_size]`. |
+| `W` | `W` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | The weight tensor for the gates. Concatenation of `W[iofc]` and `WB[iofc]` (if bidirectional) along dimension 0. The tensor has shape `[num_directions, input_size, 4*hidden_size]`. |
+| `R` | `R` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | The recurrence weight tensor. Concatenation of `R[iofc]` and `RB[iofc]` (if bidirectional) along dimension 0. This tensor has shape `[num_directions, hidden_size, 4*hidden_size]`. |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(float)` | optional | The bias tensor for input gate. Concatenation of `[Wb[iofc], Rb[iofc]]`, and `[WBb[iofc], RBb[iofc]]` (if bidirectional) along dimension 0. This tensor has shape `[num_directions, 8*hidden_size]`. Optional: If not specified - assumed to be 0. |
+| `sequence_lens` | `SequenceLens` | `IOnnxGraphEdge` | `tensor(int32)` | optional | Optional tensor specifying lengths of the sequences in a batch. If not specified - assumed all sequences in the batch to have length `seq_length`. It has shape `[batch_size]`. |
+| `initial_h` | `InitialH` | `IOnnxGraphEdge` | `tensor(float)` | optional | Optional initial value of the hidden. If not specified - assumed to be 0. It has shape `[num_directions, batch_size, hidden_size]`. |
+| `initial_c` | `InitialC` | `IOnnxGraphEdge` | `tensor(float)` | optional | Optional initial value of the cell. If not specified - assumed to be 0. It has shape `[num_directions, batch_size, hidden_size]`. |
+| `P` | `P` | `IOnnxGraphEdge` | `tensor(float)` | optional | The weight tensor for peepholes. Concatenation of `P[iof]` and `PB[iof]` (if bidirectional) along dimension 0. It has shape `[num_directions, 3*hidde_size]`. Optional: If not specified - assumed to be 0. |
+| `W_scale` | `WScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | W's scale. Its size is [num_directions] for per-tensor/layer quantization, or [num_directions, 4*hidden_size] for per-channel quantization on the axis input_size. |
+| `W_zero_point` | `WZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | W's zero point. Its size is [num_directions] for per-tensor/layer quantization, or [num_directions, 4*hidden_size] for per-channel quantization on the axis input_size. |
+| `R_scale` | `RScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | R's scale. Its size is [num_directions] for per-tensor/layer quantization, or [num_directions, 4*hidden_size] for per-channel quantization on the axis input_size. |
+| `R_zero_point` | `RZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | R's zero point. Its size is [num_directions] for per-tensor/layer quantization, or [num_directions, 4*hidden_size] for per-channel quantization on the axis input_size. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | optional | A tensor that concats all the intermediate output values of the hidden. It has shape `[seq_length, num_directions, batch_size, hidden_size]`. |
-| `Y_h` | `YH` | `IOnnxGraphEdge` | optional | The last output value of the hidden. It has shape `[num_directions, batch_size, hidden_size]`. |
-| `Y_c` | `YC` | `IOnnxGraphEdge` | optional | The last output value of the cell. It has shape `[num_directions, batch_size, hidden_size]`. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(float)` | optional | A tensor that concats all the intermediate output values of the hidden. It has shape `[seq_length, num_directions, batch_size, hidden_size]`. |
+| `Y_h` | `YH` | `IOnnxGraphEdge` | `tensor(float)` | optional | The last output value of the hidden. It has shape `[num_directions, batch_size, hidden_size]`. |
+| `Y_c` | `YC` | `IOnnxGraphEdge` | `tensor(float)` | optional | The last output value of the cell. It has shape `[num_directions, batch_size, hidden_size]`. |
 
 ## Attributes
 

@@ -23,16 +23,16 @@ reset the accumulator for gradient
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `old_gradient` | `OldGradient` | `IOnnxGraphEdge` | single, required | historical result of accumulated gradient |
-| `reset_signal` | `ResetSignal` | `IOnnxGraphEdge` | single, required | if this input is available, it is ready to reset the accumulator |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `old_gradient` | `OldGradient` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | historical result of accumulated gradient |
+| `reset_signal` | `ResetSignal` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | if this input is available, it is ready to reset the accumulator |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `zero_gradient` | `OutputZeroGradient` | `IOnnxGraphEdge` | single, required | reset the gradient |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `zero_gradient` | `OutputZeroGradient` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | reset the gradient |
 
 ## Attributes
 

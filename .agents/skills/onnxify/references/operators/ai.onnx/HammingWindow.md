@@ -23,15 +23,15 @@ Generates a Hamming window as described in the paper https://ieeexplore.ieee.org
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `size` | `Size` | `IOnnxGraphEdge` | single, required | A scalar value indicating the length of the window. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `size` | `Size` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | A scalar value indicating the length of the window. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | A Hamming window with length: size. The output has the shape: [size]. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | A Hamming window with length: size. The output has the shape: [size]. |
 
 ## Attributes
 

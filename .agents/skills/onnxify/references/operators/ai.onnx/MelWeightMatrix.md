@@ -30,19 +30,19 @@ The returned MelWeightMatrix can be used to right-multiply a spectrogram S of sh
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `num_mel_bins` | `NumMelBins` | `IOnnxGraphEdge` | single, required | The number of bands in the mel spectrum. |
-| `dft_length` | `DftLength` | `IOnnxGraphEdge` | single, required | The size of the original DFT. The size of the original DFT is used to infer the size of the onesided DFT, which is understood to be floor(dft_length/2) + 1, i.e. the spectrogram only contains the nonredundant DFT bins. |
-| `sample_rate` | `SampleRate` | `IOnnxGraphEdge` | single, required | Samples per second of the input signal used to create the spectrogram. Used to figure out the frequencies corresponding to each spectrogram bin, which dictates how they are mapped into the mel scale. |
-| `lower_edge_hertz` | `LowerEdgeHertz` | `IOnnxGraphEdge` | single, required | Lower bound on the frequencies to be included in the mel spectrum. This corresponds to the lower edge of the lowest triangular band. |
-| `upper_edge_hertz` | `UpperEdgeHertz` | `IOnnxGraphEdge` | single, required | The desired top edge of the highest frequency band. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `num_mel_bins` | `NumMelBins` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | The number of bands in the mel spectrum. |
+| `dft_length` | `DftLength` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | The size of the original DFT. The size of the original DFT is used to infer the size of the onesided DFT, which is understood to be floor(dft_length/2) + 1, i.e. the spectrogram only contains the nonredundant DFT bins. |
+| `sample_rate` | `SampleRate` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | Samples per second of the input signal used to create the spectrogram. Used to figure out the frequencies corresponding to each spectrogram bin, which dictates how they are mapped into the mel scale. |
+| `lower_edge_hertz` | `LowerEdgeHertz` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Lower bound on the frequencies to be included in the mel spectrum. This corresponds to the lower edge of the lowest triangular band. |
+| `upper_edge_hertz` | `UpperEdgeHertz` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The desired top edge of the highest frequency band. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | The Mel Weight Matrix. The output has the shape: [floor(dft_length/2) + 1][num_mel_bins]. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | The Mel Weight Matrix. The output has the shape: [floor(dft_length/2) + 1][num_mel_bins]. |
 
 ## Attributes
 

@@ -23,15 +23,15 @@ Produces a scalar(tensor of empty shape) containing the number of tensors in 'in
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `input_sequence` | `InputSequence` | `IOnnxGraphEdge` | single, required | Input sequence. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `input_sequence` | `InputSequence` | `IOnnxGraphEdge` | `seq(tensor(bool))`<br>`seq(tensor(complex128))`<br>`seq(tensor(complex64))`<br>`seq(tensor(double))`<br>`seq(tensor(float))`<br>`seq(tensor(float16))`<br>`seq(tensor(int16))`<br>`seq(tensor(int32))`<br>`seq(tensor(int64))`<br>`seq(tensor(int8))`<br>`seq(tensor(string))`<br>`seq(tensor(uint16))`<br>`seq(tensor(uint32))`<br>`seq(tensor(uint64))`<br>`seq(tensor(uint8))` | single, required | Input sequence. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `length` | `Length` | `IOnnxGraphEdge` | single, required | Length of input sequence. It must be a scalar(tensor of empty shape). |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `length` | `Length` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Length of input sequence. It must be a scalar(tensor of empty shape). |
 
 ## Attributes
 

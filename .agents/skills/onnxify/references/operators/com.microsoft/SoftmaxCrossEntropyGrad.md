@@ -23,17 +23,17 @@ SoftmaxCrossEntropyGrad
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `dY` | `DY` | `IOnnxGraphEdge` | single, required | gradient of Y |
-| `log_prob` | `LogProb` | `IOnnxGraphEdge` | single, required | logsoftmax(logits), N-D input of shape (-1, num_classes). |
-| `label` | `Label` | `IOnnxGraphEdge` | single, required | The onehot label is N-D input with the same shape as logits. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `dY` | `DY` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | gradient of Y |
+| `log_prob` | `LogProb` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | logsoftmax(logits), N-D input of shape (-1, num_classes). |
+| `label` | `Label` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The onehot label is N-D input with the same shape as logits. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `d_logits` | `DLogits` | `IOnnxGraphEdge` | single, required | gradient of logits |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `d_logits` | `DLogits` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | gradient of logits |
 
 ## Attributes
 

@@ -24,28 +24,28 @@ Some boolean parameters are passed by runtime input for generic purpose
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `query` | `Query` | `IOnnxGraphEdge` | single, required | 3D input tensor with shape (sequence_length, batch_size, hidden_size), hidden_size = num_heads * head_size |
-| `key` | `Key` | `IOnnxGraphEdge` | single, required | 3D input tensor with shape (total_sequence_length, batch_size, hidden_size) |
-| `q_weight` | `QWeight` | `IOnnxGraphEdge` | single, required | 2D input tensor with shape (hidden_size, hidden_size) |
-| `kv_weight` | `KvWeight` | `IOnnxGraphEdge` | single, required | 2D input tensor with shape (hidden_size, 2 * hidden_size) |
-| `bias` | `Bias` | `IOnnxGraphEdge` | single, required | 1D input tensor with shape (3 * hidden_size) |
-| `key_padding_mask` | `KeyPaddingMask` | `IOnnxGraphEdge` | optional | 2D input tensor with shape (batch_size, total_sequence_length) |
-| `key_cache` | `KeyCache` | `IOnnxGraphEdge` | optional | input tensor with shape (batch_size, num_heads, sequence_length or total_sequence_length, head_size) |
-| `value_cache` | `ValueCache` | `IOnnxGraphEdge` | optional | input tensor with shape (batch_size, num_heads, sequence_length or total_sequence_length, head_size) |
-| `static_kv` | `StaticKv` | `IOnnxGraphEdge` | single, required | If static_kv = true, cross-attention; else self-attention |
-| `use_past` | `UsePast` | `IOnnxGraphEdge` | single, required | If use_past = true, use cache; else no cache |
-| `has_layer_state` | `HasLayerState` | `IOnnxGraphEdge` | single, required | If has_layer_state = true, layer_state = {} or [a,b]; else layer_state = None |
-| `has_key_padding_mask` | `HasKeyPaddingMask` | `IOnnxGraphEdge` | single, required | has_key_padding_mask or not |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `query` | `Query` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 3D input tensor with shape (sequence_length, batch_size, hidden_size), hidden_size = num_heads * head_size |
+| `key` | `Key` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 3D input tensor with shape (total_sequence_length, batch_size, hidden_size) |
+| `q_weight` | `QWeight` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 2D input tensor with shape (hidden_size, hidden_size) |
+| `kv_weight` | `KvWeight` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 2D input tensor with shape (hidden_size, 2 * hidden_size) |
+| `bias` | `Bias` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 1D input tensor with shape (3 * hidden_size) |
+| `key_padding_mask` | `KeyPaddingMask` | `IOnnxGraphEdge` | `tensor(bool)` | optional | 2D input tensor with shape (batch_size, total_sequence_length) |
+| `key_cache` | `KeyCache` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | input tensor with shape (batch_size, num_heads, sequence_length or total_sequence_length, head_size) |
+| `value_cache` | `ValueCache` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | input tensor with shape (batch_size, num_heads, sequence_length or total_sequence_length, head_size) |
+| `static_kv` | `StaticKv` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | If static_kv = true, cross-attention; else self-attention |
+| `use_past` | `UsePast` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | If use_past = true, use cache; else no cache |
+| `has_layer_state` | `HasLayerState` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | If has_layer_state = true, layer_state = {} or [a,b]; else layer_state = None |
+| `has_key_padding_mask` | `HasKeyPaddingMask` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | has_key_padding_mask or not |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | 3D output tensor with shape (sequence_length, batch_size, hidden_size) |
-| `new_key_cache` | `NewKeyCache` | `IOnnxGraphEdge` | optional | output tensor with shape (batch_size, num_heads, new sequence_length, head_size) |
-| `new_value_cache` | `NewValueCache` | `IOnnxGraphEdge` | optional | output tensor with shape (batch_size, num_heads, new sequence_length, head_size) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 3D output tensor with shape (sequence_length, batch_size, hidden_size) |
+| `new_key_cache` | `NewKeyCache` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | output tensor with shape (batch_size, num_heads, new sequence_length, head_size) |
+| `new_value_cache` | `NewValueCache` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | output tensor with shape (batch_size, num_heads, new sequence_length, head_size) |
 
 ## Attributes
 

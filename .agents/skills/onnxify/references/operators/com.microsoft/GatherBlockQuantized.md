@@ -31,18 +31,18 @@ GatherBlockQuantized is a Gather with data quantized. It is similar to Gather (h
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `data` | `Data` | `IOnnxGraphEdge` | single, required | Tensor of rank r >= 1. Block-wise quantized. |
-| `indices` | `Indices` | `IOnnxGraphEdge` | single, required | Tensor of int32/int64 indices, of any rank q. All index values are expected to be within bounds [-s, s-1] along axis of size s. It is an error if any of the index values are out of bounds. |
-| `scales` | `Scales` | `IOnnxGraphEdge` | single, required | quantization scale |
-| `zero_points` | `ZeroPoints` | `IOnnxGraphEdge` | optional | quantization zero points |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `data` | `Data` | `IOnnxGraphEdge` | `tensor(int4)`<br>`tensor(uint4)`<br>`tensor(uint8)` | single, required | Tensor of rank r >= 1. Block-wise quantized. |
+| `indices` | `Indices` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | Tensor of int32/int64 indices, of any rank q. All index values are expected to be within bounds [-s, s-1] along axis of size s. It is an error if any of the index values are out of bounds. |
+| `scales` | `Scales` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | quantization scale |
+| `zero_points` | `ZeroPoints` | `IOnnxGraphEdge` | `tensor(int4)`<br>`tensor(uint4)`<br>`tensor(uint8)` | optional | quantization zero points |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | Dequantized output tensor of rank q + (r - 1). |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Dequantized output tensor of rank q + (r - 1). |
 
 ## Attributes
 

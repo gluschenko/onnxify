@@ -42,20 +42,20 @@ onnx_model = gemma_rotary_embedding.to_model_proto()
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `emb` | `Emb` | `IOnnxGraphEdge` | single, required | embedding - 3D tensor with shape (batch_size, seq_len, dim) |
-| `q` | `Q` | `IOnnxGraphEdge` | single, required | q state - 4D tensor with shape (batch_size, num_heads, seq_len, dim) |
-| `q_rot` | `QRot` | `IOnnxGraphEdge` | single, required | half rotated q state - 4D tensor with shape (batch_size, num_heads, seq_len, dim) |
-| `k` | `K` | `IOnnxGraphEdge` | single, required | k state - 4D tensor with shape (batch_size, num_heads, seq_len, dim) |
-| `k_rot` | `KRot` | `IOnnxGraphEdge` | single, required | k state - 4D tensor with shape (batch_size, num_heads, seq_len, dim) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `emb` | `Emb` | `IOnnxGraphEdge` | `tensor(float)` | single, required | embedding - 3D tensor with shape (batch_size, seq_len, dim) |
+| `q` | `Q` | `IOnnxGraphEdge` | `tensor(float16)` | single, required | q state - 4D tensor with shape (batch_size, num_heads, seq_len, dim) |
+| `q_rot` | `QRot` | `IOnnxGraphEdge` | `tensor(float16)` | single, required | half rotated q state - 4D tensor with shape (batch_size, num_heads, seq_len, dim) |
+| `k` | `K` | `IOnnxGraphEdge` | `tensor(float16)` | single, required | k state - 4D tensor with shape (batch_size, num_heads, seq_len, dim) |
+| `k_rot` | `KRot` | `IOnnxGraphEdge` | `tensor(float16)` | single, required | k state - 4D tensor with shape (batch_size, num_heads, seq_len, dim) |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output1` | `Output1` | `IOnnxGraphEdge` | single, required | 4D tensor with shape (batch_size, num_heads, seq_len, dim) |
-| `output2` | `Output2` | `IOnnxGraphEdge` | single, required | 4D tensor with shape (batch_size, num_heads, seq_len, dim) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output1` | `Output1` | `IOnnxGraphEdge` | `tensor(float16)` | single, required | 4D tensor with shape (batch_size, num_heads, seq_len, dim) |
+| `output2` | `Output2` | `IOnnxGraphEdge` | `tensor(float16)` | single, required | 4D tensor with shape (batch_size, num_heads, seq_len, dim) |
 
 ## Attributes
 

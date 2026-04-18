@@ -36,22 +36,22 @@ Mixture of experts. Examples: Switch transformer(https://arxiv.org/pdf/2101.0396
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `input` | `Input` | `IOnnxGraphEdge` | single, required | 2D input tensor with shape (num_tokens, hidden_size) or 3D input tensor with shape (batch_size, sequence_length, hidden_size) |
-| `router_probs` | `RouterProbs` | `IOnnxGraphEdge` | single, required | 2D input tensor with shape (num_tokens, num_experts) |
-| `fc1_experts_weights` | `Fc1ExpertsWeights` | `IOnnxGraphEdge` | single, required | 3D input tensor with shape (num_experts, fusion_size * inter_size, hidden_size), where fusion_size is 2 for fused swiglu, and 1 otherwise |
-| `fc1_experts_bias` | `Fc1ExpertsBias` | `IOnnxGraphEdge` | optional | 2D optional input tensor with shape (num_experts, fusion_size * inter_size) |
-| `fc2_experts_weights` | `Fc2ExpertsWeights` | `IOnnxGraphEdge` | single, required | 3D input tensor with shape (num_experts, hidden_size, inter_size) |
-| `fc2_experts_bias` | `Fc2ExpertsBias` | `IOnnxGraphEdge` | optional | 2D optional input tensor with shape (num_experts, hidden_size) |
-| `fc3_experts_weights` | `Fc3ExpertsWeights` | `IOnnxGraphEdge` | optional | 3D optional input tensor with shape (num_experts, inter_size, hidden_size) |
-| `fc3_experts_bias` | `Fc3ExpertsBias` | `IOnnxGraphEdge` | optional | 2D optional input tensor with shape (num_experts, inter_size) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `input` | `Input` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 2D input tensor with shape (num_tokens, hidden_size) or 3D input tensor with shape (batch_size, sequence_length, hidden_size) |
+| `router_probs` | `RouterProbs` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 2D input tensor with shape (num_tokens, num_experts) |
+| `fc1_experts_weights` | `Fc1ExpertsWeights` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 3D input tensor with shape (num_experts, fusion_size * inter_size, hidden_size), where fusion_size is 2 for fused swiglu, and 1 otherwise |
+| `fc1_experts_bias` | `Fc1ExpertsBias` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | 2D optional input tensor with shape (num_experts, fusion_size * inter_size) |
+| `fc2_experts_weights` | `Fc2ExpertsWeights` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 3D input tensor with shape (num_experts, hidden_size, inter_size) |
+| `fc2_experts_bias` | `Fc2ExpertsBias` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | 2D optional input tensor with shape (num_experts, hidden_size) |
+| `fc3_experts_weights` | `Fc3ExpertsWeights` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | 3D optional input tensor with shape (num_experts, inter_size, hidden_size) |
+| `fc3_experts_bias` | `Fc3ExpertsBias` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | 2D optional input tensor with shape (num_experts, inter_size) |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | 2D input tensor with shape (num_tokens, hidden_size) or 3D input tensor with shape (batch_size, sequence_length, hidden_size) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 2D input tensor with shape (num_tokens, hidden_size) or 3D input tensor with shape (batch_size, sequence_length, hidden_size) |
 
 ## Attributes
 

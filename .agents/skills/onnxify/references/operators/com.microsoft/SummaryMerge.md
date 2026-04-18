@@ -23,15 +23,15 @@ SummaryMerge
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `input` | `Input` | `IOnnxGraphEdge[]` | variadic, min arity 1 | One or more serialized Tensorboard Summary tensors to merge into a single Summary. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `input` | `Input` | `IOnnxGraphEdge[]` | `tensor(string)` | variadic, min arity 1 | One or more serialized Tensorboard Summary tensors to merge into a single Summary. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `summary` | `Summary` | `IOnnxGraphEdge` | single, required | The serialized Tensorboard Summary. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `summary` | `Summary` | `IOnnxGraphEdge` | `tensor(string)` | single, required | The serialized Tensorboard Summary. |
 
 ## Attributes
 

@@ -29,18 +29,18 @@ C (int32) = (A - A_zero_point) * (B - B_zero_point)
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `A` | `A` | `IOnnxGraphEdge` | single, required | First operand. |
-| `A_zero_point` | `AZeroPoint` | `IOnnxGraphEdge` | optional | Input A zero point. Default value is 0 if it's not specified. It's a scalar, which means a per-tensor/layer quantization. |
-| `B` | `B` | `IOnnxGraphEdge` | single, required | Second operand. |
-| `B_zero_point` | `BZeroPoint` | `IOnnxGraphEdge` | optional | Input B zero point. Default value is 0 if it's not specified. It's a scalar, which means a per-tensor/layer quantization. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `A` | `A` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | First operand. |
+| `A_zero_point` | `AZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | optional | Input A zero point. Default value is 0 if it's not specified. It's a scalar, which means a per-tensor/layer quantization. |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Second operand. |
+| `B_zero_point` | `BZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | optional | Input B zero point. Default value is 0 if it's not specified. It's a scalar, which means a per-tensor/layer quantization. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `C` | `C` | `IOnnxGraphEdge` | single, required | Constrain output to 32 bit tensor |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `C` | `C` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | Constrain output to 32 bit tensor |
 
 ## Attributes
 

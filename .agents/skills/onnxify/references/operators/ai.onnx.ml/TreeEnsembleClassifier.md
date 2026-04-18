@@ -36,16 +36,16 @@ This operator is DEPRECATED. Please use TreeEnsemble with provides similar funct
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | Input of shape [N,F] |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int32)`<br>`tensor(int64)` | single, required | Input of shape [N,F] |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | N, Top class for each point |
-| `Z` | `Z` | `IOnnxGraphEdge` | single, required | The class score for each class, for each point, a tensor of shape [N,E]. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int64)`<br>`tensor(string)` | single, required | N, Top class for each point |
+| `Z` | `Z` | `IOnnxGraphEdge` | `tensor(float)` | single, required | The class score for each class, for each point, a tensor of shape [N,E]. |
 
 ## Attributes
 

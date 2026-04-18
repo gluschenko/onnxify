@@ -23,17 +23,17 @@ Add input with bias, then add residual inputs.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | Input tensor. Dimensions are (N, S, C), where N is the batch size, S is image size H*W, and C is number of channels |
-| `bias` | `Bias` | `IOnnxGraphEdge` | single, required | Bias tensor. Dimensions are (C) |
-| `skip` | `Skip` | `IOnnxGraphEdge` | single, required | Residual tensor. Dimensions are (N, S, C) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Input tensor. Dimensions are (N, S, C), where N is the batch size, S is image size H*W, and C is number of channels |
+| `bias` | `Bias` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Bias tensor. Dimensions are (C) |
+| `skip` | `Skip` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Residual tensor. Dimensions are (N, S, C) |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | The output tensor with dimensions (N, S, C) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | The output tensor with dimensions (N, S, C) |
 
 ## Attributes
 

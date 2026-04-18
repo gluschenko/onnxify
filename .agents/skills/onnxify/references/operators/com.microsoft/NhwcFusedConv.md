@@ -24,18 +24,18 @@ Only has fp16 implementation as of 2023/04/15.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required |  |
-| `W` | `W` | `IOnnxGraphEdge` | single, required |  |
-| `B` | `B` | `IOnnxGraphEdge` | optional |  |
-| `Z` | `Z` | `IOnnxGraphEdge` | optional | Tensor to be added to the output, must be the same shape and format as the output tensor. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(float16)` | single, required |  |
+| `W` | `W` | `IOnnxGraphEdge` | `tensor(float16)` | single, required |  |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(float16)` | optional |  |
+| `Z` | `Z` | `IOnnxGraphEdge` | `tensor(float16)` | optional | Tensor to be added to the output, must be the same shape and format as the output tensor. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required |  |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(float16)` | single, required |  |
 
 ## Attributes
 

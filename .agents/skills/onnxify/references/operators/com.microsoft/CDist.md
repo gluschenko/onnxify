@@ -23,16 +23,16 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `A` | `A` | `IOnnxGraphEdge` | single, required | 2D matrix with shape (M,N) |
-| `B` | `B` | `IOnnxGraphEdge` | single, required | 2D matrix with shape (K,N) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `A` | `A` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | single, required | 2D matrix with shape (M,N) |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | single, required | 2D matrix with shape (K,N) |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `C` | `C` | `IOnnxGraphEdge` | single, required | A 2D Matrix that represents the distance between each pair of the two collections of inputs. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `C` | `C` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | single, required | A 2D Matrix that represents the distance between each pair of the two collections of inputs. |
 
 ## Attributes
 

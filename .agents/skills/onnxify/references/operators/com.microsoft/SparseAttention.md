@@ -54,27 +54,27 @@ For performance, past_key and present_key share same memory buffer, and past_val
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `query` | `Query` | `IOnnxGraphEdge` | single, required | Query with shape (batch_size, sequence_length, num_heads * head_size), or packed QKV with shape is(batch_size, sequence_length, d) where d is (num_heads + 2 * kv_num_heads) * head_size. |
-| `key` | `Key` | `IOnnxGraphEdge` | optional | Key with shape (batch_size, sequence_length, kv_num_heads * head_size) |
-| `value` | `Value` | `IOnnxGraphEdge` | optional | Value with shape (batch_size, sequence_length, kv_num_heads * head_size) |
-| `past_key` | `PastKey` | `IOnnxGraphEdge` | single, required | Key cache with shape (batch_size, kv_num_heads, max_cache_sequence_length, head_size) |
-| `past_value` | `PastValue` | `IOnnxGraphEdge` | single, required | Value cache with shape (batch_size, kv_num_heads, max_cache_sequence_length, head_size) |
-| `block_row_indices` | `BlockRowIndices` | `IOnnxGraphEdge` | single, required | The row indices of CSR format of block mask with shape (num_layout, max_blocks + 1).The num_heads is divisible by num_layout, and max_blocks is max_sequence_length / sparse_block_size. |
-| `block_col_indices` | `BlockColIndices` | `IOnnxGraphEdge` | single, required | The col indices of CSR format of block mask with shape (num_layout, max_nnz_blocks).The max_nnz_blocks is the maximum number of non-zeros per layout in block mask. |
-| `total_sequence_length` | `TotalSequenceLength` | `IOnnxGraphEdge` | single, required | Scalar tensor of maximum total sequence length (past_sequence_length + sequence_length) among keys. |
-| `key_total_sequence_lengths` | `KeyTotalSequenceLengths` | `IOnnxGraphEdge` | single, required | 1D tensor with shape (batch_size) where each value is total sequence length of key excluding paddings. |
-| `cos_cache` | `CosCache` | `IOnnxGraphEdge` | optional | Cos cache of rotary with shape (max_rotary_sequence_length, head_size / 2). |
-| `sin_cache` | `SinCache` | `IOnnxGraphEdge` | optional | Sin cache of rotary with shape (max_rotary_sequence_length, head_size / 2). |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `query` | `Query` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Query with shape (batch_size, sequence_length, num_heads * head_size), or packed QKV with shape is(batch_size, sequence_length, d) where d is (num_heads + 2 * kv_num_heads) * head_size. |
+| `key` | `Key` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Key with shape (batch_size, sequence_length, kv_num_heads * head_size) |
+| `value` | `Value` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Value with shape (batch_size, sequence_length, kv_num_heads * head_size) |
+| `past_key` | `PastKey` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Key cache with shape (batch_size, kv_num_heads, max_cache_sequence_length, head_size) |
+| `past_value` | `PastValue` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Value cache with shape (batch_size, kv_num_heads, max_cache_sequence_length, head_size) |
+| `block_row_indices` | `BlockRowIndices` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | The row indices of CSR format of block mask with shape (num_layout, max_blocks + 1).The num_heads is divisible by num_layout, and max_blocks is max_sequence_length / sparse_block_size. |
+| `block_col_indices` | `BlockColIndices` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | The col indices of CSR format of block mask with shape (num_layout, max_nnz_blocks).The max_nnz_blocks is the maximum number of non-zeros per layout in block mask. |
+| `total_sequence_length` | `TotalSequenceLength` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | Scalar tensor of maximum total sequence length (past_sequence_length + sequence_length) among keys. |
+| `key_total_sequence_lengths` | `KeyTotalSequenceLengths` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | 1D tensor with shape (batch_size) where each value is total sequence length of key excluding paddings. |
+| `cos_cache` | `CosCache` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Cos cache of rotary with shape (max_rotary_sequence_length, head_size / 2). |
+| `sin_cache` | `SinCache` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Sin cache of rotary with shape (max_rotary_sequence_length, head_size / 2). |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | 3D output tensor with shape (batch_size, sequence_length, num_heads * head_size) |
-| `present_key` | `PresentKey` | `IOnnxGraphEdge` | single, required | Updated key cache with shape (batch_size, kv_num_heads, max_cache_sequence_length, head_size). |
-| `present_value` | `PresentValue` | `IOnnxGraphEdge` | single, required | Updated value cache with shape (batch_size, kv_num_heads, max_cache_sequence_length, head_size). |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 3D output tensor with shape (batch_size, sequence_length, num_heads * head_size) |
+| `present_key` | `PresentKey` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Updated key cache with shape (batch_size, kv_num_heads, max_cache_sequence_length, head_size). |
+| `present_value` | `PresentValue` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Updated value cache with shape (batch_size, kv_num_heads, max_cache_sequence_length, head_size). |
 
 ## Attributes
 

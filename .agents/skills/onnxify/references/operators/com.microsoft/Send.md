@@ -23,17 +23,17 @@ Send data tensor to the specified destination.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `InputSignal` | `InputSignal` | `IOnnxGraphEdge` | single, required | Input control signal. It must be a scalar. |
-| `Remote` | `Remote` | `IOnnxGraphEdge` | single, required | Remote dst rank. It must be a scalar. |
-| `Data` | `Data` | `IOnnxGraphEdge[]` | variadic, min arity 1 | Tensors to send. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `InputSignal` | `InputSignal` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | Input control signal. It must be a scalar. |
+| `Remote` | `Remote` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Remote dst rank. It must be a scalar. |
+| `Data` | `Data` | `IOnnxGraphEdge[]` | `tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | variadic, min arity 1 | Tensors to send. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `OutputSignal` | `OutputSignal` | `IOnnxGraphEdge` | single, required | Output control signal. It must be a scalar. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `OutputSignal` | `OutputSignal` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | Output control signal. It must be a scalar. |
 
 ## Attributes
 

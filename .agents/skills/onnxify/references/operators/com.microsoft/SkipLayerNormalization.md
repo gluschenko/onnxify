@@ -23,22 +23,22 @@ Skip and Layer Normalization Fusion
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `input` | `Input` | `IOnnxGraphEdge` | single, required | 3D input tensor with shape (batch_size, sequence_length, hidden_size) |
-| `skip` | `Skip` | `IOnnxGraphEdge` | single, required | 3D skip tensor with shape (batch_size, sequence_length, hidden_size) or (1, sequence_length, hidden_size) or (sequence_length, hidden_size) |
-| `gamma` | `Gamma` | `IOnnxGraphEdge` | single, required | 1D input tensor with shape (hidden_size) |
-| `beta` | `Beta` | `IOnnxGraphEdge` | optional | 1D skip tensor with shape (hidden_size |
-| `bias` | `Bias` | `IOnnxGraphEdge` | optional | 1D bias tensor with shape (hidden_size |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `input` | `Input` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 3D input tensor with shape (batch_size, sequence_length, hidden_size) |
+| `skip` | `Skip` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 3D skip tensor with shape (batch_size, sequence_length, hidden_size) or (1, sequence_length, hidden_size) or (sequence_length, hidden_size) |
+| `gamma` | `Gamma` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 1D input tensor with shape (hidden_size) |
+| `beta` | `Beta` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | 1D skip tensor with shape (hidden_size |
+| `bias` | `Bias` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | 1D bias tensor with shape (hidden_size |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | 3D output tensor with shape (batch_size, sequence_length, hidden_size) |
-| `mean` | `Mean` | `IOnnxGraphEdge` | optional | Saved mean used during training to speed up gradient computation |
-| `inv_std_var` | `InvStdVar` | `IOnnxGraphEdge` | optional | Saved inverse standard variance used during training to speed up gradient computation. |
-| `input_skip_bias_sum` | `InputSkipBiasSum` | `IOnnxGraphEdge` | optional | Sum of the input and skip inputs (and bias if it exists) with shape (batch_size, sequence_length, hidden_size). |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 3D output tensor with shape (batch_size, sequence_length, hidden_size) |
+| `mean` | `Mean` | `IOnnxGraphEdge` | `tensor(float)` | optional | Saved mean used during training to speed up gradient computation |
+| `inv_std_var` | `InvStdVar` | `IOnnxGraphEdge` | `tensor(float)` | optional | Saved inverse standard variance used during training to speed up gradient computation. |
+| `input_skip_bias_sum` | `InputSkipBiasSum` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Sum of the input and skip inputs (and bias if it exists) with shape (batch_size, sequence_length, hidden_size). |
 
 ## Attributes
 

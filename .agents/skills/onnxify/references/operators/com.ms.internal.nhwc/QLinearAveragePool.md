@@ -54,19 +54,19 @@ Output = Dequantize(Input) -> AveragePool on fp32 data -> Quantize(output)
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | Input data tensor from the previous operator; dimensions for image case are (N x C x H x W), where N is the batch size, C is the number of channels, and H and W are the height and the width of the data. For non image case, the dimensions are in the form of (N x C x D1 x D2 ... Dn), where N is the batch size. Optionally, if dimension denotation is in effect, the operation expects the input data tensor to arrive with the dimension denotation of [DATA_BATCH, DATA_CHANNEL, DATA_FEATURE, DATA_FEATURE ...]. |
-| `x_scale` | `XScale` | `IOnnxGraphEdge` | single, required | Input scale. It's a scalar, which means a per-tensor/layer quantization. |
-| `x_zero_point` | `XZeroPoint` | `IOnnxGraphEdge` | optional | Input zero point. Default value is 0 if it's not specified. It's a scalar, which means a per-tensor/layer quantization. |
-| `y_scale` | `YScale` | `IOnnxGraphEdge` | single, required | Output scale. It's a scalar, which means a per-tensor/layer quantization. |
-| `y_zero_point` | `YZeroPoint` | `IOnnxGraphEdge` | optional | Output zero point. Default value is 0 if it's not specified. It's a scalar, which means a per-tensor/layer quantization. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Input data tensor from the previous operator; dimensions for image case are (N x C x H x W), where N is the batch size, C is the number of channels, and H and W are the height and the width of the data. For non image case, the dimensions are in the form of (N x C x D1 x D2 ... Dn), where N is the batch size. Optionally, if dimension denotation is in effect, the operation expects the input data tensor to arrive with the dimension denotation of [DATA_BATCH, DATA_CHANNEL, DATA_FEATURE, DATA_FEATURE ...]. |
+| `x_scale` | `XScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Input scale. It's a scalar, which means a per-tensor/layer quantization. |
+| `x_zero_point` | `XZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | optional | Input zero point. Default value is 0 if it's not specified. It's a scalar, which means a per-tensor/layer quantization. |
+| `y_scale` | `YScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Output scale. It's a scalar, which means a per-tensor/layer quantization. |
+| `y_zero_point` | `YZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | optional | Output zero point. Default value is 0 if it's not specified. It's a scalar, which means a per-tensor/layer quantization. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | Output data tensor from average or max pooling across the input tensor. Dimensions will vary based on various kernel, stride, and pad sizes. Floor value of the dimension is used |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Output data tensor from average or max pooling across the input tensor. Dimensions will vary based on various kernel, stride, and pad sizes. Floor value of the dimension is used |
 
 ## Attributes
 

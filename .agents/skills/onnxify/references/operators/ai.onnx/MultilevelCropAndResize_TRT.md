@@ -23,19 +23,19 @@ Multilevel Crop and Resize TensorRT Plugin.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `boxes` | `Boxes` | `IOnnxGraphEdge` | single, required | The boxes input tensor. |
-| `feature_map_0` | `FeatureMap0` | `IOnnxGraphEdge` | single, required | The first feature map input tensor. |
-| `feature_map_1` | `FeatureMap1` | `IOnnxGraphEdge` | single, required | The second feature map input tensor. |
-| `feature_map_2` | `FeatureMap2` | `IOnnxGraphEdge` | single, required | The third feature map input tensor. |
-| `feature_map_3` | `FeatureMap3` | `IOnnxGraphEdge` | single, required | The fourth feature map input tensor. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `boxes` | `Boxes` | `IOnnxGraphEdge` | `tensor(float)` | single, required | The boxes input tensor. |
+| `feature_map_0` | `FeatureMap0` | `IOnnxGraphEdge` | `tensor(float)` | single, required | The first feature map input tensor. |
+| `feature_map_1` | `FeatureMap1` | `IOnnxGraphEdge` | `tensor(float)` | single, required | The second feature map input tensor. |
+| `feature_map_2` | `FeatureMap2` | `IOnnxGraphEdge` | `tensor(float)` | single, required | The third feature map input tensor. |
+| `feature_map_3` | `FeatureMap3` | `IOnnxGraphEdge` | `tensor(float)` | single, required | The fourth feature map input tensor. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `patches` | `Patches` | `IOnnxGraphEdge` | single, required | The cropped patches output tensor. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `patches` | `Patches` | `IOnnxGraphEdge` | `tensor(float)` | single, required | The cropped patches output tensor. |
 
 ## Attributes
 

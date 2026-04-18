@@ -43,26 +43,26 @@ cumulative_sequence_length records cumulated length of each sequence length.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `query` | `Query` | `IOnnxGraphEdge` | single, required | Query with shape (num_tokens, hidden_size), or packed QKV with shape (num_tokens, d) where d is (num_heads * head_size + 2 * kv_num_heads * head_size). |
-| `key` | `Key` | `IOnnxGraphEdge` | optional | Key with shape (num_tokens, kv_hidden_size) |
-| `value` | `Value` | `IOnnxGraphEdge` | optional | Value with shape (num_tokens, kv_hidden_size) |
-| `key_cache` | `KeyCache` | `IOnnxGraphEdge` | single, required | Block-based key cache with shape (num_blocks, block_size, kv_num_heads, head_size). This is updated in place within the op. |
-| `value_cache` | `ValueCache` | `IOnnxGraphEdge` | single, required | Block-based value cache with shape (num_blocks, block_size, kv_num_heads, head_size). This is updated in place within the op. This should be the same shape as key_cache. |
-| `cumulative_sequence_length` | `CumulativeSequenceLength` | `IOnnxGraphEdge` | single, required | A tensor with shape (batch_size + 1). It specifies the cumulative sequence lengths between the packed entries in Q/K/V. |
-| `past_seqlens` | `PastSeqlens` | `IOnnxGraphEdge` | single, required | A tensor with shape (batch_size). It specifies the past lengths of cached sequence in the KV cache. |
-| `block_table` | `BlockTable` | `IOnnxGraphEdge` | single, required | 2D tensor with shape (batch_size, max_blocks_per_sequence) that maps each sequence in the batch to itscorresponding blocks in the KV cache. |
-| `cos_cache` | `CosCache` | `IOnnxGraphEdge` | optional | 2D tensor with shape (max total seqlen, head_size / 2). |
-| `sin_cache` | `SinCache` | `IOnnxGraphEdge` | optional | 2D tensor with shape (max total seqlen, head_size / 2). |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `query` | `Query` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float16)` | single, required | Query with shape (num_tokens, hidden_size), or packed QKV with shape (num_tokens, d) where d is (num_heads * head_size + 2 * kv_num_heads * head_size). |
+| `key` | `Key` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float16)` | optional | Key with shape (num_tokens, kv_hidden_size) |
+| `value` | `Value` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float16)` | optional | Value with shape (num_tokens, kv_hidden_size) |
+| `key_cache` | `KeyCache` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float16)` | single, required | Block-based key cache with shape (num_blocks, block_size, kv_num_heads, head_size). This is updated in place within the op. |
+| `value_cache` | `ValueCache` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float16)` | single, required | Block-based value cache with shape (num_blocks, block_size, kv_num_heads, head_size). This is updated in place within the op. This should be the same shape as key_cache. |
+| `cumulative_sequence_length` | `CumulativeSequenceLength` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | A tensor with shape (batch_size + 1). It specifies the cumulative sequence lengths between the packed entries in Q/K/V. |
+| `past_seqlens` | `PastSeqlens` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | A tensor with shape (batch_size). It specifies the past lengths of cached sequence in the KV cache. |
+| `block_table` | `BlockTable` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | 2D tensor with shape (batch_size, max_blocks_per_sequence) that maps each sequence in the batch to itscorresponding blocks in the KV cache. |
+| `cos_cache` | `CosCache` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float16)` | optional | 2D tensor with shape (max total seqlen, head_size / 2). |
+| `sin_cache` | `SinCache` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float16)` | optional | 2D tensor with shape (max total seqlen, head_size / 2). |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | 3D output tensor with shape (num_tokens, hidden_size) |
-| `key_cache_out` | `KeyCacheOut` | `IOnnxGraphEdge` | optional | Block-based key cache with shape (num_blocks, block_size, kv_num_heads, head_size). This is always the same tensor as key_cache. |
-| `value_cache_out` | `ValueCacheOut` | `IOnnxGraphEdge` | optional | Block-based value cache with shape (num_blocks, block_size, kv_num_heads, head_size). This is always the same tensor as value_cache. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float16)` | single, required | 3D output tensor with shape (num_tokens, hidden_size) |
+| `key_cache_out` | `KeyCacheOut` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float16)` | optional | Block-based key cache with shape (num_blocks, block_size, kv_num_heads, head_size). This is always the same tensor as key_cache. |
+| `value_cache_out` | `ValueCacheOut` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float16)` | optional | Block-based value cache with shape (num_blocks, block_size, kv_num_heads, head_size). This is always the same tensor as value_cache. |
 
 ## Attributes
 

@@ -26,16 +26,16 @@ This operator supports **multidirectional (i.e., Numpy-style) broadcasting**; fo
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `A` | `A` | `IOnnxGraphEdge` | single, required | First input operand for the logical operator. |
-| `B` | `B` | `IOnnxGraphEdge` | single, required | Second input operand for the logical operator. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `A` | `A` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | First input operand for the logical operator. |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | Second input operand for the logical operator. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `C` | `C` | `IOnnxGraphEdge` | single, required | Result tensor. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `C` | `C` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | Result tensor. |
 
 ## Attributes
 

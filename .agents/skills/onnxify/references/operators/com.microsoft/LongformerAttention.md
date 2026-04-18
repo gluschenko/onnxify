@@ -30,21 +30,21 @@ Global attention flags have value 1 for the tokens attend globally and 0 otherwi
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `input` | `Input` | `IOnnxGraphEdge` | single, required | 3D input tensor with shape (batch_size, sequence_length, hidden_size), hidden_size = num_heads * head_size |
-| `weight` | `Weight` | `IOnnxGraphEdge` | single, required | 2D input tensor with shape (hidden_size, 3 * hidden_size) |
-| `bias` | `Bias` | `IOnnxGraphEdge` | single, required | 1D input tensor with shape (3 * hidden_size) |
-| `mask` | `Mask` | `IOnnxGraphEdge` | single, required | Attention mask with shape (batch_size, sequence_length) |
-| `global_weight` | `GlobalWeight` | `IOnnxGraphEdge` | single, required | 2D input tensor with shape (hidden_size, 3 * hidden_size) |
-| `global_bias` | `GlobalBias` | `IOnnxGraphEdge` | single, required | 1D input tensor with shape (3 * hidden_size) |
-| `global` | `Global` | `IOnnxGraphEdge` | single, required | Global attention flags with shape (batch_size, sequence_length) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `input` | `Input` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 3D input tensor with shape (batch_size, sequence_length, hidden_size), hidden_size = num_heads * head_size |
+| `weight` | `Weight` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 2D input tensor with shape (hidden_size, 3 * hidden_size) |
+| `bias` | `Bias` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 1D input tensor with shape (3 * hidden_size) |
+| `mask` | `Mask` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Attention mask with shape (batch_size, sequence_length) |
+| `global_weight` | `GlobalWeight` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 2D input tensor with shape (hidden_size, 3 * hidden_size) |
+| `global_bias` | `GlobalBias` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 1D input tensor with shape (3 * hidden_size) |
+| `global` | `Global` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | Global attention flags with shape (batch_size, sequence_length) |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | 3D output tensor with shape (batch_size, sequence_length, hidden_size) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 3D output tensor with shape (batch_size, sequence_length, hidden_size) |
 
 ## Attributes
 

@@ -52,17 +52,17 @@ Output: [10, 8, 6]
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `start` | `Start` | `IOnnxGraphEdge` | single, required | Scalar. First entry for the range of output values. |
-| `limit` | `Limit` | `IOnnxGraphEdge` | single, required | Scalar. Exclusive upper limit for the range of output values. |
-| `delta` | `Delta` | `IOnnxGraphEdge` | single, required | Scalar. Value to step by. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `start` | `Start` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)` | single, required | Scalar. First entry for the range of output values. |
+| `limit` | `Limit` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)` | single, required | Scalar. Exclusive upper limit for the range of output values. |
+| `delta` | `Delta` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)` | single, required | Scalar. Value to step by. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | A 1-D tensor with same type as the inputs containing generated range of values. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)` | single, required | A 1-D tensor with same type as the inputs containing generated range of values. |
 
 ## Attributes
 

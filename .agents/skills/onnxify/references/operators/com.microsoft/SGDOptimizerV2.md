@@ -23,19 +23,19 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `lr` | `Lr` | `IOnnxGraphEdge` | single, required | The learning rate. |
-| `weights` | `Weights` | `IOnnxGraphEdge` | single, required | Sequence of weights to optimize. |
-| `gradients` | `Gradients` | `IOnnxGraphEdge` | single, required | Sequence of gradients computed in this iteration. |
-| `update_signal` | `UpdateSignal` | `IOnnxGraphEdge` | optional | This signal indicates if weight needs to be updated, applicable to gradient infinity check in mixed precision training. If not provided or its value is True, weights will be updated. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `lr` | `Lr` | `IOnnxGraphEdge` | `tensor(float)` | single, required | The learning rate. |
+| `weights` | `Weights` | `IOnnxGraphEdge` | `seq(tensor(double))`<br>`seq(tensor(float))`<br>`seq(tensor(float16))` | single, required | Sequence of weights to optimize. |
+| `gradients` | `Gradients` | `IOnnxGraphEdge` | `seq(tensor(double))`<br>`seq(tensor(float))`<br>`seq(tensor(float16))` | single, required | Sequence of gradients computed in this iteration. |
+| `update_signal` | `UpdateSignal` | `IOnnxGraphEdge` | `tensor(bool)` | optional | This signal indicates if weight needs to be updated, applicable to gradient infinity check in mixed precision training. If not provided or its value is True, weights will be updated. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `update_completed` | `UpdateCompleted` | `IOnnxGraphEdge` | single, required | Whether gradient is applied or not. |
-| `updated_weights` | `UpdatedWeights` | `IOnnxGraphEdge` | optional | Sequence of weights after optimize. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `update_completed` | `UpdateCompleted` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | Whether gradient is applied or not. |
+| `updated_weights` | `UpdatedWeights` | `IOnnxGraphEdge` | `seq(tensor(double))`<br>`seq(tensor(float))`<br>`seq(tensor(float16))` | optional | Sequence of weights after optimize. |
 
 ## Attributes
 

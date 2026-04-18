@@ -24,17 +24,17 @@ up to but not including `limit`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `start` | `Start` | `IOnnxGraphEdge` | single, required | Tensor(scalar, or dims=[1]). First entry in the range. |
-| `limit` | `Limit` | `IOnnxGraphEdge` | single, required | Tensor(scalar, or dims=[1]). Upper limit of sequence, exclusive. |
-| `delta` | `Delta` | `IOnnxGraphEdge` | optional | Tensor(scalar, or dims=[1]). Number that increments start. Defaults to 1. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `start` | `Start` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)` | single, required | Tensor(scalar, or dims=[1]). First entry in the range. |
+| `limit` | `Limit` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)` | single, required | Tensor(scalar, or dims=[1]). Upper limit of sequence, exclusive. |
+| `delta` | `Delta` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)` | optional | Tensor(scalar, or dims=[1]). Number that increments start. Defaults to 1. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | 1-D Tensor of the range. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)` | single, required | 1-D Tensor of the range. |
 
 ## Attributes
 

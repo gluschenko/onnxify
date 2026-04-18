@@ -24,16 +24,16 @@ tensor multiplies the Gelu activation result of right tensor.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | Input tensor. Dimensions are (N, S, D), where N is the batch size, S are image size, and D is hidden dimension |
-| `bias` | `Bias` | `IOnnxGraphEdge` | single, required | Bias tensor. Dimensions are (D), where D is the same hidden dimension as input tensor |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Input tensor. Dimensions are (N, S, D), where N is the batch size, S are image size, and D is hidden dimension |
+| `bias` | `Bias` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Bias tensor. Dimensions are (D), where D is the same hidden dimension as input tensor |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | The output tensor with dimensions (N, S, D/2) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | The output tensor with dimensions (N, S, D/2) |
 
 ## Attributes
 

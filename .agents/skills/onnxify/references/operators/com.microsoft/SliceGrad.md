@@ -23,20 +23,20 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `dY` | `DY` | `IOnnxGraphEdge` | single, required | Gradient of output |
-| `shape` | `Shape` | `IOnnxGraphEdge` | single, required | Shape of the Slice input X. |
-| `starts` | `Starts` | `IOnnxGraphEdge` | single, required | Tensor of starting indices of corresponding axis in axes |
-| `ends` | `Ends` | `IOnnxGraphEdge` | single, required | Tensor of starting indices of corresponding axis in 'axes' |
-| `axes` | `Axes` | `IOnnxGraphEdge` | optional | Tensor of axes that `starts` and `ends` apply to |
-| `steps` | `Steps` | `IOnnxGraphEdge` | optional | Tensor of slice step of corresponding axis in `axes` |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `dY` | `DY` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | Gradient of output |
+| `shape` | `Shape` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Shape of the Slice input X. |
+| `starts` | `Starts` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | Tensor of starting indices of corresponding axis in axes |
+| `ends` | `Ends` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | Tensor of starting indices of corresponding axis in 'axes' |
+| `axes` | `Axes` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | optional | Tensor of axes that `starts` and `ends` apply to |
+| `steps` | `Steps` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | optional | Tensor of slice step of corresponding axis in `axes` |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `dX` | `DX` | `IOnnxGraphEdge` | single, required | Gradient of input |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `dX` | `DX` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(bool)`<br>`tensor(complex128)`<br>`tensor(complex64)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(int16)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(int8)`<br>`tensor(string)`<br>`tensor(uint16)`<br>`tensor(uint32)`<br>`tensor(uint64)`<br>`tensor(uint8)` | single, required | Gradient of input |
 
 ## Attributes
 

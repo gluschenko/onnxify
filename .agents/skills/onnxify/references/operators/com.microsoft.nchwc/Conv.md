@@ -23,18 +23,18 @@ For internal use.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required |  |
-| `W` | `W` | `IOnnxGraphEdge` | single, required |  |
-| `B` | `B` | `IOnnxGraphEdge` | optional |  |
-| `Sum` | `Sum` | `IOnnxGraphEdge` | optional |  |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(float)` | single, required |  |
+| `W` | `W` | `IOnnxGraphEdge` | `tensor(float)` | single, required |  |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(float)` | optional |  |
+| `Sum` | `Sum` | `IOnnxGraphEdge` | `tensor(float)` | optional |  |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required |  |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(float)` | single, required |  |
 
 ## Attributes
 

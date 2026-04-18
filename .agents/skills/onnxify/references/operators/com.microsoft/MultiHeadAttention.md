@@ -27,27 +27,27 @@ each key sequence excluding paddings.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `query` | `Query` | `IOnnxGraphEdge` | single, required | Query with shape (batch_size, sequence_length, hidden_size), or packed QKV with shape (batch_size, kv_sequence_length, num_heads, 3, head_size) |
-| `key` | `Key` | `IOnnxGraphEdge` | optional | Key with shape (batch_size, kv_sequence_length, hidden_size), or packed KV with shape (batch_size, kv_sequence_length, num_heads, 2, head_size), or past_key with shape (batch_size, num_heads, kv_sequence_length, head_size) |
-| `value` | `Value` | `IOnnxGraphEdge` | optional | Value with shape (batch_size, kv_sequence_length, v_hidden_size), or past_value with shape (batch_size, num_heads, kv_sequence_length, head_size) |
-| `bias` | `Bias` | `IOnnxGraphEdge` | optional | Bias tensor with shape (hidden_size + hidden_size + v_hidden_size) from input projection |
-| `key_padding_mask` | `KeyPaddingMask` | `IOnnxGraphEdge` | optional | Key padding mask with shape (batch_size), (3 * batch_size + 2), (batch_size, kv_sequence_length), (batch_size, total_sequence_length), or (batch_size, sequence_length, total_sequence_length) |
-| `attention_bias` | `AttentionBias` | `IOnnxGraphEdge` | optional | bias added to QxK' with shape (batch_size or 1, num_heads or 1, sequence_length, total_sequence_length) |
-| `past_key` | `PastKey` | `IOnnxGraphEdge` | optional | past state for key with shape (batch_size, num_heads, past_sequence_length, head_size) or (batch_size, num_heads, max_sequence_length, head_size) when buffer sharing is used |
-| `past_value` | `PastValue` | `IOnnxGraphEdge` | optional | past state for value with shape (batch_size, num_heads, past_sequence_length, head_size) or (batch_size, num_heads, max_sequence_length, head_size) when buffer sharing is used |
-| `past_sequence_length` | `PastSequenceLength` | `IOnnxGraphEdge` | optional | The past_sequence_length buffer sharing is used with |
-| `cache_indirection` | `CacheIndirection` | `IOnnxGraphEdge` | optional | A buffer of shape [batch_size, beam_width, max_sequence_length] where an [i, j, k] entry specifieswhich beam the 'k' th token came from for the 'j' th beam for batch 'i' in the current iteration |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `query` | `Query` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Query with shape (batch_size, sequence_length, hidden_size), or packed QKV with shape (batch_size, kv_sequence_length, num_heads, 3, head_size) |
+| `key` | `Key` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Key with shape (batch_size, kv_sequence_length, hidden_size), or packed KV with shape (batch_size, kv_sequence_length, num_heads, 2, head_size), or past_key with shape (batch_size, num_heads, kv_sequence_length, head_size) |
+| `value` | `Value` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Value with shape (batch_size, kv_sequence_length, v_hidden_size), or past_value with shape (batch_size, num_heads, kv_sequence_length, head_size) |
+| `bias` | `Bias` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Bias tensor with shape (hidden_size + hidden_size + v_hidden_size) from input projection |
+| `key_padding_mask` | `KeyPaddingMask` | `IOnnxGraphEdge` | `tensor(int32)` | optional | Key padding mask with shape (batch_size), (3 * batch_size + 2), (batch_size, kv_sequence_length), (batch_size, total_sequence_length), or (batch_size, sequence_length, total_sequence_length) |
+| `attention_bias` | `AttentionBias` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | bias added to QxK' with shape (batch_size or 1, num_heads or 1, sequence_length, total_sequence_length) |
+| `past_key` | `PastKey` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | past state for key with shape (batch_size, num_heads, past_sequence_length, head_size) or (batch_size, num_heads, max_sequence_length, head_size) when buffer sharing is used |
+| `past_value` | `PastValue` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | past state for value with shape (batch_size, num_heads, past_sequence_length, head_size) or (batch_size, num_heads, max_sequence_length, head_size) when buffer sharing is used |
+| `past_sequence_length` | `PastSequenceLength` | `IOnnxGraphEdge` | `tensor(int32)` | optional | The past_sequence_length buffer sharing is used with |
+| `cache_indirection` | `CacheIndirection` | `IOnnxGraphEdge` | `tensor(int32)` | optional | A buffer of shape [batch_size, beam_width, max_sequence_length] where an [i, j, k] entry specifieswhich beam the 'k' th token came from for the 'j' th beam for batch 'i' in the current iteration |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | 3D output tensor with shape (batch_size, sequence_length, v_hidden_size) |
-| `present_key` | `PresentKey` | `IOnnxGraphEdge` | optional | present state for key with shape (batch_size, num_heads, total_sequence_length, head_size) or (batch_size, num_heads, max_sequence_length, head_size) when buffer sharing is used |
-| `present_value` | `PresentValue` | `IOnnxGraphEdge` | optional | present state for value with shape (batch_size, num_heads, total_sequence_length, head_size) or (batch_size, num_heads, max_sequence_length, head_size) when buffer sharing is used |
-| `qk` | `Qk` | `IOnnxGraphEdge` | optional | normalized Q * K, of shape (batch_size, num_heads, sequence_length, total_sequence_length). |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | 3D output tensor with shape (batch_size, sequence_length, v_hidden_size) |
+| `present_key` | `PresentKey` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | present state for key with shape (batch_size, num_heads, total_sequence_length, head_size) or (batch_size, num_heads, max_sequence_length, head_size) when buffer sharing is used |
+| `present_value` | `PresentValue` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | present state for value with shape (batch_size, num_heads, total_sequence_length, head_size) or (batch_size, num_heads, max_sequence_length, head_size) when buffer sharing is used |
+| `qk` | `Qk` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | normalized Q * K, of shape (batch_size, num_heads, sequence_length, total_sequence_length). |
 
 ## Attributes
 

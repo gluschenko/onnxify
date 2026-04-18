@@ -23,15 +23,15 @@ Input is cost matrix where each value in input[r][c] is the cost for pass the po
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `input` | `Input` | `IOnnxGraphEdge` | single, required | Input cost tensor, it must be 2D tensor of shape M x N, or 1 x M x N |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `input` | `Input` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Input cost tensor, it must be 2D tensor of shape M x N, or 1 x M x N |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | Output tensor. shape is [2, x], where max(M, N) <= x < M + N |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(int32)` | single, required | Output tensor. shape is [2, x], where max(M, N) <= x < M + N |
 
 ## Attributes
 

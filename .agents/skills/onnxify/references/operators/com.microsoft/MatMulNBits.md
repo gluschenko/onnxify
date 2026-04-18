@@ -36,20 +36,20 @@ For example, for 4 bits, the first 4 bits are stored in the lower 4 bits of a by
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `A` | `A` | `IOnnxGraphEdge` | single, required | The input tensor, not quantized. |
-| `B` | `B` | `IOnnxGraphEdge` | single, required | Packed uint8 tensor of shape (N, k_blocks, blob_size), where k_blocks = ceil(K / block_size) and blob_size = (block_size * bits / 8). The quantized weights are stored in a bit-packed format along the K dimension, packed within each block_size. |
-| `scales` | `Scales` | `IOnnxGraphEdge` | single, required | Per-block scaling factors for dequantization with shape (N, k_blocks) and same data type as input A. |
-| `zero_points` | `ZeroPoints` | `IOnnxGraphEdge` | optional | Per-block zero point for dequantization. It can be either packed or unpacked: Packed (uint8) format has shape (N, ceil(k_blocks * bits / 8)), and it uses same bit-packing method as Input B. Unpacked (same type as A) format has shape (N, k_blocks). If not provided, a default zero point is used: 2^(bits - 1) (e.g., 8 for 4-bit quantization, 128 for 8-bit). |
-| `g_idx` | `GIdx` | `IOnnxGraphEdge` | optional | group_idx. This input is deprecated |
-| `bias` | `Bias` | `IOnnxGraphEdge` | optional | Bias to add to result. It should have shape [N]. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `A` | `A` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The input tensor, not quantized. |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(uint8)` | single, required | Packed uint8 tensor of shape (N, k_blocks, blob_size), where k_blocks = ceil(K / block_size) and blob_size = (block_size * bits / 8). The quantized weights are stored in a bit-packed format along the K dimension, packed within each block_size. |
+| `scales` | `Scales` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Per-block scaling factors for dequantization with shape (N, k_blocks) and same data type as input A. |
+| `zero_points` | `ZeroPoints` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(uint8)` | optional | Per-block zero point for dequantization. It can be either packed or unpacked: Packed (uint8) format has shape (N, ceil(k_blocks * bits / 8)), and it uses same bit-packing method as Input B. Unpacked (same type as A) format has shape (N, k_blocks). If not provided, a default zero point is used: 2^(bits - 1) (e.g., 8 for 4-bit quantization, 128 for 8-bit). |
+| `g_idx` | `GIdx` | `IOnnxGraphEdge` | `tensor(int32)` | optional | group_idx. This input is deprecated |
+| `bias` | `Bias` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Bias to add to result. It should have shape [N]. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | tensor. The output tensor has the same rank as the input. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | tensor. The output tensor has the same rank as the input. |
 
 ## Attributes
 

@@ -23,20 +23,20 @@ Generic Gemm for float and float 8.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `A` | `A` | `IOnnxGraphEdge` | single, required | Input tensor A. The shape of A should be (M, K) if transA is 0, or (K, M) if transA is non-zero. |
-| `B` | `B` | `IOnnxGraphEdge` | single, required | Input tensor B. The shape of B should be (K, N) if transB is 0, or (N, K) if transB is non-zero. |
-| `C` | `C` | `IOnnxGraphEdge` | optional | Input tensor C. |
-| `scaleA` | `ScaleA` | `IOnnxGraphEdge` | optional | Scale of tensor A if A is float 8 tensor |
-| `scaleB` | `ScaleB` | `IOnnxGraphEdge` | optional | Scale of tensor B if B is float 8 tensor |
-| `scaleY` | `ScaleY` | `IOnnxGraphEdge` | optional | Scale of the output tensor if A or B is float 8. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `A` | `A` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(float8e4m3fn)`<br>`tensor(float8e5m2)` | single, required | Input tensor A. The shape of A should be (M, K) if transA is 0, or (K, M) if transA is non-zero. |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(float8e4m3fn)`<br>`tensor(float8e5m2)` | single, required | Input tensor B. The shape of B should be (K, N) if transB is 0, or (N, K) if transB is non-zero. |
+| `C` | `C` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)` | optional | Input tensor C. |
+| `scaleA` | `ScaleA` | `IOnnxGraphEdge` | `tensor(float)` | optional | Scale of tensor A if A is float 8 tensor |
+| `scaleB` | `ScaleB` | `IOnnxGraphEdge` | `tensor(float)` | optional | Scale of tensor B if B is float 8 tensor |
+| `scaleY` | `ScaleY` | `IOnnxGraphEdge` | `tensor(float)` | optional | Scale of the output tensor if A or B is float 8. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | Output tensor of shape (M, N). |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(float)`<br>`tensor(float16)`<br>`tensor(float8e4m3fn)`<br>`tensor(float8e5m2)` | single, required | Output tensor of shape (M, N). |
 
 ## Attributes
 

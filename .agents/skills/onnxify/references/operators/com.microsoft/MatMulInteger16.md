@@ -24,16 +24,16 @@ Matrix product that behaves like numpy.matmul: https://docs.scipy.org/doc/numpy-
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `A` | `A` | `IOnnxGraphEdge` | single, required | N-dimensional matrix A |
-| `B` | `B` | `IOnnxGraphEdge` | single, required | N-dimensional matrix B |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `A` | `A` | `IOnnxGraphEdge` | `tensor(int16)`<br>`tensor(uint16)` | single, required | N-dimensional matrix A |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(int16)`<br>`tensor(uint16)` | single, required | N-dimensional matrix B |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | Matrix multiply results from A * B |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(uint32)` | single, required | Matrix multiply results from A * B |
 
 ## Attributes
 

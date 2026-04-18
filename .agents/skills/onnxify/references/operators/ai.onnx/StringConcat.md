@@ -23,16 +23,16 @@ StringConcat concatenates string tensors elementwise (with NumPy-style broadcast
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | Tensor to prepend in concatenation |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | Tensor to append in concatenation |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(string)` | single, required | Tensor to prepend in concatenation |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(string)` | single, required | Tensor to append in concatenation |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Z` | `Z` | `IOnnxGraphEdge` | single, required | Concatenated string tensor |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Z` | `Z` | `IOnnxGraphEdge` | `tensor(string)` | single, required | Concatenated string tensor |
 
 ## Attributes
 

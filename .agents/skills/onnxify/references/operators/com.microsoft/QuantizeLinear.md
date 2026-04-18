@@ -27,17 +27,17 @@ Scale and zero point must have same shape. They must be either scalar (per tenso
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `x` | `X` | `IOnnxGraphEdge` | single, required | N-D full precision Input tensor to be quantized. |
-| `y_scale` | `YScale` | `IOnnxGraphEdge` | single, required | Scale for doing quantization to get 'y'. It can be a scalar, which means per-tensor/layer quantization, or a 1-D tensor for per-axis quantization. |
-| `y_zero_point` | `YZeroPoint` | `IOnnxGraphEdge` | optional | Zero point for doing quantization to get 'y'. Shape must match y_scale. Default is uint8 with zero point of 0 if it's not specified. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `x` | `X` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | N-D full precision Input tensor to be quantized. |
+| `y_scale` | `YScale` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Scale for doing quantization to get 'y'. It can be a scalar, which means per-tensor/layer quantization, or a 1-D tensor for per-axis quantization. |
+| `y_zero_point` | `YZeroPoint` | `IOnnxGraphEdge` | `tensor(int16)`<br>`tensor(int4)`<br>`tensor(int8)`<br>`tensor(uint16)`<br>`tensor(uint4)`<br>`tensor(uint8)` | optional | Zero point for doing quantization to get 'y'. Shape must match y_scale. Default is uint8 with zero point of 0 if it's not specified. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `y` | `Y` | `IOnnxGraphEdge` | single, required | N-D quantized output tensor. It has same shape as input 'x'. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `y` | `Y` | `IOnnxGraphEdge` | `tensor(int16)`<br>`tensor(int4)`<br>`tensor(int8)`<br>`tensor(uint16)`<br>`tensor(uint4)`<br>`tensor(uint8)` | single, required | N-D quantized output tensor. It has same shape as input 'x'. |
 
 ## Attributes
 

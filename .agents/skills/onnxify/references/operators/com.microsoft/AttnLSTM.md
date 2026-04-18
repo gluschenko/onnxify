@@ -150,30 +150,30 @@ RNN layer output:
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | The input sequences packed (and potentially padded) into one 3-D tensor with the shape of `[seq_length, batch_size, input_size]` |
-| `W` | `W` | `IOnnxGraphEdge` | single, required | The weight tensor for the gates. Concatenation of `W[iofc]` and `WB[iofc]` (if bidirectional) along dimension 0. The tensor has shape `[num_directions, 4*hidden_size, input_size]`. |
-| `R` | `R` | `IOnnxGraphEdge` | single, required | The recurrence weight tensor. Concatenation of `R[iofc]` and `RB[iofc]` (if bidirectional) along dimension 0. This tensor has shape `[num_directions, 4*hidden_size, hidden_size]`. |
-| `B` | `B` | `IOnnxGraphEdge` | optional | The bias tensor for input gate. Concatenation of `[Wb[iofc], Rb[iofc]]`, and `[WBb[iofc], RBb[iofc]]` (if bidirectional) along dimension 0. This tensor has shape `[num_directions, 8*hidden_size]`. Optional: If not specified - assumed to be 0. |
-| `sequence_lens` | `SequenceLens` | `IOnnxGraphEdge` | optional | Optional tensor specifying lengths of the sequences in a batch. If not specified - assumed all sequences in the batch to have length `seq_length`. It has shape `[batch_size]` |
-| `initial_h` | `InitialH` | `IOnnxGraphEdge` | optional | Optional initial value of the hidden. If not specified - assumed to be 0. It has shape `[num_directions, batch_size, hidden_size]`. |
-| `initial_c` | `InitialC` | `IOnnxGraphEdge` | optional | Optional initial value of the cell. If not specified - assumed to be 0. It has shape `[num_directions, batch_size, hidden_size]`. |
-| `P` | `P` | `IOnnxGraphEdge` | optional | The weight tensor for peepholes. Concatenation of `P[iof]` and `PB[iof]` (if bidirectional) along dimension 0. It has shape `[num_directions, 3*hidde_size]`. Optional: If not specified - assumed to be 0. |
-| `QW` | `QW` | `IOnnxGraphEdge` | optional | The weight tensor of the query layer in the attention mechanism. Should be of shape `[num_directions, am_query_depth(hidden_size of lstm), am_attn_size]` |
-| `MW` | `MW` | `IOnnxGraphEdge` | optional | The weight tensor of the memory layer in the attention mechanism. Should be of shape `[num_directions, memory_depth, am_attn_size]` |
-| `V` | `V` | `IOnnxGraphEdge` | optional | The attention_v tensor in the attention mechanism. Should be of shape `[num_directions, am_attn_size]` |
-| `M` | `M` | `IOnnxGraphEdge` | optional | The sequence of the memory (input) for attention mechanism. Should be of `[batch_size, max_memory_step, memory_depth]` |
-| `memory_seq_lens` | `MemorySeqLens` | `IOnnxGraphEdge` | optional | The sequence length of the input memory for the attention mechanism. Should be of `[batch_size]` |
-| `AW` | `AW` | `IOnnxGraphEdge` | optional | The weights of attention layer in the attention wrapper. If exists, should be of shape `[num_directions, memory_depth+hidden_size, aw_attn_size]. Please note that attention mechanism context depth is also memory_depth in the attention mechanism.` |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | single, required | The input sequences packed (and potentially padded) into one 3-D tensor with the shape of `[seq_length, batch_size, input_size]` |
+| `W` | `W` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | single, required | The weight tensor for the gates. Concatenation of `W[iofc]` and `WB[iofc]` (if bidirectional) along dimension 0. The tensor has shape `[num_directions, 4*hidden_size, input_size]`. |
+| `R` | `R` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | single, required | The recurrence weight tensor. Concatenation of `R[iofc]` and `RB[iofc]` (if bidirectional) along dimension 0. This tensor has shape `[num_directions, 4*hidden_size, hidden_size]`. |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | optional | The bias tensor for input gate. Concatenation of `[Wb[iofc], Rb[iofc]]`, and `[WBb[iofc], RBb[iofc]]` (if bidirectional) along dimension 0. This tensor has shape `[num_directions, 8*hidden_size]`. Optional: If not specified - assumed to be 0. |
+| `sequence_lens` | `SequenceLens` | `IOnnxGraphEdge` | `tensor(int32)` | optional | Optional tensor specifying lengths of the sequences in a batch. If not specified - assumed all sequences in the batch to have length `seq_length`. It has shape `[batch_size]` |
+| `initial_h` | `InitialH` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | optional | Optional initial value of the hidden. If not specified - assumed to be 0. It has shape `[num_directions, batch_size, hidden_size]`. |
+| `initial_c` | `InitialC` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | optional | Optional initial value of the cell. If not specified - assumed to be 0. It has shape `[num_directions, batch_size, hidden_size]`. |
+| `P` | `P` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | optional | The weight tensor for peepholes. Concatenation of `P[iof]` and `PB[iof]` (if bidirectional) along dimension 0. It has shape `[num_directions, 3*hidde_size]`. Optional: If not specified - assumed to be 0. |
+| `QW` | `QW` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | optional | The weight tensor of the query layer in the attention mechanism. Should be of shape `[num_directions, am_query_depth(hidden_size of lstm), am_attn_size]` |
+| `MW` | `MW` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | optional | The weight tensor of the memory layer in the attention mechanism. Should be of shape `[num_directions, memory_depth, am_attn_size]` |
+| `V` | `V` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | optional | The attention_v tensor in the attention mechanism. Should be of shape `[num_directions, am_attn_size]` |
+| `M` | `M` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | optional | The sequence of the memory (input) for attention mechanism. Should be of `[batch_size, max_memory_step, memory_depth]` |
+| `memory_seq_lens` | `MemorySeqLens` | `IOnnxGraphEdge` | `tensor(int32)` | optional | The sequence length of the input memory for the attention mechanism. Should be of `[batch_size]` |
+| `AW` | `AW` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | optional | The weights of attention layer in the attention wrapper. If exists, should be of shape `[num_directions, memory_depth+hidden_size, aw_attn_size]. Please note that attention mechanism context depth is also memory_depth in the attention mechanism.` |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | optional | A tensor that concats all the intermediate output values of the hidden. It has shape `[seq_length, num_directions, batch_size, hidden_size]` |
-| `Y_h` | `YH` | `IOnnxGraphEdge` | optional | The last output value of the hidden. It has shape `[num_directions, batch_size, hidden_size]`. |
-| `Y_c` | `YC` | `IOnnxGraphEdge` | optional | The last output value of the cell. It has shape `[num_directions, batch_size, hidden_size]`. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | optional | A tensor that concats all the intermediate output values of the hidden. It has shape `[seq_length, num_directions, batch_size, hidden_size]` |
+| `Y_h` | `YH` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | optional | The last output value of the hidden. It has shape `[num_directions, batch_size, hidden_size]`. |
+| `Y_c` | `YC` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)` | optional | The last output value of the cell. It has shape `[num_directions, batch_size, hidden_size]`. |
 
 ## Attributes
 

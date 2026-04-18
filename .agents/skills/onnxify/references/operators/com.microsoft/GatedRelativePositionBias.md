@@ -28,21 +28,21 @@ query_layer = (query_layer + query_bias).reshape(batch_size, seq_len, num_heads,
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `query_layer` | `QueryLayer` | `IOnnxGraphEdge` | single, required | tensor with shape (batch_size, seq_len, num_heads x head_size) or (token_count, num_heads x head_size) |
-| `query_bias` | `QueryBias` | `IOnnxGraphEdge` | single, required | 1-d tensor with shape (num_heads x head_size) |
-| `rel_pos` | `RelPos` | `IOnnxGraphEdge` | single, required | tensor with shape (1, num_head, seq_len, seq_len) |
-| `weight` | `Weight` | `IOnnxGraphEdge` | single, required | gemm weight for the gated_ur_linear, shape (head_size, D), D is divisible by 2 |
-| `bias` | `Bias` | `IOnnxGraphEdge` | single, required | bias for the gated_ur_linear, shape (D) |
-| `eco_a` | `EcoA` | `IOnnxGraphEdge` | single, required | tensor of shape (1, num_heads, 1, 1) |
-| `token_offset` | `TokenOffset` | `IOnnxGraphEdge` | optional | offset of each token with shape (batch_size, seq_len) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `query_layer` | `QueryLayer` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | tensor with shape (batch_size, seq_len, num_heads x head_size) or (token_count, num_heads x head_size) |
+| `query_bias` | `QueryBias` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | 1-d tensor with shape (num_heads x head_size) |
+| `rel_pos` | `RelPos` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | tensor with shape (1, num_head, seq_len, seq_len) |
+| `weight` | `Weight` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | gemm weight for the gated_ur_linear, shape (head_size, D), D is divisible by 2 |
+| `bias` | `Bias` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | bias for the gated_ur_linear, shape (D) |
+| `eco_a` | `EcoA` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | tensor of shape (1, num_heads, 1, 1) |
+| `token_offset` | `TokenOffset` | `IOnnxGraphEdge` | `tensor(int32)` | optional | offset of each token with shape (batch_size, seq_len) |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `output` | `Output` | `IOnnxGraphEdge` | single, required | output tensor with shape (batch_size, num_heads, seq_len, seq_len) |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `output` | `Output` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | output tensor with shape (batch_size, num_heads, seq_len, seq_len) |
 
 ## Attributes
 

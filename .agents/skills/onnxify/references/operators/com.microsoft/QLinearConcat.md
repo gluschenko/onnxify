@@ -23,17 +23,17 @@ Concatenate a list of tensors into a single tensor.All input tensors must have t
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y_scale` | `YScale` | `IOnnxGraphEdge` | single, required | Y's scale. |
-| `Y_zero_point` | `YZeroPoint` | `IOnnxGraphEdge` | single, required | Y's zero point. |
-| `inputs` | `In` | `IOnnxGraphEdge[]` | variadic, min arity 1 | List of tensors/scale/zero_point for concatenation |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y_scale` | `YScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Y's scale. |
+| `Y_zero_point` | `YZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Y's zero point. |
+| `inputs` | `In` | `IOnnxGraphEdge[]` | `tensor(float)`<br>`tensor(int8)`<br>`tensor(uint8)` | variadic, min arity 1 | List of tensors/scale/zero_point for concatenation |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | Concatenated tensor |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Concatenated tensor |
 
 ## Attributes
 

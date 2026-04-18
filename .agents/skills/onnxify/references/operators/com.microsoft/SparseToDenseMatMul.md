@@ -23,16 +23,16 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `A` | `A` | `IOnnxGraphEdge` | single, required | 2-dimensional sparse matrix A. Either COO or CSR format |
-| `B` | `B` | `IOnnxGraphEdge` | single, required | N-dimensional dense matrix B |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `A` | `A` | `IOnnxGraphEdge` | `sparse_tensor(double)`<br>`sparse_tensor(float)`<br>`sparse_tensor(int32)`<br>`sparse_tensor(int64)`<br>`sparse_tensor(uint32)`<br>`sparse_tensor(uint64)` | single, required | 2-dimensional sparse matrix A. Either COO or CSR format |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(uint32)`<br>`tensor(uint64)` | single, required | N-dimensional dense matrix B |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | Matrix multiply results |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(int32)`<br>`tensor(int64)`<br>`tensor(uint32)`<br>`tensor(uint64)` | single, required | Matrix multiply results |
 
 ## Attributes
 

@@ -23,17 +23,17 @@ Returns the reduction axes for computing gradients of s0 op s1 with broadcast.Th
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `a_shape` | `AShape` | `IOnnxGraphEdge` | single, required | The 1st input shape as Tensor. |
-| `b_shape` | `BShape` | `IOnnxGraphEdge` | single, required | The 2nd input shape as Tensor. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `a_shape` | `AShape` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | The 1st input shape as Tensor. |
+| `b_shape` | `BShape` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | The 2nd input shape as Tensor. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `a_axes` | `AAxes` | `IOnnxGraphEdge` | optional | The reduction axes for 1st input, last to first. |
-| `b_axes` | `BAxes` | `IOnnxGraphEdge` | optional | The reduction axes for 2nd input, last to first. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `a_axes` | `AAxes` | `IOnnxGraphEdge` | `tensor(int64)` | optional | The reduction axes for 1st input, last to first. |
+| `b_axes` | `BAxes` | `IOnnxGraphEdge` | `tensor(int64)` | optional | The reduction axes for 2nd input, last to first. |
 
 ## Attributes
 

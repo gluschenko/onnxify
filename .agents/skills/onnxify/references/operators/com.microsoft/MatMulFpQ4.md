@@ -29,17 +29,17 @@ no offset
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `A` | `A` | `IOnnxGraphEdge` | single, required | N-dimensional matrix A |
-| `B` | `B` | `IOnnxGraphEdge` | single, required | 1-dimensional data blob |
-| `B_shape` | `BShape` | `IOnnxGraphEdge` | single, required | Shape information of B |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `A` | `A` | `IOnnxGraphEdge` | `tensor(float)` | single, required | N-dimensional matrix A |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(uint8)` | single, required | 1-dimensional data blob |
+| `B_shape` | `BShape` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Shape information of B |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | Matrix multiply results from A * B |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Matrix multiply results from A * B |
 
 ## Attributes
 

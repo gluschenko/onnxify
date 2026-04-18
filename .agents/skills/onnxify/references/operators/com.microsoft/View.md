@@ -22,16 +22,16 @@ View. The output tensors are views of the input, according to the shapes provide
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `input` | `Input` | `IOnnxGraphEdge` | single, required | Input tensor. |
-| `shapes` | `Shapes` | `IOnnxGraphEdge[]` | variadic, min arity 1 | Shapes of each view output. The shapes must adds up to the input buffer size. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `input` | `Input` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Input tensor. |
+| `shapes` | `Shapes` | `IOnnxGraphEdge[]` | `tensor(int64)` | variadic, min arity 1 | Shapes of each view output. The shapes must adds up to the input buffer size. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `outputs` | `Out` | `IOnnxGraphEdge[]` | variadic, min arity 1 | Output tensors viewed according the shapes input. It has a one to one mapping to the shapes input |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `outputs` | `Out` | `IOnnxGraphEdge[]` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | variadic, min arity 1 | Output tensors viewed according the shapes input. It has a one to one mapping to the shapes input |
 
 ## Attributes
 

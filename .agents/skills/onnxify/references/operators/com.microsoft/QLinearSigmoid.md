@@ -25,19 +25,19 @@ Wwhere the function `Sigmoid(x) = 1 / (1 + exp(-x))`
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | Input tensor |
-| `X_scale` | `XScale` | `IOnnxGraphEdge` | single, required | Input X's scale. It's a scalar, which means a per-tensor/layer quantization. |
-| `X_zero_point` | `XZeroPoint` | `IOnnxGraphEdge` | optional | Input X's zero point. Default value is 0 if it's not specified. It's a scalar, which means a per-tensor/layer quantization. |
-| `Y_scale` | `YScale` | `IOnnxGraphEdge` | single, required | Output Y's scale. It's a scalar, which means a per-tensor/layer quantization. |
-| `Y_zero_point` | `YZeroPoint` | `IOnnxGraphEdge` | optional | Output Y's zero point. Default value is 0 if it's not specified. It's a scalar, which means a per-tensor/layer quantization. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Input tensor |
+| `X_scale` | `XScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Input X's scale. It's a scalar, which means a per-tensor/layer quantization. |
+| `X_zero_point` | `XZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | optional | Input X's zero point. Default value is 0 if it's not specified. It's a scalar, which means a per-tensor/layer quantization. |
+| `Y_scale` | `YScale` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Output Y's scale. It's a scalar, which means a per-tensor/layer quantization. |
+| `Y_zero_point` | `YZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | optional | Output Y's zero point. Default value is 0 if it's not specified. It's a scalar, which means a per-tensor/layer quantization. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | Output tensor |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | Output tensor |
 
 ## Attributes
 

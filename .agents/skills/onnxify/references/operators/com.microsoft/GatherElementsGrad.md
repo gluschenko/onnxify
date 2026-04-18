@@ -23,17 +23,17 @@ GatherElementsGrad
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `dY` | `DY` | `IOnnxGraphEdge` | single, required | Tensor of rank r >=1 (same rank and shape as indices) |
-| `shape` | `Shape` | `IOnnxGraphEdge` | single, required | Shape of the GatherElements input data. |
-| `indices` | `Indices` | `IOnnxGraphEdge` | single, required | Tensor of int32/int64 indices, of r >= 1 (same rank as input). All index values are expected to be within bounds [-s, s-1] along axis of size s. It is an error if any of the index values are out of bounds. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `dY` | `DY` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Tensor of rank r >=1 (same rank and shape as indices) |
+| `shape` | `Shape` | `IOnnxGraphEdge` | `tensor(int64)` | single, required | Shape of the GatherElements input data. |
+| `indices` | `Indices` | `IOnnxGraphEdge` | `tensor(int32)`<br>`tensor(int64)` | single, required | Tensor of int32/int64 indices, of r >= 1 (same rank as input). All index values are expected to be within bounds [-s, s-1] along axis of size s. It is an error if any of the index values are out of bounds. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `dX` | `DX` | `IOnnxGraphEdge` | single, required | Tensor of rank r >= 1 (same rank as input). |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `dX` | `DX` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Tensor of rank r >= 1 (same rank as input). |
 
 ## Attributes
 

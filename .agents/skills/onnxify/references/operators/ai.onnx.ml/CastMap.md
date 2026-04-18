@@ -25,15 +25,15 @@ Converts a map to a tensor.<br>The map key must be an int64 and the values will 
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | The input map that is to be cast to a tensor |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `map(int64,tensor(float))`<br>`map(int64,tensor(string))` | single, required | The input map that is to be cast to a tensor |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | A tensor representing the same data as the input map, ordered by their keys |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(int64)`<br>`tensor(string)` | single, required | A tensor representing the same data as the input map, ordered by their keys |
 
 ## Attributes
 

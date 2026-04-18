@@ -23,18 +23,18 @@ In-place accumulator for tensors. Differs from older op by adding `overwrite_fla
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `accumulation_buffer` | `AccumulationBuffer` | `IOnnxGraphEdge` | single, required | historical result of accumulator |
-| `value` | `Value` | `IOnnxGraphEdge` | single, required | the value that will be added to the accumulator |
-| `overwrite_flag` | `OverwriteFlag` | `IOnnxGraphEdge` | optional | Indicates if tensor should be overwritten. Default is accumulation |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `accumulation_buffer` | `AccumulationBuffer` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | historical result of accumulator |
+| `value` | `Value` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | the value that will be added to the accumulator |
+| `overwrite_flag` | `OverwriteFlag` | `IOnnxGraphEdge` | `tensor(bool)` | optional | Indicates if tensor should be overwritten. Default is accumulation |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `updated_flag` | `UpdatedFlag` | `IOnnxGraphEdge` | single, required | Whether the update was completed |
-| `accumulation_buffer_out` | `AccumulationBufferOut` | `IOnnxGraphEdge` | optional | updated result of accumulator |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `updated_flag` | `UpdatedFlag` | `IOnnxGraphEdge` | `tensor(bool)` | single, required | Whether the update was completed |
+| `accumulation_buffer_out` | `AccumulationBufferOut` | `IOnnxGraphEdge` | `tensor(bfloat16)`<br>`tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | optional | updated result of accumulator |
 
 ## Attributes
 

@@ -32,22 +32,22 @@ Support per column quantized weight, ie, scale_B is 1-D vector of size [#cols of
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `A` | `A` | `IOnnxGraphEdge` | single, required | 3-dimensional matrix A |
-| `scale_A` | `ScaleA` | `IOnnxGraphEdge` | single, required | scale of the input A. |
-| `B` | `B` | `IOnnxGraphEdge` | single, required | 2-dimensional matrix B. Transposed if order_B is ORDER_COL. |
-| `scale_B` | `ScaleB` | `IOnnxGraphEdge` | single, required | scale of the input B. Scalar or 1-D float32. |
-| `scale_Y` | `ScaleY` | `IOnnxGraphEdge` | single, required | scale of the output Y. |
-| `bias` | `Bias` | `IOnnxGraphEdge` | optional | 1d bias, not scaled with scale_Y. |
-| `C` | `C` | `IOnnxGraphEdge` | optional | 3d or 2d matrix C. if 2d expand to 3d first. Shape[0] should be 1 or same as A.shape[0] |
-| `scale_C` | `ScaleC` | `IOnnxGraphEdge` | optional | scale of the input A. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `A` | `A` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | 3-dimensional matrix A |
+| `scale_A` | `ScaleA` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the input A. |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | 2-dimensional matrix B. Transposed if order_B is ORDER_COL. |
+| `scale_B` | `ScaleB` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the input B. Scalar or 1-D float32. |
+| `scale_Y` | `ScaleY` | `IOnnxGraphEdge` | `tensor(float)` | single, required | scale of the output Y. |
+| `bias` | `Bias` | `IOnnxGraphEdge` | `tensor(float)` | optional | 1d bias, not scaled with scale_Y. |
+| `C` | `C` | `IOnnxGraphEdge` | `tensor(int8)` | optional | 3d or 2d matrix C. if 2d expand to 3d first. Shape[0] should be 1 or same as A.shape[0] |
+| `scale_C` | `ScaleC` | `IOnnxGraphEdge` | `tensor(float)` | optional | scale of the input A. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | Matrix multiply results from A * B |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(int8)` | single, required | Matrix multiply results from A * B |
 
 ## Attributes
 

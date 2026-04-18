@@ -23,28 +23,28 @@ GRUGrad operator that computes the partial derivative of the loss with respect t
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `X` | `X` | `IOnnxGraphEdge` | single, required | Original input to the GRU cell. |
-| `W` | `W` | `IOnnxGraphEdge` | single, required | Input weight parameters to the GRU cell. |
-| `R` | `R` | `IOnnxGraphEdge` | single, required | Input recurrent weight parameters to the GRU cell. |
-| `B` | `B` | `IOnnxGraphEdge` | optional | Input bias parameters to the GRU cell. |
-| `SL` | `SL` | `IOnnxGraphEdge` | optional | Input sequence length of the input sequence. |
-| `Ht0` | `Ht0` | `IOnnxGraphEdge` | optional | Initial hidden state input to the GRU cell |
-| `HAll` | `HAll` | `IOnnxGraphEdge` | optional | Hidden states over all sequence steps output from GRUTraining. |
-| `ZRH` | `ZRH` | `IOnnxGraphEdge` | optional | Intermediate gate computations for all sequence steps output from GRUTraining. |
-| `dHAll` | `DHAll` | `IOnnxGraphEdge` | optional | Gradient of loss with respect to the output Y of the GRU cell |
-| `dHFinal` | `DHFinal` | `IOnnxGraphEdge` | optional | Gradient of loss with respect to the output Y_h of the GRU cell |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `X` | `X` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Original input to the GRU cell. |
+| `W` | `W` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Input weight parameters to the GRU cell. |
+| `R` | `R` | `IOnnxGraphEdge` | `tensor(float)` | single, required | Input recurrent weight parameters to the GRU cell. |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(float)` | optional | Input bias parameters to the GRU cell. |
+| `SL` | `SL` | `IOnnxGraphEdge` | `tensor(int32)` | optional | Input sequence length of the input sequence. |
+| `Ht0` | `Ht0` | `IOnnxGraphEdge` | `tensor(float)` | optional | Initial hidden state input to the GRU cell |
+| `HAll` | `HAll` | `IOnnxGraphEdge` | `tensor(float)` | optional | Hidden states over all sequence steps output from GRUTraining. |
+| `ZRH` | `ZRH` | `IOnnxGraphEdge` | `tensor(float)` | optional | Intermediate gate computations for all sequence steps output from GRUTraining. |
+| `dHAll` | `DHAll` | `IOnnxGraphEdge` | `tensor(float)` | optional | Gradient of loss with respect to the output Y of the GRU cell |
+| `dHFinal` | `DHFinal` | `IOnnxGraphEdge` | `tensor(float)` | optional | Gradient of loss with respect to the output Y_h of the GRU cell |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `dX` | `DX` | `IOnnxGraphEdge` | optional | Gradient of loss with respect to the input (to the GRU cell). |
-| `dW` | `DW` | `IOnnxGraphEdge` | optional | Gradient of loss with respect to the weight parameters (of the GRU cell). |
-| `dR` | `DR` | `IOnnxGraphEdge` | optional | Gradient of loss with respect to the recurrence weight parameters (of the GRU cell). |
-| `dB` | `DB` | `IOnnxGraphEdge` | optional | Gradient of loss with respect to the bias parameters (of the GRU cell). |
-| `dH0` | `DH0` | `IOnnxGraphEdge` | optional | Gradient of loss with respect to the previous hidden state (of the GRU cell). |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `dX` | `DX` | `IOnnxGraphEdge` | `tensor(float)` | optional | Gradient of loss with respect to the input (to the GRU cell). |
+| `dW` | `DW` | `IOnnxGraphEdge` | `tensor(float)` | optional | Gradient of loss with respect to the weight parameters (of the GRU cell). |
+| `dR` | `DR` | `IOnnxGraphEdge` | `tensor(float)` | optional | Gradient of loss with respect to the recurrence weight parameters (of the GRU cell). |
+| `dB` | `DB` | `IOnnxGraphEdge` | `tensor(float)` | optional | Gradient of loss with respect to the bias parameters (of the GRU cell). |
+| `dH0` | `DH0` | `IOnnxGraphEdge` | `tensor(float)` | optional | Gradient of loss with respect to the previous hidden state (of the GRU cell). |
 
 ## Attributes
 

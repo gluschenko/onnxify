@@ -28,18 +28,18 @@ value at X[t][n] >= seqLengths[n].
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `hidden_prev` | `HiddenPrev` | `IOnnxGraphEdge` | single, required | The previous GRU hidden state. |
-| `gates` | `Gates` | `IOnnxGraphEdge` | single, required | Unactivated gate outputs from forget, update, and output gates, pre-activation. |
-| `seq_lengths` | `SeqLengths` | `IOnnxGraphEdge` | single, required | Array of sequence lengths. len(seq_lengths) should equal batch size N. |
-| `t` | `T` | `IOnnxGraphEdge` | single, required | The timestep for this operation. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `hidden_prev` | `HiddenPrev` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The previous GRU hidden state. |
+| `gates` | `Gates` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Unactivated gate outputs from forget, update, and output gates, pre-activation. |
+| `seq_lengths` | `SeqLengths` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | Array of sequence lengths. len(seq_lengths) should equal batch size N. |
+| `t` | `T` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The timestep for this operation. |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `hidden` | `Hidden` | `IOnnxGraphEdge` | single, required | The new GRU hidden state calculated by this op. |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `hidden` | `Hidden` | `IOnnxGraphEdge` | `tensor(double)`<br>`tensor(float)`<br>`tensor(float16)` | single, required | The new GRU hidden state calculated by this op. |
 
 ## Attributes
 

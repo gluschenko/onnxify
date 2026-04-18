@@ -23,21 +23,21 @@ Schema description was not found in `onnx_operators.json`.
 
 ## Inputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `A` | `A` | `IOnnxGraphEdge` | single, required | N-dimensional matrix A |
-| `B` | `B` | `IOnnxGraphEdge` | single, required | N-dimensional matrix B |
-| `a_scale` | `AScale` | `IOnnxGraphEdge` | single, required | Scale of quantized input 'A'. It could be a scalar or a 1-D tensor, which means a per-tensor or per-column quantization. If it's a 1-D tensor, its number of elements should be equal to the number of columns of input 'A'. |
-| `b_scale` | `BScale` | `IOnnxGraphEdge` | single, required | Scale of quantized input 'B'. It could be a scalar or a 1-D tensor, which means a per-tensor or per-column quantization. If it's a 1-D tensor, its number of elements should be equal to the number of columns of input 'B'. |
-| `a_zero_point` | `AZeroPoint` | `IOnnxGraphEdge` | optional | Zero point tensor for input 'A'. It's optional and default value is 0. It could be a scalar or a 1-D tensor, which means a per-tensor or per-column quantization. If it's a 1-D tensor, its number of elements should be equal to the number of columns of input 'A'. |
-| `b_zero_point` | `BZeroPoint` | `IOnnxGraphEdge` | optional | Zero point tensor for input 'B'. It's optional and default value is 0. It could be a scalar or a 1-D tensor, which means a per-tensor or per-column quantization. If it's a 1-D tensor, its number of elements should be equal to the number of columns of input 'B'. |
-| `bias` | `Bias` | `IOnnxGraphEdge` | optional | 1D input tensor, whose dimension is same as B's last dimension |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `A` | `A` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | N-dimensional matrix A |
+| `B` | `B` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | single, required | N-dimensional matrix B |
+| `a_scale` | `AScale` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Scale of quantized input 'A'. It could be a scalar or a 1-D tensor, which means a per-tensor or per-column quantization. If it's a 1-D tensor, its number of elements should be equal to the number of columns of input 'A'. |
+| `b_scale` | `BScale` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Scale of quantized input 'B'. It could be a scalar or a 1-D tensor, which means a per-tensor or per-column quantization. If it's a 1-D tensor, its number of elements should be equal to the number of columns of input 'B'. |
+| `a_zero_point` | `AZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | optional | Zero point tensor for input 'A'. It's optional and default value is 0. It could be a scalar or a 1-D tensor, which means a per-tensor or per-column quantization. If it's a 1-D tensor, its number of elements should be equal to the number of columns of input 'A'. |
+| `b_zero_point` | `BZeroPoint` | `IOnnxGraphEdge` | `tensor(int8)`<br>`tensor(uint8)` | optional | Zero point tensor for input 'B'. It's optional and default value is 0. It could be a scalar or a 1-D tensor, which means a per-tensor or per-column quantization. If it's a 1-D tensor, its number of elements should be equal to the number of columns of input 'B'. |
+| `bias` | `Bias` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | optional | 1D input tensor, whose dimension is same as B's last dimension |
 
 ## Outputs
 
-| JSON name | Onnxify property | Type | Semantics | Description |
-| --- | --- | --- | --- | --- |
-| `Y` | `Y` | `IOnnxGraphEdge` | single, required | Matrix multiply results from A * B |
+| JSON name | Onnxify property | Type | Allowed schema types | Semantics | Description |
+| --- | --- | --- | --- | --- | --- |
+| `Y` | `Y` | `IOnnxGraphEdge` | `tensor(float)`<br>`tensor(float16)` | single, required | Matrix multiply results from A * B |
 
 ## Attributes
 
