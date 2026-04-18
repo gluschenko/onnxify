@@ -15,6 +15,12 @@ internal static class Program
         Console.InputEncoding = Encoding.UTF8;
         Console.OutputEncoding = Encoding.UTF8;
 
-        return OperatorSkillGenerator.Run(args);
+        int operatorExitCode = OperatorSkillGenerator.Run(args);
+        if (operatorExitCode != 0)
+        {
+            return operatorExitCode;
+        }
+
+        return TorchSharpConverterSkillGenerator.Run(args);
     }
 }

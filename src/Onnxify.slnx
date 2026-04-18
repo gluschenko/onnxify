@@ -14,6 +14,9 @@
     <Project Path="Onnxify.SourceGenerator/Onnxify.SourceGenerator.csproj" Id="947c739d-8301-49a4-94d1-75976cdf6dea" />
   </Folder>
   <Folder Name="/libs/">
+    <Project Path="Onnxify.ML.TorchSharp/Onnxify.ML.TorchSharp.csproj" Id="46f9c991-61a8-4907-8d07-d3b927c35c01" />
+    <Project Path="Onnxify.ML/Onnxify.ML.csproj" Id="ba388d6c-720a-4ab0-91ca-ba72e5b6c5a9" />
+    <Project Path="Onnxify.Safetensors/Onnxify.Safetensors.csproj" Id="cdb0c08a-09e2-4d60-9070-f5363374abe3" />
     <Project Path="Onnxify.TorchSharp/Onnxify.TorchSharp.csproj" Id="90452197-f039-4f45-a177-04f0af4e1957" />
     <Project Path="Onnxify/Onnxify.csproj" Id="c2d6af74-de08-469c-ae86-91955fc31cb4" />
   </Folder>
