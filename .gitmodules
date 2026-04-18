@@ -4,3 +4,7 @@
 [submodule "third_party/onnxscript"]
 	path = third_party/onnxscript
 	url = https://github.com/microsoft/onnxscript.git
+[submodule "third_party/safetensors"]
+	path = third_party/safetensors
+	url = https://github.com/safetensors/safetensors.git
+	branch = git_v0.8.0-rc.0
