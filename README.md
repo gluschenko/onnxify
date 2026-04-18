@@ -2,14 +2,6 @@
 
 Onnxify is an experimental .NET library for reading, inspecting, and writing ONNX models.
 
-The repository currently contains:
-
-- `Onnxify`: the main library with a lightweight object model over `ModelProto`, `GraphProto`, `NodeProto`, tensors, and attributes
-- `Onnxify.ConsoleTest`: a small playground project used to load, serialize, and generate ONNX models
-- `Onnxify.SourceGenerator`: a placeholder project for future source-generation work
-- `Onnxify.TorchSharp`: a placeholder project for future TorchSharp integration
-- `third_party/onnx`: ONNX protocol definitions used to generate protobuf C# classes
-
 ## Master plan
 
 - [x] `Onnxify`
@@ -27,16 +19,16 @@ The repository currently contains:
 - [ ] Async I/O ops
 - [ ] Fully-typed operator Input/Output fields (OneOf?)
 - [ ] Graph edges in a single collection (or in two for placeholders)
-- [ ] Project generator generates operator nodes
-- [ ] Parse pytorch\torch\onnx\_internal\torchscript_exporter (create MD with support status)
-- [ ] Generate agent skills from operator-schema.json
-- [ ] ToString for OnnxModel, OnnxNode, OnnxxTensor, etc (recursive?)
-- [ ] OnnxDataProvider, SafetensorsDataProvider, BaseDataProvider...
+- [x] Project generator generates operator nodes
+- [x] Parse pytorch\torch\onnx\_internal\torchscript_exporter (create MD with support status)
+- [x] Generate agent skills from operator-schema.json
+- [x] ToString for OnnxModel, OnnxNode, OnnxxTensor, etc (recursive?)
+- [x] OnnxDataProvider, SafetensorsDataProvider, BaseDataProvider...
 - [ ] Graph manipulations: add nodes, remove nodes, replace nodes
 - [ ] Graph cyclicity validation
 - [ ] CLI for agents and humans (to explore ONNX files)
-- [ ] Agent skills for Export imaplementation on Torch modules
-- [ ] Allow to add or remove OnnxModel meta (training info, imports, producer, version)
+- [x] Agent skills for Export implementation on Torch modules
+- [x] Allow to add or remove OnnxModel meta (training info, imports, producer, version)
 
 ## Status
 

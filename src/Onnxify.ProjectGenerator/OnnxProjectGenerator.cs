@@ -96,8 +96,8 @@ public sealed class OnnxProjectGenerator
 
         var options = context.Options;
         var namespaceName = options.GetNamespace();
-        var className = SanitizeIdentifier(options.ProgramClassName, "Program");
-        var factoryMethodName = SanitizeIdentifier(options.FactoryMethodName, "CreateModel");
+        var className = options.ProgramClassName.SanitizeIdentifier("Program");
+        var factoryMethodName = options.FactoryMethodName.SanitizeIdentifier("CreateModel");
         var outputFileName = $"{Path.GetFileNameWithoutExtension(options.InputModelPath)}.generated.onnx";
         var modelCreationOptions = RenderModelCreationOptions(model, context);
         var flow = new StringBuilder();
@@ -114,7 +114,7 @@ public sealed class OnnxProjectGenerator
                 ? $"{edge.GetType().Name}_{graphVarNames.Count}"
                 : edge.Name;
 
-            var candidate = SanitizeLocalIdentifier(baseName, $"{edge.GetType().Name}_{graphVarNames.Count}");
+            var candidate = baseName.SanitizeLocalIdentifier($"{edge.GetType().Name}_{graphVarNames.Count}");
             while (graphVarNames.Values.Contains(candidate, StringComparer.Ordinal))
             {
                 candidate += "_";
@@ -130,10 +130,10 @@ public sealed class OnnxProjectGenerator
         {
             flow.AppendLine(
                 $$"""
-                    var {{GetEdgeVariable(input)}} = model.Graph.AddInput(
-                        name: {{AsStringLiteral(input.Name)}},
-                        type: {{RenderValueType(input.Type)}}
-                    );
+                var {{GetEdgeVariable(input)}} = model.Graph.AddInput(
+                    name: {{AsStringLiteral(input.Name)}},
+                    type: {{RenderValueType(input.Type)}}
+                );
 
                 """);
         }
@@ -142,10 +142,10 @@ public sealed class OnnxProjectGenerator
         {
             flow.AppendLine(
                 $$"""
-                    var {{GetEdgeVariable(output)}} = model.Graph.AddOutput(
-                        name: {{AsStringLiteral(output.Name)}},
-                        type: {{RenderValueType(output.Type)}}
-                    );
+                var {{GetEdgeVariable(output)}} = model.Graph.AddOutput(
+                    name: {{AsStringLiteral(output.Name)}},
+                    type: {{RenderValueType(output.Type)}}
+                );
 
                 """);
         }
@@ -154,10 +154,10 @@ public sealed class OnnxProjectGenerator
         {
             flow.AppendLine(
                 $$"""
-                    var {{GetEdgeVariable(value)}} = model.Graph.AddValue(
-                        name: {{AsStringLiteral(value.Name)}},
-                        type: {{RenderValueType(value.Type)}}
-                    );
+                var {{GetEdgeVariable(value)}} = model.Graph.AddValue(
+                    name: {{AsStringLiteral(value.Name)}},
+                    type: {{RenderValueType(value.Type)}}
+                );
 
                 """
             );
@@ -169,11 +169,11 @@ public sealed class OnnxProjectGenerator
 
             flow.AppendLine(
                 $$"""
-                    var {{GetEdgeVariable(tensor)}} = model.Graph.AddTensor(
-                        name: {{AsStringLiteral(tensor.Name)}},
-                        shape: {{RenderLongArray(tensor.Shape)}},
-                        value: {{RenderTensorLoadExpression(tensor, assetRelativePath)}}
-                    );
+                var {{GetEdgeVariable(tensor)}} = model.Graph.AddTensor(
+                    name: {{AsStringLiteral(tensor.Name)}},
+                    shape: {{RenderLongArray(tensor.Shape)}},
+                    value: {{RenderTensorLoadExpression(tensor, assetRelativePath)}}
+                );
 
                 """
             );
@@ -189,7 +189,7 @@ public sealed class OnnxProjectGenerator
         {
             flow.AppendLine(
                 $$"""
-                    var {{GetEdgeVariable(edge)}} = model.Graph.AddEdge({{AsStringLiteral(edge.Name)}});
+                var {{GetEdgeVariable(edge)}} = model.Graph.AddEdge({{AsStringLiteral(edge.Name)}});
 
                 """
             );
@@ -205,15 +205,15 @@ public sealed class OnnxProjectGenerator
 
             flow.AppendLine(
                 $$"""
-                    model.Graph.AddNode(
-                        name: {{AsStringLiteral(node.Name)}},
-                        opType: {{AsStringLiteral(node.OpType)}},
-                        domain: {{AsStringLiteral(node.Domain)}},
-                        docString: {{AsStringLiteral(node.DocString)}},
-                        inputs: {{RenderEdgeList(node.Inputs.Select(GetEdgeVariable))}},
-                        outputs: {{RenderEdgeList(node.Outputs.Select(GetEdgeVariable))}},
-                        attributes: {{RenderAttributes(node.Attributes, context)}}
-                    );
+                model.Graph.AddNode(
+                    name: {{AsStringLiteral(node.Name)}},
+                    opType: {{AsStringLiteral(node.OpType)}},
+                    domain: {{AsStringLiteral(node.Domain)}},
+                    docString: {{AsStringLiteral(node.DocString)}},
+                    inputs: {{RenderEdgeList(node.Inputs.Select(GetEdgeVariable))}},
+                    outputs: {{RenderEdgeList(node.Outputs.Select(GetEdgeVariable))}},
+                    attributes: {{RenderAttributes(node.Attributes, context)}}
+                );
 
                 """
             );
@@ -248,9 +248,9 @@ public sealed class OnnxProjectGenerator
 
             public static OnnxModel {{factoryMethodName}}()
             {
-                var model = OnnxModel.Create({{modelCreationOptions}});
+                var model = OnnxModel.Create({{modelCreationOptions.Indent(2)}});
 
-                {{Indent(flow.ToString(), 4)}}
+                {{flow.ToString().Indent(2)}}
 
                 return model;
             }
@@ -273,10 +273,10 @@ public sealed class OnnxProjectGenerator
     {
         flow.AppendLine(
             $$"""
-                model.ProducerVersion = {{AsStringLiteral(model.ProducerVersion)}};
-                model.ModelVersion = {{model.ModelVersion.ToString(CultureInfo.InvariantCulture)}}L;
-                model.Domain = {{AsStringLiteral(model.Domain)}};
-                model.Document = {{AsStringLiteral(model.Document)}};
+            model.ProducerVersion = {{AsStringLiteral(model.ProducerVersion)}};
+            model.ModelVersion = {{model.ModelVersion.ToString(CultureInfo.InvariantCulture)}}L;
+            model.Domain = {{AsStringLiteral(model.Domain)}};
+            model.Document = {{AsStringLiteral(model.Document)}};
 
             """);
 
@@ -284,7 +284,7 @@ public sealed class OnnxProjectGenerator
         {
             flow.AppendLine(
                 $$"""
-                    model.AddMetadataProps({{AsStringLiteral(metadataProp.Key)}}, {{AsStringLiteral(metadataProp.Value)}});
+                model.AddMetadataProps({{AsStringLiteral(metadataProp.Key)}}, {{AsStringLiteral(metadataProp.Value)}});
 
                 """);
         }
@@ -321,7 +321,7 @@ public sealed class OnnxProjectGenerator
 
     private static string ExportTensorAsset(OnnxTensor tensor, GenerationContext context)
     {
-        var safeName = SanitizeFileName(string.IsNullOrWhiteSpace(tensor.Name) ? "tensor" : tensor.Name);
+        var safeName = (string.IsNullOrWhiteSpace(tensor.Name) ? "tensor" : tensor.Name).SanitizeFileName();
         return tensor.DataType == typeof(string)
             ? context.WriteTextAsset(safeName, "json", OnnxExternalDataProvider.Instance.EncodeStringTensorJson(tensor))
             : context.WriteBinaryAsset(safeName, "bin", OnnxExternalDataProvider.Instance.EncodeTensorRawData(tensor));
@@ -404,9 +404,12 @@ public sealed class OnnxProjectGenerator
 
         var assignments = new List<string>();
 
-        foreach (var optionsProperty in optionsType
+        var props = optionsType
             .GetProperties(BindingFlags.Instance | BindingFlags.Public)
-            .OrderBy(static x => x.MetadataToken))
+            .OrderBy(static x => x.MetadataToken)
+            .ToArray();
+
+        foreach (var optionsProperty in props)
         {
             var nodeProperty = nodeType.GetProperty(optionsProperty.Name, BindingFlags.Instance | BindingFlags.Public);
             if (nodeProperty is null)
@@ -438,15 +441,15 @@ public sealed class OnnxProjectGenerator
             ?? throw new InvalidOperationException($"Could not resolve options type name for '{nodeType.FullName}'.");
 
         invocation = $$"""
-                    {{domainAccessor}}.{{node.OpType}}(
-                        name: {{AsStringLiteral(node.Name)}},
-                        options: new global::{{optionsTypeName}}
-                        {
-                            {{Indent(string.Join("," + Environment.NewLine, assignments), 1)}}
-                        }
-                    );
+            {{domainAccessor}}.{{node.OpType}}(
+                name: {{AsStringLiteral(node.Name)}},
+                options: new global::{{optionsTypeName}}
+                {
+                    {{string.Join("," + Environment.NewLine, assignments).Indent(2)}}
+                }
+            );
 
-                """;
+            """;
 
         return true;
     }
@@ -674,145 +677,28 @@ public sealed class OnnxProjectGenerator
         if (type == typeof(ulong)) return "ulong";
         if (type == typeof(bool)) return "bool";
         if (type == typeof(string)) return "string";
-        if (type == typeof(Half)) return "Half";
-        if (type == typeof(BFloat16)) return "BFloat16";
-        if (type == typeof(Float8E4M3FN)) return "Float8E4M3FN";
-        if (type == typeof(Float8E4M3FNUZ)) return "Float8E4M3FNUZ";
-        if (type == typeof(Float8E5M2)) return "Float8E5M2";
-        if (type == typeof(Float8E5M2FNUZ)) return "Float8E5M2FNUZ";
-        if (type == typeof(Float4E2M1)) return "Float4E2M1";
-        if (type == typeof(Float8E8M0)) return "Float8E8M0";
-        if (type == typeof(UInt4)) return "UInt4";
-        if (type == typeof(Int4)) return "Int4";
-        if (type == typeof(UInt2)) return "UInt2";
-        if (type == typeof(Int2)) return "Int2";
-        if (type == typeof(Complex64)) return "Complex64";
-        if (type == typeof(Complex128)) return "Complex128";
+        if (type == typeof(Half)) return nameof(Half);
+        if (type == typeof(BFloat16)) return nameof(BFloat16);
+        if (type == typeof(Float8E4M3FN)) return nameof(Float8E4M3FN);
+        if (type == typeof(Float8E4M3FNUZ)) return nameof(Float8E4M3FNUZ);
+        if (type == typeof(Float8E5M2)) return nameof(Float8E5M2);
+        if (type == typeof(Float8E5M2FNUZ)) return nameof(Float8E5M2FNUZ);
+        if (type == typeof(Float4E2M1)) return nameof(Float4E2M1);
+        if (type == typeof(Float8E8M0)) return nameof(Float8E8M0);
+        if (type == typeof(UInt4)) return nameof(UInt4);
+        if (type == typeof(Int4)) return nameof(Int4);
+        if (type == typeof(UInt2)) return nameof(UInt2);
+        if (type == typeof(Int2)) return nameof(Int2);
+        if (type == typeof(Complex64)) return nameof(Complex64);
+        if (type == typeof(Complex128)) return nameof(Complex128);
 
         throw new NotSupportedException($"CLR type '{type}' is not supported.");
-    }
-
-    private static string SanitizeIdentifier(string value, string fallback)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return fallback;
-        }
-
-        var builder = new StringBuilder(value.Length + 1);
-
-        if (!IsIdentifierStart(value[0]))
-        {
-            builder.Append('_');
-        }
-
-        foreach (var ch in value)
-        {
-            builder.Append(IsIdentifierPart(ch) ? ch : '_');
-        }
-
-        var result = builder.ToString();
-        return _keywords.Contains(result) ? "@" + result : result;
-    }
-
-    private static string SanitizeLocalIdentifier(string value, string fallback)
-    {
-        var result = SanitizeIdentifier(value, fallback);
-        var offset = result.StartsWith('@') ? 1 : 0;
-        var chars = result.ToCharArray();
-        var loweredFirstWord = false;
-
-        for (var i = offset; i < chars.Length; i++)
-        {
-            if (chars[i] == '_')
-            {
-                continue;
-            }
-
-            if (!loweredFirstWord)
-            {
-                if (char.IsLetter(chars[i]))
-                {
-                    chars[i] = char.ToLowerInvariant(chars[i]);
-                    loweredFirstWord = true;
-                }
-
-                continue;
-            }
-
-            if (char.IsDigit(chars[i]))
-            {
-                continue;
-            }
-
-            if (char.IsUpper(chars[i]))
-            {
-                if (i + 1 < chars.Length && char.IsLower(chars[i + 1]))
-                {
-                    break;
-                }
-
-                chars[i] = char.ToLowerInvariant(chars[i]);
-                continue;
-            }
-
-            break;
-        }
-
-        return new string(chars);
-    }
-
-    private static string SanitizeFileName(string value)
-    {
-        var invalidChars = Path.GetInvalidFileNameChars();
-        var chars = value.Select(ch => invalidChars.Contains(ch) ? '_' : ch).ToArray();
-        var result = new string(chars).Trim();
-        return string.IsNullOrWhiteSpace(result) ? "tensor" : result;
-    }
-
-    private static string Indent(string text, int indentLevel)
-    {
-        var indent = new string(' ', indentLevel * 4);
-        var normalized = text.Replace("\r\n", "\n", StringComparison.Ordinal).TrimEnd();
-        var lines = normalized.Split('\n');
-        return string.Join(Environment.NewLine, lines.Select(line => string.IsNullOrWhiteSpace(line) ? string.Empty : indent + line));
     }
 
     private static NotSupportedException CreateUnsupportedTensorException(OnnxTensor tensor)
     {
         return new($"Tensor '{tensor.Name}' uses unsupported data type '{tensor.DataType}'.");
     }
-
-    private static bool IsIdentifierStart(char ch) => ch == '_' || char.IsLetter(ch);
-    private static bool IsIdentifierPart(char ch) => ch == '_' || char.IsLetterOrDigit(ch);
-
-    private static readonly HashSet<string> _keywords =
-    [
-        "class",
-        "namespace",
-        "public",
-        "private",
-        "protected",
-        "internal",
-        "static",
-        "void",
-        "string",
-        "int",
-        "long",
-        "float",
-        "double",
-        "bool",
-        "object",
-        "return",
-        "new",
-        "base",
-        "this",
-        "params",
-        "out",
-        "ref",
-        "in",
-        "var",
-    ];
 
     private sealed class GenerationContext
     {
