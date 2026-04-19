@@ -1,7 +1,7 @@
 # TorchSharp operator coverage
 
 Found: 83.73% (417/498)
-Coverage: 8.23% (41/498)
+Coverage: 10.44% (52/498)
 
 | ONNXScript operator | TorchSharp module | Found | Coverage |
 | --- | --- | --- | --- |
@@ -36,10 +36,10 @@ Coverage: 8.23% (41/498)
 | aten::_linalg_det | TorchSharp.torch+Tensor.det | &#10003; |  |
 | aten::_local_scalar_dense |  |  |  |
 | aten::_log_softmax | TorchSharp.Modules.LogSoftmax | &#10003; | &#10003; |
-| aten::_native_batch_norm_legit |  |  |  |
-| aten::_native_batch_norm_legit.no_stats |  |  |  |
-| aten::_native_batch_norm_legit_functional |  |  |  |
-| aten::_native_batch_norm_legit_no_training |  |  |  |
+| aten::_native_batch_norm_legit |  |  | &#10003; |
+| aten::_native_batch_norm_legit.no_stats |  |  | &#10003; |
+| aten::_native_batch_norm_legit_functional |  |  | &#10003; |
+| aten::_native_batch_norm_legit_no_training |  |  | &#10003; |
 | aten::_prelu_kernel |  |  |  |
 | aten::_scaled_dot_product_efficient_attention |  |  |  |
 | aten::_scaled_dot_product_flash_attention |  |  |  |
@@ -289,7 +289,7 @@ Coverage: 8.23% (41/498)
 | aten::multiply.Tensor | TorchSharp.torch+Tensor.multiply | &#10003; |  |
 | aten::mv | TorchSharp.torch+Tensor.mv | &#10003; |  |
 | aten::narrow | TorchSharp.torch+Tensor.narrow | &#10003; |  |
-| aten::native_batch_norm |  |  |  |
+| aten::native_batch_norm |  |  | &#10003; |
 | aten::native_dropout |  |  |  |
 | aten::native_group_norm |  |  |  |
 | aten::native_layer_norm |  |  |  |
@@ -425,12 +425,12 @@ Coverage: 8.23% (41/498)
 | aten::upsample_bilinear2d |  |  |  |
 | aten::upsample_bilinear2d.vec |  |  |  |
 | aten::upsample_linear1d |  |  |  |
-| aten::upsample_nearest1d | TorchSharp.torch+nn+functional.upsample_nearest1d | &#10003; |  |
-| aten::upsample_nearest1d.vec | TorchSharp.torch+nn+functional.upsample_nearest1d | &#10003; |  |
-| aten::upsample_nearest2d | TorchSharp.torch+nn+functional.upsample_nearest2d | &#10003; |  |
-| aten::upsample_nearest2d.vec | TorchSharp.torch+nn+functional.upsample_nearest2d | &#10003; |  |
-| aten::upsample_nearest3d | TorchSharp.torch+nn+functional.upsample_nearest3d | &#10003; |  |
-| aten::upsample_nearest3d.vec | TorchSharp.torch+nn+functional.upsample_nearest3d | &#10003; |  |
+| aten::upsample_nearest1d | TorchSharp.torch+nn+functional.upsample_nearest1d | &#10003; | &#10003; |
+| aten::upsample_nearest1d.vec | TorchSharp.torch+nn+functional.upsample_nearest1d | &#10003; | &#10003; |
+| aten::upsample_nearest2d | TorchSharp.torch+nn+functional.upsample_nearest2d | &#10003; | &#10003; |
+| aten::upsample_nearest2d.vec | TorchSharp.torch+nn+functional.upsample_nearest2d | &#10003; | &#10003; |
+| aten::upsample_nearest3d | TorchSharp.torch+nn+functional.upsample_nearest3d | &#10003; | &#10003; |
+| aten::upsample_nearest3d.vec | TorchSharp.torch+nn+functional.upsample_nearest3d | &#10003; | &#10003; |
 | aten::upsample_trilinear3d |  |  |  |
 | aten::upsample_trilinear3d.vec |  |  |  |
 | aten::view | TorchSharp.torch+Tensor.view | &#10003; |  |

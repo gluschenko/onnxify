@@ -96,21 +96,21 @@ internal static partial class Program
     {
         var operators = new Dictionary<string, OperatorRecord>(StringComparer.Ordinal);
 
-        foreach (string module in _onnxScriptModules)
+        foreach (var module in _onnxScriptModules)
         {
-            string path = Path.Combine(opsDirectory, $"{module}.py");
+            var path = Path.Combine(opsDirectory, $"{module}.py");
             if (!File.Exists(path))
             {
                 continue;
             }
 
-            string content = File.ReadAllText(path);
+            var content = File.ReadAllText(path);
             foreach (Match match in _torchOpRegex.Matches(content))
             {
-                string arguments = match.Groups["args"].Value;
+                var arguments = match.Groups["args"].Value;
                 foreach (Match literal in _stringLiteralRegex.Matches(arguments))
                 {
-                    string rawOperator = literal.Groups["value"].Value;
+                    var rawOperator = literal.Groups["value"].Value;
                     if (string.IsNullOrWhiteSpace(rawOperator))
                     {
                         continue;
@@ -132,17 +132,17 @@ internal static partial class Program
         const BindingFlags PublicStatic = BindingFlags.Public | BindingFlags.Static;
         const BindingFlags PublicInstance = BindingFlags.Public | BindingFlags.Instance;
 
-        Assembly assembly = typeof(global::TorchSharp.torch).Assembly;
+        var assembly = typeof(global::TorchSharp.torch).Assembly;
         var candidates = new Dictionary<string, TorchSharpCandidate>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (Type type in assembly.GetExportedTypes())
+        foreach (var type in assembly.GetExportedTypes())
         {
             if (!type.FullName?.StartsWith("TorchSharp.", StringComparison.Ordinal) ?? true)
             {
                 continue;
             }
 
-            foreach (MethodInfo method in type.GetMethods(PublicStatic))
+            foreach (var method in type.GetMethods(PublicStatic))
             {
                 if (method.IsSpecialName)
                 {
@@ -160,7 +160,7 @@ internal static partial class Program
                 }
             }
 
-            foreach (PropertyInfo property in type.GetProperties(PublicStatic))
+            foreach (var property in type.GetProperties(PublicStatic))
             {
                 if (property.GetMethod is null || property.GetMethod.IsSpecialName)
                 {
@@ -170,14 +170,14 @@ internal static partial class Program
                 AddCandidate(candidates, NormalizeTorchSharpName(property.Name), $"{type.FullName}.{property.Name}");
             }
 
-            foreach (Type nested in type.GetNestedTypes(BindingFlags.Public))
+            foreach (var nested in type.GetNestedTypes(BindingFlags.Public))
             {
                 if (IsModuleType(nested))
                 {
                     AddCandidate(candidates, NormalizeTorchSharpName(nested.Name), $"{type.FullName}.{nested.Name}");
                 }
 
-                foreach (MethodInfo method in nested.GetMethods(PublicStatic | PublicInstance))
+                foreach (var method in nested.GetMethods(PublicStatic | PublicInstance))
                 {
                     if (method.IsSpecialName)
                     {
@@ -203,10 +203,10 @@ internal static partial class Program
             BindingFlags.Static |
             BindingFlags.Instance;
 
-        Assembly assembly = typeof(global::Onnxify.TorchSharp.TorchOpAttribute).Assembly;
+        var assembly = typeof(global::Onnxify.TorchSharp.TorchOpAttribute).Assembly;
         var coveredOperators = new HashSet<string>(StringComparer.Ordinal);
 
-        foreach (Type type in assembly.GetTypes())
+        foreach (var type in assembly.GetTypes())
         {
             foreach (global::Onnxify.TorchSharp.TorchOpAttribute attribute in
                 type.GetCustomAttributes<global::Onnxify.TorchSharp.TorchOpAttribute>(inherit: false))
@@ -217,7 +217,7 @@ internal static partial class Program
                 }
             }
 
-            foreach (MethodInfo method in type.GetMethods(AllMembers))
+            foreach (var method in type.GetMethods(AllMembers))
             {
                 foreach (global::Onnxify.TorchSharp.TorchOpAttribute attribute in
                     method.GetCustomAttributes<global::Onnxify.TorchSharp.TorchOpAttribute>(inherit: false))
@@ -235,7 +235,7 @@ internal static partial class Program
 
     private static bool IsModuleType(Type type)
     {
-        for (Type? current = type; current is not null; current = current.BaseType)
+        for (var current = type; current is not null; current = current.BaseType)
         {
             if (current.FullName?.StartsWith("TorchSharp.torch+nn+Module", StringComparison.Ordinal) == true)
             {
