@@ -48,4 +48,5 @@ This operator supports **multidirectional (i.e., Numpy-style) broadcasting**; fo
 
 | Converter | Torch ops |
 | --- | --- |
+| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this GLU module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::glu` |
 | `Onnxify.TorchSharp.TorchModuleExtensions.Export(this SiLU module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::silu` |

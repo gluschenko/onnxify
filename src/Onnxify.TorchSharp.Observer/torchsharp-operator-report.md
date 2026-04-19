@@ -1,7 +1,7 @@
 # TorchSharp operator coverage
 
 Found: 83.73% (417/498)
-Coverage: 10.44% (52/498)
+Coverage: 11.65% (58/498)
 
 | ONNXScript operator | TorchSharp module | Found | Coverage |
 | --- | --- | --- | --- |
@@ -198,12 +198,12 @@ Coverage: 10.44% (52/498)
 | aten::ge.Tensor | TorchSharp.torch+Tensor.ge | &#10003; |  |
 | aten::gelu | TorchSharp.Modules.GELU | &#10003; | &#10003; |
 | aten::getitem |  |  |  |
-| aten::glu | TorchSharp.Modules.GLU | &#10003; |  |
+| aten::glu | TorchSharp.Modules.GLU | &#10003; | &#10003; |
 | aten::greater.Tensor | TorchSharp.torch+Tensor.greater | &#10003; |  |
 | aten::greater_equal.Tensor | TorchSharp.torch+Tensor.greater_equal | &#10003; |  |
 | aten::grid_sampler |  |  |  |
 | aten::grid_sampler_2d |  |  |  |
-| aten::group_norm | TorchSharp.Modules.GroupNorm | &#10003; |  |
+| aten::group_norm | TorchSharp.Modules.GroupNorm | &#10003; | &#10003; |
 | aten::gru.input | TorchSharp.Modules.GRU | &#10003; |  |
 | aten::gt.Scalar | TorchSharp.torch+Tensor.gt | &#10003; |  |
 | aten::gt.Tensor | TorchSharp.torch+Tensor.gt | &#10003; |  |
@@ -335,7 +335,7 @@ Coverage: 10.44% (52/498)
 | aten::reciprocal | TorchSharp.torch+Tensor.reciprocal | &#10003; |  |
 | aten::reflection_pad1d | TorchSharp.Modules.ReflectionPad1d | &#10003; | &#10003; |
 | aten::reflection_pad2d | TorchSharp.Modules.ReflectionPad2d | &#10003; | &#10003; |
-| aten::reflection_pad3d | TorchSharp.Modules.ReflectionPad3d | &#10003; |  |
+| aten::reflection_pad3d | TorchSharp.Modules.ReflectionPad3d | &#10003; | &#10003; |
 | aten::relu | TorchSharp.Modules.ReLU | &#10003; | &#10003; |
 | aten::relu6 | TorchSharp.Modules.ReLU6 | &#10003; | &#10003; |
 | aten::remainder.Scalar | TorchSharp.torch+Tensor.remainder | &#10003; |  |
@@ -344,9 +344,9 @@ Coverage: 10.44% (52/498)
 | aten::repeat | TorchSharp.torch+Tensor.repeat | &#10003; |  |
 | aten::repeat_interleave.Tensor | TorchSharp.torch+Tensor.repeat_interleave | &#10003; |  |
 | aten::repeat_interleave.self_int | TorchSharp.torch+Tensor.repeat_interleave | &#10003; |  |
-| aten::replication_pad1d | TorchSharp.Modules.ReplicationPad1d | &#10003; |  |
-| aten::replication_pad2d | TorchSharp.Modules.ReplicationPad2d | &#10003; |  |
-| aten::replication_pad3d | TorchSharp.Modules.ReplicationPad3d | &#10003; |  |
+| aten::replication_pad1d | TorchSharp.Modules.ReplicationPad1d | &#10003; | &#10003; |
+| aten::replication_pad2d | TorchSharp.Modules.ReplicationPad2d | &#10003; | &#10003; |
+| aten::replication_pad3d | TorchSharp.Modules.ReplicationPad3d | &#10003; | &#10003; |
 | aten::reshape | TorchSharp.torch+Tensor.reshape | &#10003; |  |
 | aten::resolve_conj | TorchSharp.torch+Tensor.resolve_conj | &#10003; |  |
 | aten::resolve_neg | TorchSharp.torch+Tensor.resolve_neg | &#10003; |  |

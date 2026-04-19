@@ -45,6 +45,7 @@ tensor elementwise.
 
 | Converter | Torch ops |
 | --- | --- |
+| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this GLU module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::glu` |
 | `Onnxify.TorchSharp.TorchModuleExtensions.Export(this LogSigmoid module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::log_sigmoid` |
 | `Onnxify.TorchSharp.TorchModuleExtensions.Export(this SiLU module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::silu` |
 | `Onnxify.TorchSharp.TorchModuleExtensions.Export(this Sigmoid module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::sigmoid` |

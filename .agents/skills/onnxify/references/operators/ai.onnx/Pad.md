@@ -147,3 +147,7 @@ output = [
 | --- | --- |
 | `Onnxify.TorchSharp.TorchModuleExtensions.Export(this ReflectionPad1d module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::reflection_pad1d` |
 | `Onnxify.TorchSharp.TorchModuleExtensions.Export(this ReflectionPad2d module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::reflection_pad2d` |
+| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this ReflectionPad3d module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::reflection_pad3d` |
+| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this ReplicationPad1d module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::replication_pad1d` |
+| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this ReplicationPad2d module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::replication_pad2d` |
+| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this ReplicationPad3d module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::replication_pad3d` |

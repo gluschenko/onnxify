@@ -59,8 +59,14 @@ public static class TorchModuleExtensions
             TorchModules.Flatten m => m.Export(graph, input),
             TorchModules.AdaptiveAvgPool2d m => m.Export(graph, input),
             TorchModules.Embedding m => m.Export(graph, input),
+            TorchModules.GLU m => m.Export(graph, input),
+            TorchModules.GroupNorm m => m.Export(graph, input),
             TorchModules.LayerNorm m => m.Export(graph, input),
             TorchModules.Upsample m => m.Export(graph, input),
+            TorchModules.ReflectionPad3d m => m.Export(graph, input),
+            TorchModules.ReplicationPad1d m => m.Export(graph, input),
+            TorchModules.ReplicationPad2d m => m.Export(graph, input),
+            TorchModules.ReplicationPad3d m => m.Export(graph, input),
             _ => throw new NotImplementedException($"Not implemented for '{module.GetType().FullName}'"),
         };
     }
@@ -930,6 +936,74 @@ public static class TorchModuleExtensions
         );
     }
 
+    [TorchOp("aten::reflection_pad3d")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.ReflectionPad3d module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        return ExportPad(
+            module: module,
+            graph: graph,
+            input: input,
+            prefix: "reflection_pad",
+            mode: "reflect",
+            spatialRank: 3
+        );
+    }
+
+    [TorchOp("aten::replication_pad1d")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.ReplicationPad1d module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        return ExportPad(
+            module: module,
+            graph: graph,
+            input: input,
+            prefix: "replication_pad",
+            mode: "edge",
+            spatialRank: 1
+        );
+    }
+
+    [TorchOp("aten::replication_pad2d")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.ReplicationPad2d module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        return ExportPad(
+            module: module,
+            graph: graph,
+            input: input,
+            prefix: "replication_pad",
+            mode: "edge",
+            spatialRank: 2
+        );
+    }
+
+    [TorchOp("aten::replication_pad3d")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.ReplicationPad3d module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        return ExportPad(
+            module: module,
+            graph: graph,
+            input: input,
+            prefix: "replication_pad",
+            mode: "edge",
+            spatialRank: 3
+        );
+    }
+
     [TorchOp("aten::max_pool2d")]
     public static IOnnxGraphEdge Export(
         this TorchModules.MaxPool2d module,
@@ -1254,6 +1328,102 @@ public static class TorchModuleExtensions
             {
                 Data = weight,
                 Indices = input,
+            }
+        );
+    }
+
+    [TorchOp("aten::glu")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.GLU module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        var dim = GetRequiredInt64Member(module, "dim", "_dim");
+        var first = graph.AddEdge(graph.NextName("glu_first"));
+        var second = graph.AddEdge(graph.NextName("glu_second"));
+
+        _ = graph.Split(
+            name: graph.NextName("glu_split"),
+            options: new SplitInputOutputOptions
+            {
+                Input = input,
+                Out = [first, second],
+                Axis = dim,
+                NumOutputs = 2,
+            }
+        );
+
+        var gate = graph.Sigmoid(
+            name: graph.NextName("glu_sigmoid"),
+            options: new SigmoidInputOptions
+            {
+                X = second,
+            }
+        );
+
+        return graph.Mul(
+            name: graph.NextName("glu_mul"),
+            options: new MulInputOptions
+            {
+                A = first,
+                B = gate,
+            }
+        );
+    }
+
+    [TorchOp("aten::group_norm")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.GroupNorm module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        var numGroups = GetRequiredInt64Member(module, "num_groups", "_num_groups");
+        var epsilon = (float)GetOptionalDoubleMember(module, 1e-5, "eps", "_eps");
+        var name = graph.NextName("group_norm");
+        TryGetTensorMember(module, out var weight, "weight", "_weight");
+        TryGetTensorMember(module, out var biasTensor, "bias", "_bias");
+
+        var channelCount = weight is not null
+            ? TorchHelper.GetShape(weight)[0]
+            : biasTensor is not null
+                ? TorchHelper.GetShape(biasTensor)[0]
+                : GetRequiredChannelCount(input);
+
+        var scale = weight is not null
+            ? graph.AddTensor(
+                name: $"{name}_scale",
+                shape: TorchHelper.GetShape(weight),
+                value: TorchHelper.GetFloatData(weight)
+            )
+            : graph.AddTensor(
+                name: $"{name}_scale",
+                shape: [channelCount],
+                value: CreateFilledFloatArray([channelCount], 1f)
+            );
+
+        var bias = biasTensor is not null
+            ? graph.AddTensor(
+                name: $"{name}_bias",
+                shape: TorchHelper.GetShape(biasTensor),
+                value: TorchHelper.GetFloatData(biasTensor)
+            )
+            : graph.AddTensor(
+                name: $"{name}_bias",
+                shape: [channelCount],
+                value: CreateFilledFloatArray([channelCount], 0f)
+            );
+
+        return graph.GroupNormalization(
+            name: name,
+            options: new GroupNormalizationInputOptions
+            {
+                X = input,
+                Scale = scale,
+                Bias = bias,
+                NumGroups = numGroups,
+                Epsilon = epsilon,
             }
         );
     }
@@ -1686,6 +1856,21 @@ public static class TorchModuleExtensions
         );
     }
 
+    private static bool TryGetTensorMember(object instance, out Tensor? tensor, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (TryGetMemberValue(instance, name, out var value) && value is Tensor memberTensor)
+            {
+                tensor = memberTensor;
+                return true;
+            }
+        }
+
+        tensor = null;
+        return false;
+    }
+
     private static long[] GetRequiredInt64ArrayMember(object instance, params string[] names)
     {
         foreach (var name in names)
@@ -1772,6 +1957,7 @@ public static class TorchModuleExtensions
         {
             1 => CreatePadVector1d(padding),
             2 => CreatePadVector2d(padding),
+            3 => CreatePadVector3d(padding),
             _ => throw new NotSupportedException($"Unsupported pad spatial rank: {spatialRank}."),
         };
     }
@@ -1808,6 +1994,28 @@ public static class TorchModuleExtensions
         var bottom = normalized[3];
 
         return [0, 0, top, left, 0, 0, bottom, right];
+    }
+
+    private static long[] CreatePadVector3d(long[] padding)
+    {
+        var normalized = padding.Length switch
+        {
+            1 => [padding[0], padding[0], padding[0], padding[0], padding[0], padding[0]],
+            3 => [padding[0], padding[0], padding[1], padding[1], padding[2], padding[2]],
+            6 => padding,
+            _ => throw new NotSupportedException(
+                $"Unsupported 3D padding shape: [{string.Join(", ", padding)}]."
+            ),
+        };
+
+        var left = normalized[0];
+        var right = normalized[1];
+        var top = normalized[2];
+        var bottom = normalized[3];
+        var front = normalized[4];
+        var back = normalized[5];
+
+        return [0, 0, front, top, left, 0, 0, back, bottom, right];
     }
 
     private static long[] ConvertToLongArray(object value)
@@ -1875,6 +2083,21 @@ public static class TorchModuleExtensions
         }
 
         return null;
+    }
+
+    private static long GetRequiredChannelCount(IOnnxGraphEdge edge)
+    {
+        if (edge is OnnxValue<OnnxTensorType> value && value.Type.Shape is not null && value.Type.Shape.Dimensions.Length >= 2)
+        {
+            if (value.Type.Shape.Dimensions[1] is OnnxDimension<long> channelDimension)
+            {
+                return channelDimension.Value;
+            }
+        }
+
+        throw new NotSupportedException(
+            "GroupNorm export requires either affine weights/biases or a statically known channel dimension on the input."
+        );
     }
 
     // PyTorch LSTM gate order: [i, f, g, o]
