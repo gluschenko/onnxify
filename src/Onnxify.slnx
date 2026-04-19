@@ -10,6 +10,7 @@
   </Folder>
   <Folder Name="/generators/">
     <Project Path="Onnxify.AgentSkillGenerator/Onnxify.AgentSkillGenerator.csproj" Id="72e6ec8b-29a2-451f-813c-ae32ff6e8228" />
+    <Project Path="Onnxify.CLI/Onnxify.CLI.csproj" Id="dd170c00-1934-4565-8bdb-cd1e1f58c340" />
     <Project Path="Onnxify.ProjectGenerator/Onnxify.ProjectGenerator.csproj" Id="1aa227d0-394a-4013-ba5d-9193f0ab85a3" />
     <Project Path="Onnxify.SourceGenerator/Onnxify.SourceGenerator.csproj" Id="947c739d-8301-49a4-94d1-75976cdf6dea" />
     <Project Path="Onnxify.TorchSharp.Observer/Onnxify.TorchSharp.Observer.csproj" Id="a26d657d-9f3f-4c46-a617-7bc76f5ffe4f" />
