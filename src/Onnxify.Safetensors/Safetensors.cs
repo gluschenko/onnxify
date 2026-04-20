@@ -5,6 +5,13 @@ using System.Text.Json;
 
 namespace Onnxify.Safetensors;
 
+/// <summary>
+/// Represents a validated safetensors archive and exposes zero-copy tensor views over the payload region of the source buffer.
+/// </summary>
+/// <remarks>
+/// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
+/// Original Rust entity: <c>SafeTensors</c>.
+/// </remarks>
 public sealed class Safetensors
 {
     private const int MaxHeaderSize = 100_000_000;
@@ -20,8 +27,24 @@ public sealed class Safetensors
         _data = data;
     }
 
+    /// <summary>
+    /// Gets the validated header metadata that indexes the tensors inside this archive.
+    /// </summary>
+    /// <remarks>
+    /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
+    /// Original Rust entity: <c>SafeTensors.metadata</c>.
+    /// </remarks>
     public Metadata Metadata => _metadata;
 
+    /// <summary>
+    /// Parses only the header portion of a safetensors buffer and returns both the header byte length and validated metadata.
+    /// </summary>
+    /// <param name="buffer">The complete safetensors file contents, including the 8-byte length prefix.</param>
+    /// <returns>The parsed header length and validated metadata.</returns>
+    /// <remarks>
+    /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
+    /// Original Rust entity: <c>SafeTensors::read_metadata</c>.
+    /// </remarks>
     public static MetadataReadResult ReadMetadata(ReadOnlyMemory<byte> buffer)
     {
         if (buffer.Length < LengthPrefixSize)
@@ -112,6 +135,15 @@ public sealed class Safetensors
         }
     }
 
+    /// <summary>
+    /// Parses a complete safetensors buffer and returns a managed archive view without copying the tensor payload bytes.
+    /// </summary>
+    /// <param name="buffer">The complete safetensors file contents.</param>
+    /// <returns>A validated archive view over the buffer.</returns>
+    /// <remarks>
+    /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
+    /// Original Rust entity: <c>SafeTensors::deserialize</c>.
+    /// </remarks>
     public static Safetensors Deserialize(ReadOnlyMemory<byte> buffer)
     {
         var readResult = ReadMetadata(buffer);
@@ -119,6 +151,16 @@ public sealed class Safetensors
         return new Safetensors(readResult.Metadata, data);
     }
 
+    /// <summary>
+    /// Serializes tensor views and optional archive metadata into a complete safetensors byte buffer.
+    /// </summary>
+    /// <param name="data">The tensors to serialize, keyed by safetensors tensor name.</param>
+    /// <param name="metadata">Optional top-level <c>__metadata__</c> entries.</param>
+    /// <returns>A byte buffer containing a complete safetensors file.</returns>
+    /// <remarks>
+    /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
+    /// Original Rust entity: <c>serialize</c>.
+    /// </remarks>
     public static byte[] Serialize(
         IEnumerable<KeyValuePair<string, TensorView>> data,
         IReadOnlyDictionary<string, string>? metadata = null)
@@ -152,6 +194,16 @@ public sealed class Safetensors
         return buffer;
     }
 
+    /// <summary>
+    /// Streams tensor views and optional archive metadata directly to a safetensors file on disk.
+    /// </summary>
+    /// <param name="data">The tensors to serialize, keyed by safetensors tensor name.</param>
+    /// <param name="metadata">Optional top-level <c>__metadata__</c> entries.</param>
+    /// <param name="path">The destination file path.</param>
+    /// <remarks>
+    /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
+    /// Original Rust entity: <c>serialize_to_file</c>.
+    /// </remarks>
     public static void SerializeToFile(
         IEnumerable<KeyValuePair<string, TensorView>> data,
         IReadOnlyDictionary<string, string>? metadata,
@@ -184,6 +236,14 @@ public sealed class Safetensors
         }
     }
 
+    /// <summary>
+    /// Materializes all tensors in archive order as named tensor views over the underlying payload buffer.
+    /// </summary>
+    /// <returns>A list of tensor name/view pairs.</returns>
+    /// <remarks>
+    /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
+    /// Original Rust entity: <c>SafeTensors::tensors</c>.
+    /// </remarks>
     public IReadOnlyList<KeyValuePair<string, TensorView>> Tensors()
     {
         var tensors = new List<KeyValuePair<string, TensorView>>(_metadata.OffsetKeys().Count);
@@ -195,6 +255,14 @@ public sealed class Safetensors
         return tensors;
     }
 
+    /// <summary>
+    /// Lazily enumerates archive tensors in metadata order without copying payload bytes.
+    /// </summary>
+    /// <returns>An enumerable of tensor name/view pairs.</returns>
+    /// <remarks>
+    /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
+    /// Original Rust entity: <c>SafeTensors::iter</c>.
+    /// </remarks>
     public IEnumerable<KeyValuePair<string, TensorView>> Iter()
     {
         foreach (var name in _metadata.OffsetKeys())
@@ -203,6 +271,15 @@ public sealed class Safetensors
         }
     }
 
+    /// <summary>
+    /// Resolves a single tensor by name and returns a view over its payload bytes.
+    /// </summary>
+    /// <param name="tensorName">The tensor name to resolve.</param>
+    /// <returns>A tensor view over the requested payload slice.</returns>
+    /// <remarks>
+    /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
+    /// Original Rust entity: <c>SafeTensors::tensor</c>.
+    /// </remarks>
     public TensorView Tensor(string tensorName)
     {
         ArgumentNullException.ThrowIfNull(tensorName);
@@ -218,12 +295,44 @@ public sealed class Safetensors
         return new TensorView(info.DataType, info.Shape, _data.Slice(start, length));
     }
 
+    /// <summary>
+    /// Returns the tensor names exposed by this archive in metadata order.
+    /// </summary>
+    /// <returns>An ordered list of tensor names.</returns>
+    /// <remarks>
+    /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
+    /// Original Rust entity: <c>SafeTensors::names</c>.
+    /// </remarks>
     public IReadOnlyList<string> Names() => _metadata.OffsetKeys();
 
+    /// <summary>
+    /// Gets the number of tensors described by the archive metadata.
+    /// </summary>
+    /// <remarks>
+    /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
+    /// Original Rust entity: <c>SafeTensors::len</c>.
+    /// </remarks>
     public int Length => _metadata.OffsetKeys().Count;
 
+    /// <summary>
+    /// Gets a value indicating whether the archive contains no tensors.
+    /// </summary>
+    /// <remarks>
+    /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
+    /// Original Rust entity: <c>SafeTensors::is_empty</c>.
+    /// </remarks>
     public bool IsEmpty => Length == 0;
 
+    /// <summary>
+    /// Prepares the ordered header model and emission order required for deterministic safetensors serialization.
+    /// </summary>
+    /// <param name="data">The named tensor views to serialize.</param>
+    /// <param name="metadataEntries">Optional top-level metadata entries.</param>
+    /// <returns>The aligned header bytes and ordered tensor sequence.</returns>
+    /// <remarks>
+    /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
+    /// Original Rust entity: <c>prepare</c>.
+    /// </remarks>
     private static PreparedSafetensorsData Prepare(
         IEnumerable<KeyValuePair<string, TensorView>> data,
         IReadOnlyDictionary<string, string>? metadataEntries)
@@ -264,6 +373,15 @@ public sealed class Safetensors
         return new PreparedSafetensorsData(headerBytes, sorted);
     }
 
+    /// <summary>
+    /// Converts a parsed JSON root object into a validated <see cref="Metadata"/> instance.
+    /// </summary>
+    /// <param name="root">The root JSON object from the safetensors header.</param>
+    /// <returns>A validated metadata model.</returns>
+    /// <remarks>
+    /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
+    /// Original Rust entity: <c>Deserialize for Metadata</c> via <c>HashMetadata</c>.
+    /// </remarks>
     private static Metadata ParseMetadata(JsonElement root)
     {
         if (root.ValueKind != JsonValueKind.Object)
@@ -294,6 +412,15 @@ public sealed class Safetensors
         return new Metadata(metadataEntries, ordered);
     }
 
+    /// <summary>
+    /// Parses the optional top-level <c>__metadata__</c> dictionary from the header JSON.
+    /// </summary>
+    /// <param name="value">The JSON value stored under <c>__metadata__</c>.</param>
+    /// <returns>A string dictionary with ordinal key comparison.</returns>
+    /// <remarks>
+    /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
+    /// Original Rust entity: <c>HashMetadata.metadata</c>.
+    /// </remarks>
     private static Dictionary<string, string> ParseMetadataEntries(JsonElement value)
     {
         if (value.ValueKind != JsonValueKind.Object)
@@ -311,6 +438,15 @@ public sealed class Safetensors
         return result;
     }
 
+    /// <summary>
+    /// Parses a single tensor metadata record from the header JSON.
+    /// </summary>
+    /// <param name="value">The JSON object describing one tensor.</param>
+    /// <returns>A tensor metadata entry suitable for validation and lookup.</returns>
+    /// <remarks>
+    /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
+    /// Original Rust entity: <c>TensorInfo</c>.
+    /// </remarks>
     private static TensorInfo ParseTensorInfo(JsonElement value)
     {
         if (value.ValueKind != JsonValueKind.Object)
@@ -351,6 +487,15 @@ public sealed class Safetensors
         };
     }
 
+    /// <summary>
+    /// Serializes validated metadata back into the exact JSON header structure required by safetensors.
+    /// </summary>
+    /// <param name="metadata">The validated metadata model to serialize.</param>
+    /// <returns>The unpadded UTF-8 JSON header bytes.</returns>
+    /// <remarks>
+    /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
+    /// Original Rust entity: <c>Serialize for Metadata</c>.
+    /// </remarks>
     private static byte[] SerializeMetadata(Metadata metadata)
     {
         var buffer = new ArrayBufferWriter<byte>();
@@ -396,12 +541,30 @@ public sealed class Safetensors
         return buffer.WrittenMemory.ToArray();
     }
 
+    /// <summary>
+    /// Rounds a header length up to the next 8-byte boundary to match safetensors header padding rules.
+    /// </summary>
+    /// <param name="value">The unaligned header length.</param>
+    /// <returns>The smallest aligned length greater than or equal to <paramref name="value"/>.</returns>
+    /// <remarks>
+    /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
+    /// Original Rust entity: metadata alignment in <c>prepare</c> using <c>next_multiple_of</c>.
+    /// </remarks>
     private static int AlignToEightBytes(int value)
     {
         var remainder = value % LengthPrefixSize;
         return remainder == 0 ? value : checked(value + (LengthPrefixSize - remainder));
     }
 
+    /// <summary>
+    /// Converts a validated unsigned byte count into <see cref="int"/> while preserving upstream overflow behavior.
+    /// </summary>
+    /// <param name="value">The byte count to convert.</param>
+    /// <returns>The same value as a signed 32-bit integer.</returns>
+    /// <remarks>
+    /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
+    /// Original Rust entity: checked <c>usize</c> conversions around header and slice sizes.
+    /// </remarks>
     private static int CheckedInt(ulong value)
     {
         if (value > int.MaxValue)

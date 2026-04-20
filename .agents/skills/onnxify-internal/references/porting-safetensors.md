@@ -91,7 +91,33 @@ Use upstream Rust tests as the baseline for:
 
 Translating tests is not just coverage work; it is the main mechanism for locking in parity with the original implementation.
 
-## 7. Suggested Porting Order
+## 7. Document Ported Entities With XML Comments
+
+When a `third_party/safetensors` entity is ported into `src/Onnxify.Safetensors`, add XML documentation to the C# entity instead of leaving provenance only in commit history or review context.
+
+For each public or internal ported entity:
+
+- add a short `summary` that explains what the type/member is for
+- describe the key behavior that matters to a C# consumer, especially validation, ownership, and view/slicing semantics
+- include the original Rust file path
+- include the original Rust entity name
+
+When the C# code introduces a helper type or helper method that does not exist as a standalone Rust entity:
+
+- still add XML docs
+- state that it is a local C# helper extracted from a specific Rust function, match arm, tuple, or logic block
+
+Prefer putting upstream provenance in `remarks`, for example:
+
+- `Original Rust file: third_party/safetensors/safetensors/src/tensor.rs`
+- `Original Rust entity: SafeTensors::read_metadata`
+
+This rule exists so IntelliSense and code review can answer two questions immediately:
+
+- what does this managed entity do
+- which upstream Rust behavior it is supposed to track
+
+## 8. Suggested Porting Order
 
 When the scope is large, port in this order:
 
@@ -101,7 +127,7 @@ When the scope is large, port in this order:
 4. Data type coverage using existing Onnxify numeric primitives where available.
 5. Upstream test cases rewritten in C# to prove equivalence.
 
-## 8. Read Release Notes Before Porting New Features
+## 9. Read Release Notes Before Porting New Features
 
 Before starting work on newly announced safetensors functionality, review the upstream release notes:
 
@@ -128,6 +154,7 @@ Release notes are a planning input, not the implementation source of truth. The 
 - Keep public API mapping obvious for developers comparing C# code to the upstream safetensors sources.
 - If an upstream behavior is intentionally unsupported in the first pass, fail clearly and cover that choice with tests.
 - Use release notes to anticipate upcoming work, but gate actual implementation on the submodule contents in `third_party/safetensors`.
+- Keep XML docs current when the port changes. If behavior, naming, or ownership semantics move, update the summary and the upstream provenance note in the same change.
 
 ## Porting Notes From The First C# Slice
 
