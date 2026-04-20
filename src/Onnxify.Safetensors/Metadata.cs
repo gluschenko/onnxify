@@ -65,15 +65,15 @@ public sealed class Metadata
 
             if (s != start || e < s)
             {
-                throw SafeTensorException.InvalidOffset(_namesByIndex[i]);
+                throw SafetensorException.InvalidOffset(_namesByIndex[i]);
             }
 
             start = e;
 
-            var size = SafeTensorMath.ComputeSizeInBytes(info.Dtype, info.Shape, allowMisaligned: false);
+            var size = SafetensorMath.ComputeSizeInBytes(info.DataType, info.Shape, allowMisaligned: false);
             if (e - s != size)
             {
-                throw SafeTensorException.TensorInvalidInfo();
+                throw SafetensorException.TensorInvalidInfo();
             }
         }
     }

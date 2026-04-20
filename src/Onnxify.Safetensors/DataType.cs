@@ -28,7 +28,7 @@ public enum DataType
     U64 = 22,
 }
 
-public static class DtypeExtensions
+public static class DataTypeExtensions
 {
     public static int Bitsize(this DataType dtype)
     {
