@@ -1716,30 +1716,12 @@ public static class TorchModuleExtensions
 
     private static bool TryGetTensorParameter(TorchModules.LSTM module, string name, out Tensor tensor)
     {
-        const BindingFlags Flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-
-        // 1. Direct property/field lookup for names like weight_ih_l0
-        var type = module.GetType();
-
-        var prop = type.GetProperty(name, Flags);
-        if (prop?.GetValue(module) is Tensor propTensor)
+        // TorchSharp state_dict() already provides the named parameter tensors we need here.
+        foreach (var (entryName, entryTensor) in module.state_dict())
         {
-            tensor = propTensor;
-            return true;
-        }
-
-        var field = type.GetField(name, Flags);
-        if (field?.GetValue(module) is Tensor fieldTensor)
-        {
-            tensor = fieldTensor;
-            return true;
-        }
-
-        // 2. Fallback to named_parameters()
-        foreach (var entry in module.named_parameters())
-        {
-            if (TryReadNamedTensor(entry, out var entryName, out var entryTensor)
-                && string.Equals(entryName, name, StringComparison.Ordinal))
+            if (string.Equals(entryName, name, StringComparison.Ordinal)
+                && entryTensor is not null
+                && !entryTensor.IsInvalid)
             {
                 tensor = entryTensor;
                 return true;
@@ -1747,44 +1729,6 @@ public static class TorchModuleExtensions
         }
 
         tensor = null!;
-        return false;
-    }
-
-    private static bool TryReadNamedTensor(object entry, out string name, out Tensor tensor)
-    {
-        const BindingFlags Flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-
-        name = string.Empty;
-        tensor = null!;
-
-        if (entry is null)
-        {
-            return false;
-        }
-
-        var type = entry.GetType();
-
-        object? nameValue =
-            type.GetProperty("name", Flags)?.GetValue(entry)
-            ?? type.GetProperty("Name", Flags)?.GetValue(entry)
-            ?? type.GetField("Item1", Flags)?.GetValue(entry)
-            ?? type.GetProperty("Key", Flags)?.GetValue(entry);
-
-        object? tensorValue =
-            type.GetProperty("parameter", Flags)?.GetValue(entry)
-            ?? type.GetProperty("Parameter", Flags)?.GetValue(entry)
-            ?? type.GetProperty("tensor", Flags)?.GetValue(entry)
-            ?? type.GetProperty("Tensor", Flags)?.GetValue(entry)
-            ?? type.GetProperty("Value", Flags)?.GetValue(entry)
-            ?? type.GetField("Item2", Flags)?.GetValue(entry);
-
-        if (nameValue is string s && tensorValue is Tensor t)
-        {
-            name = s;
-            tensor = t;
-            return true;
-        }
-
         return false;
     }
 

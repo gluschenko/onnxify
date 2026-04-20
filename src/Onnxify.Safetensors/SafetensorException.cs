@@ -1,4 +1,4 @@
-namespace Onnxify.Safetensors;
+﻿namespace Onnxify.Safetensors;
 
 public sealed class SafetensorException : Exception
 {
@@ -15,8 +15,8 @@ public sealed class SafetensorException : Exception
         string? tensorName = null,
         DataType? dtype = null,
         IReadOnlyList<ulong>? shape = null,
-        ulong? byteLength = null)
-        : base(message, innerException)
+        ulong? byteLength = null
+    ) : base(message, innerException)
     {
         Code = code;
         TensorName = tensorName;
