@@ -430,8 +430,8 @@ internal class AlexNetSample : Sample
             device: device
         );
 
-        var wightOutputPath = Path.Combine(outputDirectory, "alexnet.safetensors");
-        model.SaveStateAsSafetensors(wightOutputPath);
+        var weightOutputPath = Path.Combine(outputDirectory, "alexnet.safetensors");
+        model.SaveStateAsSafetensors(weightOutputPath);
 
         var outputPath = Path.Combine(outputDirectory, "alexnet.onnx");
         var onnxModel = model.Export();
