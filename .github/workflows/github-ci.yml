@@ -77,8 +77,16 @@ jobs:
         package:
           - id: Onnxify
             project: src/Onnxify/Onnxify.csproj
+          - id: Onnxify.Safetensors
+            project: src/Onnxify.Safetensors/Onnxify.Safetensors.csproj
           - id: Onnxify.TorchSharp
             project: src/Onnxify.TorchSharp/Onnxify.TorchSharp.csproj
+          - id: Onnxify.ML
+            project: src/Onnxify.ML/Onnxify.ML.csproj
+          - id: Onnxify.ML.TorchSharp
+            project: src/Onnxify.ML.TorchSharp/Onnxify.ML.TorchSharp.csproj
+          - id: Onnxify.ProjectGenerator
+            project: src/Onnxify.ProjectGenerator/Onnxify.ProjectGenerator.csproj
 
     steps:
       - name: Checkout repository
