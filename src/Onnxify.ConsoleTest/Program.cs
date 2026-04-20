@@ -1,6 +1,7 @@
 ﻿using System.Globalization;
 using System.Text;
 using Onnxify.ProjectGenerator;
+using Onnxify.Safetensors;
 
 namespace Onnxify.ConsoleTest
 {
@@ -20,6 +21,7 @@ namespace Onnxify.ConsoleTest
             Test1();
             Test2();
             Test6();
+            Test7();
 
             Console.WriteLine("Press any key to pay respect...");
             Console.ReadKey();
@@ -187,6 +189,49 @@ namespace Onnxify.ConsoleTest
             {
                 Console.WriteLine($"Generator Warning: {warning}");
             }
+
+            return;
+        }
+
+        static void Test7()
+        {
+            var outputDirectoryPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
+            Directory.CreateDirectory(outputDirectoryPath);
+
+            var outputPath = Path.Combine(outputDirectoryPath, "sample.safetensors");
+
+            var values = new float[] { 1.0f, 2.0f, 3.5f, 4.5f };
+            var data = values
+                .SelectMany(BitConverter.GetBytes)
+                .ToArray();
+
+            var tensor = new TensorView(
+                dtype: DataType.F32,
+                shape: [2, 2],
+                data: data);
+
+            Onnxify.Safetensors.Safetensors.SerializeToFile(
+                data: [new KeyValuePair<string, TensorView>("weights", tensor)],
+                metadata: new Dictionary<string, string>
+                {
+                    ["framework"] = "onnxify-console-test",
+                    ["purpose"] = "roundtrip-demo",
+                },
+                path: outputPath);
+
+            var raw = File.ReadAllBytes(outputPath);
+            var safetensors = Onnxify.Safetensors.Safetensors.Deserialize(raw);
+            var loadedTensor = safetensors.Tensor("weights");
+            var loadedValues = loadedTensor.Data.ToArray()
+                .Chunk(sizeof(float))
+                .Select(chunk => BitConverter.ToSingle(chunk))
+                .ToArray();
+
+            Console.WriteLine($"Safetensors file: {outputPath}");
+            Console.WriteLine($"Safetensors names: {string.Join(", ", safetensors.Names())}");
+            Console.WriteLine($"Safetensors loaded shape: [{string.Join(", ", loadedTensor.Shape)}]");
+            Console.WriteLine($"Safetensors loaded values: {string.Join(", ", loadedValues.Select(x => x.ToString(CultureInfo.InvariantCulture)))}");
+            Console.WriteLine($"Safetensors round-trip ok: {values.SequenceEqual(loadedValues)}");
 
             return;
         }
