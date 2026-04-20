@@ -293,6 +293,11 @@ public sealed class SliceIterator : IReadOnlyList<ReadOnlyMemory<byte>>
             var asked = start >= dimSize ? start : stop == 0 ? 0 : stop - 1;
             throw InvalidSliceException.SliceOutOfRange(dimIndex, asked, dimSize);
         }
+
+        if (stop < start)
+        {
+            throw InvalidSliceException.SliceOutOfRange(dimIndex, stop, dimSize);
+        }
     }
 
     /// <summary>
