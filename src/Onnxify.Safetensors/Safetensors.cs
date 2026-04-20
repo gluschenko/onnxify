@@ -209,6 +209,7 @@ public sealed class Safetensors
         IReadOnlyDictionary<string, string>? metadata,
         string path)
     {
+        ArgumentNullException.ThrowIfNull(data);
         ArgumentNullException.ThrowIfNull(path);
 
         var prepared = Prepare(data, metadata);
