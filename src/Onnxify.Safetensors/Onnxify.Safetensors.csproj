@@ -4,6 +4,24 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Version>0.0.0.2</Version>
+    <RepositoryUrl>https://github.com/gluschenko/onnxify</RepositoryUrl>
+    <Authors>Alexander Gluschenko</Authors>
+    <Copyright>© 2026 Alexander Gluschenko</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>onnx</PackageTags>
+    <PackageReleaseNotes>
+      TBD
+    </PackageReleaseNotes>
+    <Description>
+      TBD
+    </Description>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591,1573</NoWarn>
+    <DocumentationFile>..\Onnxify.Safetensors.xml</DocumentationFile>
   </PropertyGroup>
 
 </Project>

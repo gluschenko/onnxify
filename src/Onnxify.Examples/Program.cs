@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using Onnxify.Examples.Models;
+using Onnxify.TorchSharp;
 using TorchSharp;
 using static TorchSharp.torch;
 using Tensor = TorchSharp.torch.Tensor;
@@ -371,8 +372,8 @@ internal class AlexNetSample : Sample
 
     public override async Task RunAsync()
     {
-        var trainDatasetDirectory = @"D:\Backups\ML\.image-classification\FoodX-251.v4i.folder\train";
-        var testDatasetDirectory = @"D:\Backups\ML\.image-classification\FoodX-251.v4i.folder\test";
+        var trainDatasetDirectory = @"D:\Backups\ML\.image-classification\Ararat\train";
+        var testDatasetDirectory = @"D:\Backups\ML\.image-classification\Ararat\test";
 
         var outputDirectory = Utils.EnsureAssetsDirectory();
         var device = cuda.is_available() ? CUDA : CPU;
@@ -420,14 +421,17 @@ internal class AlexNetSample : Sample
 
         var trainer = new AlexNetTrainer(model, trainDataset);
         await trainer.TrainAsync(
-            epochs: 200,
+            epochs: 1,
             batchSize: 256 + 128,
             learningRate: 1e-4f,
-            schedulerStepSize: 35,
+            schedulerStepSize: 10,
             schedulerGamma: 0.5f,
             minLearningRate: 1e-6f,
             device: device
         );
+
+        var wightOutputPath = Path.Combine(outputDirectory, "alexnet.safetensors");
+        model.SaveStateAsSafetensors(wightOutputPath);
 
         var outputPath = Path.Combine(outputDirectory, "alexnet.onnx");
         var onnxModel = model.Export();

@@ -1,4 +1,4 @@
-﻿using Onnxify.TorchSharp;
+using Onnxify.TorchSharp;
 using TorchSharp;
 using static TorchSharp.torch;
 using static TorchSharp.torch.nn;

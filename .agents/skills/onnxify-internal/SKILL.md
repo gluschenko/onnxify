@@ -12,6 +12,7 @@ Use this skill for repository maintenance, contributor-facing docs, build/test w
 Read [references/repo-map.md](references/repo-map.md) when you need a quick reminder of which project owns which responsibility in `src/`.
 Read [references/generated-artifacts.md](references/generated-artifacts.md) when the task touches generated files, skill docs, protobuf outputs, or build artifacts.
 Read [references/porting-onnxscript-converters.md](references/porting-onnxscript-converters.md) when you need to port a Python-side ONNXScript Torch conversion into `Onnxify.TorchSharp`.
+Read [references/porting-safetensors.md](references/porting-safetensors.md) when you need to port `third_party/safetensors` into `Onnxify.Safetensors`.
 
 ## Quick Start
 
@@ -45,6 +46,7 @@ When handling an internal Onnxify maintenance task:
 - Add or refine Codex guidance for library users: start with `.agents/skills/onnxify`.
 - Add or refine Codex guidance for repo maintainers: start with `.agents/skills/onnxify-internal`.
 - Port an ONNXScript Torch conversion into `Onnxify.TorchSharp`: start with `src/Onnxify.TorchSharp.Observer`, then use `references/porting-onnxscript-converters.md`.
+- Port `third_party/safetensors` into `Onnxify.Safetensors`: start with `third_party/safetensors/safetensors/src`, then use `references/porting-safetensors.md`.
 - Fix generated operator or TorchSharp converter docs: start with `src/Onnxify.AgentSkillGenerator`, then refresh `.agents/skills/onnxify/references`.
 - Adjust the generated-project output or C# scaffolding shape: start with `src/Onnxify.ProjectGenerator` and `src/Onnxify.Tests/OnnxProjectGeneratorTests.cs`.
 - Adjust source-generation inputs or linked schema models: inspect `src/Onnxify.SourceGenerator` and any linked model files before changing consuming projects.

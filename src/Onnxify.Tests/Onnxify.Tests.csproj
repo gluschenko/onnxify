@@ -23,6 +23,7 @@
     <ProjectReference Include="..\Onnxify.AgentSkillGenerator\Onnxify.AgentSkillGenerator.csproj" />
     <ProjectReference Include="..\Onnxify\Onnxify.csproj" />
     <ProjectReference Include="..\Onnxify.ProjectGenerator\Onnxify.ProjectGenerator.csproj" />
+    <ProjectReference Include="..\Onnxify.Safetensors\Onnxify.Safetensors.csproj" />
     <ProjectReference Include="..\Onnxify.SourceGenerator\Onnxify.SourceGenerator.csproj" Aliases="SourceGen" />
     <ProjectReference Include="..\Onnxify.TorchSharp\Onnxify.TorchSharp.csproj" />
   </ItemGroup>

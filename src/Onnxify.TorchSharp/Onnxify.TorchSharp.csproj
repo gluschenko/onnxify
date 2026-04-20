@@ -18,7 +18,14 @@
     </Description>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591,1573</NoWarn>
+    <DocumentationFile>..\Onnxify.TorchSharp.xml</DocumentationFile>
+  </PropertyGroup>
+
   <ItemGroup>
+    <ProjectReference Include="..\Onnxify.Safetensors\Onnxify.Safetensors.csproj" />
     <ProjectReference Include="..\Onnxify\Onnxify.csproj" />
   </ItemGroup>
 
