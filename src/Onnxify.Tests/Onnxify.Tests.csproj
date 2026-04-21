@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Onnxify.AgentSkillGenerator\Onnxify.AgentSkillGenerator.csproj" />
+    <ProjectReference Include="..\Onnxify.CLI\Onnxify.CLI.csproj" />
     <ProjectReference Include="..\Onnxify\Onnxify.csproj" />
     <ProjectReference Include="..\Onnxify.ProjectGenerator\Onnxify.ProjectGenerator.csproj" />
     <ProjectReference Include="..\Onnxify.Safetensors\Onnxify.Safetensors.csproj" />

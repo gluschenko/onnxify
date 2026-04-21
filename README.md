@@ -9,16 +9,14 @@ Onnxify is an experimental .NET library for reading, inspecting, and writing ONN
 - [x] `Onnxify.ML`
 - [x] `Onnxify.ML.TorchSharp`
 - [x] `Onnxify.ProjectGenerator`
-- [ ] `Onnxify.Safetensors`
-- [ ] `Onnxify.GGUF`
-- [ ] `Onnxify.TFLite`
-- [ ] `Onnxify.Runtime.LiteRT`
+- [x] `Onnxify.Safetensors`
 - [ ] `Onnxify.CLI`
 
 ## TODO
 
+- [ ] SourceGenerator: operator type annotations
+- [ ] SourceGenerator: fully-typed operator Input/Output fields (OneOf?)
 - [ ] Async I/O ops
-- [ ] Fully-typed operator Input/Output fields (OneOf?)
 - [ ] Graph edges in a single collection (or in two for placeholders)
 - [x] Project generator generates operator nodes
 - [x] Parse pytorch\torch\onnx\_internal\torchscript_exporter (create MD with support status)
