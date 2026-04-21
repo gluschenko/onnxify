@@ -415,14 +415,8 @@ internal class AlexNetSample : Sample
 
         var model = new AlexNet("alexnet", trainDataset.LabelNames.Count, device);
 
-        
-
         if (File.Exists(weightOutputPath))
         {
-            var raw = File.ReadAllBytes(weightOutputPath);
-            var safetensors = SafeTensors.Deserialize(raw);
-            Console.WriteLine(safetensors);
-
             model.LoadStateFromSafetensors(weightOutputPath);
         }
 
