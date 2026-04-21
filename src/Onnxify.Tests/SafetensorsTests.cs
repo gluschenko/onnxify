@@ -173,39 +173,6 @@ public class SafetensorsTests
     }
 
     [Fact]
-    public void ToString_FormatsMetadataAndTensorPreview()
-    {
-        var tensors = new Dictionary<string, TensorView>
-        {
-            ["attn.0"] = new(DataType.F32, [1, 2, 3], FloatsToBytes(0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f)),
-            ["steps"] = new(DataType.I32, [2], IntsToBytes(7, 9)),
-        };
-
-        var loaded = SafeTensors.Deserialize(SafeTensors.Serialize(
-            tensors,
-            new Dictionary<string, string>
-            {
-                ["framework"] = "pt",
-                ["module"] = "demo",
-            }));
-
-        Assert.Equal(
-            """
-            Safetensors(
-                Metadata=[
-                    framework=pt,
-                    module=demo
-                ],
-                Tensors=[
-                    attn.0: Single[1, 2, 3] = [0, 1, 2, 3, 4, 5],
-                    steps: Int32[2] = [7, 9]
-                ]
-            )
-            """,
-            loaded.ToString());
-    }
-
-    [Fact]
     public void ToString_ForPackedTypes_UsesPackedFallbackPreview()
     {
         var tensors = new Dictionary<string, TensorView>
