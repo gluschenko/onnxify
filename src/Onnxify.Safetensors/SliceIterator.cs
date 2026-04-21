@@ -92,7 +92,7 @@ public sealed class SliceIterator : IReadOnlyList<ReadOnlyMemory<byte>>
         }
         catch (OverflowException)
         {
-            throw SafeTensorException.ValidationOverflow();
+            throw _SafeTensorException.ValidationOverflow();
         }
 
         if (indices.Count == 0)

@@ -53,11 +53,11 @@ public sealed class TensorView : IEquatable<TensorView>
         ArgumentNullException.ThrowIfNull(shape);
 
         var shapeArray = shape.ToArray();
-        var expectedSize = SafeTensorMath.ComputeSizeInBytes(dtype, shapeArray, allowMisaligned: false);
+        var expectedSize = _SafeTensorMath.ComputeSizeInBytes(dtype, shapeArray, allowMisaligned: false);
 
         if ((ulong)data.Length != expectedSize)
         {
-            throw SafeTensorException.InvalidTensorView(dtype, shapeArray, (ulong)data.Length);
+            throw _SafeTensorException.InvalidTensorView(dtype, shapeArray, (ulong)data.Length);
         }
 
         DataType = dtype;

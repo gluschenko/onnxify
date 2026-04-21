@@ -210,7 +210,7 @@ namespace Onnxify.ConsoleTest
                 shape: [2, 2],
                 data: data);
 
-            Onnxify.Safetensors.SafeTensors.SerializeToFile(
+            Onnxify.Safetensors._SafeTensors.SerializeToFile(
                 data: [new KeyValuePair<string, TensorView>("weights", tensor)],
                 metadata: new Dictionary<string, string>
                 {
@@ -220,7 +220,7 @@ namespace Onnxify.ConsoleTest
                 path: outputPath);
 
             var raw = File.ReadAllBytes(outputPath);
-            var safetensors = Onnxify.Safetensors.SafeTensors.Deserialize(raw);
+            var safetensors = Onnxify.Safetensors._SafeTensors.Deserialize(raw);
             var loadedTensor = safetensors.Tensor("weights");
             var loadedValues = loadedTensor.Data.ToArray()
                 .Chunk(sizeof(float))
