@@ -64,6 +64,34 @@ public static class OnnxHelper
         throw new NotImplementedException($"DataType '{type}' is not supported");
     }
 
+    public static byte[] SerializeTensor(this OnnxTensor tensor)
+    {
+        ArgumentNullException.ThrowIfNull(tensor);
+        return tensor.ToProto().ToByteArray();
+    }
+
+    public static byte[] GetTensorRawData(this OnnxTensor tensor)
+    {
+        ArgumentNullException.ThrowIfNull(tensor);
+
+        var proto = tensor.ToProto();
+        if (proto.StringData.Count > 0)
+        {
+            throw new NotSupportedException("String tensors do not have raw binary payloads.");
+        }
+
+        return proto.RawData.ToByteArray();
+    }
+
+    public static OnnxTensor DeserializeTensor(
+        ReadOnlyMemory<byte> data,
+        OnnxModelBaseOptions? options = null
+    )
+    {
+        var tensor = TensorProto.Parser.ParseFrom(data.ToArray());
+        return FromProto(tensor, options ?? new OnnxModelBaseOptions());
+    }
+
     internal static OnnxTensor FromProto(TensorProto tensor, OnnxModelBaseOptions options)
     {
         var type = (TensorProto.Types.DataType)tensor.DataType;
@@ -174,14 +202,14 @@ public static class OnnxHelper
                 type: systemType
             );
 
-            return result;
+            return TrimDecodedTensorData(result, type, tensor.Dims);
         }
 
         if (tensor.RawData.Length > 0)
         {
             var span = tensor.RawData.Span;
             var data = DecodeRawData(span, systemType);
-            return data;
+            return TrimDecodedTensorData(data, type, tensor.Dims);
         }
 
         return type switch
@@ -195,6 +223,39 @@ public static class OnnxHelper
             TensorProto.Types.DataType.String => tensor.StringData.Select(x => x.ToStringUtf8()).ToArray(),
             _ => throw new NotImplementedException($"Unsupported non-raw tensor type {type}")
         };
+    }
+
+    private static object TrimDecodedTensorData(
+        object value,
+        TensorProto.Types.DataType type,
+        IEnumerable<long> dims
+    )
+    {
+        if (!RequiresTrimmedElementCount(type))
+        {
+            return value;
+        }
+
+        var expectedElementCount = checked((int)dims.Aggregate(1L, static (count, dim) => checked(count * dim)));
+
+        return value switch
+        {
+            Float4E2M1[] values => values.AsSpan(0, expectedElementCount).ToArray(),
+            UInt4[] values => values.AsSpan(0, expectedElementCount).ToArray(),
+            Int4[] values => values.AsSpan(0, expectedElementCount).ToArray(),
+            UInt2[] values => values.AsSpan(0, expectedElementCount).ToArray(),
+            Int2[] values => values.AsSpan(0, expectedElementCount).ToArray(),
+            _ => value,
+        };
+    }
+
+    private static bool RequiresTrimmedElementCount(TensorProto.Types.DataType type)
+    {
+        return type is TensorProto.Types.DataType.Float4E2M1
+            or TensorProto.Types.DataType.Uint4
+            or TensorProto.Types.DataType.Int4
+            or TensorProto.Types.DataType.Uint2
+            or TensorProto.Types.DataType.Int2;
     }
 
     internal static object DecodeRawData(

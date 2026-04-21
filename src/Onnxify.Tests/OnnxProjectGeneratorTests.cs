@@ -87,7 +87,7 @@ public sealed class OnnxProjectGeneratorTests
             Assert.Contains("model.ClearOpsetImports();", programText);
             Assert.Contains("model.SetOpsetImport(\"\", 13L);", programText);
             Assert.Contains("value: [1F, 2F]", programText);
-            Assert.DoesNotContain("OnnxExternalDataProvider.Instance.ReadTensorValue<float>(ResolveAssetPath(\"Assets/weights.bin\"), offset: 0, length: -1)", programText);
+            Assert.DoesNotContain("OnnxHelper.DeserializeTensor(File.ReadAllBytes(ResolveAssetPath(\"Assets/weights.bin\")))", programText);
             Assert.Contains("new OnnxAttribute<long[]>(\"axes\", [0L, 1L])", programText);
             Assert.Contains("new OnnxAttribute<string>(\"note\", \"hello\")", programText);
             Assert.Contains("model.AddMetadataProps(\"generator-key\", \"generator-value\");", programText);
@@ -145,11 +145,12 @@ public sealed class OnnxProjectGeneratorTests
             Assert.Single(result.TensorFilePaths);
 
             var programText = File.ReadAllText(result.ProgramFilePath);
-            Assert.Contains("OnnxExternalDataProvider.Instance.ReadTensorValue<float>(ResolveAssetPath(\"Assets/weights.bin\"), offset: 0, length: -1)", programText);
+            Assert.Contains("OnnxHelper.DeserializeTensor(File.ReadAllBytes(ResolveAssetPath(\"Assets/weights.bin\")))", programText);
+            Assert.DoesNotContain("ReadTensorValue<float>", programText);
 
             var tensorFilePath = Assert.Single(result.TensorFilePaths);
             Assert.True(File.Exists(tensorFilePath));
-            Assert.Equal(sizeof(float) * 20, new FileInfo(tensorFilePath).Length);
+            Assert.True(new FileInfo(tensorFilePath).Length > sizeof(float) * 20);
         }
         finally
         {

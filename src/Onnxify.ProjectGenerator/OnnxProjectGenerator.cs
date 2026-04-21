@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using Onnxify;
 using Onnxify.Data.Numerics;
+using Onnxify.Helpers;
 
 namespace Onnxify.ProjectGenerator;
 
@@ -329,9 +330,7 @@ public sealed class OnnxProjectGenerator
     private static string ExportTensorAsset(OnnxTensor tensor, GenerationContext context)
     {
         var safeName = (string.IsNullOrWhiteSpace(tensor.Name) ? "tensor" : tensor.Name).SanitizeFileName();
-        return tensor.DataType == typeof(string)
-            ? context.WriteTextAsset(safeName, "json", tensor.EncodeStringTensorJson())
-            : context.WriteBinaryAsset(safeName, "bin", tensor.EncodeTensorRawData());
+        return context.WriteBinaryAsset(safeName, "bin", tensor.SerializeTensor());
     }
 
     private static string RenderTensorValueExpression(OnnxTensor tensor, GenerationContext context)
@@ -349,35 +348,36 @@ public sealed class OnnxProjectGenerator
     {
         var literalPath = AsStringLiteral(relativePath.Replace('\\', '/'));
         var resolvedPath = $"ResolveAssetPath({literalPath})";
+        var readTensorExpression = $"global::Onnxify.Helpers.OnnxHelper.DeserializeTensor(File.ReadAllBytes({resolvedPath}))";
 
         return tensor switch
         {
-            OnnxTensor<float> => RenderTensorReadExpression<float>(resolvedPath),
-            OnnxTensor<double> => RenderTensorReadExpression<double>(resolvedPath),
-            OnnxTensor<sbyte> => RenderTensorReadExpression<sbyte>(resolvedPath),
-            OnnxTensor<byte> => RenderTensorReadExpression<byte>(resolvedPath),
-            OnnxTensor<short> => RenderTensorReadExpression<short>(resolvedPath),
-            OnnxTensor<ushort> => RenderTensorReadExpression<ushort>(resolvedPath),
-            OnnxTensor<int> => RenderTensorReadExpression<int>(resolvedPath),
-            OnnxTensor<uint> => RenderTensorReadExpression<uint>(resolvedPath),
-            OnnxTensor<long> => RenderTensorReadExpression<long>(resolvedPath),
-            OnnxTensor<ulong> => RenderTensorReadExpression<ulong>(resolvedPath),
-            OnnxTensor<bool> => RenderTensorReadExpression<bool>(resolvedPath),
-            OnnxTensor<Half> => RenderTensorReadExpression<Half>(resolvedPath),
-            OnnxTensor<BFloat16> => RenderTensorReadExpression<BFloat16>(resolvedPath),
-            OnnxTensor<Float8E4M3FN> => RenderTensorReadExpression<Float8E4M3FN>(resolvedPath),
-            OnnxTensor<Float8E4M3FNUZ> => RenderTensorReadExpression<Float8E4M3FNUZ>(resolvedPath),
-            OnnxTensor<Float8E5M2> => RenderTensorReadExpression<Float8E5M2>(resolvedPath),
-            OnnxTensor<Float8E5M2FNUZ> => RenderTensorReadExpression<Float8E5M2FNUZ>(resolvedPath),
-            OnnxTensor<Float4E2M1> => RenderTensorReadExpression<Float4E2M1>(resolvedPath, GetTensorElementCount(tensor)),
-            OnnxTensor<Float8E8M0> => RenderTensorReadExpression<Float8E8M0>(resolvedPath),
-            OnnxTensor<UInt4> => RenderTensorReadExpression<UInt4>(resolvedPath, GetTensorElementCount(tensor)),
-            OnnxTensor<Int4> => RenderTensorReadExpression<Int4>(resolvedPath, GetTensorElementCount(tensor)),
-            OnnxTensor<UInt2> => RenderTensorReadExpression<UInt2>(resolvedPath, GetTensorElementCount(tensor)),
-            OnnxTensor<Int2> => RenderTensorReadExpression<Int2>(resolvedPath, GetTensorElementCount(tensor)),
-            OnnxTensor<Complex64> => RenderTensorReadExpression<Complex64>(resolvedPath),
-            OnnxTensor<Complex128> => RenderTensorReadExpression<Complex128>(resolvedPath),
-            OnnxTensor<string> => $"global::System.Text.Json.JsonSerializer.Deserialize<string[]>(File.ReadAllText({resolvedPath})) ?? throw new InvalidOperationException(\"Could not deserialize tensor data.\")",
+            OnnxTensor<float> => RenderTensorReadExpression<float>(readTensorExpression),
+            OnnxTensor<double> => RenderTensorReadExpression<double>(readTensorExpression),
+            OnnxTensor<sbyte> => RenderTensorReadExpression<sbyte>(readTensorExpression),
+            OnnxTensor<byte> => RenderTensorReadExpression<byte>(readTensorExpression),
+            OnnxTensor<short> => RenderTensorReadExpression<short>(readTensorExpression),
+            OnnxTensor<ushort> => RenderTensorReadExpression<ushort>(readTensorExpression),
+            OnnxTensor<int> => RenderTensorReadExpression<int>(readTensorExpression),
+            OnnxTensor<uint> => RenderTensorReadExpression<uint>(readTensorExpression),
+            OnnxTensor<long> => RenderTensorReadExpression<long>(readTensorExpression),
+            OnnxTensor<ulong> => RenderTensorReadExpression<ulong>(readTensorExpression),
+            OnnxTensor<bool> => RenderTensorReadExpression<bool>(readTensorExpression),
+            OnnxTensor<Half> => RenderTensorReadExpression<Half>(readTensorExpression),
+            OnnxTensor<BFloat16> => RenderTensorReadExpression<BFloat16>(readTensorExpression),
+            OnnxTensor<Float8E4M3FN> => RenderTensorReadExpression<Float8E4M3FN>(readTensorExpression),
+            OnnxTensor<Float8E4M3FNUZ> => RenderTensorReadExpression<Float8E4M3FNUZ>(readTensorExpression),
+            OnnxTensor<Float8E5M2> => RenderTensorReadExpression<Float8E5M2>(readTensorExpression),
+            OnnxTensor<Float8E5M2FNUZ> => RenderTensorReadExpression<Float8E5M2FNUZ>(readTensorExpression),
+            OnnxTensor<Float4E2M1> => RenderTensorReadExpression<Float4E2M1>(readTensorExpression),
+            OnnxTensor<Float8E8M0> => RenderTensorReadExpression<Float8E8M0>(readTensorExpression),
+            OnnxTensor<UInt4> => RenderTensorReadExpression<UInt4>(readTensorExpression),
+            OnnxTensor<Int4> => RenderTensorReadExpression<Int4>(readTensorExpression),
+            OnnxTensor<UInt2> => RenderTensorReadExpression<UInt2>(readTensorExpression),
+            OnnxTensor<Int2> => RenderTensorReadExpression<Int2>(readTensorExpression),
+            OnnxTensor<Complex64> => RenderTensorReadExpression<Complex64>(readTensorExpression),
+            OnnxTensor<Complex128> => RenderTensorReadExpression<Complex128>(readTensorExpression),
+            OnnxTensor<string> => RenderTensorReadExpression<string>(readTensorExpression),
             _ => throw CreateUnsupportedTensorException(tensor),
         };
     }
@@ -416,17 +416,10 @@ public sealed class OnnxProjectGenerator
         };
     }
 
-    private static string RenderTensorReadExpression<T>(string resolvedPath, long? elementCount = null)
+    private static string RenderTensorReadExpression<T>(string tensorExpression)
     {
         var typeName = GetClrTypeName(typeof(T));
-        var readExpression = $"OnnxExternalDataProvider.Instance.ReadTensorValue<{typeName}>({resolvedPath}, offset: 0, length: -1)";
-
-        if (elementCount is null)
-        {
-            return readExpression;
-        }
-
-        return $"({readExpression})[..checked((int){elementCount.Value.ToString(CultureInfo.InvariantCulture)}L)]";
+        return $"((global::Onnxify.OnnxTensor<{typeName}>)({tensorExpression})).Value.ToArray()";
     }
 
     private static long GetTensorElementCount(OnnxTensor tensor)

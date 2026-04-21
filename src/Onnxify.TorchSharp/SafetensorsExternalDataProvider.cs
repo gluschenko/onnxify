@@ -1,5 +1,6 @@
 using Onnxify.Data;
 using Onnxify.Data.Numerics;
+using Onnxify.Helpers;
 using Onnxify.Safetensors;
 using SafeTensorsArchive = Onnxify.Safetensors.SafeTensors;
 
@@ -88,7 +89,7 @@ public sealed class SafetensorsExternalDataProvider : ExternalDataProvider
         return new TensorView(
             dtype: MapDataType(tensor.DataType),
             shape: tensor.Shape.Select(static x => checked((ulong)x)),
-            data: tensor.EncodeTensorRawData()
+            data: tensor.GetTensorRawData()
         );
     }
 

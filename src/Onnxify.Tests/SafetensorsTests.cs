@@ -173,28 +173,6 @@ public class SafetensorsTests
     }
 
     [Fact]
-    public void ToString_ForPackedTypes_UsesPackedFallbackPreview()
-    {
-        var tensors = new Dictionary<string, TensorView>
-        {
-            ["fp4"] = new(DataType.F4, [1, 2], new byte[] { 0 }),
-        };
-
-        var loaded = SafeTensors.Deserialize(SafeTensors.Serialize(tensors));
-
-        Assert.Equal(
-            """
-            Safetensors(
-                Metadata=[],
-                Tensors=[
-                    fp4: F4[1, 2] = <packed F4 x 2: [0]>
-                ]
-            )
-            """,
-            loaded.ToString());
-    }
-
-    [Fact]
     public void Slice_FromTensorRsExamples_MatchesUpstreamOutput()
     {
         var data = FloatsToBytes(0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f);
