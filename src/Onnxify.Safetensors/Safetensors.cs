@@ -1,5 +1,7 @@
 ﻿using System.Buffers;
 using System.Buffers.Binary;
+using System.Globalization;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 
@@ -163,7 +165,8 @@ public sealed class Safetensors
     /// </remarks>
     public static byte[] Serialize(
         IEnumerable<KeyValuePair<string, TensorView>> data,
-        IReadOnlyDictionary<string, string>? metadata = null)
+        IReadOnlyDictionary<string, string>? metadata = null
+    )
     {
         ArgumentNullException.ThrowIfNull(data);
 
@@ -324,6 +327,16 @@ public sealed class Safetensors
     /// Original Rust entity: <c>SafeTensors::is_empty</c>.
     /// </remarks>
     public bool IsEmpty => Length == 0;
+
+    public override string ToString()
+    {
+        return $"""
+            Safetensors(
+                Metadata={Indent(FormatMetadataEntries(_metadata.MetadataEntries), 1)},
+                Tensors={Indent(FormatTensorCollection(), 1)}
+            )
+            """;
+    }
 
     /// <summary>
     /// Prepares the ordered header model and emission order required for deterministic safetensors serialization.
@@ -577,5 +590,181 @@ public sealed class Safetensors
         }
 
         return (int)value;
+    }
+
+    private string FormatTensorCollection()
+    {
+        var items = _metadata.OffsetKeys().Select(FormatNamedTensor);
+        return FormatCollection(items);
+    }
+
+    private string FormatNamedTensor(string name)
+    {
+        var tensor = Tensor(name);
+        return $"{name}: {FormatDataTypeName(tensor.DataType)}{FormatShape(tensor.Shape)} = {FormatTensorData(tensor)}";
+    }
+
+    private static string FormatMetadataEntries(IReadOnlyDictionary<string, string>? metadataEntries)
+    {
+        if (metadataEntries is null || metadataEntries.Count == 0)
+        {
+            return "[]";
+        }
+
+        return FormatCollection(metadataEntries
+            .OrderBy(static pair => pair.Key, StringComparer.Ordinal)
+            .Select(static pair => $"{pair.Key}={pair.Value}"));
+    }
+
+    private static string FormatCollection(IEnumerable<string> values)
+    {
+        var items = values.ToArray();
+        if (items.Length == 0)
+        {
+            return "[]";
+        }
+
+        return $"""
+            [
+                {Indent(string.Join(",\n", items), 1)}
+            ]
+            """;
+    }
+
+    private static string FormatShape(IReadOnlyList<ulong> shape)
+        => $"[{string.Join(", ", shape)}]";
+
+    private static string FormatTensorData(TensorView tensor)
+    {
+        return tensor.DataType switch
+        {
+            DataType.Bool => FormatPreview(ToBooleanArray(tensor.Data.Span), static x => x ? "true" : "false"),
+            DataType.U8 => FormatPreview(tensor.Data.Span.ToArray(), FormatValue),
+            DataType.I8 => FormatPreview(MemoryMarshal.Cast<byte, sbyte>(tensor.Data.Span).ToArray(), FormatValue),
+            DataType.I16 => FormatPreview(MemoryMarshal.Cast<byte, short>(tensor.Data.Span).ToArray(), FormatValue),
+            DataType.U16 => FormatPreview(MemoryMarshal.Cast<byte, ushort>(tensor.Data.Span).ToArray(), FormatValue),
+            DataType.F16 => FormatPreview(ToHalfArray(tensor.Data.Span), FormatValue),
+            DataType.Bf16 => FormatPreview(ToBFloat16Array(tensor.Data.Span), FormatValue),
+            DataType.I32 => FormatPreview(MemoryMarshal.Cast<byte, int>(tensor.Data.Span).ToArray(), FormatValue),
+            DataType.U32 => FormatPreview(MemoryMarshal.Cast<byte, uint>(tensor.Data.Span).ToArray(), FormatValue),
+            DataType.F32 => FormatPreview(MemoryMarshal.Cast<byte, float>(tensor.Data.Span).ToArray(), FormatValue),
+            DataType.C64 => FormatPreview(ToComplex64Array(tensor.Data.Span), static x => $"({FormatValue(x.Real)}, {FormatValue(x.Imaginary)})"),
+            DataType.F64 => FormatPreview(MemoryMarshal.Cast<byte, double>(tensor.Data.Span).ToArray(), FormatValue),
+            DataType.I64 => FormatPreview(MemoryMarshal.Cast<byte, long>(tensor.Data.Span).ToArray(), FormatValue),
+            DataType.U64 => FormatPreview(MemoryMarshal.Cast<byte, ulong>(tensor.Data.Span).ToArray(), FormatValue),
+            _ => FormatPackedPreview(tensor.DataType, tensor.Shape, tensor.Data.Span),
+        };
+    }
+
+    private static string FormatPackedPreview(DataType dataType, IReadOnlyList<ulong> shape, ReadOnlySpan<byte> data)
+    {
+        ulong elementCount = 1;
+        foreach (var dim in shape)
+        {
+            elementCount = checked(elementCount * dim);
+        }
+
+        return $"<packed {dataType.ToWireName()} x {elementCount}: {FormatPreview(data.ToArray(), FormatValue)}>";
+    }
+
+    private static string FormatPreview<T>(IReadOnlyList<T> values, Func<T, string> formatter)
+    {
+        const int PreviewEdgeCount = 3;
+
+        if (values.Count == 0)
+        {
+            return "[]";
+        }
+
+        if (values.Count <= PreviewEdgeCount * 2)
+        {
+            return $"[{string.Join(", ", values.Select(formatter))}]";
+        }
+
+        var head = values.Take(PreviewEdgeCount).Select(formatter);
+        var tail = values.Skip(values.Count - PreviewEdgeCount).Select(formatter);
+        return $"[{string.Join(", ", head)}, ... {string.Join(", ", tail)}]";
+    }
+
+    private static string FormatValue<T>(T value)
+    {
+        if (value is null)
+        {
+            return "null";
+        }
+
+        return value switch
+        {
+            string text => text,
+            IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
+            _ => value.ToString() ?? string.Empty,
+        };
+    }
+
+    private static string FormatDataTypeName(DataType dataType)
+    {
+        return dataType switch
+        {
+            DataType.Bool => nameof(Boolean),
+            DataType.U8 => nameof(Byte),
+            DataType.I8 => nameof(SByte),
+            DataType.I16 => nameof(Int16),
+            DataType.U16 => nameof(UInt16),
+            DataType.F16 => nameof(Half),
+            DataType.Bf16 => "BFloat16",
+            DataType.I32 => nameof(Int32),
+            DataType.U32 => nameof(UInt32),
+            DataType.F32 => nameof(Single),
+            DataType.C64 => "Complex64",
+            DataType.F64 => nameof(Double),
+            DataType.I64 => nameof(Int64),
+            DataType.U64 => nameof(UInt64),
+            _ => dataType.ToWireName(),
+        };
+    }
+
+    private static bool[] ToBooleanArray(ReadOnlySpan<byte> data)
+        => [.. data.ToArray().Select(static x => x != 0)];
+
+    private static Half[] ToHalfArray(ReadOnlySpan<byte> data)
+    {
+        var ushortValues = MemoryMarshal.Cast<byte, ushort>(data);
+        var result = new Half[ushortValues.Length];
+        for (var i = 0; i < ushortValues.Length; i++)
+        {
+            result[i] = BitConverter.UInt16BitsToHalf(ushortValues[i]);
+        }
+
+        return result;
+    }
+
+    private static float[] ToBFloat16Array(ReadOnlySpan<byte> data)
+    {
+        var ushortValues = MemoryMarshal.Cast<byte, ushort>(data);
+        var result = new float[ushortValues.Length];
+        for (var i = 0; i < ushortValues.Length; i++)
+        {
+            result[i] = BitConverter.Int32BitsToSingle(ushortValues[i] << 16);
+        }
+
+        return result;
+    }
+
+    private static (float Real, float Imaginary)[] ToComplex64Array(ReadOnlySpan<byte> data)
+    {
+        var values = MemoryMarshal.Cast<byte, float>(data);
+        var result = new (float Real, float Imaginary)[values.Length / 2];
+        for (var i = 0; i < result.Length; i++)
+        {
+            result[i] = (values[i * 2], values[i * 2 + 1]);
+        }
+
+        return result;
+    }
+
+    private static string Indent(string text, int tabs)
+    {
+        var indent = new string(' ', tabs * 4);
+        return text.Trim().Replace("\n", $"\n{indent}").Trim();
     }
 }

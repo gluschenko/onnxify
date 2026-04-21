@@ -409,7 +409,24 @@ internal class AlexNetSample : Sample
             count: 50000
         );
 
+        var weightOutputPath = Path.Combine(outputDirectory, "alexnet.safetensors");
+        var outputPath = Path.Combine(outputDirectory, "alexnet.onnx");
+
         var model = new AlexNet("alexnet", trainDataset.LabelNames.Count, device);
+
+        
+
+        if (File.Exists(weightOutputPath))
+        {
+            var raw = File.ReadAllBytes(weightOutputPath);
+            var safetensors = global::Onnxify.Safetensors.Safetensors.Deserialize(raw);
+            Console.WriteLine(safetensors);
+
+            Safetensors.Safetensors.Deserialize(raw);
+
+            model.LoadStateFromSafetensors(weightOutputPath);
+        }
+
         var stopwatch = Stopwatch.StartNew();
 
         await foreach (var x in trainDataset.Convert())
@@ -436,7 +453,7 @@ internal class AlexNetSample : Sample
 
         var trainer = new AlexNetTrainer(model, trainDataset);
         await trainer.TrainAsync(
-            epochs: 1,
+            epochs: 25,
             batchSize: 256 + 128,
             learningRate: 1e-4f,
             schedulerStepSize: 10,
@@ -445,10 +462,8 @@ internal class AlexNetSample : Sample
             device: device
         );
 
-        var weightOutputPath = Path.Combine(outputDirectory, "alexnet.safetensors");
         model.SaveStateAsSafetensors(weightOutputPath);
 
-        var outputPath = Path.Combine(outputDirectory, "alexnet.onnx");
         var onnxModel = model.Export();
         onnxModel.Save(outputPath, true);
 
