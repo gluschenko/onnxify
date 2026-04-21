@@ -119,6 +119,9 @@ internal class TorchSharpExportShowcaseSample : Sample
         var onnxModel = model.Export();
         onnxModel.Save(outputPath, true);
 
+        var weightOutputPath = Path.Combine(outputDirectory, "torchsharp-export-showcase.safetensors");
+        model.SaveStateAsSafetensors(weightOutputPath);
+
         using var session = new InferenceSession(outputPath);
         var onnxOutput = Utils.RunOnnx(session, input);
 
@@ -230,6 +233,9 @@ internal class MiniGpt2LikeSample : Sample
         var onnxModel = model.Export();
         onnxModel.Save(outputPath, true);
 
+        var weightOutputPath = Path.Combine(outputDirectory, "mini-gpt2-like.safetensors");
+        model.SaveStateAsSafetensors(weightOutputPath);
+
         using var session = new InferenceSession(outputPath);
         var onnxOutput = Utils.RunOnnxInt64(session, tokenIds);
 
@@ -287,6 +293,9 @@ internal class LSTMSample : Sample
 
         onnxModel.Save(outputPath, true);
 
+        var weightOutputPath = Path.Combine(outputDirectory, "lang-lstm.safetensors");
+        model.SaveStateAsSafetensors(weightOutputPath);
+
         await Task.CompletedTask;
     }
 }
@@ -311,6 +320,9 @@ internal class TinyYoloLikeSample : Sample
 
         var onnxModel = model.Export();
         onnxModel.Save(outputPath, true);
+
+        var weightOutputPath = Path.Combine(outputDirectory, "tiny-yolo-like.safetensors");
+        model.SaveStateAsSafetensors(weightOutputPath);
 
         using var session = new InferenceSession(outputPath);
         var onnxOutput = Utils.RunOnnx(session, input);
@@ -348,6 +360,9 @@ internal class MobileNetV1LikeSample : Sample
 
         var onnxModel = model.Export();
         onnxModel.Save(outputPath, true);
+
+        var weightOutputPath = Path.Combine(outputDirectory, "mobilenet-v1-like.safetensors");
+        model.SaveStateAsSafetensors(weightOutputPath);
 
         using var session = new InferenceSession(outputPath);
         var onnxOutput = Utils.RunOnnx(session, input);
