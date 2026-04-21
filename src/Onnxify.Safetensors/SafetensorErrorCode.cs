@@ -1,4 +1,4 @@
-namespace Onnxify.Safetensors;
+﻿namespace Onnxify.Safetensors;
 
 /// <summary>
 /// Identifies the normalized failure category for safetensors format, validation, and I/O errors in the managed port.
@@ -7,7 +7,7 @@ namespace Onnxify.Safetensors;
 /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
 /// Original Rust entity: <c>SafeTensorError</c>.
 /// </remarks>
-public enum SafetensorErrorCode
+public enum SafeTensorErrorCode
 {
     /// <summary>The header bytes are not valid UTF-8.</summary>
     /// <remarks>Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>. Original Rust entity: <c>SafeTensorError::InvalidHeader</c>.</remarks>

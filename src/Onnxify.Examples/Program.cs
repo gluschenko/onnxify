@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using Onnxify.Examples.Models;
+using Onnxify.Safetensors;
 using Onnxify.TorchSharp;
 using TorchSharp;
 using static TorchSharp.torch;
@@ -419,10 +420,8 @@ internal class AlexNetSample : Sample
         if (File.Exists(weightOutputPath))
         {
             var raw = File.ReadAllBytes(weightOutputPath);
-            var safetensors = global::Onnxify.Safetensors.Safetensors.Deserialize(raw);
+            var safetensors = SafeTensors.Deserialize(raw);
             Console.WriteLine(safetensors);
-
-            Safetensors.Safetensors.Deserialize(raw);
 
             model.LoadStateFromSafetensors(weightOutputPath);
         }

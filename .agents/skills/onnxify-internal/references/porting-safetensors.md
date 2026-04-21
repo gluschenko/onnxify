@@ -55,8 +55,6 @@ At the same time:
 - use standard C# naming conventions
 - prefer `PascalCase` for methods, properties, and public members
 - keep the conceptual API shape close to the original even when names change to match .NET style
-- name the primary C# runtime type `Safetensors` in PascalCase; do not spell it using a two-word camel-case variant
-- when introducing singular helper, error, or utility type names, prefer the `Safetensor*` stem and keep it consistent across the API
 - prefer `DataType` in the public C# API rather than `Dtype`; reserve `dtype` for the upstream terminology and the on-disk/header field name
 
 The goal is "familiar to upstream readers, natural to C# consumers."
@@ -162,7 +160,5 @@ Release notes are a planning input, not the implementation source of truth. The 
 - Preserve upstream serialization ordering exactly. For byte-exact parity, tensor entries must be emitted in the same effective order as upstream, including sorting by dtype alignment and then by tensor name.
 - Be careful when porting slice iteration logic. The upstream Rust code relies on a specific chunk ordering pattern; a seemingly equivalent C# translation can still return the right ranges in the wrong order.
 - Prefer small buffer-builder helpers in C# tests for malformed or edge-case fixtures. Hand-writing full byte arrays for safetensors headers is brittle and can accidentally test the wrong failure mode because of an incorrect encoded header length.
-- Keep the primary runtime type name fixed as `Safetensors`. This should be treated as a naming rule, not just a preference, so the public API does not drift to alternate camel-case spellings.
-- Keep singular supporting type names on the `Safetensor*` stem and do not introduce mixed stem variants.
 - Keep the public C# type/property name fixed as `DataType`; use `dtype` only where the upstream format or release/test language requires that exact term.
 - When consuming the API from other projects, watch for namespace/type-name collisions around `Onnxify.Safetensors` and `Safetensors`. Use explicit qualification or aliases when needed so examples stay unambiguous.

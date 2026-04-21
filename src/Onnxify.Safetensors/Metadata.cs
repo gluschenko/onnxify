@@ -1,4 +1,4 @@
-namespace Onnxify.Safetensors;
+﻿namespace Onnxify.Safetensors;
 
 /// <summary>
 /// Represents the validated safetensors header model used to resolve tensor names, offsets, and optional archive metadata.
@@ -128,15 +128,15 @@ public sealed class Metadata
 
             if (s != start || e < s)
             {
-                throw SafetensorException.InvalidOffset(_namesByIndex[i]);
+                throw SafeTensorException.InvalidOffset(_namesByIndex[i]);
             }
 
             start = e;
 
-            var size = SafetensorMath.ComputeSizeInBytes(info.DataType, info.Shape, allowMisaligned: false);
+            var size = SafeTensorMath.ComputeSizeInBytes(info.DataType, info.Shape, allowMisaligned: false);
             if (e - s != size)
             {
-                throw SafetensorException.TensorInvalidInfo();
+                throw SafeTensorException.TensorInvalidInfo();
             }
         }
     }

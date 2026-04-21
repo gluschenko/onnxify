@@ -1,7 +1,7 @@
 ﻿using System.Buffers.Binary;
 using System.Text;
 using Onnxify.Safetensors;
-using SafetensorsModel = Onnxify.Safetensors.Safetensors;
+using SafeTensors = Onnxify.Safetensors.SafeTensors;
 
 namespace Onnxify.Tests;
 
@@ -16,7 +16,7 @@ public class SafetensorsTests
             ["attn.0"] = new(DataType.F32, new ulong[] { 1, 2, 3 }, data),
         };
 
-        var serialized = SafetensorsModel.Serialize(metadata);
+        var serialized = SafeTensors.Serialize(metadata);
 
         Assert.Equal(
             new byte[]
@@ -30,7 +30,7 @@ public class SafetensorsTests
             serialized
         );
 
-        var parsed = SafetensorsModel.Deserialize(serialized);
+        var parsed = SafeTensors.Deserialize(serialized);
         var tensor = parsed.Tensor("attn.0");
         Assert.Equal([1, 2, 3], tensor.Shape);
         Assert.Equal(DataType.F32, tensor.DataType);
@@ -45,7 +45,7 @@ public class SafetensorsTests
             ["attn.0"] = new(DataType.F4, new ulong[] { 1, 2 }, new byte[] { 0 }),
         };
 
-        var serialized = SafetensorsModel.Serialize(metadata);
+        var serialized = SafeTensors.Serialize(metadata);
 
         Assert.Equal(
             new byte[]
@@ -58,7 +58,7 @@ public class SafetensorsTests
             serialized
         );
 
-        var parsed = SafetensorsModel.Deserialize(serialized);
+        var parsed = SafeTensors.Deserialize(serialized);
         var tensor = parsed.Tensor("attn.0");
         Assert.Equal([1, 2], tensor.Shape);
         Assert.Equal(DataType.F4, tensor.DataType);
@@ -68,20 +68,20 @@ public class SafetensorsTests
     [Fact]
     public void TensorView_F4_Misaligned_Throws()
     {
-        var exception = Assert.Throws<SafetensorException>(
+        var exception = Assert.Throws<SafeTensorException>(
             () => new TensorView(DataType.F4, [1, 3], new byte[] { 0, 1 })
         );
 
-        Assert.Equal(SafetensorErrorCode.MisalignedSlice, exception.Code);
+        Assert.Equal(SafeTensorErrorCode.MisalignedSlice, exception.Code);
     }
 
     [Fact]
     public void TensorView_F4_InvalidLength_Throws()
     {
-        var exception = Assert.Throws<SafetensorException>(
+        var exception = Assert.Throws<SafeTensorException>(
             () => new TensorView(DataType.F4, new ulong[] { 1, 2 }, new byte[] { 0, 1 }));
 
-        Assert.Equal(SafetensorErrorCode.InvalidTensorView, exception.Code);
+        Assert.Equal(SafeTensorErrorCode.InvalidTensorView, exception.Code);
         Assert.Equal(DataType.F4, exception.DataType);
         Assert.Equal([1, 2], exception.Shape);
         Assert.Equal(2UL, exception.ByteLength);
@@ -92,14 +92,14 @@ public class SafetensorsTests
     {
         var tensors = Array.Empty<KeyValuePair<string, TensorView>>();
 
-        var serialized = SafetensorsModel.Serialize(tensors);
+        var serialized = SafeTensors.Serialize(tensors);
         Assert.Equal(
             new byte[] { 8, 0, 0, 0, 0, 0, 0, 0, 123, 125, 32, 32, 32, 32, 32, 32 },
             serialized
         );
-        Assert.Equal(0, SafetensorsModel.Deserialize(serialized).Length);
+        Assert.Equal(0, SafeTensors.Deserialize(serialized).Length);
 
-        var serializedWithMetadata = SafetensorsModel.Serialize(
+        var serializedWithMetadata = SafeTensors.Serialize(
             tensors,
             new Dictionary<string, string> { ["framework"] = "pt" });
 
@@ -113,7 +113,7 @@ public class SafetensorsTests
             serializedWithMetadata
         );
 
-        Assert.Equal(0, SafetensorsModel.Deserialize(serializedWithMetadata).Length);
+        Assert.Equal(0, SafeTensors.Deserialize(serializedWithMetadata).Length);
     }
 
     [Fact]
@@ -125,7 +125,7 @@ public class SafetensorsTests
             ["attn0"] = new(DataType.F32, [1, 1, 2, 3], data),
         };
 
-        var serialized = SafetensorsModel.Serialize(metadata);
+        var serialized = SafeTensors.Serialize(metadata);
 
         Assert.Equal(
             new byte[]
@@ -140,7 +140,7 @@ public class SafetensorsTests
             serialized
         );
 
-        var parsed = SafetensorsModel.Deserialize(serialized);
+        var parsed = SafeTensors.Deserialize(serialized);
         var tensor = parsed.Tensor("attn0");
         Assert.Equal(0, tensor.Data.Span.Length % (tensor.DataType.Bitsize() / 8));
     }
@@ -157,9 +157,9 @@ public class SafetensorsTests
         var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.safetensors");
         try
         {
-            SafetensorsModel.SerializeToFile(metadata, null, path);
+            SafeTensors.SerializeToFile(metadata, null, path);
             var raw = File.ReadAllBytes(path);
-            var loaded = SafetensorsModel.Deserialize(raw);
+            var loaded = SafeTensors.Deserialize(raw);
             Assert.Equal(["attn.0"], loaded.Names());
             Assert.Equal(data, loaded.Tensor("attn.0").Data.ToArray());
         }
@@ -181,7 +181,7 @@ public class SafetensorsTests
             ["steps"] = new(DataType.I32, [2], IntsToBytes(7, 9)),
         };
 
-        var loaded = SafetensorsModel.Deserialize(SafetensorsModel.Serialize(
+        var loaded = SafeTensors.Deserialize(SafeTensors.Serialize(
             tensors,
             new Dictionary<string, string>
             {
@@ -213,7 +213,7 @@ public class SafetensorsTests
             ["fp4"] = new(DataType.F4, [1, 2], new byte[] { 0 }),
         };
 
-        var loaded = SafetensorsModel.Deserialize(SafetensorsModel.Serialize(tensors));
+        var loaded = SafeTensors.Deserialize(SafeTensors.Serialize(tensors));
 
         Assert.Equal(
             """
@@ -236,7 +236,7 @@ public class SafetensorsTests
             ["attn.0"] = new(DataType.F32, [1, 2, 3], data),
         };
 
-        var parsed = SafetensorsModel.Deserialize(SafetensorsModel.Serialize(metadata));
+        var parsed = SafeTensors.Deserialize(SafeTensors.Serialize(metadata));
         var tensor = parsed.Tensor("attn.0");
 
         var outBuffer = FlattenBytes(tensor.Slice(All(), Narrow(0, 1)));
@@ -256,7 +256,7 @@ public class SafetensorsTests
             [0, 0, 0, 0]
         );
 
-        var loaded = SafetensorsModel.Deserialize(serialized);
+        var loaded = SafeTensors.Deserialize(serialized);
 
         Assert.Equal(["test"], loaded.Names());
         var tensor = loaded.Tensor("test");
@@ -272,7 +272,7 @@ public class SafetensorsTests
             "{\"test\":{\"dtype\":\"I32\",\"shape\":[2,2],\"data_offsets\":[0,16]}}",
             new byte[16]);
 
-        var loaded = SafetensorsModel.Deserialize(serialized);
+        var loaded = SafeTensors.Deserialize(serialized);
 
         Assert.Equal(1, loaded.Length);
         Assert.Equal(["test"], loaded.Names());
@@ -292,8 +292,8 @@ public class SafetensorsTests
 
         var serialized = BuildBuffer($"{{{header}}}", new byte[16]);
 
-        var exception = Assert.Throws<SafetensorException>(() => SafetensorsModel.Deserialize(serialized));
-        Assert.Equal(SafetensorErrorCode.InvalidOffset, exception.Code);
+        var exception = Assert.Throws<SafeTensorException>(() => SafeTensors.Deserialize(serialized));
+        Assert.Equal(SafeTensorErrorCode.InvalidOffset, exception.Code);
         Assert.StartsWith("weight_", exception.TensorName);
     }
 
@@ -305,16 +305,16 @@ public class SafetensorsTests
             new byte[16]);
 
         var withExtraData = baseBuffer.Concat(Encoding.ASCII.GetBytes("extra_bogus_data_for_polyglot_file")).ToArray();
-        var exception = Assert.Throws<SafetensorException>(() => SafetensorsModel.Deserialize(withExtraData));
-        Assert.Equal(SafetensorErrorCode.MetadataIncompleteBuffer, exception.Code);
+        var exception = Assert.Throws<SafeTensorException>(() => SafeTensors.Deserialize(withExtraData));
+        Assert.Equal(SafeTensorErrorCode.MetadataIncompleteBuffer, exception.Code);
 
         var missingData = BuildBuffer(
             "{\"test\":{\"dtype\":\"I32\",\"shape\":[2,2],\"data_offsets\":[0,16]}}",
             new byte[14]
         );
 
-        exception = Assert.Throws<SafetensorException>(() => SafetensorsModel.Deserialize(missingData));
-        Assert.Equal(SafetensorErrorCode.MetadataIncompleteBuffer, exception.Code);
+        exception = Assert.Throws<SafeTensorException>(() => SafeTensors.Deserialize(missingData));
+        Assert.Equal(SafeTensorErrorCode.MetadataIncompleteBuffer, exception.Code);
     }
 
     [Fact]
@@ -326,56 +326,56 @@ public class SafetensorsTests
             new byte[16]
         );
 
-        var exception = Assert.Throws<SafetensorException>(() => SafetensorsModel.Deserialize(serialized));
-        Assert.Equal(SafetensorErrorCode.HeaderTooLarge, exception.Code);
+        var exception = Assert.Throws<SafeTensorException>(() => SafeTensors.Deserialize(serialized));
+        Assert.Equal(SafeTensorErrorCode.HeaderTooLarge, exception.Code);
     }
 
     [Fact]
     public void Deserialize_HeaderTooSmall_Throws()
     {
-        var exception = Assert.Throws<SafetensorException>(() => SafetensorsModel.Deserialize(Array.Empty<byte>()));
-        Assert.Equal(SafetensorErrorCode.HeaderTooSmall, exception.Code);
+        var exception = Assert.Throws<SafeTensorException>(() => SafeTensors.Deserialize(Array.Empty<byte>()));
+        Assert.Equal(SafeTensorErrorCode.HeaderTooSmall, exception.Code);
     }
 
     [Fact]
     public void Deserialize_InvalidHeaderLength_Throws()
     {
-        var exception = Assert.Throws<SafetensorException>(
-            () => SafetensorsModel.Deserialize(new byte[] { 60, 0, 0, 0, 0, 0, 0, 0 })
+        var exception = Assert.Throws<SafeTensorException>(
+            () => SafeTensors.Deserialize(new byte[] { 60, 0, 0, 0, 0, 0, 0, 0 })
         );
 
-        Assert.Equal(SafetensorErrorCode.InvalidHeaderLength, exception.Code);
+        Assert.Equal(SafeTensorErrorCode.InvalidHeaderLength, exception.Code);
     }
 
     [Fact]
     public void Deserialize_InvalidHeaderNonUtf8_Throws()
     {
-        var exception = Assert.Throws<SafetensorException>(
-            () => SafetensorsModel.Deserialize(new byte[] { 1, 0, 0, 0, 0, 0, 0, 0, 255 })
+        var exception = Assert.Throws<SafeTensorException>(
+            () => SafeTensors.Deserialize(new byte[] { 1, 0, 0, 0, 0, 0, 0, 0, 255 })
         );
 
-        Assert.Equal(SafetensorErrorCode.InvalidHeader, exception.Code);
+        Assert.Equal(SafeTensorErrorCode.InvalidHeader, exception.Code);
     }
 
     [Fact]
     public void Deserialize_InvalidHeaderNotJson_Throws()
     {
-        var exception = Assert.Throws<SafetensorException>(
-            () => SafetensorsModel.Deserialize(new byte[] { 1, 0, 0, 0, 0, 0, 0, 0, 123 })
+        var exception = Assert.Throws<SafeTensorException>(
+            () => SafeTensors.Deserialize(new byte[] { 1, 0, 0, 0, 0, 0, 0, 0, 123 })
         );
 
-        Assert.Equal(SafetensorErrorCode.InvalidHeaderDeserialization, exception.Code);
+        Assert.Equal(SafeTensorErrorCode.InvalidHeaderDeserialization, exception.Code);
     }
 
     [Fact]
     public void Deserialize_WhitespacePaddedHeader_AllowsLeadingAndTrailingWhitespace()
     {
         var trailing = new byte[] { 6, 0, 0, 0, 0, 0, 0, 0, 123, 125, 13, 32, 9, 10 };
-        var loaded = SafetensorsModel.Deserialize(trailing);
+        var loaded = SafeTensors.Deserialize(trailing);
         Assert.Equal(0, loaded.Length);
 
         var leading = new byte[] { 6, 0, 0, 0, 0, 0, 0, 0, 9, 10, 123, 125, 13, 32 };
-        loaded = SafetensorsModel.Deserialize(leading);
+        loaded = SafeTensors.Deserialize(leading);
         Assert.Equal(0, loaded.Length);
     }
 
@@ -387,7 +387,7 @@ public class SafetensorsTests
             []
         );
 
-        var loaded = SafetensorsModel.Deserialize(serialized);
+        var loaded = SafeTensors.Deserialize(serialized);
         var tensor = loaded.Tensor("test");
 
         Assert.Equal(["test"], loaded.Names());
@@ -404,8 +404,8 @@ public class SafetensorsTests
             new byte[4]
         );
 
-        var exception = Assert.Throws<SafetensorException>(() => SafetensorsModel.Deserialize(serialized));
-        Assert.Equal(SafetensorErrorCode.TensorInvalidInfo, exception.Code);
+        var exception = Assert.Throws<SafeTensorException>(() => SafeTensors.Deserialize(serialized));
+        Assert.Equal(SafeTensorErrorCode.TensorInvalidInfo, exception.Code);
     }
 
     [Fact]
@@ -416,16 +416,16 @@ public class SafetensorsTests
             new byte[16]
         );
 
-        var exception = Assert.Throws<SafetensorException>(() => SafetensorsModel.Deserialize(serialized));
-        Assert.Equal(SafetensorErrorCode.ValidationOverflow, exception.Code);
+        var exception = Assert.Throws<SafeTensorException>(() => SafeTensors.Deserialize(serialized));
+        Assert.Equal(SafeTensorErrorCode.ValidationOverflow, exception.Code);
 
         serialized = BuildBuffer(
             "{\"test\":{\"dtype\":\"I32\",\"shape\":[2,9223372036854775807],\"data_offsets\":[0,16]}}",
             new byte[16]
         );
 
-        exception = Assert.Throws<SafetensorException>(() => SafetensorsModel.Deserialize(serialized));
-        Assert.Equal(SafetensorErrorCode.ValidationOverflow, exception.Code);
+        exception = Assert.Throws<SafeTensorException>(() => SafeTensors.Deserialize(serialized));
+        Assert.Equal(SafeTensorErrorCode.ValidationOverflow, exception.Code);
     }
 
     [Fact]

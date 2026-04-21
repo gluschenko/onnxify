@@ -47,7 +47,7 @@ public static class TorchModuleSafetensorsExtensions
             }
         }
 
-        global::Onnxify.Safetensors.Safetensors.SerializeToFile(
+        global::Onnxify.Safetensors.SafeTensors.SerializeToFile(
             data: state,
             metadata: mergedMetadata,
             path: path
@@ -64,7 +64,7 @@ public static class TorchModuleSafetensorsExtensions
         ArgumentNullException.ThrowIfNull(path);
 
         var raw = File.ReadAllBytes(path);
-        var safetensors = global::Onnxify.Safetensors.Safetensors.Deserialize(raw);
+        var safetensors = global::Onnxify.Safetensors.SafeTensors.Deserialize(raw);
         var stateByName = EnumerateStateTensors(module)
             .ToDictionary(x => x.Name, x => x.Tensor, StringComparer.Ordinal);
 
@@ -114,7 +114,7 @@ public static class TorchModuleSafetensorsExtensions
         using var contiguousTensor = cpuTensor.contiguous();
 
         var dataType = MapTorchDataType(contiguousTensor);
-        var shape = GetSafetensorsShape(contiguousTensor);
+        var shape = GetSafeTensorShape(contiguousTensor);
         var data = GetTensorBytes(contiguousTensor);
 
         return new TensorView(dataType, shape, data);
@@ -226,7 +226,7 @@ public static class TorchModuleSafetensorsExtensions
 
     private static void ValidateStateTensorShape(string name, Tensor target, TensorView source)
     {
-        var targetShape = GetSafetensorsShape(target);
+        var targetShape = GetSafeTensorShape(target);
         if (!targetShape.SequenceEqual(source.Shape))
         {
             throw new InvalidOperationException(
@@ -268,7 +268,7 @@ public static class TorchModuleSafetensorsExtensions
         }
     }
 
-    private static ulong[] GetSafetensorsShape(Tensor tensor)
+    private static ulong[] GetSafeTensorShape(Tensor tensor)
     {
         var shape = tensor.shape.Select(static x => checked((ulong)x)).ToArray();
         if (tensor.dtype != ScalarType.ComplexFloat64)

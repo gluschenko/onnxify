@@ -1,4 +1,4 @@
-namespace Onnxify.Safetensors;
+﻿namespace Onnxify.Safetensors;
 
 /// <summary>
 /// Represents a validated zero-copy tensor payload view together with the data type and shape needed to interpret it.
@@ -53,11 +53,11 @@ public sealed class TensorView : IEquatable<TensorView>
         ArgumentNullException.ThrowIfNull(shape);
 
         var shapeArray = shape.ToArray();
-        var expectedSize = SafetensorMath.ComputeSizeInBytes(dtype, shapeArray, allowMisaligned: false);
+        var expectedSize = SafeTensorMath.ComputeSizeInBytes(dtype, shapeArray, allowMisaligned: false);
 
         if ((ulong)data.Length != expectedSize)
         {
-            throw SafetensorException.InvalidTensorView(dtype, shapeArray, (ulong)data.Length);
+            throw SafeTensorException.InvalidTensorView(dtype, shapeArray, (ulong)data.Length);
         }
 
         DataType = dtype;

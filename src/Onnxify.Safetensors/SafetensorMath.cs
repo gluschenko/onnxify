@@ -1,4 +1,4 @@
-namespace Onnxify.Safetensors;
+﻿namespace Onnxify.Safetensors;
 
 /// <summary>
 /// Provides overflow-checked tensor size helpers shared by metadata validation and tensor view construction.
@@ -7,7 +7,7 @@ namespace Onnxify.Safetensors;
 /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
 /// Original Rust entity: local C# helper extracted from size calculations inside <c>Metadata::validate</c> and <c>TensorView::new</c>.
 /// </remarks>
-internal static class SafetensorMath
+internal static class SafeTensorMath
 {
     /// <summary>
     /// Multiplies all dimensions in a shape to produce the tensor element count.
@@ -54,14 +54,14 @@ internal static class SafetensorMath
 
             if (!allowMisaligned && bitCount % 8 != 0)
             {
-                throw SafetensorException.MisalignedSlice();
+                throw SafeTensorException.MisalignedSlice();
             }
 
             return bitCount / 8;
         }
         catch (OverflowException)
         {
-            throw SafetensorException.ValidationOverflow();
+            throw SafeTensorException.ValidationOverflow();
         }
     }
 }

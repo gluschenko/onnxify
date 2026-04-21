@@ -14,7 +14,7 @@ namespace Onnxify.Safetensors;
 /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
 /// Original Rust entity: <c>SafeTensors</c>.
 /// </remarks>
-public sealed class Safetensors
+public sealed class SafeTensors
 {
     private const int MaxHeaderSize = 100_000_000;
     private const int LengthPrefixSize = sizeof(ulong);
@@ -23,7 +23,7 @@ public sealed class Safetensors
     private readonly Metadata _metadata;
     private readonly ReadOnlyMemory<byte> _data;
 
-    private Safetensors(Metadata metadata, ReadOnlyMemory<byte> data)
+    private SafeTensors(Metadata metadata, ReadOnlyMemory<byte> data)
     {
         _metadata = metadata;
         _data = data;
@@ -51,13 +51,13 @@ public sealed class Safetensors
     {
         if (buffer.Length < LengthPrefixSize)
         {
-            throw SafetensorException.HeaderTooSmall();
+            throw SafeTensorException.HeaderTooSmall();
         }
 
         var headerLengthRaw = BinaryPrimitives.ReadUInt64LittleEndian(buffer.Span[..LengthPrefixSize]);
         if (headerLengthRaw > MaxHeaderSize)
         {
-            throw SafetensorException.HeaderTooLarge();
+            throw SafeTensorException.HeaderTooLarge();
         }
 
         int headerLength;
@@ -67,7 +67,7 @@ public sealed class Safetensors
         }
         catch (OverflowException)
         {
-            throw SafetensorException.HeaderTooLarge();
+            throw SafeTensorException.HeaderTooLarge();
         }
 
         int stop;
@@ -77,12 +77,12 @@ public sealed class Safetensors
         }
         catch (OverflowException)
         {
-            throw SafetensorException.InvalidHeaderLength();
+            throw SafeTensorException.InvalidHeaderLength();
         }
 
         if (stop > buffer.Length)
         {
-            throw SafetensorException.InvalidHeaderLength();
+            throw SafeTensorException.InvalidHeaderLength();
         }
 
         var headerBytes = buffer.Span.Slice(LengthPrefixSize, headerLength);
@@ -94,7 +94,7 @@ public sealed class Safetensors
         }
         catch (DecoderFallbackException ex)
         {
-            throw SafetensorException.InvalidHeader(ex);
+            throw SafeTensorException.InvalidHeader(ex);
         }
 
         JsonDocument document;
@@ -104,7 +104,7 @@ public sealed class Safetensors
         }
         catch (JsonException ex)
         {
-            throw SafetensorException.InvalidHeaderDeserialization(ex);
+            throw SafeTensorException.InvalidHeaderDeserialization(ex);
         }
 
         using (document)
@@ -116,21 +116,21 @@ public sealed class Safetensors
             }
             catch (JsonException ex)
             {
-                throw SafetensorException.InvalidHeaderDeserialization(ex);
+                throw SafeTensorException.InvalidHeaderDeserialization(ex);
             }
-            catch (SafetensorException)
+            catch (SafeTensorException)
             {
                 throw;
             }
             catch (Exception ex)
             {
-                throw SafetensorException.JsonError(ex);
+                throw SafeTensorException.JsonError(ex);
             }
 
             var bufferEnd = metadata.DataLength();
             if (bufferEnd + (ulong)LengthPrefixSize + (ulong)headerLength != (ulong)buffer.Length)
             {
-                throw SafetensorException.MetadataIncompleteBuffer();
+                throw SafeTensorException.MetadataIncompleteBuffer();
             }
 
             return new MetadataReadResult(headerLength, metadata);
@@ -146,11 +146,11 @@ public sealed class Safetensors
     /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
     /// Original Rust entity: <c>SafeTensors::deserialize</c>.
     /// </remarks>
-    public static Safetensors Deserialize(ReadOnlyMemory<byte> buffer)
+    public static SafeTensors Deserialize(ReadOnlyMemory<byte> buffer)
     {
         var readResult = ReadMetadata(buffer);
         var data = buffer.Slice(LengthPrefixSize + readResult.HeaderLength);
-        return new Safetensors(readResult.Metadata, data);
+        return new SafeTensors(readResult.Metadata, data);
     }
 
     /// <summary>
@@ -173,7 +173,7 @@ public sealed class Safetensors
         var prepared = Prepare(data, metadata);
         if (prepared.HeaderBytes.Length > MaxHeaderSize)
         {
-            throw SafetensorException.HeaderTooLarge();
+            throw SafeTensorException.HeaderTooLarge();
         }
 
         ulong totalTensorBytes = 0;
@@ -219,7 +219,7 @@ public sealed class Safetensors
         var prepared = Prepare(data, metadata);
         if (prepared.HeaderBytes.Length > MaxHeaderSize)
         {
-            throw SafetensorException.HeaderTooLarge();
+            throw SafeTensorException.HeaderTooLarge();
         }
 
         try
@@ -237,7 +237,7 @@ public sealed class Safetensors
         }
         catch (IOException ex)
         {
-            throw SafetensorException.IoError(ex);
+            throw SafeTensorException.IoError(ex);
         }
     }
 
@@ -292,7 +292,7 @@ public sealed class Safetensors
         var info = _metadata.Info(tensorName);
         if (info is null)
         {
-            throw SafetensorException.TensorNotFound(tensorName);
+            throw SafeTensorException.TensorNotFound(tensorName);
         }
 
         var start = CheckedInt(info.DataOffsets.Start);
@@ -586,7 +586,7 @@ public sealed class Safetensors
     {
         if (value > int.MaxValue)
         {
-            throw SafetensorException.ValidationOverflow();
+            throw SafeTensorException.ValidationOverflow();
         }
 
         return (int)value;

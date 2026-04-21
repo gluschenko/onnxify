@@ -1,4 +1,4 @@
-namespace Onnxify.Safetensors;
+﻿namespace Onnxify.Safetensors;
 
 /// <summary>
 /// Represents the byte-range decomposition for a logical tensor slice and exposes the resulting chunks as a read-only list.
@@ -92,7 +92,7 @@ public sealed class SliceIterator : IReadOnlyList<ReadOnlyMemory<byte>>
         }
         catch (OverflowException)
         {
-            throw SafetensorException.ValidationOverflow();
+            throw SafeTensorException.ValidationOverflow();
         }
 
         if (indices.Count == 0)
