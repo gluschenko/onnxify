@@ -87,6 +87,8 @@ jobs:
             project: src/Onnxify.ML.TorchSharp/Onnxify.ML.TorchSharp.csproj
           - id: Onnxify.ProjectGenerator
             project: src/Onnxify.ProjectGenerator/Onnxify.ProjectGenerator.csproj
+          - id: Onnxify.CLI
+            project: src/Onnxify.CLI/Onnxify.CLI.csproj
 
     steps:
       - name: Checkout repository
