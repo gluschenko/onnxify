@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using System.Text.Json;
 using Onnx;
 using Onnxify.Helpers;
 
@@ -51,6 +52,28 @@ public abstract class OnnxTensor : IOnnxGraphEdge
             TensorDataLocation.External => TensorProto.Types.DataLocation.External,
             _ => throw new NotImplementedException($"Not implemented for '{value}'"),
         };
+    }
+
+    public byte[] EncodeTensorRawData()
+    {
+        var proto = ToProto();
+        if (proto.StringData.Count > 0)
+        {
+            throw new NotSupportedException("String tensors are not encoded as raw binary data.");
+        }
+
+        return proto.RawData.ToByteArray();
+    }
+
+    public string EncodeStringTensorJson()
+    {
+        var proto = ToProto();
+        if (proto.StringData.Count == 0)
+        {
+            throw new NotSupportedException("Only string tensors can be encoded as JSON text.");
+        }
+
+        return JsonSerializer.Serialize(proto.StringData.Select(static x => x.ToStringUtf8()).ToArray());
     }
 }
 

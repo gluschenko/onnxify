@@ -2,7 +2,7 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
-using Onnxify.Data;
+using Onnxify;
 using Onnxify.Data.Numerics;
 
 namespace Onnxify.ProjectGenerator;
@@ -330,8 +330,8 @@ public sealed class OnnxProjectGenerator
     {
         var safeName = (string.IsNullOrWhiteSpace(tensor.Name) ? "tensor" : tensor.Name).SanitizeFileName();
         return tensor.DataType == typeof(string)
-            ? context.WriteTextAsset(safeName, "json", OnnxExternalDataProvider.Instance.EncodeStringTensorJson(tensor))
-            : context.WriteBinaryAsset(safeName, "bin", OnnxExternalDataProvider.Instance.EncodeTensorRawData(tensor));
+            ? context.WriteTextAsset(safeName, "json", tensor.EncodeStringTensorJson())
+            : context.WriteBinaryAsset(safeName, "bin", tensor.EncodeTensorRawData());
     }
 
     private static string RenderTensorValueExpression(OnnxTensor tensor, GenerationContext context)
