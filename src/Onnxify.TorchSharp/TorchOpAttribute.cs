@@ -10,5 +10,3 @@ public class TorchOpAttribute : Attribute
         Name = name;
     }
 }
-
-

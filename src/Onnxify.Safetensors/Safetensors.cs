@@ -1,4 +1,4 @@
-using System.Buffers;
+﻿using System.Buffers;
 using System.Buffers.Binary;
 using System.Text;
 using System.Text.Json;
@@ -16,7 +16,7 @@ public sealed class Safetensors
 {
     private const int MaxHeaderSize = 100_000_000;
     private const int LengthPrefixSize = sizeof(ulong);
-    private static readonly UTF8Encoding StrictUtf8 = new(false, true);
+    private static readonly UTF8Encoding _strictUtf8 = new(false, true);
 
     private readonly Metadata _metadata;
     private readonly ReadOnlyMemory<byte> _data;
@@ -88,7 +88,7 @@ public sealed class Safetensors
         string headerText;
         try
         {
-            headerText = StrictUtf8.GetString(headerBytes);
+            headerText = _strictUtf8.GetString(headerBytes);
         }
         catch (DecoderFallbackException ex)
         {
@@ -207,7 +207,8 @@ public sealed class Safetensors
     public static void SerializeToFile(
         IEnumerable<KeyValuePair<string, TensorView>> data,
         IReadOnlyDictionary<string, string>? metadata,
-        string path)
+        string path
+    )
     {
         ArgumentNullException.ThrowIfNull(data);
         ArgumentNullException.ThrowIfNull(path);
@@ -336,7 +337,8 @@ public sealed class Safetensors
     /// </remarks>
     private static PreparedSafetensorsData Prepare(
         IEnumerable<KeyValuePair<string, TensorView>> data,
-        IReadOnlyDictionary<string, string>? metadataEntries)
+        IReadOnlyDictionary<string, string>? metadataEntries
+    )
     {
         var sorted = data
             .OrderByDescending(x => x.Value.DataType)
@@ -356,7 +358,8 @@ public sealed class Safetensors
                     DataType = pair.Value.DataType,
                     Shape = pair.Value.Shape.ToArray(),
                     DataOffsets = new TensorDataOffsets(offset, checked(offset + length)),
-                }));
+                })
+            );
 
             offset = checked(offset + length);
         }

@@ -1,8 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using Onnxify.Safetensors;
 using TorchSharp;
 using static TorchSharp.torch;
@@ -14,7 +10,8 @@ public static class TorchModuleSafetensorsExtensions
     public static void SaveStateAsSafetensors(
         this TorchModule module,
         string path,
-        IReadOnlyDictionary<string, string>? metadata = null)
+        IReadOnlyDictionary<string, string>? metadata = null
+    )
     {
         ArgumentNullException.ThrowIfNull(module);
         ArgumentNullException.ThrowIfNull(path);
@@ -53,13 +50,15 @@ public static class TorchModuleSafetensorsExtensions
         global::Onnxify.Safetensors.Safetensors.SerializeToFile(
             data: state,
             metadata: mergedMetadata,
-            path: path);
+            path: path
+        );
     }
 
     public static void LoadStateFromSafetensors(
         this TorchModule module,
         string path,
-        bool strict = true)
+        bool strict = true
+    )
     {
         ArgumentNullException.ThrowIfNull(module);
         ArgumentNullException.ThrowIfNull(path);
@@ -76,7 +75,8 @@ public static class TorchModuleSafetensorsExtensions
                 if (strict)
                 {
                     throw new InvalidOperationException(
-                        $"Tensor '{name}' exists in the safetensors file but not in {module.GetType().Name}.");
+                        $"Tensor '{name}' exists in the safetensors file but not in {module.GetType().Name}."
+                    );
                 }
 
                 continue;
@@ -91,7 +91,8 @@ public static class TorchModuleSafetensorsExtensions
         if (strict && stateByName.Count > 0)
         {
             throw new InvalidOperationException(
-                $"Missing tensors in safetensors file: {string.Join(", ", stateByName.Keys.OrderBy(x => x, StringComparer.Ordinal))}");
+                $"Missing tensors in safetensors file: {string.Join(", ", stateByName.Keys.OrderBy(x => x, StringComparer.Ordinal))}"
+            );
         }
     }
 
@@ -218,7 +219,8 @@ public static class TorchModuleSafetensorsExtensions
             }
             default:
                 throw new NotSupportedException(
-                    $"Unsupported Torch tensor data type for safetensors import: {detached.dtype}.");
+                    $"Unsupported Torch tensor data type for safetensors import: {detached.dtype}."
+                );
         }
     }
 
@@ -228,7 +230,8 @@ public static class TorchModuleSafetensorsExtensions
         if (!targetShape.SequenceEqual(source.Shape))
         {
             throw new InvalidOperationException(
-                $"Shape mismatch for tensor '{name}'. Model expects [{string.Join(", ", targetShape)}] but file contains [{string.Join(", ", source.Shape)}].");
+                $"Shape mismatch for tensor '{name}'. Model expects [{string.Join(", ", targetShape)}] but file contains [{string.Join(", ", source.Shape)}]."
+            );
         }
     }
 
@@ -296,7 +299,8 @@ public static class TorchModuleSafetensorsExtensions
             ScalarType.Float64 => ToBytes(tensor.data<double>().ToArray()),
             ScalarType.ComplexFloat64 => ToComplex128Bytes(tensor),
             _ => throw new NotSupportedException(
-                $"Unsupported Torch tensor data type for safetensors export: {tensor.dtype}."),
+                $"Unsupported Torch tensor data type for safetensors export: {tensor.dtype}."
+            ),
         };
     }
 
