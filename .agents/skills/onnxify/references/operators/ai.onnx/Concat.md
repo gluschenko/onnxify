@@ -43,4 +43,5 @@ Concatenate a list of tensors into a single tensor. All input tensors must have 
 
 | Converter | Torch ops |
 | --- | --- |
+| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this GRU module, OnnxGraph graph, IOnnxGraphEdge input) -> GRUOutput` | `aten::gru.input` |
 | `Onnxify.TorchSharp.TorchModuleExtensions.Export(this LSTM module, OnnxGraph graph, IOnnxGraphEdge input) -> LSTMOutput` | `aten::lstm.input` |

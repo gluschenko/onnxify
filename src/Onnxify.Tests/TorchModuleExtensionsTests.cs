@@ -1,6 +1,7 @@
 using Onnxify.TorchSharp;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using static TorchSharp.torch;
 using TorchModule = TorchSharp.torch.nn.Module<TorchSharp.torch.Tensor, TorchSharp.torch.Tensor>;
 
 namespace Onnxify.Tests;
@@ -93,6 +94,138 @@ public sealed class TorchModuleExtensionsTests
             expectedMode: "edge",
             expectedPads: [0L, 0L, 5L, 3L, 1L, 0L, 0L, 6L, 4L, 2L]
         );
+    }
+
+    [Fact]
+    public void Export_ForBilinearUpsample_EmitsLinearResize()
+    {
+        using var module = nn.Upsample(
+            new long[] { 10L, 12L },
+            null!,
+            global::TorchSharp.torch.UpsampleMode.Bilinear,
+            false,
+            false
+        );
+        module.eval();
+
+        var graph = CreateGraph(opset: 21);
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([1L, 3L, 4L, 5L]));
+
+        var output = module.Export(graph, input);
+
+        Assert.NotNull(output);
+        var node = Assert.Single(graph.Nodes);
+        Assert.Equal("Resize", node.OpType);
+        Assert.Equal("linear", Assert.IsType<string>(node.Attributes.Single(x => x.Name == "mode").GetValue()));
+        Assert.Equal(
+            "pytorch_half_pixel",
+            Assert.IsType<string>(node.Attributes.Single(x => x.Name == "coordinate_transformation_mode").GetValue())
+        );
+        Assert.Equal(0L, Convert.ToInt64(node.Attributes.Single(x => x.Name == "antialias").GetValue()));
+    }
+
+    [Fact]
+    public void Export_ForBicubicUpsample_EmitsCubicResize()
+    {
+        using var module = nn.Upsample(
+            new long[] { 9L, 11L },
+            null!,
+            global::TorchSharp.torch.UpsampleMode.Bicubic,
+            false,
+            false
+        );
+        module.eval();
+
+        var graph = CreateGraph(opset: 21);
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([1L, 2L, 3L, 4L]));
+
+        var output = module.Export(graph, input);
+
+        Assert.NotNull(output);
+        var node = Assert.Single(graph.Nodes);
+        Assert.Equal("Resize", node.OpType);
+        Assert.Equal("cubic", Assert.IsType<string>(node.Attributes.Single(x => x.Name == "mode").GetValue()));
+        Assert.Equal(-0.75f, Convert.ToSingle(node.Attributes.Single(x => x.Name == "cubic_coeff_a").GetValue()));
+    }
+
+    [Fact]
+    public void Export_ForGru_EmitsGruNode()
+    {
+        using var module = nn.GRU(3, 5, 1, true, true, 0.0, false);
+        module.eval();
+
+        var graph = CreateGraph(opset: 21);
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 4L, 3L]));
+
+        var output = module.Export(graph, input);
+
+        Assert.NotNull(output.Y);
+        Assert.NotNull(output.YH);
+
+        var node = Assert.Single(graph.Nodes, x => x.OpType == "GRU");
+        Assert.Equal("forward", Assert.IsType<string>(node.Attributes.Single(x => x.Name == "direction").GetValue()));
+        Assert.Equal(5L, Convert.ToInt64(node.Attributes.Single(x => x.Name == "hidden_size").GetValue()));
+
+        Assert.Contains(
+            graph.Initializers.OfType<OnnxTensor<float>>(),
+            tensor => tensor.Shape.SequenceEqual([1L, 15L, 3L])
+        );
+        Assert.Contains(
+            graph.Initializers.OfType<OnnxTensor<float>>(),
+            tensor => tensor.Shape.SequenceEqual([1L, 15L, 5L])
+        );
+    }
+
+    [Fact]
+    public void Export_ForInstanceNorm2d_EmitsInstanceNormalizationNode()
+    {
+        using var module = nn.InstanceNorm2d(4, 1e-4, 0.1, false, false);
+        module.eval();
+
+        var graph = CreateGraph(opset: 21);
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 4L, 6L, 6L]));
+
+        var output = module.Export(graph, input);
+
+        Assert.NotNull(output);
+        var node = Assert.Single(graph.Nodes);
+        Assert.Equal("InstanceNormalization", node.OpType);
+        Assert.Equal(1e-04f, Convert.ToSingle(node.Attributes.Single(x => x.Name == "epsilon").GetValue()));
+
+        Assert.Collection(
+            graph.Initializers,
+            scale =>
+            {
+                var tensor = Assert.IsType<OnnxTensor<float>>(scale);
+                Assert.Equal([4L], tensor.Shape);
+                Assert.All(tensor.Value, value => Assert.Equal(1f, value));
+            },
+            bias =>
+            {
+                var tensor = Assert.IsType<OnnxTensor<float>>(bias);
+                Assert.Equal([4L], tensor.Shape);
+                Assert.All(tensor.Value, value => Assert.Equal(0f, value));
+            }
+        );
+    }
+
+    [Fact]
+    public void Export_ForUnflatten_EmitsReshapeWithInsertedDimensions()
+    {
+        using var module = nn.Unflatten(1, new long[] { 2L, 3L });
+
+        var graph = CreateGraph(opset: 21);
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([5L, 6L, 7L]));
+
+        var output = module.Export(graph, input);
+
+        Assert.NotNull(output);
+        var node = Assert.Single(graph.Nodes);
+        Assert.Equal("Reshape", node.OpType);
+
+        var shapeTensor = Assert.Single(graph.Initializers);
+        var typedTensor = Assert.IsType<OnnxTensor<long>>(shapeTensor);
+        Assert.Equal([0L, 2L, 3L, 0L], typedTensor.Value.ToArray());
     }
 
     private static void AssertPadExport(

@@ -56,5 +56,7 @@ to -1 cannot be determined uniquely.
 
 | Converter | Torch ops |
 | --- | --- |
+| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this GRU module, OnnxGraph graph, IOnnxGraphEdge input) -> GRUOutput` | `aten::gru.input` |
 | `Onnxify.TorchSharp.TorchModuleExtensions.Export(this LSTM module, OnnxGraph graph, IOnnxGraphEdge input) -> LSTMOutput` | `aten::lstm.input` |
 | `Onnxify.TorchSharp.TorchModuleExtensions.Export(this PReLU module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::prelu` |
+| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this Unflatten module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::unflatten.int` |

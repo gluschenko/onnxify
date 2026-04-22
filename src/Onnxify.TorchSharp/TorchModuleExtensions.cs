@@ -62,6 +62,10 @@ public static class TorchModuleExtensions
             TorchModules.GLU m => m.Export(graph, input),
             TorchModules.GroupNorm m => m.Export(graph, input),
             TorchModules.LayerNorm m => m.Export(graph, input),
+            TorchModules.InstanceNorm1d m => m.Export(graph, input),
+            TorchModules.InstanceNorm2d m => m.Export(graph, input),
+            TorchModules.InstanceNorm3d m => m.Export(graph, input),
+            TorchModules.Unflatten m => m.Export(graph, input),
             TorchModules.Upsample m => m.Export(graph, input),
             TorchModules.ReflectionPad3d m => m.Export(graph, input),
             TorchModules.ReplicationPad1d m => m.Export(graph, input),
@@ -427,10 +431,17 @@ public static class TorchModuleExtensions
 
     [TorchOp("aten::upsample_nearest1d")]
     [TorchOp("aten::upsample_nearest1d.vec")]
+    [TorchOp("aten::upsample_linear1d")]
     [TorchOp("aten::upsample_nearest2d")]
     [TorchOp("aten::upsample_nearest2d.vec")]
+    [TorchOp("aten::upsample_bilinear2d")]
+    [TorchOp("aten::upsample_bilinear2d.vec")]
+    [TorchOp("aten::upsample_bicubic2d")]
+    [TorchOp("aten::upsample_bicubic2d.vec")]
     [TorchOp("aten::upsample_nearest3d")]
     [TorchOp("aten::upsample_nearest3d.vec")]
+    [TorchOp("aten::upsample_trilinear3d")]
+    [TorchOp("aten::upsample_trilinear3d.vec")]
     public static IOnnxGraphEdge Export(
         this TorchModules.Upsample module,
         OnnxGraph graph,
@@ -446,12 +457,30 @@ public static class TorchModuleExtensions
             throw new NotSupportedException("Upsample export only supports inference mode.");
         }
 
-        if (module.mode != global::TorchSharp.torch.UpsampleMode.Nearest)
+        var alignCorners = GetOptionalBoolMember(
+            module,
+            defaultValue: false,
+            "align_corners",
+            "_align_corners",
+            "alignCorners"
+        );
+        var resizeMode = module.mode switch
         {
-            throw new NotSupportedException(
-                $"Upsample export currently supports only 'Nearest', got '{module.mode}'."
-            );
-        }
+            global::TorchSharp.torch.UpsampleMode.Nearest => "nearest",
+            global::TorchSharp.torch.UpsampleMode.Linear => "linear",
+            global::TorchSharp.torch.UpsampleMode.Bilinear => "linear",
+            global::TorchSharp.torch.UpsampleMode.Trilinear => "linear",
+            global::TorchSharp.torch.UpsampleMode.Bicubic => "cubic",
+            _ => throw new NotSupportedException(
+                $"Upsample export does not support mode '{module.mode}'."
+            ),
+        };
+
+        var coordinateTransformationMode = module.mode == global::TorchSharp.torch.UpsampleMode.Nearest
+            ? "asymmetric"
+            : alignCorners
+                ? "align_corners"
+                : "pytorch_half_pixel";
 
         var name = graph.NextName("resize");
         var spatialSizes = module.size.ToArray();
@@ -493,8 +522,10 @@ public static class TorchModuleExtensions
                 Sizes = sizes,
                 Scales = scales,
                 Axes = axes,
-                CoordinateTransformationMode = "asymmetric",
-                Mode = "nearest",
+                Antialias = 0L,
+                CoordinateTransformationMode = coordinateTransformationMode,
+                CubicCoeffA = -0.75f,
+                Mode = resizeMode,
                 NearestMode = "floor",
             }
         );
@@ -1428,6 +1459,351 @@ public static class TorchModuleExtensions
         );
     }
 
+    [TorchOp("aten::gru.input")]
+    public static GRUOutput Export(
+        this TorchModules.GRU module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(module);
+        ArgumentNullException.ThrowIfNull(input);
+
+        var numLayers = checked((int)GetRequiredInt64Member(module, "_num_layers"));
+        var hiddenSize = checked((int)GetRequiredInt64Member(module, "_hidden_size"));
+        var bidirectional = GetRequiredBoolMember(module, "_bidirectional");
+        var batchFirst = GetRequiredBoolMember(module, "_batch_first");
+        var dropout = GetOptionalDoubleMember(module, 0.0, "_dropout", "dropout");
+        var training = GetOptionalBoolMember(module, defaultValue: true, "training", "_training");
+
+        if (training && dropout > 0 && numLayers > 1)
+        {
+            throw new NotSupportedException(
+                "GRU export does not support training-mode dropout between recurrent layers."
+            );
+        }
+
+        var numDirections = bidirectional ? 2 : 1;
+        var direction = bidirectional ? "bidirectional" : "forward";
+        var current = input;
+
+        if (batchFirst)
+        {
+            current = graph.Transpose(
+                name: graph.NextName("transpose"),
+                options: new TransposeInputOptions
+                {
+                    Data = current,
+                    Perm = new long[] { 1, 0, 2 },
+                }
+            );
+        }
+
+        var outputH = new List<IOnnxGraphEdge>();
+
+        for (var layer = 0; layer < numLayers; layer++)
+        {
+            var name = graph.NextName("gru");
+
+            var flatW = new List<float>();
+            var flatR = new List<float>();
+            List<float>? flatB = null;
+
+            long inputSize = -1;
+            long recurrentInputSize = -1;
+
+            var hasBiases =
+                TryGetTensorParameter(module, GetBiasIhName(layer, false), out _) ||
+                TryGetTensorParameter(module, GetBiasHhName(layer, false), out _);
+
+            if (hasBiases)
+            {
+                flatB = new List<float>();
+            }
+
+            for (var dir = 0; dir < numDirections; dir++)
+            {
+                var reverse = dir == 1;
+
+                var weightIh = GetRequiredTensorParameter(module, GetWeightIhName(layer, reverse));
+                var weightHh = GetRequiredTensorParameter(module, GetWeightHhName(layer, reverse));
+
+                var weightIhShape = TorchHelper.GetShape(weightIh);
+                var weightHhShape = TorchHelper.GetShape(weightHh);
+
+                if (weightIhShape.Length != 2 || weightHhShape.Length != 2)
+                {
+                    throw new NotSupportedException(
+                        $"GRU weights must be rank-2. Got weight_ih rank={weightIhShape.Length}, weight_hh rank={weightHhShape.Length}."
+                    );
+                }
+
+                if (weightIhShape[0] != 3L * hiddenSize)
+                {
+                    throw new NotSupportedException(
+                        $"Unexpected weight_ih rows for layer {layer}, dir {dir}. Expected {3L * hiddenSize}, got {weightIhShape[0]}."
+                    );
+                }
+
+                if (weightHhShape[0] != 3L * hiddenSize)
+                {
+                    throw new NotSupportedException(
+                        $"Unexpected weight_hh rows for layer {layer}, dir {dir}. Expected {3L * hiddenSize}, got {weightHhShape[0]}."
+                    );
+                }
+
+                if (inputSize < 0)
+                {
+                    inputSize = weightIhShape[1];
+                }
+                else if (inputSize != weightIhShape[1])
+                {
+                    throw new NotSupportedException(
+                        $"All directions of the same GRU layer must have identical input_size. Layer {layer}: got {inputSize} and {weightIhShape[1]}."
+                    );
+                }
+
+                if (recurrentInputSize < 0)
+                {
+                    recurrentInputSize = weightHhShape[1];
+                }
+                else if (recurrentInputSize != weightHhShape[1])
+                {
+                    throw new NotSupportedException(
+                        $"All directions of the same GRU layer must have identical hidden/recurrent size. Layer {layer}: got {recurrentInputSize} and {weightHhShape[1]}."
+                    );
+                }
+
+                flatW.AddRange(
+                    ReorderGruGateMatrix(
+                        TorchHelper.GetFloatData(weightIh),
+                        hiddenSize,
+                        checked((int)weightIhShape[1])
+                    )
+                );
+
+                flatR.AddRange(
+                    ReorderGruGateMatrix(
+                        TorchHelper.GetFloatData(weightHh),
+                        hiddenSize,
+                        checked((int)weightHhShape[1])
+                    )
+                );
+
+                if (hasBiases)
+                {
+                    var biasIh = GetRequiredTensorParameter(module, GetBiasIhName(layer, reverse));
+                    var biasHh = GetRequiredTensorParameter(module, GetBiasHhName(layer, reverse));
+
+                    flatB!.AddRange(ReorderGruGateVector(TorchHelper.GetFloatData(biasIh), hiddenSize));
+                    flatB.AddRange(ReorderGruGateVector(TorchHelper.GetFloatData(biasHh), hiddenSize));
+                }
+            }
+
+            var w = graph.AddTensor(
+                name: $"{name}_W",
+                shape: [numDirections, 3L * hiddenSize, inputSize],
+                value: flatW.ToArray()
+            );
+
+            var r = graph.AddTensor(
+                name: $"{name}_R",
+                shape: [numDirections, 3L * hiddenSize, recurrentInputSize],
+                value: flatR.ToArray()
+            );
+
+            IOnnxGraphEdge? b = null;
+            if (hasBiases)
+            {
+                b = graph.AddTensor(
+                    name: $"{name}_B",
+                    shape: [numDirections, 6L * hiddenSize],
+                    value: flatB!.ToArray()
+                );
+            }
+
+            var gru = graph.GRU(
+                name: name,
+                options: new GRUInputOptions
+                {
+                    X = current,
+                    W = w,
+                    R = r,
+                    B = b,
+                    Direction = direction,
+                    HiddenSize = hiddenSize,
+                }
+            );
+
+            var y = gru.Y
+                ?? throw new InvalidOperationException("GRU export did not produce the Y output.");
+
+            var yh = gru.YH
+                ?? throw new InvalidOperationException("GRU export did not produce the YH output.");
+
+            outputH.Add(yh);
+
+            var yTransposed = graph.Transpose(
+                name: $"{name}_transpose",
+                options: new TransposeInputOptions
+                {
+                    Data = y,
+                    Perm = [0, 2, 1, 3],
+                }
+            );
+
+            var reshapeShape = graph.AddTensor(
+                name: $"{name}_shape",
+                shape: [3],
+                value: [0, 0, numDirections * (long)hiddenSize]
+            );
+
+            current = graph.Reshape(
+                name: $"{name}_reshape",
+                options: new ReshapeInputOptions
+                {
+                    Data = yTransposed,
+                    Shape = reshapeShape,
+                }
+            );
+        }
+
+        if (batchFirst)
+        {
+            current = graph.Transpose(
+                name: graph.NextName("transpose"),
+                options: new TransposeInputOptions
+                {
+                    Data = current,
+                    Perm = [1, 0, 2],
+                }
+            );
+        }
+
+        var finalH = outputH.Count == 1
+            ? outputH[0]
+            : graph.Concat(
+                name: graph.NextName("concat"),
+                options: new ConcatInputOptions
+                {
+                    In = outputH.ToArray(),
+                    Axis = 0,
+                }
+            );
+
+        return new GRUOutput
+        {
+            Y = current,
+            YH = finalH,
+        };
+    }
+
+    [TorchOp("aten::instance_norm")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.InstanceNorm1d module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        return ExportInstanceNorm(module, graph, input);
+    }
+
+    [TorchOp("aten::instance_norm")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.InstanceNorm2d module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        return ExportInstanceNorm(module, graph, input);
+    }
+
+    [TorchOp("aten::instance_norm")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.InstanceNorm3d module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        return ExportInstanceNorm(module, graph, input);
+    }
+
+    [TorchOp("aten::unflatten.int")]
+    public static IOnnxGraphEdge Export(
+        this TorchModules.Unflatten module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        ArgumentNullException.ThrowIfNull(module);
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+
+        var inputRank = TryGetTensorRank(input)
+            ?? throw new NotSupportedException("Unflatten export requires a statically known input rank.");
+
+        var dim = checked((int)GetRequiredInt64Member(module, "dim", "_dim"));
+        if (dim < 0)
+        {
+            dim += inputRank;
+        }
+
+        if (dim < 0 || dim >= inputRank)
+        {
+            throw new NotSupportedException(
+                $"Unflatten export requires dim to be within [-{inputRank}, {inputRank - 1}], got {dim}."
+            );
+        }
+
+        var sizes = GetRequiredInt64ArrayMember(
+            module,
+            "sizes",
+            "_sizes",
+            "unflattened_size",
+            "_unflattened_size"
+        );
+
+        if (sizes.Length == 0)
+        {
+            throw new NotSupportedException("Unflatten export requires at least one target dimension.");
+        }
+
+        if (sizes.Any(static x => x == 0))
+        {
+            throw new NotSupportedException("Unflatten export does not support target sizes that contain 0.");
+        }
+
+        var name = graph.NextName("unflatten");
+        var outputShape = new List<long>(inputRank - 1 + sizes.Length);
+        for (var axis = 0; axis < inputRank; axis++)
+        {
+            if (axis == dim)
+            {
+                outputShape.AddRange(sizes);
+            }
+            else
+            {
+                outputShape.Add(0);
+            }
+        }
+
+        var shape = graph.AddTensor(
+            name: $"{name}_shape",
+            shape: [outputShape.Count],
+            value: outputShape.ToArray()
+        );
+
+        return graph.Reshape(
+            name: name,
+            options: new ReshapeInputOptions
+            {
+                Data = input,
+                Shape = shape,
+            }
+        );
+    }
+
     [TorchOp("aten::lstm.input")]
     public static LSTMOutput Export(
         this TorchModules.LSTM module,
@@ -1704,6 +2080,16 @@ public static class TorchModuleExtensions
     private static string GetBiasHhName(int layer, bool reverse)
         => reverse ? $"bias_hh_l{layer}_reverse" : $"bias_hh_l{layer}";
 
+    private static Tensor GetRequiredTensorParameter(TorchModules.GRU module, string name)
+    {
+        if (TryGetTensorParameter(module, name, out var tensor))
+        {
+            return tensor;
+        }
+
+        throw new NotSupportedException($"GRU parameter '{name}' was not found.");
+    }
+
     private static Tensor GetRequiredTensorParameter(TorchModules.LSTM module, string name)
     {
         if (TryGetTensorParameter(module, name, out var tensor))
@@ -1714,9 +2100,25 @@ public static class TorchModuleExtensions
         throw new NotSupportedException($"LSTM parameter '{name}' was not found.");
     }
 
+    private static bool TryGetTensorParameter(TorchModules.GRU module, string name, out Tensor tensor)
+    {
+        foreach (var (entryName, entryTensor) in module.state_dict())
+        {
+            if (string.Equals(entryName, name, StringComparison.Ordinal)
+                && entryTensor is not null
+                && !entryTensor.IsInvalid)
+            {
+                tensor = entryTensor;
+                return true;
+            }
+        }
+
+        tensor = null!;
+        return false;
+    }
+
     private static bool TryGetTensorParameter(TorchModules.LSTM module, string name, out Tensor tensor)
     {
-        // TorchSharp state_dict() already provides the named parameter tensors we need here.
         foreach (var (entryName, entryTensor) in module.state_dict())
         {
             if (string.Equals(entryName, name, StringComparison.Ordinal)
@@ -1755,6 +2157,24 @@ public static class TorchModuleExtensions
         }
 
         throw new NotSupportedException($"Required member '{name}' was not found on '{instance.GetType().FullName}'.");
+    }
+
+    private static bool GetOptionalBoolMember(object instance, bool defaultValue, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (TryGetMemberValue(instance, name, out var value))
+            {
+                if (value is null)
+                {
+                    return defaultValue;
+                }
+
+                return Convert.ToBoolean(value);
+            }
+        }
+
+        return defaultValue;
     }
 
     private static long GetRequiredInt64Member(object instance, params string[] names)
@@ -2017,6 +2437,136 @@ public static class TorchModuleExtensions
     private static long[] ResolvePoolStrides(long[] strides, long[] kernelShape)
     {
         return strides.Length == 0 ? kernelShape : strides;
+    }
+
+    private static IOnnxGraphEdge ExportInstanceNorm(
+        object module,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        ArgumentNullException.ThrowIfNull(module);
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+
+        var name = graph.NextName("instance_norm");
+        var epsilon = (float)GetOptionalDoubleMember(module, 1e-5, "eps", "_eps");
+
+        TryGetTensorMember(module, out var weightTensor, "weight", "_weight");
+        TryGetTensorMember(module, out var biasTensor, "bias", "_bias");
+        TryGetTensorMember(module, out var runningMean, "running_mean", "_running_mean");
+        TryGetTensorMember(module, out var runningVar, "running_var", "_running_var");
+
+        var trackRunningStats = GetOptionalBoolMember(
+            module,
+            defaultValue: false,
+            "track_running_stats",
+            "_track_running_stats"
+        );
+        var training = GetOptionalBoolMember(module, defaultValue: true, "training", "_training");
+
+        if (!training &&
+            trackRunningStats &&
+            IsUsableTensor(runningMean) &&
+            IsUsableTensor(runningVar))
+        {
+            throw new NotSupportedException(
+                "InstanceNorm export currently supports the input-statistics path only; eval-mode running statistics are not exported yet."
+            );
+        }
+
+        var channelCount = IsUsableTensor(weightTensor)
+            ? TorchHelper.GetShape(weightTensor!)[0]
+            : IsUsableTensor(biasTensor)
+                ? TorchHelper.GetShape(biasTensor!)[0]
+                : GetRequiredChannelCount(input);
+
+        var scale = IsUsableTensor(weightTensor)
+            ? graph.AddTensor(
+                name: $"{name}_scale",
+                shape: TorchHelper.GetShape(weightTensor!),
+                value: TorchHelper.GetFloatData(weightTensor!)
+            )
+            : graph.AddTensor(
+                name: $"{name}_scale",
+                shape: [channelCount],
+                value: CreateFilledFloatArray([channelCount], 1f)
+            );
+
+        var bias = IsUsableTensor(biasTensor)
+            ? graph.AddTensor(
+                name: $"{name}_bias",
+                shape: TorchHelper.GetShape(biasTensor!),
+                value: TorchHelper.GetFloatData(biasTensor!)
+            )
+            : graph.AddTensor(
+                name: $"{name}_bias",
+                shape: [channelCount],
+                value: CreateFilledFloatArray([channelCount], 0f)
+            );
+
+        return graph.InstanceNormalization(
+            name: name,
+            options: new InstanceNormalizationInputOptions
+            {
+                Input = input,
+                Scale = scale,
+                B = bias,
+                Epsilon = epsilon,
+            }
+        );
+    }
+
+    private static bool IsUsableTensor(Tensor? tensor)
+    {
+        return tensor is not null && !tensor.IsInvalid;
+    }
+
+    // PyTorch GRU gate order: [r, z, n]
+    // ONNX GRU gate order:    [z, r, h]
+    private static float[] ReorderGruGateMatrix(float[] source, int hiddenSize, int width)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        var expectedLength = 3 * hiddenSize * width;
+        if (source.Length != expectedLength)
+        {
+            throw new ArgumentException(
+                $"Unexpected matrix length. Expected {expectedLength}, got {source.Length}.",
+                nameof(source)
+            );
+        }
+
+        var result = new float[source.Length];
+        var gateBlockLength = hiddenSize * width;
+
+        CopyGateBlock(source, result, sourceGate: 1, targetGate: 0, gateBlockLength); // z -> z
+        CopyGateBlock(source, result, sourceGate: 0, targetGate: 1, gateBlockLength); // r -> r
+        CopyGateBlock(source, result, sourceGate: 2, targetGate: 2, gateBlockLength); // n -> h
+
+        return result;
+    }
+
+    private static float[] ReorderGruGateVector(float[] source, int hiddenSize)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        var expectedLength = 3 * hiddenSize;
+        if (source.Length != expectedLength)
+        {
+            throw new ArgumentException(
+                $"Unexpected vector length. Expected {expectedLength}, got {source.Length}.",
+                nameof(source)
+            );
+        }
+
+        var result = new float[source.Length];
+
+        CopyGateBlock(source, result, sourceGate: 1, targetGate: 0, hiddenSize); // z -> z
+        CopyGateBlock(source, result, sourceGate: 0, targetGate: 1, hiddenSize); // r -> r
+        CopyGateBlock(source, result, sourceGate: 2, targetGate: 2, hiddenSize); // n -> h
+
+        return result;
     }
 
     private static int? TryGetTensorRank(IOnnxGraphEdge edge)

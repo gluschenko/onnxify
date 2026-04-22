@@ -52,4 +52,5 @@ where `n` is the rank of the input tensor.
 
 | Converter | Torch ops |
 | --- | --- |
+| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this GRU module, OnnxGraph graph, IOnnxGraphEdge input) -> GRUOutput` | `aten::gru.input` |
 | `Onnxify.TorchSharp.TorchModuleExtensions.Export(this LSTM module, OnnxGraph graph, IOnnxGraphEdge input) -> LSTMOutput` | `aten::lstm.input` |

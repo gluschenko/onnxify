@@ -59,4 +59,4 @@ if input \"sizes\" is not specified.
 
 | Converter | Torch ops |
 | --- | --- |
-| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this Upsample module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::upsample_nearest1d`, `aten::upsample_nearest1d.vec`, `aten::upsample_nearest2d`, `aten::upsample_nearest2d.vec`, `aten::upsample_nearest3d`, `aten::upsample_nearest3d.vec` |
+| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this Upsample module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::upsample_bicubic2d`, `aten::upsample_bicubic2d.vec`, `aten::upsample_bilinear2d`, `aten::upsample_bilinear2d.vec`, `aten::upsample_linear1d`, `aten::upsample_nearest1d`, `aten::upsample_nearest1d.vec`, `aten::upsample_nearest2d`, `aten::upsample_nearest2d.vec`, `aten::upsample_nearest3d`, `aten::upsample_nearest3d.vec`, `aten::upsample_trilinear3d`, `aten::upsample_trilinear3d.vec` |
