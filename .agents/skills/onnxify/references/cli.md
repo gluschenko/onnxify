@@ -17,6 +17,20 @@ Use it when you need to:
 dotnet run --project src/Onnxify.CLI -- <command>
 ```
 
+## Global Tool Installation
+
+If `Onnxify.CLI` is published as a .NET tool package, install it globally with:
+
+```powershell
+dotnet tool install Onnxify.CLI --global
+```
+
+After that, you can run commands directly as:
+
+```powershell
+onnxify <command>
+```
+
 For help:
 
 ```powershell
@@ -24,6 +38,15 @@ dotnet run --project src/Onnxify.CLI -- --help
 dotnet run --project src/Onnxify.CLI -- onnx --help
 dotnet run --project src/Onnxify.CLI -- safetensors --help
 dotnet run --project src/Onnxify.CLI -- project --help
+```
+
+If you installed the global tool, the equivalent help commands are:
+
+```powershell
+onnxify --help
+onnxify onnx --help
+onnxify safetensors --help
+onnxify project --help
 ```
 
 ## ONNX Inspection
