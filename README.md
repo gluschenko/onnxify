@@ -56,7 +56,7 @@ Optional:
 Clone the repository and build the solution:
 
 ```powershell
-git clone --recurse-submodules https://github.com/your-org/onnxify.git
+git clone --recurse-submodules https://github.com/gluschenko/onnxify.git
 cd onnxify
 dotnet build src\Onnxify.slnx
 ```
