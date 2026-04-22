@@ -31,6 +31,28 @@ After that, you can run commands directly as:
 onnxify <command>
 ```
 
+To see whether the tool is already installed and which version you currently have:
+
+```powershell
+dotnet tool list --global
+```
+
+Look for `Onnxify.CLI` in the output.
+
+To update an installed tool to the newest available version:
+
+```powershell
+dotnet tool update Onnxify.CLI --global
+```
+
+This is the main command to use when you want to check for a newer published version and install it if your current one is outdated.
+
+If the tool is not installed yet, `dotnet tool update` will fail, and you should run:
+
+```powershell
+dotnet tool install Onnxify.CLI --global
+```
+
 For help:
 
 ```powershell

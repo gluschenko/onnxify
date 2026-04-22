@@ -1,4 +1,5 @@
-﻿using Onnxify.ProjectGenerator;
+using System.Reflection;
+using Onnxify.ProjectGenerator;
 
 namespace Onnxify.CLI;
 
@@ -26,6 +27,12 @@ public static class App
             if (IsHelp(args[0]))
             {
                 WriteHelp(standardOutput);
+                return 0;
+            }
+
+            if (IsVersion(args[0]))
+            {
+                standardOutput.WriteLine(GetToolVersion());
                 return 0;
             }
 
@@ -266,6 +273,29 @@ public static class App
             || value.Equals("help", StringComparison.OrdinalIgnoreCase);
     }
 
+    private static bool IsVersion(string value)
+    {
+        return value.Equals("--version", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetToolVersion()
+    {
+        var assembly = typeof(App).Assembly;
+        var informationalVersion = assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion;
+
+        if (!string.IsNullOrWhiteSpace(informationalVersion))
+        {
+            var plusIndex = informationalVersion.IndexOf('+');
+            return plusIndex >= 0
+                ? informationalVersion[..plusIndex]
+                : informationalVersion;
+        }
+
+        return assembly.GetName().Version?.ToString() ?? "unknown";
+    }
+
     private static int Fail(TextWriter standardError, string message, Action<TextWriter> writeHelp)
     {
         standardError.WriteLine(message);
@@ -281,6 +311,7 @@ public static class App
             Onnxify CLI
 
             Usage:
+              onnxify --version
               onnxify onnx show <model.onnx>
               onnxify onnx io <model.onnx>
               onnxify safetensors show <model.safetensors>
