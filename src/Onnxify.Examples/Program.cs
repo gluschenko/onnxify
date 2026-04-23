@@ -37,8 +37,11 @@ internal class Program
         var selectedItem = SelectExample(_samples, args);
         await selectedItem.RunAsync();
 
-        Console.WriteLine("Press any key to pay respect...");
-        Console.ReadKey();
+        if (args.Length == 0)
+        {
+            Console.WriteLine("Press any key to pay respect...");
+            Console.ReadKey();
+        }
     }
 
     static Sample SelectExample(
@@ -255,47 +258,74 @@ internal class MiniGpt2LikeSample : Sample
 
 internal class LSTMSample : Sample
 {
+    private const string DatasetPath = @"D:\Backups\ML\language-detector\dataset\export_tatoeba_250ch_2M_top20";
+
     public override string Name => "lstm";
-    public override string Description => "Language LSTM export";
+    public override string Description => "Language LSTM training and export";
 
     public override async Task RunAsync()
     {
+        torch.random.manual_seed(1234);
+
         var outputDirectory = Utils.EnsureAssetsDirectory();
+        var device = cuda.is_available() ? CUDA : CPU;
+        var outputPath = Path.Combine(outputDirectory, "lang-lstm.onnx");
+        var weightOutputPath = Path.Combine(outputDirectory, "lang-lstm.safetensors");
+        var torchModelPath = Path.Combine(outputDirectory, "lang-lstm.pt");
 
-        var charToIdx = new Dictionary<string, int>
-        {
-            { "PAD", 0 },
-            { "a", 1 },
-            { "b", 2 },
-        };
+        var pipeline = new LanguageLstmTrainingPipeline(
+            DatasetPath,
+            maxSequenceLength: 128,
+            trainSamplesPerLanguage: 100000,
+            validationSamplesPerLanguage: 64
+        );
 
-        var langToIdx = new Dictionary<string, int>
-        {
-            { "en", 0 },
-            { "fr", 1 },
-        };
-
-        var embeddingDim = 128;
-        var hiddenDim = 256;
+        var embeddingDim = 64;
+        var hiddenDim = 128;
         var layers = 2;
 
-        var model = new LSTMLIDModel(charToIdx, langToIdx, langToIdx.Count, embeddingDim, hiddenDim, layers);
+        var training = await pipeline.TrainAsync(
+            embeddingDim,
+            hiddenDim,
+            layers,
+            epochs: 15,
+            batchSize: 512,
+            learningRate: 3e-3f,
+            device: device
+        );
 
-        var sentences = torch.randint(0, charToIdx.Count, new long[] { 1, 10 }, device: torch.CPU);
-        var output = model.forward(sentences);
-        Console.WriteLine(output);
+        var model = training.Model;
+        model.SaveModel(torchModelPath);
+        model.SaveStateAsSafetensors(weightOutputPath);
 
-        model.eval();
-        model.SaveModel("LSTMLIDModel.pt");
-
-        var outputPath = Path.Combine(outputDirectory, "lang-lstm.onnx");
         var onnxModel = model.Export();
-        Console.WriteLine(onnxModel.ToString());
-
         onnxModel.Save(outputPath, true);
 
-        var weightOutputPath = Path.Combine(outputDirectory, "lang-lstm.safetensors");
-        model.SaveStateAsSafetensors(weightOutputPath);
+        using var smokeBatch = training.ValidationDataset.FirstBatch(batchSize: 3).GetInputTensor(device);
+        using var torchOutput = model.forward(smokeBatch).cpu();
+        using var session = new InferenceSession(outputPath);
+        var onnxOutput = Utils.RunOnnxInt64(session, smokeBatch.cpu());
+        var languageNames = pipeline.LangToIdx.OrderBy(x => x.Value).Select(x => x.Key).ToArray();
+        var languagePreview = string.Join(", ", languageNames.Take(24));
+        if (languageNames.Length > 24)
+        {
+            languagePreview += $", ... +{languageNames.Length - 24}";
+        }
+
+        Console.WriteLine("Language LSTM training and export");
+        Console.WriteLine($"Dataset: {pipeline.DatasetPath}");
+        Console.WriteLine($"Device: {device.type}");
+        Console.WriteLine($"Corpus samples: {pipeline.TotalCorpusSamples}");
+        Console.WriteLine($"Training samples: {training.TrainDataset.Count}");
+        Console.WriteLine($"Validation samples: {training.ValidationDataset.Count}");
+        Console.WriteLine($"Vocabulary size: {pipeline.CharToIdx.Count}");
+        Console.WriteLine($"Languages: {languageNames.Length} ({languagePreview})");
+        Console.WriteLine($"Final validation loss: {training.FinalEvaluation.Loss:0.000000}");
+        Console.WriteLine($"Final validation accuracy: {training.FinalEvaluation.Accuracy:0.000000}");
+        Console.WriteLine($"Saved Torch model: {torchModelPath}");
+        Console.WriteLine($"Saved weights: {weightOutputPath}");
+        Console.WriteLine($"Saved ONNX model: {outputPath}");
+        Console.WriteLine($"Max abs diff Torch vs ONNX: {Utils.ComputeMaxAbsDiff(torchOutput, onnxOutput):G9}");
 
         await Task.CompletedTask;
     }
