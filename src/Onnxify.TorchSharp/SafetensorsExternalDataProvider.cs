@@ -6,12 +6,28 @@ using SafeTensorsArchive = Onnxify.Safetensors.SafeTensors;
 
 namespace Onnxify.TorchSharp;
 
+/// <summary>
+/// Reads and writes single-tensor safetensors files for ONNX external-data integration.
+/// </summary>
+/// <remarks>
+/// Use this provider when an <see cref="OnnxTensor"/> payload should live in a safetensors file instead of a raw binary sidecar. Each file is expected to contain exactly one tensor when reading through ONNX external-data hooks.
+/// </remarks>
 public sealed class SafetensorsExternalDataProvider : ExternalDataProvider
 {
     private const string DefaultTensorName = "tensor";
 
+    /// <summary>
+    /// Gets the default singleton provider for safetensors-backed external tensor data.
+    /// </summary>
     public static readonly SafetensorsExternalDataProvider Instance = new();
 
+    /// <summary>
+    /// Writes an Onnxify tensor as a single-tensor safetensors archive.
+    /// </summary>
+    /// <param name="tensor">Tensor whose raw payload, shape, and element type should be stored.</param>
+    /// <param name="location">Destination safetensors path.</param>
+    /// <param name="metadata">Optional archive metadata to include alongside the tensor.</param>
+    /// <exception cref="NotSupportedException">Thrown when the tensor element type cannot be represented by safetensors.</exception>
     public void WriteTensor(
         OnnxTensor tensor,
         string location,
@@ -40,6 +56,14 @@ public sealed class SafetensorsExternalDataProvider : ExternalDataProvider
         );
     }
 
+    /// <summary>
+    /// Reads the single tensor in a safetensors file as a typed array.
+    /// </summary>
+    /// <typeparam name="T">Expected tensor element type.</typeparam>
+    /// <param name="location">Safetensors file path.</param>
+    /// <param name="expectedElementCount">Expected number of decoded elements, or <see langword="null"/> to return the full payload.</param>
+    /// <returns>The decoded tensor values.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the file contains a different element count or data type.</exception>
     public T[] ReadTensorArray<T>(string location, long? expectedElementCount = null)
         where T : struct
     {
@@ -58,11 +82,26 @@ public sealed class SafetensorsExternalDataProvider : ExternalDataProvider
         return values.AsSpan(0, checked((int)count)).ToArray();
     }
 
+    /// <summary>
+    /// Always throws because safetensors has no string tensor data type.
+    /// </summary>
+    /// <param name="location">Ignored safetensors path.</param>
+    /// <returns>This method does not return.</returns>
+    /// <exception cref="NotSupportedException">Always thrown.</exception>
     public string[] ReadStringArray(string location)
     {
         throw new NotSupportedException("Safetensors does not support string tensors.");
     }
 
+    /// <summary>
+    /// Reads a byte slice from the single tensor in a safetensors file and decodes it as an ONNX tensor payload.
+    /// </summary>
+    /// <param name="location">Safetensors file path.</param>
+    /// <param name="offset">Byte offset within the tensor payload.</param>
+    /// <param name="length">Number of bytes to read, or a negative value to read to the end of the payload.</param>
+    /// <param name="type">Expected CLR tensor element type.</param>
+    /// <returns>An array whose element type matches <paramref name="type"/>.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the archive does not contain exactly one tensor, the type differs, or the requested slice is out of range.</exception>
     public override object ReadTensorValue(
         string location,
         long offset,

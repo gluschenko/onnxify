@@ -1,5 +1,8 @@
 ﻿namespace Onnxify.Helpers;
 
+/// <summary>
+/// Contains bit-level floating-point helpers used by ONNX low-precision numeric encoders.
+/// </summary>
 public static class MathHelper
 {
     /// <summary>

@@ -1,28 +1,57 @@
-﻿using Onnxify.Helpers;
+using Onnxify.Helpers;
 
 namespace Onnxify.Data.Numerics;
 
+/// <summary>
+/// Represents the ONNX 8-bit <c>float8e5m2fnuz</c> tensor element format.
+/// </summary>
+/// <remarks>
+/// FNUZ semantics remove negative zero and use a finite-only range with a canonical NaN encoding. The wrapper exposes the encoded byte so decoded tensors can be round-tripped or inspected without widening every value.
+/// </remarks>
 public readonly struct Float8E5M2FNUZ
 {
+    /// <summary>
+    /// Gets the encoded 8-bit float payload.
+    /// </summary>
     public byte Value { get; }
 
+    /// <summary>
+    /// Creates a value from an already encoded ONNX byte.
+    /// </summary>
+    /// <param name="value">Encoded e5m2fnuz payload.</param>
     public Float8E5M2FNUZ(byte value)
     {
         Value = value;
     }
 
+    /// <summary>
+    /// Quantizes a single-precision value to e5m2fnuz.
+    /// </summary>
+    /// <param name="value">Value to encode.</param>
     public Float8E5M2FNUZ(float value)
     {
         Value = Encode(value);
     }
 
+    /// <summary>
+    /// Expands the encoded e5m2fnuz value to a single-precision approximation.
+    /// </summary>
+    /// <returns>The decoded <see cref="float"/> value.</returns>
     public float ToSingle()
     {
         return Decode(Value);
     }
 
+    /// <summary>
+    /// Extracts the encoded byte payload.
+    /// </summary>
+    /// <param name="value">Encoded float8 wrapper.</param>
     public static implicit operator byte(Float8E5M2FNUZ value) => value.Value;
 
+    /// <summary>
+    /// Wraps an already encoded e5m2fnuz byte.
+    /// </summary>
+    /// <param name="value">Encoded byte payload.</param>
     public static implicit operator Float8E5M2FNUZ(byte value) => new(value);
 
     private static byte Encode(float value)
@@ -30,7 +59,6 @@ public readonly struct Float8E5M2FNUZ
         if (float.IsNaN(value))
             return 0x80; // canonical NaN
 
-        // FNUZ: no negative zero
         if (value == 0f)
             return 0x00;
 
@@ -38,26 +66,20 @@ public readonly struct Float8E5M2FNUZ
         float abs = MathF.Abs(value);
 
         float mantissa = MathHelper.Frexp(abs, out int exponent);
-        // frexp: abs = mantissa * 2^exponent, 0.5 <= mantissa < 1
 
-        // Переводим к виду 1.x * 2^e
         exponent -= 1;
 
-        // Для FNUZ bias = 16
         int encodedExponent = exponent + 16;
 
-        // Subnormal / underflow
         if (encodedExponent <= 0)
             return 0x00;
 
-        // FNUZ: no infinity, overflow -> max finite
         if (encodedExponent >= 0x1F)
             return (byte)((negative ? 0x80 : 0x00) | 0x7F);
 
-        float fractional = mantissa * 2f - 1f;   // [0, 1)
+        float fractional = mantissa * 2f - 1f;
         int encodedMantissa = (int)MathF.Round(fractional * 4f, MidpointRounding.ToEven);
 
-        // округление могло переполнить мантиссу
         if (encodedMantissa == 4)
         {
             encodedMantissa = 0;
@@ -75,7 +97,6 @@ public readonly struct Float8E5M2FNUZ
 
     private static float Decode(byte value)
     {
-        // FNUZ: 0x80 обычно трактуется как NaN
         if (value == 0x80)
             return float.NaN;
 
@@ -84,9 +105,8 @@ public readonly struct Float8E5M2FNUZ
         int mantissaBits = value & 0x03;
 
         if (exponentBits == 0 && mantissaBits == 0)
-            return 0f; // no negative zero in FNUZ
+            return 0f;
 
-        // Для FNUZ bias = 16
         int exponent = exponentBits - 16;
         float significand = 1f + mantissaBits / 4f;
 
@@ -94,9 +114,12 @@ public readonly struct Float8E5M2FNUZ
         return negative ? -result : result;
     }
 
+    /// <summary>
+    /// Returns the decoded value using the current culture's numeric formatting.
+    /// </summary>
+    /// <returns>A diagnostic string for the decoded value.</returns>
     public override string ToString()
     {
         return ToSingle().ToString();
     }
 }
-

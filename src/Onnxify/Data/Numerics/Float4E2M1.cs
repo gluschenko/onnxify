@@ -1,16 +1,33 @@
-﻿using Onnxify.Helpers;
+using Onnxify.Helpers;
 
 namespace Onnxify.Data.Numerics;
 
+/// <summary>
+/// Represents the ONNX 4-bit <c>float4e2m1</c> tensor element format.
+/// </summary>
+/// <remarks>
+/// Values are stored in the low four bits of <see cref="Value"/>. ONNX raw tensor data packs two elements per byte; Onnxify unpacks them into one wrapper value per tensor element.
+/// </remarks>
 public readonly struct Float4E2M1
 {
+    /// <summary>
+    /// Gets the encoded 4-bit payload in the low nibble.
+    /// </summary>
     public byte Value { get; }
 
+    /// <summary>
+    /// Quantizes a single-precision value to the e2m1 format.
+    /// </summary>
+    /// <param name="value">Value to encode.</param>
     public Float4E2M1(float value)
     {
         Value = Encode(value);
     }
 
+    /// <summary>
+    /// Expands the encoded e2m1 value to a single-precision approximation.
+    /// </summary>
+    /// <returns>The decoded <see cref="float"/> value.</returns>
     public float ToSingle() => Decode(Value);
 
     private static byte Encode(float f)
@@ -29,7 +46,7 @@ public readonly struct Float4E2M1
         if (e <= 0) return (byte)(sign << 3);
         if (e >= 3) return (byte)((sign << 3) | (0x3 << 1));
 
-        int m = (int)((mant * 2 - 1) * 2); // 1 бит
+        int m = (int)((mant * 2 - 1) * 2); // 1 bit
 
         return (byte)((sign << 3) | (e << 1) | (m & 0x1));
     }
@@ -49,4 +66,3 @@ public readonly struct Float4E2M1
         return sign == 1 ? -result : result;
     }
 }
-

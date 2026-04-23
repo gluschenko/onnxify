@@ -5,8 +5,22 @@ using static TorchSharp.torch;
 
 namespace Onnxify.TorchSharp;
 
+/// <summary>
+/// Provides safetensors save/load helpers for TorchSharp module state dictionaries.
+/// </summary>
+/// <remarks>
+/// These helpers are intended for model weights and buffers exposed by <c>state_dict()</c>. They copy tensors through CPU contiguous buffers so the resulting files are independent of the device that owns the live TorchSharp module.
+/// </remarks>
 public static class TorchModuleSafetensorsExtensions
 {
+    /// <summary>
+    /// Saves all serializable tensors from a TorchSharp module state dictionary to a safetensors file.
+    /// </summary>
+    /// <param name="module">Module whose <c>state_dict()</c> should be exported.</param>
+    /// <param name="path">Destination safetensors path.</param>
+    /// <param name="metadata">Optional metadata entries to merge with the default format and module metadata.</param>
+    /// <exception cref="InvalidOperationException">Thrown when the module exposes no serializable state tensors.</exception>
+    /// <exception cref="NotSupportedException">Thrown when a state tensor uses a Torch dtype that cannot be represented by the current safetensors mapping.</exception>
     public static void SaveStateAsSafetensors(
         this TorchModule module,
         string path,
@@ -54,6 +68,14 @@ public static class TorchModuleSafetensorsExtensions
         );
     }
 
+    /// <summary>
+    /// Loads tensors from a safetensors file into matching entries of a TorchSharp module state dictionary.
+    /// </summary>
+    /// <param name="module">Module whose existing state tensors should receive the loaded values.</param>
+    /// <param name="path">Source safetensors path.</param>
+    /// <param name="strict">When <see langword="true"/>, fail on extra file tensors or missing module tensors.</param>
+    /// <exception cref="InvalidOperationException">Thrown when strict matching fails or a tensor shape or dtype does not match the target state tensor.</exception>
+    /// <exception cref="NotSupportedException">Thrown when a target tensor dtype cannot be loaded by the current mapping.</exception>
     public static void LoadStateFromSafetensors(
         this TorchModule module,
         string path,

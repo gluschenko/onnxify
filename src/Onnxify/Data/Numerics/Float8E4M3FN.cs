@@ -1,16 +1,33 @@
-﻿using Onnxify.Helpers;
+using Onnxify.Helpers;
 
 namespace Onnxify.Data.Numerics;
 
+/// <summary>
+/// Represents the ONNX 8-bit <c>float8e4m3fn</c> tensor element format.
+/// </summary>
+/// <remarks>
+/// This format trades range and precision for compact storage and uses finite-number semantics for overflow. Use it when preserving or authoring ONNX tensors that explicitly use this element type rather than as a general-purpose arithmetic type.
+/// </remarks>
 public readonly struct Float8E4M3FN
 {
+    /// <summary>
+    /// Gets the encoded 8-bit float payload.
+    /// </summary>
     public byte Value { get; }
 
+    /// <summary>
+    /// Quantizes a single-precision value to e4m3fn.
+    /// </summary>
+    /// <param name="value">Value to encode.</param>
     public Float8E4M3FN(float value)
     {
         Value = Encode(value);
     }
 
+    /// <summary>
+    /// Expands the encoded e4m3fn value to a single-precision approximation.
+    /// </summary>
+    /// <returns>The decoded <see cref="float"/> value.</returns>
     public float ToSingle() => Decode(Value);
 
     private static byte Encode(float f)
@@ -23,15 +40,15 @@ public readonly struct Float8E4M3FN
         if (f == 0) return (byte)(sign << 7);
 
         int exp;
-        float mant = MathHelper.Frexp(f, out exp); // mant ∈ [0.5,1)
+        float mant = MathHelper.Frexp(f, out exp);
 
-        exp -= 1; // нормализация
+        exp -= 1;
         int e = exp + 7; // bias=7
 
-        if (e <= 0) return (byte)(sign << 7); // underflow
-        if (e >= 15) return (byte)((sign << 7) | (0xF << 3)); // saturate
+        if (e <= 0) return (byte)(sign << 7);
+        if (e >= 15) return (byte)((sign << 7) | (0xF << 3));
 
-        int m = (int)((mant * 2 - 1) * 8); // 3 бита
+        int m = (int)((mant * 2 - 1) * 8); // 3 bits
 
         return (byte)((sign << 7) | (e << 3) | (m & 0x7));
     }
@@ -52,4 +69,3 @@ public readonly struct Float8E4M3FN
         return sign == 1 ? -result : result;
     }
 }
-

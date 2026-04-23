@@ -4,8 +4,25 @@ using static TorchSharp.torch;
 
 namespace Onnxify.TorchSharp;
 
+/// <summary>
+/// Converts supported TorchSharp modules into explicit Onnxify graph fragments.
+/// </summary>
+/// <remarks>
+/// The exporters synthesize inference-oriented ONNX structure rather than tracing Torch execution. Weights and constants are materialized as graph initializers, generated node names are allocated through <see cref="OnnxGraph.NextName"/>, and unsupported TorchSharp semantics fail explicitly instead of emitting a lossy graph.
+/// </remarks>
 public static class TorchModuleExtensions
 {
+    /// <summary>
+    /// Exports a supported TorchSharp module by dispatching to the matching concrete exporter.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// Dispatches to the concrete module exporter and throws when the module type is not part of the supported inference export surface.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     public static IOnnxGraphEdge Export(
         this TorchModule module,
         OnnxGraph graph,
@@ -75,6 +92,17 @@ public static class TorchModuleExtensions
         };
     }
 
+    /// <summary>
+    /// Exports a TorchSharp sequential container as a chain of ONNX graph fragments.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// Child modules are exported in registration order as a single feed-forward chain, so this helper is appropriate for sequential containers without branching.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     public static IOnnxGraphEdge Export(
         this TorchModules.Sequential module,
         OnnxGraph graph,
@@ -97,6 +125,17 @@ public static class TorchModuleExtensions
         return current;
     }
 
+    /// <summary>
+    /// Exports a TorchSharp Conv1d module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// Weights and optional bias are copied into ONNX initializers, and TorchSharp padding is expanded to the ONNX begin/end pad order for the module spatial rank.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::conv1d")]
     public static IOnnxGraphEdge Export(
         this TorchModules.Conv1d module,
@@ -146,6 +185,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp Conv2d module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// Weights and optional bias are copied into ONNX initializers, and TorchSharp padding is expanded to the ONNX begin/end pad order for the module spatial rank.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::conv2d")]
     public static IOnnxGraphEdge Export(
         this TorchModules.Conv2d module,
@@ -195,6 +245,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp Conv3d module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// Weights and optional bias are copied into ONNX initializers, and TorchSharp padding is expanded to the ONNX begin/end pad order for the module spatial rank.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::conv3d")]
     public static IOnnxGraphEdge Export(
         this TorchModules.Conv3d module,
@@ -244,6 +305,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp ReLU module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The activation is lowered to the nearest ONNX activation node, carrying TorchSharp parameters where ONNX exposes compatible attributes.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::relu")]
     public static IOnnxGraphEdge Export(
         this TorchModules.ReLU module,
@@ -338,6 +410,17 @@ public static class TorchModuleExtensions
         return op.Y;
     }
 
+    /// <summary>
+    /// Exports a TorchSharp ReLU6 module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The exporter adds the ONNX nodes and initializers needed to represent this TorchSharp module in the supplied graph.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::relu6")]
     public static IOnnxGraphEdge Export(
         this TorchModules.ReLU6 module,
@@ -360,6 +443,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp BatchNorm1d module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// Only inference-mode BatchNorm is supported; running mean and variance must be present so the ONNX node has stable normalization statistics.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::_native_batch_norm_legit")]
     [TorchOp("aten::_native_batch_norm_legit.no_stats")]
     [TorchOp("aten::_native_batch_norm_legit_functional")]
@@ -383,6 +477,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp BatchNorm2d module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// Only inference-mode BatchNorm is supported; running mean and variance must be present so the ONNX node has stable normalization statistics.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::_native_batch_norm_legit")]
     [TorchOp("aten::_native_batch_norm_legit.no_stats")]
     [TorchOp("aten::_native_batch_norm_legit_functional")]
@@ -406,6 +511,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp BatchNorm3d module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// Only inference-mode BatchNorm is supported; running mean and variance must be present so the ONNX node has stable normalization statistics.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::_native_batch_norm_legit")]
     [TorchOp("aten::_native_batch_norm_legit.no_stats")]
     [TorchOp("aten::_native_batch_norm_legit_functional")]
@@ -429,6 +545,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp Upsample module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// TorchSharp interpolation mode, size or scale_factor, and align_corners are normalized into ONNX Resize attributes and inputs.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::upsample_nearest1d")]
     [TorchOp("aten::upsample_nearest1d.vec")]
     [TorchOp("aten::upsample_linear1d")]
@@ -531,6 +658,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp LeakyReLU module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The activation is lowered to the nearest ONNX activation node, carrying TorchSharp parameters where ONNX exposes compatible attributes.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::leaky_relu")]
     public static IOnnxGraphEdge Export(
         this TorchModules.LeakyReLU module,
@@ -548,6 +686,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp ELU module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The activation is lowered to the nearest ONNX activation node, carrying TorchSharp parameters where ONNX exposes compatible attributes.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::elu")]
     public static IOnnxGraphEdge Export(
         this TorchModules.ELU module,
@@ -565,6 +714,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp CELU module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The activation is lowered to the nearest ONNX activation node, carrying TorchSharp parameters where ONNX exposes compatible attributes.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::celu")]
     public static IOnnxGraphEdge Export(
         this TorchModules.CELU module,
@@ -584,6 +744,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp Sigmoid module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The activation is lowered to the nearest ONNX activation node, carrying TorchSharp parameters where ONNX exposes compatible attributes.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::sigmoid")]
     public static IOnnxGraphEdge Export(
         this TorchModules.Sigmoid module,
@@ -600,6 +771,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp Tanh module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The activation is lowered to the nearest ONNX activation node, carrying TorchSharp parameters where ONNX exposes compatible attributes.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::tanh")]
     public static IOnnxGraphEdge Export(
         this TorchModules.Tanh module,
@@ -616,6 +798,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp Hardtanh module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The activation is lowered to the nearest ONNX activation node, carrying TorchSharp parameters where ONNX exposes compatible attributes.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::hardtanh")]
     public static IOnnxGraphEdge Export(
         this TorchModules.Hardtanh module,
@@ -641,6 +834,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp Hardsigmoid module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The activation is lowered to the nearest ONNX activation node, carrying TorchSharp parameters where ONNX exposes compatible attributes.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::hardsigmoid")]
     public static IOnnxGraphEdge Export(
         this TorchModules.Hardsigmoid module,
@@ -659,6 +863,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp Hardswish module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The activation is lowered to the nearest ONNX activation node, carrying TorchSharp parameters where ONNX exposes compatible attributes.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::hardswish")]
     public static IOnnxGraphEdge Export(
         this TorchModules.Hardswish module,
@@ -675,6 +890,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp SiLU module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// This exporter preserves TorchSharp activation semantics using either the matching ONNX operator or a small composed subgraph when ONNX has no direct module equivalent.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::silu")]
     public static IOnnxGraphEdge Export(
         this TorchModules.SiLU module,
@@ -700,6 +926,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp Softmax module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The TorchSharp dimension is written as the ONNX axis so callers should provide input shapes compatible with that axis choice.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::softmax.int")]
     [TorchOp("aten::_softmax")]
     public static IOnnxGraphEdge Export(
@@ -718,6 +955,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp LogSoftmax module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The TorchSharp dimension is written as the ONNX axis so callers should provide input shapes compatible with that axis choice.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::log_softmax.int")]
     [TorchOp("aten::_log_softmax")]
     [TorchOp("aten::special_log_softmax")]
@@ -737,6 +985,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp LogSigmoid module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// This exporter preserves TorchSharp activation semantics using either the matching ONNX operator or a small composed subgraph when ONNX has no direct module equivalent.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::log_sigmoid")]
     public static IOnnxGraphEdge Export(
         this TorchModules.LogSigmoid module,
@@ -761,6 +1020,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp GELU module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// This exporter preserves TorchSharp activation semantics using either the matching ONNX operator or a small composed subgraph when ONNX has no direct module equivalent.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::gelu")]
     public static IOnnxGraphEdge Export(
         this TorchModules.GELU module,
@@ -780,6 +1050,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp Mish module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The activation is lowered to the nearest ONNX activation node, carrying TorchSharp parameters where ONNX exposes compatible attributes.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::mish")]
     public static IOnnxGraphEdge Export(
         this TorchModules.Mish module,
@@ -796,6 +1077,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp SELU module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The activation is lowered to the nearest ONNX activation node, carrying TorchSharp parameters where ONNX exposes compatible attributes.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::selu")]
     public static IOnnxGraphEdge Export(
         this TorchModules.SELU module,
@@ -814,6 +1106,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp Softplus module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The activation is lowered to the nearest ONNX activation node, carrying TorchSharp parameters where ONNX exposes compatible attributes.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::softplus")]
     public static IOnnxGraphEdge Export(
         this TorchModules.Softplus module,
@@ -840,6 +1143,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp PReLU module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The learned slope tensor is exported as an initializer and reshaped for channel-wise broadcasting when static input rank metadata is available.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::prelu")]
     public static IOnnxGraphEdge Export(
         this TorchModules.PReLU module,
@@ -894,6 +1208,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp PixelShuffle module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// TorchSharp pixel shuffle is represented as ONNX DepthToSpace using the channel-depth order expected by TorchSharp.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::pixel_shuffle")]
     public static IOnnxGraphEdge Export(
         this TorchModules.PixelShuffle module,
@@ -914,6 +1239,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp PixelUnshuffle module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// TorchSharp pixel unshuffle is represented as ONNX SpaceToDepth with the module downscale factor.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::pixel_unshuffle")]
     public static IOnnxGraphEdge Export(
         this TorchModules.PixelUnshuffle module,
@@ -933,6 +1269,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp ReflectionPad1d module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// TorchSharp spatial padding is converted to an ONNX Pad node with constant-free reflect or edge mode and rank-aware pad ordering.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::reflection_pad1d")]
     public static IOnnxGraphEdge Export(
         this TorchModules.ReflectionPad1d module,
@@ -950,6 +1297,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp ReflectionPad2d module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// TorchSharp spatial padding is converted to an ONNX Pad node with constant-free reflect or edge mode and rank-aware pad ordering.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::reflection_pad2d")]
     public static IOnnxGraphEdge Export(
         this TorchModules.ReflectionPad2d module,
@@ -967,6 +1325,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp ReflectionPad3d module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// TorchSharp spatial padding is converted to an ONNX Pad node with constant-free reflect or edge mode and rank-aware pad ordering.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::reflection_pad3d")]
     public static IOnnxGraphEdge Export(
         this TorchModules.ReflectionPad3d module,
@@ -984,6 +1353,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp ReplicationPad1d module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// TorchSharp spatial padding is converted to an ONNX Pad node with constant-free reflect or edge mode and rank-aware pad ordering.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::replication_pad1d")]
     public static IOnnxGraphEdge Export(
         this TorchModules.ReplicationPad1d module,
@@ -1001,6 +1381,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp ReplicationPad2d module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// TorchSharp spatial padding is converted to an ONNX Pad node with constant-free reflect or edge mode and rank-aware pad ordering.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::replication_pad2d")]
     public static IOnnxGraphEdge Export(
         this TorchModules.ReplicationPad2d module,
@@ -1018,6 +1409,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp ReplicationPad3d module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// TorchSharp spatial padding is converted to an ONNX Pad node with constant-free reflect or edge mode and rank-aware pad ordering.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::replication_pad3d")]
     public static IOnnxGraphEdge Export(
         this TorchModules.ReplicationPad3d module,
@@ -1035,6 +1437,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp MaxPool2d module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// Kernel, stride, padding, dilation, ceil-mode, and count-include-pad settings are translated into ONNX pooling attributes when supported.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::max_pool2d")]
     public static IOnnxGraphEdge Export(
         this TorchModules.MaxPool2d module,
@@ -1059,6 +1472,17 @@ public static class TorchModuleExtensions
         return result.Y ?? throw new InvalidOperationException("MaxPool export did not produce an output edge.");
     }
 
+    /// <summary>
+    /// Exports a TorchSharp MaxPool1d module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// Kernel, stride, padding, dilation, ceil-mode, and count-include-pad settings are translated into ONNX pooling attributes when supported.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::max_pool1d")]
     public static IOnnxGraphEdge Export(
         this TorchModules.MaxPool1d module,
@@ -1086,6 +1510,17 @@ public static class TorchModuleExtensions
         return result.Y ?? throw new InvalidOperationException("MaxPool export did not produce an output edge.");
     }
 
+    /// <summary>
+    /// Exports a TorchSharp MaxPool3d module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// Kernel, stride, padding, dilation, ceil-mode, and count-include-pad settings are translated into ONNX pooling attributes when supported.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::max_pool3d")]
     public static IOnnxGraphEdge Export(
         this TorchModules.MaxPool3d module,
@@ -1113,6 +1548,17 @@ public static class TorchModuleExtensions
         return result.Y ?? throw new InvalidOperationException("MaxPool export did not produce an output edge.");
     }
 
+    /// <summary>
+    /// Exports a TorchSharp Dropout module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The exporter emits an ONNX Dropout node as graph structure; it does not attempt to model TorchSharp training-time randomness.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::dropout")]
     public static IOnnxGraphEdge Export(
         this TorchModules.Dropout module,
@@ -1131,6 +1577,17 @@ public static class TorchModuleExtensions
         return output.Output;
     }
 
+    /// <summary>
+    /// Exports a TorchSharp Linear module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The layer is lowered to ONNX Gemm with the TorchSharp weight exported as an initializer and transposed through Gemm attributes.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::linear")]
     public static IOnnxGraphEdge Export(
         this TorchModules.Linear module,
@@ -1167,6 +1624,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp AvgPool1d module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// Kernel, stride, padding, dilation, ceil-mode, and count-include-pad settings are translated into ONNX pooling attributes when supported.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::avg_pool1d")]
     public static IOnnxGraphEdge Export(
         this TorchModules.AvgPool1d module,
@@ -1191,6 +1659,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp AvgPool2d module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// Kernel, stride, padding, dilation, ceil-mode, and count-include-pad settings are translated into ONNX pooling attributes when supported.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::avg_pool2d")]
     public static IOnnxGraphEdge Export(
         this TorchModules.AvgPool2d module,
@@ -1215,6 +1694,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp AvgPool3d module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// Kernel, stride, padding, dilation, ceil-mode, and count-include-pad settings are translated into ONNX pooling attributes when supported.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::avg_pool3d")]
     public static IOnnxGraphEdge Export(
         this TorchModules.AvgPool3d module,
@@ -1239,6 +1729,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp Flatten module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// Only the common start_dim=1, end_dim=-1 form is lowered to ONNX Flatten by this recursive exporter.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::flatten.using_ints")]
     public static IOnnxGraphEdge Export(
         this TorchModules.Flatten module,
@@ -1263,6 +1764,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp AdaptiveAvgPool2d module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// Only output_size=[1, 1] is lowered, using ONNX GlobalAveragePool because arbitrary adaptive pooling requires shape-aware decomposition.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::adaptive_avg_pool2d")]
     public static IOnnxGraphEdge Export(
         this TorchModules.AdaptiveAvgPool2d module,
@@ -1288,6 +1800,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp LayerNorm module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// Scale and optional bias are materialized as initializers, and the ONNX axis is derived from normalized_shape.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::layer_norm")]
     public static IOnnxGraphEdge Export(
         this TorchModules.LayerNorm module,
@@ -1336,6 +1859,17 @@ public static class TorchModuleExtensions
         ).Y;
     }
 
+    /// <summary>
+    /// Exports a TorchSharp Embedding module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The embedding table is copied into an initializer and indexed with ONNX Gather.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::embedding")]
     public static IOnnxGraphEdge Export(
         this TorchModules.Embedding module,
@@ -1363,6 +1897,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp GLU module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The module is decomposed into Split, Sigmoid, and Mul so the gate dimension remains explicit in the graph.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::glu")]
     public static IOnnxGraphEdge Export(
         this TorchModules.GLU module,
@@ -1403,6 +1948,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp GroupNorm module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The exporter emits ONNX GroupNormalization and creates default scale or bias initializers when TorchSharp omitted affine parameters.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::group_norm")]
     public static IOnnxGraphEdge Export(
         this TorchModules.GroupNorm module,
@@ -1459,6 +2015,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp GRU module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The exported GRU sequence output and final hidden state edges.</returns>
+    /// <remarks>
+    /// TorchSharp recurrent weights are reordered into ONNX gate order, layered outputs are chained, and batch_first input is transposed around the ONNX sequence-first GRU.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::gru.input")]
     public static GRUOutput Export(
         this TorchModules.GRU module,
@@ -1699,6 +2266,17 @@ public static class TorchModuleExtensions
         };
     }
 
+    /// <summary>
+    /// Exports a TorchSharp InstanceNorm1d module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The exporter uses ONNX InstanceNormalization and requires or synthesizes channel scale and bias values from the module state.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::instance_norm")]
     public static IOnnxGraphEdge Export(
         this TorchModules.InstanceNorm1d module,
@@ -1709,6 +2287,17 @@ public static class TorchModuleExtensions
         return ExportInstanceNorm(module, graph, input);
     }
 
+    /// <summary>
+    /// Exports a TorchSharp InstanceNorm2d module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The exporter uses ONNX InstanceNormalization and requires or synthesizes channel scale and bias values from the module state.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::instance_norm")]
     public static IOnnxGraphEdge Export(
         this TorchModules.InstanceNorm2d module,
@@ -1719,6 +2308,17 @@ public static class TorchModuleExtensions
         return ExportInstanceNorm(module, graph, input);
     }
 
+    /// <summary>
+    /// Exports a TorchSharp InstanceNorm3d module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The exporter uses ONNX InstanceNormalization and requires or synthesizes channel scale and bias values from the module state.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::instance_norm")]
     public static IOnnxGraphEdge Export(
         this TorchModules.InstanceNorm3d module,
@@ -1729,6 +2329,17 @@ public static class TorchModuleExtensions
         return ExportInstanceNorm(module, graph, input);
     }
 
+    /// <summary>
+    /// Exports a TorchSharp Unflatten module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The graph edge that carries the exported module output.</returns>
+    /// <remarks>
+    /// The target shape is represented with ONNX Reshape, preserving untouched dimensions with zero entries and requiring a statically known input rank.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::unflatten.int")]
     public static IOnnxGraphEdge Export(
         this TorchModules.Unflatten module,
@@ -1804,6 +2415,17 @@ public static class TorchModuleExtensions
         );
     }
 
+    /// <summary>
+    /// Exports a TorchSharp LSTM module into ONNX graph nodes and initializers.
+    /// </summary>
+    /// <param name="module">TorchSharp module whose parameters and configuration are read during export.</param>
+    /// <param name="graph">Target Onnxify graph that receives generated nodes, edges, and initializers.</param>
+    /// <param name="input">Input graph edge connected to the exported module.</param>
+    /// <returns>The exported LSTM sequence output plus final hidden and cell state edges.</returns>
+    /// <remarks>
+    /// TorchSharp LSTM weights are reordered into ONNX gate order, bidirectional and multi-layer state is concatenated, and batch_first input is handled with transposes.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::lstm.input")]
     public static LSTMOutput Export(
         this TorchModules.LSTM module,

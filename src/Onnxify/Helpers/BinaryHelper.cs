@@ -4,8 +4,20 @@ using Onnxify.Data.Numerics;
 
 namespace Onnxify.Helpers;
 
+/// <summary>
+/// Converts between ONNX raw tensor byte payloads and CLR arrays for primitive and packed numeric types.
+/// </summary>
+/// <remarks>
+/// These helpers assume ONNX little-endian raw-data layout, matching the common protobuf representation used by ONNX runtimes and exporters.
+/// </remarks>
 public static class BinaryHelper
 {
+    /// <summary>
+    /// Reinterprets raw tensor bytes as a CLR value array.
+    /// </summary>
+    /// <typeparam name="T">Unmanaged element type to decode.</typeparam>
+    /// <param name="span">Raw tensor bytes.</param>
+    /// <returns>A new array containing decoded elements.</returns>
     public static T[] Decode<T>(ReadOnlySpan<byte> span) where T : struct
     {
         if (typeof(T) == typeof(byte))
@@ -16,6 +28,12 @@ public static class BinaryHelper
         return MemoryMarshal.Cast<byte, T>(span).ToArray();
     }
 
+    /// <summary>
+    /// Encodes a CLR value array into an ONNX raw tensor byte string.
+    /// </summary>
+    /// <typeparam name="T">Unmanaged element type to encode.</typeparam>
+    /// <param name="data">Element values in row-major tensor order.</param>
+    /// <returns>A protobuf byte string suitable for ONNX <c>raw_data</c>.</returns>
     public static ByteString Encode<T>(T[] data) where T : struct
     {
         if (data is byte[])
@@ -27,11 +45,21 @@ public static class BinaryHelper
         return ByteString.CopyFrom(span.ToArray());
     }
 
+    /// <summary>
+    /// Decodes ONNX raw boolean tensor data where any non-zero byte is treated as <see langword="true"/>.
+    /// </summary>
+    /// <param name="span">Raw boolean bytes.</param>
+    /// <returns>Boolean values in tensor order.</returns>
     public static bool[] DecodeBoolArray(ReadOnlySpan<byte> span)
     {
         return [.. span.ToArray().Select(x => x != 0)];
     }
 
+    /// <summary>
+    /// Encodes boolean values using ONNX raw boolean bytes, with <c>1</c> for true and <c>0</c> for false.
+    /// </summary>
+    /// <param name="data">Boolean values in tensor order.</param>
+    /// <returns>A protobuf byte string suitable for ONNX <c>raw_data</c>.</returns>
     public static ByteString EncodeBoolArray(bool[] data)
     {
         return ByteString.CopyFrom([.. data.Select(x => (byte)(x ? 1 : 0))]);

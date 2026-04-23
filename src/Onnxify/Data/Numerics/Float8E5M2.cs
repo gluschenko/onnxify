@@ -1,16 +1,33 @@
-﻿using Onnxify.Helpers;
+using Onnxify.Helpers;
 
 namespace Onnxify.Data.Numerics;
 
+/// <summary>
+/// Represents the ONNX 8-bit <c>float8e5m2</c> tensor element format.
+/// </summary>
+/// <remarks>
+/// Compared with e4m3 formats, e5m2 keeps more exponent range and less mantissa precision. It can represent infinities and NaN encodings.
+/// </remarks>
 public readonly struct Float8E5M2
 {
+    /// <summary>
+    /// Gets the encoded 8-bit float payload.
+    /// </summary>
     public byte Value { get; }
 
+    /// <summary>
+    /// Quantizes a single-precision value to e5m2.
+    /// </summary>
+    /// <param name="value">Value to encode.</param>
     public Float8E5M2(float value)
     {
         Value = Encode(value);
     }
 
+    /// <summary>
+    /// Expands the encoded e5m2 value to a single-precision approximation.
+    /// </summary>
+    /// <returns>The decoded <see cref="float"/> value.</returns>
     public float ToSingle() => Decode(Value);
 
     private static byte Encode(float f)
@@ -30,9 +47,9 @@ public readonly struct Float8E5M2
         int e = exp + 15; // bias=15
 
         if (e <= 0) return (byte)(sign << 7);
-        if (e >= 31) return (byte)((sign << 7) | (0x1F << 2)); // inf
+        if (e >= 31) return (byte)((sign << 7) | (0x1F << 2));
 
-        int m = (int)((mant * 2 - 1) * 4); // 2 бита
+        int m = (int)((mant * 2 - 1) * 4); // 2 bits
 
         return (byte)((sign << 7) | (e << 2) | (m & 0x3));
     }
@@ -57,4 +74,3 @@ public readonly struct Float8E5M2
         return sign == 1 ? -result : result;
     }
 }
-

@@ -5,6 +5,9 @@ using Onnxify.Data.Numerics;
 
 namespace Onnxify.Helpers;
 
+/// <summary>
+/// Provides ONNX protobuf conversion helpers used when serializing and deserializing Onnxify tensor objects.
+/// </summary>
 public static class OnnxHelper
 {
     private static readonly (Type SystemType, TensorProto.Types.DataType DataType)[] _typePairs =
@@ -64,12 +67,23 @@ public static class OnnxHelper
         throw new NotImplementedException($"DataType '{type}' is not supported");
     }
 
+    /// <summary>
+    /// Serializes an Onnxify tensor to its standalone ONNX <c>TensorProto</c> binary representation.
+    /// </summary>
+    /// <param name="tensor">Tensor to serialize.</param>
+    /// <returns>Serialized protobuf bytes for the tensor.</returns>
     public static byte[] SerializeTensor(this OnnxTensor tensor)
     {
         ArgumentNullException.ThrowIfNull(tensor);
         return tensor.ToProto().ToByteArray();
     }
 
+    /// <summary>
+    /// Gets the raw binary payload that Onnxify would write for a tensor.
+    /// </summary>
+    /// <param name="tensor">Tensor to inspect.</param>
+    /// <returns>Raw tensor payload bytes.</returns>
+    /// <exception cref="NotSupportedException">Thrown for string tensors, which ONNX stores outside <c>raw_data</c>.</exception>
     public static byte[] GetTensorRawData(this OnnxTensor tensor)
     {
         ArgumentNullException.ThrowIfNull(tensor);
@@ -83,6 +97,12 @@ public static class OnnxHelper
         return proto.RawData.ToByteArray();
     }
 
+    /// <summary>
+    /// Deserializes a standalone ONNX <c>TensorProto</c> into an Onnxify tensor wrapper.
+    /// </summary>
+    /// <param name="data">Serialized protobuf bytes for a tensor.</param>
+    /// <param name="options">External-data options used if the tensor references an external payload.</param>
+    /// <returns>A typed Onnxify tensor selected from the ONNX element type.</returns>
     public static OnnxTensor DeserializeTensor(
         ReadOnlyMemory<byte> data,
         OnnxModelBaseOptions? options = null

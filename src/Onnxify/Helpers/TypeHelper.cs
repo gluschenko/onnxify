@@ -2,6 +2,9 @@
 
 namespace Onnxify.Helpers;
 
+/// <summary>
+/// Provides internal type-coercion helpers used by ONNX attribute and tensor conversion.
+/// </summary>
 public static class TypeHelper
 {
     internal static T[] NotNull<T>(params T?[] input)

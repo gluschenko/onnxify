@@ -4,10 +4,27 @@ using Onnxify.Helpers;
 
 namespace Onnxify;
 
+/// <summary>
+/// Base type for ONNX initializer tensors and tensor-valued attributes.
+/// </summary>
+/// <remarks>
+/// Use the generic <see cref="OnnxTensor{T}"/> form when you need typed access to tensor values. The non-generic base is useful when inspecting models whose element type is only known at runtime.
+/// </remarks>
 public abstract class OnnxTensor : IOnnxGraphEdge
 {
+    /// <summary>
+    /// Gets the tensor name used by graph nodes or attribute payloads.
+    /// </summary>
     public abstract string Name { get; }
+
+    /// <summary>
+    /// Gets the CLR element type that maps to the tensor's ONNX element type.
+    /// </summary>
     public abstract Type DataType { get; }
+
+    /// <summary>
+    /// Gets tensor dimensions in ONNX order.
+    /// </summary>
     public abstract long[] Shape { get; }
     internal abstract TensorProto ToProto();
 
@@ -27,9 +44,19 @@ public abstract class OnnxTensor : IOnnxGraphEdge
         );
     }
 
+    /// <summary>
+    /// Indicates whether the tensor payload was embedded in the model or referenced through ONNX external-data metadata when loaded.
+    /// </summary>
     public enum TensorDataLocation
     {
+        /// <summary>
+        /// Tensor data is stored inside the ONNX protobuf representation.
+        /// </summary>
         Default = 0,
+
+        /// <summary>
+        /// Tensor data was referenced from an external file by the source ONNX model.
+        /// </summary>
         External = 1,
     }
 
@@ -55,14 +82,34 @@ public abstract class OnnxTensor : IOnnxGraphEdge
 
 }
 
+/// <summary>
+/// Provides typed access to an ONNX tensor's shape, element type, data-location metadata, and values.
+/// </summary>
+/// <typeparam name="T">CLR element type used by Onnxify for this tensor's ONNX data type.</typeparam>
+/// <remarks>
+/// Values are exposed as a flat sequence in ONNX row-major order. When serialized through Onnxify, tensors are currently written back as embedded tensor payloads even if they were loaded from external data.
+/// </remarks>
 public class OnnxTensor<T> : OnnxTensor
 {
     private const int PREVIEW_EDGE_COUNT = 3;
 
+    /// <inheritdoc />
     public override string Name { get; }
+
+    /// <inheritdoc />
     public override Type DataType { get; }
+
+    /// <summary>
+    /// Gets the data-location state observed when the tensor was loaded.
+    /// </summary>
     public TensorDataLocation DataLocation { get; private set; }
+
+    /// <inheritdoc />
     public override long[] Shape { get; }
+
+    /// <summary>
+    /// Gets the flat tensor data in ONNX row-major order.
+    /// </summary>
     public IEnumerable<T> Value { get; private set; }
 
     private readonly TensorProto _tensor;
@@ -104,6 +151,10 @@ public class OnnxTensor<T> : OnnxTensor
         return newTensor;
     }
 
+    /// <summary>
+    /// Returns a compact diagnostic preview of the tensor values.
+    /// </summary>
+    /// <returns>A single-line preview intended for logs and graph inspection.</returns>
     public override string ToString()
     {
         var data = Value.ToArray();

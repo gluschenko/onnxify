@@ -145,6 +145,12 @@ namespace Onnxify.SourceGenerator
                         : "[]";
 
                     operatorClasses.AppendLine($$"""
+                    /// <summary>
+                    /// Collects the input wires and attributes used to construct a {{className}} node.
+                    /// </summary>
+                    /// <remarks>
+                    /// Use this options type when outputs are supplied by another construction path, such as loading an existing ONNX node.
+                    /// </remarks>
                     public class {{className}}InputOptions
                     {
                         {{GetFields(op.Inputs, x => InputName(x)).Indent(1)}}
@@ -152,6 +158,12 @@ namespace Onnxify.SourceGenerator
                         {{GetFields(op.Attributes, x => AttributeName(x)).Indent(1)}}
                     }
                 
+                    /// <summary>
+                    /// Collects the complete input, output, and attribute wiring for a {{className}} node.
+                    /// </summary>
+                    /// <remarks>
+                    /// Properties follow ONNX schema order so optional and variadic parameters remain aligned with serialized node inputs and outputs.
+                    /// </remarks>
                     public class {{className}}InputOutputOptions : {{className}}InputOptions
                     {
                         {{GetFields(op.Outputs, x => OutputName(x)).Indent(1)}}
@@ -393,6 +405,11 @@ namespace Onnxify.SourceGenerator
                     {{GetOperatorComment(op)}}
                     public class {{className}} : OnnxNode
                     {
+                        /// <summary>
+                        /// Creates a {{className}} node from explicit ONNX graph wiring.
+                        /// </summary>
+                        /// <param name="name">Graph-local node name.</param>
+                        /// <param name="options">Input, output, and attribute values arranged according to the ONNX {{op.Name}} schema.</param>
                         public {{className}}(
                             string name,
                             {{className}}InputOutputOptions options
@@ -462,6 +479,9 @@ namespace Onnxify.SourceGenerator
                     if (op.Outputs.Count() > 1)
                     {
                         operatorClasses.AppendLine($$"""
+                        /// <summary>
+                        /// Groups the multiple output wires produced by a {{className}} helper call.
+                        /// </summary>
                         public class {{className}}Output
                         {
                             {{GetResultFields(op.Outputs, x => OutputName(x)).Indent(1)}}
@@ -496,6 +516,10 @@ namespace Onnxify.SourceGenerator
 
                         extensionMethods.AppendLine($$"""
                         {{GetOperatorComment(op)}}
+                        /// <param name="domain">Graph or domain accessor that determines where the node is added.</param>
+                        /// <param name="name">Graph-local node name and prefix for automatically created outputs.</param>
+                        /// <param name="options">Input and attribute values arranged according to the ONNX {{op.Name}} schema.</param>
+                        /// <returns>The created node when there are no outputs, the single output wire when there is one output, or an output grouping object when the operator has multiple outputs.</returns>
                         public static {{extensionMethodReturnType}} {{className}}(
                             this {{extensionAnchor}} domain,
                             string name,
@@ -523,6 +547,10 @@ namespace Onnxify.SourceGenerator
 
                     extensionMethods.AppendLine($$"""
                     {{GetOperatorComment(op)}}
+                    /// <param name="domain">Graph or domain accessor that determines where the node is added.</param>
+                    /// <param name="name">Graph-local node name.</param>
+                    /// <param name="options">Complete input, output, and attribute values arranged according to the ONNX {{op.Name}} schema.</param>
+                    /// <returns>The created node when there are no outputs, the single output wire when there is one output, or an output grouping object when the operator has multiple outputs.</returns>
                     public static {{extensionMethodReturnType}} {{className}}(
                         this {{extensionAnchor}} domain,
                         string name,
@@ -554,6 +582,9 @@ namespace Onnxify.SourceGenerator
 
                     namespace {{rootNamespace}}
                     {
+                        /// <summary>
+                        /// Provides generated convenience methods for adding ONNX operator nodes to graphs and domain accessors.
+                        /// </summary>
                         public static partial class OnnxifyExtensions
                         {
                             {{extensionMethods.ToString().Indent(2)}}
@@ -987,7 +1018,9 @@ public static class MarkdownHelper
 
         text = _codeBlockRegex.Replace(text, m =>
         {
-            var content = Escape(m.Groups[1].Value.Trim());
+            var content = Escape(m.Groups[1].Value.Trim())
+                .Replace("\r\n", "\n")
+                .Replace("\n", "&#xA;");
             blocks.Add($"<code>{content}</code>");
             return $"@@CODEBLOCK_{blocks.Count - 1}@@";
         });
@@ -1006,7 +1039,6 @@ public static class MarkdownHelper
             text = text.Replace($"@@CODEBLOCK_{i}@@", blocks[i]);
         }
 
-        // 5. Параграфы
         var paragraphs = text
             .Split(["\r\n\r\n", "\n\n"], StringSplitOptions.RemoveEmptyEntries)
             .ToArray();

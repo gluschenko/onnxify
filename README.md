@@ -10,7 +10,7 @@ Onnxify is an experimental .NET library for reading, inspecting, and writing ONN
 - [x] `Onnxify.ML.TorchSharp`
 - [x] `Onnxify.ProjectGenerator`
 - [x] `Onnxify.Safetensors`
-- [ ] `Onnxify.CLI`
+- [x] `Onnxify.CLI`
 
 ## TODO
 
@@ -18,14 +18,14 @@ Onnxify is an experimental .NET library for reading, inspecting, and writing ONN
 - [ ] SourceGenerator: fully-typed operator Input/Output fields (OneOf?)
 - [ ] Async I/O ops
 - [ ] Graph edges in a single collection (or in two for placeholders)
+- [ ] Graph manipulations: add nodes, remove nodes, replace nodes
+- [ ] Graph cyclicity validation
+- [ ] CLI for agents and humans (to explore ONNX files)
 - [x] Project generator generates operator nodes
 - [x] Parse pytorch\torch\onnx\_internal\torchscript_exporter (create MD with support status)
 - [x] Generate agent skills from operator-schema.json
 - [x] ToString for OnnxModel, OnnxNode, OnnxxTensor, etc (recursive?)
 - [x] OnnxDataProvider, SafetensorsDataProvider, BaseDataProvider...
-- [ ] Graph manipulations: add nodes, remove nodes, replace nodes
-- [ ] Graph cyclicity validation
-- [ ] CLI for agents and humans (to explore ONNX files)
 - [x] Agent skills for Export implementation on Torch modules
 - [x] Allow to add or remove OnnxModel meta (training info, imports, producer, version)
 
@@ -87,66 +87,6 @@ py -3 "$codexHome\skills\.system\skill-installer\scripts\install-skill-from-gith
 ```
 
 Restart Codex after installation so the new skill is picked up.
-
-## Quick Example
-
-Create a new model:
-
-```csharp
-using Onnxify;
-
-var model = OnnxModel.Create(new OnnxModelCreationOptions
-{
-    ProducerName = "demo-app",
-    Opset = 13,
-    IrVersion = 8,
-});
-
-model.Save("model.onnx", overwrite: true);
-```
-
-Load and inspect an existing model:
-
-```csharp
-using Onnxify;
-
-var model = OnnxModel.FromFile("input.onnx");
-
-Console.WriteLine(model.ProducerName);
-Console.WriteLine(model.Graph.Name);
-
-foreach (var node in model.Graph.Nodes)
-{
-    Console.WriteLine($"{node.Name} [{node.OpType}]");
-}
-```
-
-## Project Layout
-
-```text
-src/
-  Onnxify/                    Main library
-  Onnxify.ConsoleTest/        Sample playground and manual tests
-  Onnxify.SourceGenerator/    Placeholder for future generators
-  Onnxify.TorchSharp/         Placeholder for future TorchSharp APIs
-  Onnxify.OperatorSchemaGenerator/  C++ helper project
-third_party/
-  onnx/                       ONNX schema sources
-  json/                       nlohmann/json dependency
-```
-
-## Development Notes
-
-- The main abstraction layer is built around protobuf-generated ONNX types.
-- `OnnxModel`, `OnnxGraph`, `OnnxNode`, `OnnxTensor`, and `OnnxAttribute` provide a more convenient .NET API over raw protobuf classes.
-- `Onnxify.ConsoleTest` includes examples such as loading an ONNX model and exporting a simple AlexNet-style network from TorchSharp-style weights.
-
-## Roadmap Ideas
-
-- complete TorchSharp integration
-- generate strongly typed operator wrappers from ONNX schemas
-- expand test coverage with automated round-trip and compatibility tests
-- improve support for more ONNX data types and edge cases
 
 ## License
 
