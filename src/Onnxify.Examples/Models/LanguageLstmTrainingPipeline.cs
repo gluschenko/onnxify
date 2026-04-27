@@ -54,6 +54,9 @@ internal sealed class LanguageLstmTrainingPipeline
         int batchSize,
         float learningRate,
         Device device,
+        int schedulerStepSize = 1024,
+        float schedulerGamma = 0.5f,
+        float minLearningRate = 1e-5f,
         int shuffleSeed = 1234
     )
     {
@@ -89,6 +92,9 @@ internal sealed class LanguageLstmTrainingPipeline
             batchSize,
             learningRate,
             device,
+            schedulerStepSize,
+            schedulerGamma,
+            minLearningRate,
             shuffleSeed
         );
 
@@ -294,6 +300,9 @@ internal sealed class LanguageLstmTrainer
         int batchSize,
         float learningRate,
         Device device,
+        int schedulerStepSize,
+        float schedulerGamma,
+        float minLearningRate,
         int shuffleSeed
     )
     {
@@ -303,7 +312,14 @@ internal sealed class LanguageLstmTrainer
 
         var optimizer = optim.Adam(_model.parameters(), learningRate);
         var criterion = CrossEntropyLoss();
+        var scheduler = new StepLearningRateScheduler(
+            learningRate,
+            schedulerStepSize,
+            schedulerGamma,
+            minLearningRate
+        );
         var finalEvaluation = new LanguageLstmEvaluation(0f, 0f, 0);
+        var optimizationStep = 0;
 
         for (var epoch = 1; epoch <= epochs; epoch++)
         {
@@ -320,6 +336,9 @@ internal sealed class LanguageLstmTrainer
                 shuffleSeed: shuffleSeed + epoch - 1
             ))
             {
+                var currentLearningRate = scheduler.GetLearningRate(optimizationStep);
+                scheduler.Apply(optimizer, optimizationStep);
+
                 TrainBatch(
                     batch,
                     optimizer,
@@ -331,11 +350,14 @@ internal sealed class LanguageLstmTrainer
                     ref lossSum
                 );
 
+                optimizationStep++;
+
                 Console.Write(
                     $"\r[T+{Math.Round(stopwatch.Elapsed.TotalSeconds)}s] " +
                     $"LanguageLSTM epoch {epoch}/{epochs} | " +
                     $"train loss {lossSum / Math.Max(1, processedSamples):0.000000} | " +
                     $"train acc {((float)correctPredictions / Math.Max(1, processedSamples)):0.000000} | " +
+                    $"lr {FormatLearningRate(currentLearningRate)} | " +
                     $"val loss {finalEvaluation.Loss:0.000000} | " +
                     $"val acc {finalEvaluation.Accuracy:0.000000}"
                 );
@@ -381,6 +403,48 @@ internal sealed class LanguageLstmTrainer
         correctPredictions += correct.sum().ToInt32();
         lossSum += loss.ToSingle() * batch.Size;
         batchIndex++;
+    }
+
+    private static string FormatLearningRate(float learningRate)
+    {
+        return learningRate.ToString("0.######E+0");
+    }
+
+    private sealed class StepLearningRateScheduler
+    {
+        private readonly float _initialLearningRate;
+        private readonly int _stepSize;
+        private readonly float _gamma;
+        private readonly float _minLearningRate;
+
+        public StepLearningRateScheduler(
+            float initialLearningRate,
+            int stepSize,
+            float gamma,
+            float minLearningRate
+        )
+        {
+            _initialLearningRate = initialLearningRate;
+            _stepSize = Math.Max(1, stepSize);
+            _gamma = gamma;
+            _minLearningRate = MathF.Max(0f, minLearningRate);
+        }
+
+        public float GetLearningRate(int optimizationStep)
+        {
+            var decaySteps = Math.Max(0, optimizationStep / _stepSize);
+            var learningRate = _initialLearningRate * MathF.Pow(_gamma, decaySteps);
+            return MathF.Max(_minLearningRate, learningRate);
+        }
+
+        public void Apply(optim.Optimizer optimizer, int optimizationStep)
+        {
+            var learningRate = GetLearningRate(optimizationStep);
+            foreach (var group in optimizer.ParamGroups)
+            {
+                group.LearningRate = learningRate;
+            }
+        }
     }
 
     private LanguageLstmEvaluation Evaluate(int batchSize, Device device)

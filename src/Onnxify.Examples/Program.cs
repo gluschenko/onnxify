@@ -275,13 +275,13 @@ internal class LSTMSample : Sample
 
         var pipeline = new LanguageLstmTrainingPipeline(
             DatasetPath,
-            maxSequenceLength: 128,
-            trainSamplesPerLanguage: 100000,
+            maxSequenceLength: 32,
+            trainSamplesPerLanguage: 1000000,
             validationSamplesPerLanguage: 64
         );
 
-        var embeddingDim = 64;
-        var hiddenDim = 128;
+        var embeddingDim = 128;
+        var hiddenDim = 192;
         var layers = 2;
 
         var training = await pipeline.TrainAsync(
@@ -289,8 +289,8 @@ internal class LSTMSample : Sample
             hiddenDim,
             layers,
             epochs: 15,
-            batchSize: 512,
-            learningRate: 3e-3f,
+            batchSize: 2048,
+            learningRate: 1e-3f,
             device: device
         );
 
