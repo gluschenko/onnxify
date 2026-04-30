@@ -258,7 +258,7 @@ internal class MiniGpt2LikeSample : Sample
 
 internal class LSTMSample : Sample
 {
-    private const string DatasetPath = @"D:\Backups\ML\language-detector\dataset\export_tatoeba_250ch_2M_top20";
+    private const string DatasetPath = @"D:\Backups\ML\language-detector\dataset\export_lstm_46\languages";
 
     public override string Name => "lstm";
     public override string Description => "Language LSTM training and export";
@@ -281,16 +281,16 @@ internal class LSTMSample : Sample
         );
 
         var embeddingDim = 128;
-        var hiddenDim = 192;
+        var hiddenDim = 128;
         var layers = 2;
 
         var training = await pipeline.TrainAsync(
             embeddingDim,
             hiddenDim,
             layers,
-            epochs: 15,
+            epochs: 2,
             batchSize: 2048,
-            learningRate: 1e-3f,
+            learningRate: 1e-1f,
             device: device
         );
 
