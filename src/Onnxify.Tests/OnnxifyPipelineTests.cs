@@ -274,7 +274,14 @@ public sealed class OnnxifyPipelineTests
             PipelineContext context,
             CancellationToken token)
         {
-            return ValueTask.FromResult(new MiniBatch<string>(batchItems, batchIndex, isPartialBatch));
+            var batch = new MiniBatch<string>
+            {
+                Items = batchItems,
+                BatchIndex = batchIndex,
+                IsPartialBatch = isPartialBatch
+            };
+
+            return ValueTask.FromResult(batch);
         }
     }
 }
