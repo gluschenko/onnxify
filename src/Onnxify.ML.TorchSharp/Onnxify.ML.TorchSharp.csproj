@@ -24,4 +24,12 @@
     <DocumentationFile>..\Onnxify.ML.TorchSharp.xml</DocumentationFile>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Onnxify.ML\Onnxify.ML.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TorchSharp" Version="0.106.0" />
+  </ItemGroup>
+
 </Project>

@@ -8,6 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Onnxify.ML.TorchSharp\Onnxify.ML.TorchSharp.csproj" />
+    <ProjectReference Include="..\Onnxify.ML\Onnxify.ML.csproj" />
     <ProjectReference Include="..\Onnxify.TorchSharp\Onnxify.TorchSharp.csproj" />
     <ProjectReference Include="..\Onnxify\Onnxify.csproj" />
   </ItemGroup>
