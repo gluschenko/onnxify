@@ -12,6 +12,9 @@ public sealed class ConcurrentEnumerator<TInput, TOutput>
     private readonly Func<TInput, CancellationToken, ValueTask<TOutput>> _action;
     private readonly ConcurrentEnumeratorOptions _options;
 
+    /// <summary>
+    /// Initializes a concurrent enumerator over an asynchronous source and asynchronous transform.
+    /// </summary>
     public ConcurrentEnumerator(
         IAsyncEnumerable<TInput> input,
         Func<TInput, CancellationToken, ValueTask<TOutput>> action,
@@ -30,6 +33,9 @@ public sealed class ConcurrentEnumerator<TInput, TOutput>
         }
     }
 
+    /// <summary>
+    /// Initializes a concurrent enumerator over an asynchronous source and task-based transform.
+    /// </summary>
     public ConcurrentEnumerator(
         IAsyncEnumerable<TInput> input,
         Func<TInput, CancellationToken, Task<TOutput>> action,
@@ -42,6 +48,9 @@ public sealed class ConcurrentEnumerator<TInput, TOutput>
         ArgumentNullException.ThrowIfNull(action);
     }
 
+    /// <summary>
+    /// Initializes a concurrent enumerator over a synchronous source and task-based transform.
+    /// </summary>
     public ConcurrentEnumerator(
         IEnumerable<TInput> input,
         Func<TInput, CancellationToken, Task<TOutput>> action,
@@ -55,6 +64,9 @@ public sealed class ConcurrentEnumerator<TInput, TOutput>
         ArgumentNullException.ThrowIfNull(action);
     }
 
+    /// <summary>
+    /// Executes the concurrent transform and yields results as they complete.
+    /// </summary>
     public async IAsyncEnumerable<TOutput> ExecuteAsync([EnumeratorCancellation] CancellationToken token = default)
     {
         var maxDegree = _options.MaxDegreeOfParallelism;

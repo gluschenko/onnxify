@@ -1,11 +1,17 @@
-﻿using Onnxify.ML.Stages;
+using Onnxify.ML.Stages;
 
 namespace Onnxify.ML.TorchSharp.Stages;
 
+/// <summary>
+/// Collates samples into tensor-backed Torch mini-batches.
+/// </summary>
 public class TorchTensorBatchStage<TSample> : BatchingStage<TSample, TorchMiniBatch<TSample>>
 {
     private readonly Func<IReadOnlyList<TSample>, PipelineContext, CancellationToken, ValueTask<TorchBatchTensors>> _collate;
 
+    /// <summary>
+    /// Initializes the stage from an asynchronous collate function with access to the pipeline context.
+    /// </summary>
     public TorchTensorBatchStage(
         int batchSize,
         Func<IReadOnlyList<TSample>, PipelineContext, CancellationToken, ValueTask<TorchBatchTensors>> collate,
@@ -20,6 +26,9 @@ public class TorchTensorBatchStage<TSample> : BatchingStage<TSample, TorchMiniBa
         _collate = collate ?? throw new ArgumentNullException(nameof(collate));
     }
 
+    /// <summary>
+    /// Initializes the stage from an asynchronous collate function that does not need the pipeline context.
+    /// </summary>
     public TorchTensorBatchStage(
         int batchSize,
         Func<IReadOnlyList<TSample>, CancellationToken, ValueTask<TorchBatchTensors>> collate,

@@ -1,11 +1,18 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 
 namespace Onnxify.ML;
 
+/// <summary>
+/// Composes two stages into a single streaming stage.
+/// </summary>
 public sealed class CompositeStage<TInput, TMiddle, TOutput> : PipelineStage<TInput, TOutput>
 {
     private readonly PipelineStage<TInput, TMiddle> _first;
     private readonly PipelineStage<TMiddle, TOutput> _second;
+
+    /// <summary>
+    /// Initializes a composite stage from two connected child stages.
+    /// </summary>
     public CompositeStage(
         PipelineStage<TInput, TMiddle> first,
         PipelineStage<TMiddle, TOutput> second,
@@ -16,6 +23,7 @@ public sealed class CompositeStage<TInput, TMiddle, TOutput> : PipelineStage<TIn
         _second = second ?? throw new ArgumentNullException(nameof(second));
     }
 
+    /// <inheritdoc />
     public override async IAsyncEnumerable<TOutput> ExecuteAsync(
         IAsyncEnumerable<TInput> input,
         PipelineContext context,

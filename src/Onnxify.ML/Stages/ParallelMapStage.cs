@@ -2,11 +2,17 @@ using System.Runtime.CompilerServices;
 
 namespace Onnxify.ML.Stages;
 
+/// <summary>
+/// Projects items concurrently while optionally preserving the original input order.
+/// </summary>
 public sealed class ParallelMapStage<TInput, TOutput> : PipelineStage<TInput, TOutput>
 {
     private readonly Func<TInput, PipelineContext, CancellationToken, ValueTask<TOutput>> _transform;
     private readonly ConcurrentEnumeratorOptions _options;
 
+    /// <summary>
+    /// Initializes the stage from a synchronous transform.
+    /// </summary>
     public ParallelMapStage(
         Func<TInput, TOutput> transform,
         ConcurrentEnumeratorOptions? options = null,
@@ -16,6 +22,9 @@ public sealed class ParallelMapStage<TInput, TOutput> : PipelineStage<TInput, TO
         ArgumentNullException.ThrowIfNull(transform);
     }
 
+    /// <summary>
+    /// Initializes the stage from an asynchronous transform.
+    /// </summary>
     public ParallelMapStage(
         Func<TInput, PipelineContext, CancellationToken, ValueTask<TOutput>> transform,
         ConcurrentEnumeratorOptions? options = null,
@@ -30,6 +39,7 @@ public sealed class ParallelMapStage<TInput, TOutput> : PipelineStage<TInput, TO
         _options = options ?? new ConcurrentEnumeratorOptions();
     }
 
+    /// <inheritdoc />
     public override IAsyncEnumerable<TOutput> ExecuteAsync(
         IAsyncEnumerable<TInput> input,
         PipelineContext context,

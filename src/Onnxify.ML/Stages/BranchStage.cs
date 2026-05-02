@@ -2,12 +2,18 @@ using System.Runtime.CompilerServices;
 
 namespace Onnxify.ML.Stages;
 
+/// <summary>
+/// Routes each input item into one of two child stages based on a predicate.
+/// </summary>
 public sealed class BranchStage<TInput, TOutput> : PipelineStage<TInput, TOutput>
 {
     private readonly Func<TInput, PipelineContext, CancellationToken, ValueTask<bool>> _predicate;
     private readonly PipelineStage<TInput, TOutput> _whenTrue;
     private readonly PipelineStage<TInput, TOutput> _whenFalse;
 
+    /// <summary>
+    /// Initializes the branch stage from a synchronous predicate.
+    /// </summary>
     public BranchStage(
         Func<TInput, bool> predicate,
         PipelineStage<TInput, TOutput> whenTrue,
@@ -22,6 +28,9 @@ public sealed class BranchStage<TInput, TOutput> : PipelineStage<TInput, TOutput
         ArgumentNullException.ThrowIfNull(predicate);
     }
 
+    /// <summary>
+    /// Initializes the branch stage from an asynchronous predicate.
+    /// </summary>
     public BranchStage(
         Func<TInput, PipelineContext, CancellationToken, ValueTask<bool>> predicate,
         PipelineStage<TInput, TOutput> whenTrue,
@@ -38,6 +47,7 @@ public sealed class BranchStage<TInput, TOutput> : PipelineStage<TInput, TOutput
         _whenFalse = whenFalse ?? throw new ArgumentNullException(nameof(whenFalse));
     }
 
+    /// <inheritdoc />
     public override IAsyncEnumerable<TOutput> ExecuteAsync(
         IAsyncEnumerable<TInput> input,
         PipelineContext context,

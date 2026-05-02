@@ -1,9 +1,15 @@
 namespace Onnxify.ML.Stages;
 
+/// <summary>
+/// Projects each input item into a new output item.
+/// </summary>
 public sealed class MapStage<TInput, TOutput> : ItemPipelineStage<TInput, TOutput>
 {
     private readonly Func<TInput, PipelineContext, CancellationToken, ValueTask<TOutput>> _transform;
 
+    /// <summary>
+    /// Initializes the stage from a synchronous transform.
+    /// </summary>
     public MapStage(
         Func<TInput, TOutput> transform,
         PipelineStageOptions? options = null)
@@ -12,6 +18,9 @@ public sealed class MapStage<TInput, TOutput> : ItemPipelineStage<TInput, TOutpu
         ArgumentNullException.ThrowIfNull(transform);
     }
 
+    /// <summary>
+    /// Initializes the stage from an asynchronous transform.
+    /// </summary>
     public MapStage(
         Func<TInput, PipelineContext, CancellationToken, ValueTask<TOutput>> transform,
         PipelineStageOptions? options = null)

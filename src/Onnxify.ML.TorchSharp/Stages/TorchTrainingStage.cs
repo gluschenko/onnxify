@@ -5,6 +5,9 @@ using TorchOptimizer = global::TorchSharp.torch.optim.Optimizer;
 
 namespace Onnxify.ML.TorchSharp.Stages;
 
+/// <summary>
+/// Executes a Torch training step including forward pass, loss computation, backward pass, and optimizer update.
+/// </summary>
 public sealed class TorchTrainingStage<TBatch, TModelOutput, TResult>
     : ItemPipelineStage<TBatch, TorchTrainingStepResult<TBatch, TResult>>
 {
@@ -15,6 +18,9 @@ public sealed class TorchTrainingStage<TBatch, TModelOutput, TResult>
     private readonly bool _disposeModelOutput;
     private readonly bool _zeroGradBeforeStep;
 
+    /// <summary>
+    /// Initializes a Torch training stage.
+    /// </summary>
     public TorchTrainingStage(
         TorchOptimizer optimizer,
         Func<TBatch, PipelineContext, CancellationToken, ValueTask<TModelOutput>> forward,

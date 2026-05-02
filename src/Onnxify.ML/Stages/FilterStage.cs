@@ -2,10 +2,16 @@ using System.Runtime.CompilerServices;
 
 namespace Onnxify.ML.Stages;
 
+/// <summary>
+/// Filters items from the upstream stream using a predicate.
+/// </summary>
 public sealed class FilterStage<TInput> : PipelineStage<TInput, TInput>
 {
     private readonly Func<TInput, PipelineContext, CancellationToken, ValueTask<bool>> _predicate;
 
+    /// <summary>
+    /// Initializes the stage from a synchronous predicate.
+    /// </summary>
     public FilterStage(
         Func<TInput, bool> predicate,
         PipelineStageOptions? options = null)
@@ -14,6 +20,9 @@ public sealed class FilterStage<TInput> : PipelineStage<TInput, TInput>
         ArgumentNullException.ThrowIfNull(predicate);
     }
 
+    /// <summary>
+    /// Initializes the stage from an asynchronous predicate.
+    /// </summary>
     public FilterStage(
         Func<TInput, PipelineContext, CancellationToken, ValueTask<bool>> predicate,
         PipelineStageOptions? options = null)
@@ -22,6 +31,7 @@ public sealed class FilterStage<TInput> : PipelineStage<TInput, TInput>
         _predicate = predicate ?? throw new ArgumentNullException(nameof(predicate));
     }
 
+    /// <inheritdoc />
     public override IAsyncEnumerable<TInput> ExecuteAsync(
         IAsyncEnumerable<TInput> input,
         PipelineContext context,

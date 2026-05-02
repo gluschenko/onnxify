@@ -1,16 +1,25 @@
-﻿namespace Onnxify.ML;
+namespace Onnxify.ML;
 
+/// <summary>
+/// Represents a reusable typed pipeline built from one or more stages.
+/// </summary>
 public sealed class Pipeline<TInput, TOutput> : Pipeline
 {
     private readonly PipelineStage<TInput, TOutput> _stage;
     private readonly Lazy<IReadOnlyList<PipelineStage>> _leafStages;
 
+    /// <summary>
+    /// Initializes a new pipeline rooted at the supplied stage.
+    /// </summary>
     public Pipeline(PipelineStage<TInput, TOutput> stage)
     {
         _stage = stage ?? throw new ArgumentNullException(nameof(stage));
         _leafStages = new Lazy<IReadOnlyList<PipelineStage>>(() => FlattenLeafStages(_stage));
     }
 
+    /// <summary>
+    /// Executes the pipeline for a synchronous enumerable input source.
+    /// </summary>
     public IAsyncEnumerable<TOutput> ExecuteAsync(
         IEnumerable<TInput> input,
         PipelineContext? context = null,
@@ -21,6 +30,9 @@ public sealed class Pipeline<TInput, TOutput> : Pipeline
         return ExecuteAsync(PipelineAsyncEnumerable.FromEnumerable(input), context, progressChangeEvent, token);
     }
 
+    /// <summary>
+    /// Executes the pipeline for an asynchronous input source.
+    /// </summary>
     public IAsyncEnumerable<TOutput> ExecuteAsync(
         IAsyncEnumerable<TInput> input,
         PipelineContext? context = null,
@@ -32,6 +44,9 @@ public sealed class Pipeline<TInput, TOutput> : Pipeline
         return _stage.ExecuteAsync(input, executionContext, token);
     }
 
+    /// <summary>
+    /// Converts a raw stage progress event into aggregate pipeline progress.
+    /// </summary>
     public PipelineProgress CalculateProgress(PipelineStage stage, int current, int total)
     {
         ArgumentNullException.ThrowIfNull(stage);
@@ -123,16 +138,28 @@ public sealed class Pipeline<TInput, TOutput> : Pipeline
     }
 }
 
+/// <summary>
+/// Entry point for creating fluent pipelines.
+/// </summary>
 public abstract class Pipeline
 {
+    /// <summary>
+    /// Starts a new pipeline definition with the specified root input type.
+    /// </summary>
     public static PipelineOrigin<TInput> Begin<TInput>()
     {
         return new PipelineOrigin<TInput>();
     }
 }
 
+/// <summary>
+/// Fluent pipeline origin used to attach the first stage in a pipeline chain.
+/// </summary>
 public sealed class PipelineOrigin<TInput>
 {
+    /// <summary>
+    /// Attaches the first stage of the pipeline.
+    /// </summary>
     public PipelineStage<TInput, TOutputNext> Then<TOutputNext>(PipelineStage<TInput, TOutputNext> stage)
     {
         ArgumentNullException.ThrowIfNull(stage);

@@ -2,11 +2,17 @@ using System.Runtime.CompilerServices;
 
 namespace Onnxify.ML.Stages;
 
+/// <summary>
+/// Executes two child stages for each input item and returns both result collections together.
+/// </summary>
 public sealed class ForkStage<TInput, TLeft, TRight> : PipelineStage<TInput, ForkResult<TInput, TLeft, TRight>>
 {
     private readonly PipelineStage<TInput, TLeft> _left;
     private readonly PipelineStage<TInput, TRight> _right;
 
+    /// <summary>
+    /// Initializes a fork stage from two child stages.
+    /// </summary>
     public ForkStage(
         PipelineStage<TInput, TLeft> left,
         PipelineStage<TInput, TRight> right,
@@ -21,6 +27,7 @@ public sealed class ForkStage<TInput, TLeft, TRight> : PipelineStage<TInput, For
         _right = right ?? throw new ArgumentNullException(nameof(right));
     }
 
+    /// <inheritdoc />
     public override IAsyncEnumerable<ForkResult<TInput, TLeft, TRight>> ExecuteAsync(
         IAsyncEnumerable<TInput> input,
         PipelineContext context,

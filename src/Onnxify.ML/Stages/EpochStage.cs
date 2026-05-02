@@ -1,9 +1,15 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 
 namespace Onnxify.ML.Stages;
 
+/// <summary>
+/// Replays the full upstream dataset for a fixed number of epochs.
+/// </summary>
 public sealed class EpochStage<TInput> : BatchPipelineStage<TInput, EpochItem<TInput>>
 {
+    /// <summary>
+    /// Initializes the stage with the number of epochs to replay.
+    /// </summary>
     public EpochStage(
         int epochs,
         PipelineStageOptions? options = null)
@@ -13,6 +19,9 @@ public sealed class EpochStage<TInput> : BatchPipelineStage<TInput, EpochItem<TI
         Epochs = epochs;
     }
 
+    /// <summary>
+    /// Gets the number of epochs to produce.
+    /// </summary>
     public int Epochs { get; }
 
     protected override async IAsyncEnumerable<EpochItem<TInput>> ExecuteBatchAsync(
@@ -33,7 +42,7 @@ public sealed class EpochStage<TInput> : BatchPipelineStage<TInput, EpochItem<TI
                 token.ThrowIfCancellationRequested();
 
                 current++;
-                
+
                 yield return new EpochItem<TInput>
                 {
                     Value = items[position],

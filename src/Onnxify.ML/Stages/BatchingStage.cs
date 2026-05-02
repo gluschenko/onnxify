@@ -7,6 +7,9 @@ namespace Onnxify.ML.Stages;
 /// </summary>
 public abstract class BatchingStage<TInput, TBatch> : PipelineStage<TInput, TBatch>
 {
+    /// <summary>
+    /// Initializes a batching stage.
+    /// </summary>
     protected BatchingStage(
         int batchSize,
         bool includeIncompleteBatch = true,
@@ -19,10 +22,17 @@ public abstract class BatchingStage<TInput, TBatch> : PipelineStage<TInput, TBat
         IncludeIncompleteBatch = includeIncompleteBatch;
     }
 
+    /// <summary>
+    /// Gets the nominal batch size.
+    /// </summary>
     public int BatchSize { get; }
 
+    /// <summary>
+    /// Gets a value indicating whether the final incomplete batch should be emitted.
+    /// </summary>
     public bool IncludeIncompleteBatch { get; }
 
+    /// <inheritdoc />
     public sealed override IAsyncEnumerable<TBatch> ExecuteAsync(
         IAsyncEnumerable<TInput> input,
         PipelineContext context,
@@ -96,16 +106,25 @@ public abstract class BatchingStage<TInput, TBatch> : PipelineStage<TInput, TBat
         }
     }
 
+    /// <summary>
+    /// Determines whether the current buffer should be flushed into a batch.
+    /// </summary>
     protected virtual bool ShouldFlushBatch(IReadOnlyList<TInput> buffer, int batchIndex)
     {
         return buffer.Count >= BatchSize;
     }
 
+    /// <summary>
+    /// Returns a known output count when it can be determined from the input count alone.
+    /// </summary>
     protected virtual int? CalculateOutputCount(int inputCount)
     {
         return null;
     }
 
+    /// <summary>
+    /// Creates the emitted batch object for the supplied buffered items.
+    /// </summary>
     protected abstract ValueTask<TBatch> CreateBatchAsync(
         IReadOnlyList<TInput> batchItems,
         int batchIndex,
