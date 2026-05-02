@@ -10,7 +10,6 @@ namespace Onnxify.SourceGenerator
     [Generator]
     public class OnnxNodeGenerator : IIncrementalGenerator
     {
-        private readonly static HashSet<string> _reservedFieldNames = [];
         private readonly static Dictionary<string, string> _aliasFieldNames = new()
         {
             ["Inputs"] = "In",
@@ -19,17 +18,16 @@ namespace Onnxify.SourceGenerator
 
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
-            var assemblyName = context.CompilationProvider.Select((c, _) => c.AssemblyName);
-            var texts = context.AdditionalTextsProvider;
-            var combined = texts.Combine(assemblyName);
+            var operatorSchemaFiles = context.AdditionalTextsProvider
+                .Where(static file => string.Equals(Path.GetFileName(file.Path), "onnx_operators.json", StringComparison.OrdinalIgnoreCase));
 
             context.RegisterSourceOutput(
-                combined,
-                (productionContext, sourceContext) =>
+                operatorSchemaFiles,
+                (productionContext, file) =>
                 {
                     Generate(
                         context: productionContext,
-                        file: sourceContext.Left
+                        file: file
                     );
                 }
             );
@@ -40,19 +38,7 @@ namespace Onnxify.SourceGenerator
             AdditionalText file
         )
         {
-            if (Path.GetFileName(file.Path) != "onnx_operators.json")
-            {
-                return;
-            }
-
-            context.ReportDiagnostic(
-                Diagnostic.Create(
-                    new DiagnosticDescriptor("GEN001", "test", $"Generator running: {file.Path}", "gen", DiagnosticSeverity.Info, true),
-                    Location.None
-                )
-            );
-
-            var json = file.GetText()?.ToString() ?? string.Empty;
+            var json = file.GetText(context.CancellationToken)?.ToString() ?? string.Empty;
             var root = JsonSerializer.Deserialize<OperatorSchemaRoot>(json) ?? throw new Exception();
 
             var typeResolver = new List<string>();
@@ -103,31 +89,15 @@ namespace Onnxify.SourceGenerator
                     var operatorClasses = new StringBuilder();
                     var extensionMethods = new StringBuilder();
 
-                    context.ReportDiagnostic(
-                        Diagnostic.Create(
-                            new DiagnosticDescriptor("GEN001", "test", op.Name, "gen", DiagnosticSeverity.Warning, true),
-                            Location.None
-                        )
-                    );
-
                     var className = $"{op.Name}";
-
-                    _reservedFieldNames.Clear();
-                    _reservedFieldNames.Add(className);
-                    _reservedFieldNames.Add("Inputs");
-                    _reservedFieldNames.Add("Outputs");
-
-                    if (op.Inputs.Any(x => x.Name == "shape") && op.Attributes.Any(x => x.Name == "shape"))
-                    {
-                        _reservedFieldNames.Add("Shape");
-                    }
+                    var reservedFieldNames = CreateReservedFieldNames(op, className);
 
                     var hasVariadicOutput = op.Outputs.Any(IsVariadic);
                     var optionsAttributes = op.Attributes
                         .Select(x =>
                         {
                             var type = FromProto((AttributeType)x.Type);
-                            return $"() => options.{AttributeName(x.Name)} is {type} x ? new OnnxAttribute<{type}>(\"{x.Name}\", x) : null";
+                            return $"() => options.{AttributeName(x.Name, reservedFieldNames)} is {type} x ? new OnnxAttribute<{type}>(\"{x.Name}\", x) : null";
                         })
                         .ToArray();
 
@@ -153,9 +123,9 @@ namespace Onnxify.SourceGenerator
                     /// </remarks>
                     public class {{className}}InputOptions
                     {
-                        {{GetFields(op.Inputs, x => InputName(x)).Indent(1)}}
+                        {{GetFields(op.Inputs, x => InputName(x, reservedFieldNames)).Indent(1)}}
                 
-                        {{GetFields(op.Attributes, x => AttributeName(x)).Indent(1)}}
+                        {{GetFields(op.Attributes, x => AttributeName(x, reservedFieldNames)).Indent(1)}}
                     }
                 
                     /// <summary>
@@ -166,7 +136,7 @@ namespace Onnxify.SourceGenerator
                     /// </remarks>
                     public class {{className}}InputOutputOptions : {{className}}InputOptions
                     {
-                        {{GetFields(op.Outputs, x => OutputName(x)).Indent(1)}}
+                        {{GetFields(op.Outputs, x => OutputName(x, reservedFieldNames)).Indent(1)}}
                     }
                     """);
 
@@ -183,7 +153,7 @@ namespace Onnxify.SourceGenerator
                         if (IsVariadic(x))
                         {
                             nodeFields.AppendLine($$"""
-                            public {{GetNodeParameterType(x)}} {{InputName(x.Name)}}
+                            public {{GetNodeParameterType(x)}} {{InputName(x.Name, reservedFieldNames)}}
                             {
                                 get => GetVariadicInputs({{i}});
                                 set
@@ -191,7 +161,7 @@ namespace Onnxify.SourceGenerator
                                     ArgumentNullException.ThrowIfNull(value);
                                     if (value.Count < {{x.MinArity}})
                                     {
-                                        throw new InvalidOperationException("Variadic input '{{InputName(x.Name)}}' requires at least {{x.MinArity}} value(s).");
+                                        throw new InvalidOperationException("Variadic input '{{InputName(x.Name, reservedFieldNames)}}' requires at least {{x.MinArity}} value(s).");
                                     }
 
                                     SetVariadicInputs({{i}}, value);
@@ -200,30 +170,30 @@ namespace Onnxify.SourceGenerator
                             """);
 
                             createInputLines.Add($$"""
-                            if (options.{{InputName(x.Name)}}.Length < {{x.MinArity}})
+                            if (options.{{InputName(x.Name, reservedFieldNames)}}.Length < {{x.MinArity}})
                             {
-                                throw new InvalidOperationException("Variadic input '{{InputName(x.Name)}}' requires at least {{x.MinArity}} value(s).");
+                                throw new InvalidOperationException("Variadic input '{{InputName(x.Name, reservedFieldNames)}}' requires at least {{x.MinArity}} value(s).");
                             }
 
-                            inputs.AddRange(options.{{InputName(x.Name)}});
+                            inputs.AddRange(options.{{InputName(x.Name, reservedFieldNames)}});
                             """);
                         }
                         else if (x.Option != FormalParameterOption.Optional)
                         {
                             nodeFields.AppendLine($$"""
-                            public {{MapType(x.Types)}} {{InputName(x.Name)}}
+                            public {{MapType(x.Types)}} {{InputName(x.Name, reservedFieldNames)}}
                             {
                                 get => ({{MapType(x.Types)}})Inputs[{{i}}];
                                 set => SetInput({{i}}, value);
                             }
                             """);
 
-                            createInputLines.Add($"inputs.Add(options.{InputName(x.Name)});");
+                            createInputLines.Add($"inputs.Add(options.{InputName(x.Name, reservedFieldNames)});");
                         }
                         else
                         {
                             nodeFields.AppendLine($$"""
-                            public {{MapType(x.Types)}}? {{InputName(x.Name)}}
+                            public {{MapType(x.Types)}}? {{InputName(x.Name, reservedFieldNames)}}
                             {
                                 get => Inputs.Count > {{i}} ? ({{MapType(x.Types)}})Inputs[{{i}}] : null;
                                 set => SetOptionalInput({{i}}, value);
@@ -231,9 +201,9 @@ namespace Onnxify.SourceGenerator
                             """);
 
                             createInputLines.Add($$"""
-                            if (options.{{InputName(x.Name)}} is not null)
+                            if (options.{{InputName(x.Name, reservedFieldNames)}} is not null)
                             {
-                                inputs.Add(options.{{InputName(x.Name)}});
+                                inputs.Add(options.{{InputName(x.Name, reservedFieldNames)}});
                             }
                             """);
                         }
@@ -248,7 +218,7 @@ namespace Onnxify.SourceGenerator
                         if (IsVariadic(x))
                         {
                             nodeFields.AppendLine($$"""
-                            public {{GetNodeParameterType(x)}} {{OutputName(x.Name)}}
+                            public {{GetNodeParameterType(x)}} {{OutputName(x.Name, reservedFieldNames)}}
                             {
                                 get => GetVariadicOutputs({{i}});
                                 set
@@ -256,7 +226,7 @@ namespace Onnxify.SourceGenerator
                                     ArgumentNullException.ThrowIfNull(value);
                                     if (value.Count < {{x.MinArity}})
                                     {
-                                        throw new InvalidOperationException("Variadic output '{{OutputName(x.Name)}}' requires at least {{x.MinArity}} value(s).");
+                                        throw new InvalidOperationException("Variadic output '{{OutputName(x.Name, reservedFieldNames)}}' requires at least {{x.MinArity}} value(s).");
                                     }
 
                                     SetVariadicOutputs({{i}}, value);
@@ -265,30 +235,30 @@ namespace Onnxify.SourceGenerator
                             """);
 
                             createOutputLines.Add($$"""
-                            if (options.{{OutputName(x.Name)}}.Length < {{x.MinArity}})
+                            if (options.{{OutputName(x.Name, reservedFieldNames)}}.Length < {{x.MinArity}})
                             {
-                                throw new InvalidOperationException("Variadic output '{{OutputName(x.Name)}}' requires at least {{x.MinArity}} value(s).");
+                                throw new InvalidOperationException("Variadic output '{{OutputName(x.Name, reservedFieldNames)}}' requires at least {{x.MinArity}} value(s).");
                             }
 
-                            outputs.AddRange(options.{{OutputName(x.Name)}});
+                            outputs.AddRange(options.{{OutputName(x.Name, reservedFieldNames)}});
                             """);
                         }
                         else if (x.Option != FormalParameterOption.Optional)
                         {
                             nodeFields.AppendLine($$"""
-                            public {{MapType(x.Types)}} {{OutputName(x.Name)}}
+                            public {{MapType(x.Types)}} {{OutputName(x.Name, reservedFieldNames)}}
                             {
                                 get => ({{MapType(x.Types)}})Outputs[{{i}}];
                                 set => SetOutput({{i}}, value);
                             }
                             """);
 
-                            createOutputLines.Add($"outputs.Add(options.{OutputName(x.Name)});");
+                            createOutputLines.Add($"outputs.Add(options.{OutputName(x.Name, reservedFieldNames)});");
                         }
                         else
                         {
                             nodeFields.AppendLine($$"""
-                            public {{MapType(x.Types)}}? {{OutputName(x.Name)}}
+                            public {{MapType(x.Types)}}? {{OutputName(x.Name, reservedFieldNames)}}
                             {
                                 get => Outputs.Count > {{i}} && Outputs[{{i}}] is {{MapType(x.Types)}} x ? x : null;
                                 set => SetOptionalOutput({{i}}, value);
@@ -296,9 +266,9 @@ namespace Onnxify.SourceGenerator
                             """);
 
                             createOutputLines.Add($$"""
-                            if (options.{{OutputName(x.Name)}} is not null)
+                            if (options.{{OutputName(x.Name, reservedFieldNames)}} is not null)
                             {
-                                outputs.Add(options.{{OutputName(x.Name)}});
+                                outputs.Add(options.{{OutputName(x.Name, reservedFieldNames)}});
                             }
                             """);
                         }
@@ -315,7 +285,7 @@ namespace Onnxify.SourceGenerator
                         if (!x.IsNullable())
                         {
                             nodeFields.AppendLine($$"""
-                            public {{type}} {{AttributeName(x.Name)}}
+                            public {{type}} {{AttributeName(x.Name, reservedFieldNames)}}
                             {
                                 get => GetAttribute<{{type}}>("{{x.Name}}");
                                 set => SetAttribute<{{type}}>("{{x.Name}}", value);
@@ -325,7 +295,7 @@ namespace Onnxify.SourceGenerator
                         else
                         {
                             nodeFields.AppendLine($$"""
-                            public {{type}}? {{AttributeName(x.Name)}}
+                            public {{type}}? {{AttributeName(x.Name, reservedFieldNames)}}
                             {
                                 get => HasAttribute("{{x.Name}}") ? GetAttribute<{{type}}>("{{x.Name}}") : null;
                                 set {
@@ -345,9 +315,9 @@ namespace Onnxify.SourceGenerator
 
                     var list1 = new List<string>();
 
-                    list1.AddRange(op.Inputs.Select(x => $"{InputName(x.Name)} = options.{InputName(x.Name)}"));
-                    list1.AddRange(op.Attributes.Select(x => $"{AttributeName(x.Name)} = options.{AttributeName(x.Name)}"));
-                    list1.AddRange(op.Outputs.Where(x => !IsVariadic(x)).Select(x => $"{OutputName(x.Name)} = edge{OutputName(x.Name)}"));
+                    list1.AddRange(op.Inputs.Select(x => $"{InputName(x.Name, reservedFieldNames)} = options.{InputName(x.Name, reservedFieldNames)}"));
+                    list1.AddRange(op.Attributes.Select(x => $"{AttributeName(x.Name, reservedFieldNames)} = options.{AttributeName(x.Name, reservedFieldNames)}"));
+                    list1.AddRange(op.Outputs.Where(x => !IsVariadic(x)).Select(x => $"{OutputName(x.Name, reservedFieldNames)} = edge{OutputName(x.Name, reservedFieldNames)}"));
 
                     var list2 = new List<string>();
 
@@ -355,16 +325,16 @@ namespace Onnxify.SourceGenerator
                     {
                         if (IsVariadic(x))
                         {
-                            return $"{InputName(x.Name)} = inputs.Skip({i}).OfType<IOnnxGraphEdge>().ToArray()";
+                            return $"{InputName(x.Name, reservedFieldNames)} = inputs.Skip({i}).OfType<IOnnxGraphEdge>().ToArray()";
                         }
 
                         if (x.Option != FormalParameterOption.Optional)
                         {
-                            return $"{InputName(x.Name)} = inputs[{i}] ?? throw new InvalidOperationException(\"Missing required input '{x.Name}'\")";
+                            return $"{InputName(x.Name, reservedFieldNames)} = inputs[{i}] ?? throw new InvalidOperationException(\"Missing required input '{x.Name}'\")";
                         }
                         else
                         {
-                            return $"{InputName(x.Name)} = inputs.Length > {i} ? inputs[{i}] : null";
+                            return $"{InputName(x.Name, reservedFieldNames)} = inputs.Length > {i} ? inputs[{i}] : null";
                         }
                     }));
 
@@ -376,11 +346,11 @@ namespace Onnxify.SourceGenerator
 
                             if (!x.IsNullable())
                             {
-                                return $"{AttributeName(x.Name)} = ({type})(attributes.GetValueOrDefault(\"{x.Name}\") ?? throw new InvalidOperationException($\"Missing value '{x.Name}'\"))";
+                                return $"{AttributeName(x.Name, reservedFieldNames)} = ({type})(attributes.GetValueOrDefault(\"{x.Name}\") ?? throw new InvalidOperationException($\"Missing value '{x.Name}'\"))";
                             }
                             else
                             {
-                                return $"{AttributeName(x.Name)} = ({type}?)attributes.GetValueOrDefault(\"{x.Name}\")";
+                                return $"{AttributeName(x.Name, reservedFieldNames)} = ({type}?)attributes.GetValueOrDefault(\"{x.Name}\")";
                             }
                         }));
 
@@ -388,16 +358,16 @@ namespace Onnxify.SourceGenerator
                     {
                         if (IsVariadic(x))
                         {
-                            return $"{OutputName(x.Name)} = outputs.Skip({i}).OfType<IOnnxGraphEdge>().ToArray()";
+                            return $"{OutputName(x.Name, reservedFieldNames)} = outputs.Skip({i}).OfType<IOnnxGraphEdge>().ToArray()";
                         }
 
                         if (x.Option != FormalParameterOption.Optional)
                         {
-                            return $"{OutputName(x.Name)} = outputs[{i}] ?? throw new InvalidOperationException(\"Missing required output '{x.Name}'\")";
+                            return $"{OutputName(x.Name, reservedFieldNames)} = outputs[{i}] ?? throw new InvalidOperationException(\"Missing required output '{x.Name}'\")";
                         }
                         else
                         {
-                            return $"{OutputName(x.Name)} = outputs.Length > {i} ? outputs[{i}] : null";
+                            return $"{OutputName(x.Name, reservedFieldNames)} = outputs.Length > {i} ? outputs[{i}] : null";
                         }
                     }));
 
@@ -484,7 +454,7 @@ namespace Onnxify.SourceGenerator
                         /// </summary>
                         public class {{className}}Output
                         {
-                            {{GetResultFields(op.Outputs, x => OutputName(x)).Indent(1)}}
+                            {{GetResultFields(op.Outputs, x => OutputName(x, reservedFieldNames)).Indent(1)}}
                         }
                         """);
                     }
@@ -499,11 +469,11 @@ namespace Onnxify.SourceGenerator
                     var extensionMethodReturnValue = op.Outputs.Count switch
                     {
                         0 => "op",
-                        1 => string.Join(", ", op.Outputs.Select(x => $"op.{OutputName(x.Name)}")),
+                        1 => string.Join(", ", op.Outputs.Select(x => $"op.{OutputName(x.Name, reservedFieldNames)}")),
                         _ => $$"""
                         new {{currentNamespace}}.{{className}}Output 
                         { 
-                            {{string.Join(",\n", op.Outputs.Select(x => $"{OutputName(x.Name)} = op.{OutputName(x.Name)}")).Indent(1)}} 
+                            {{string.Join(",\n", op.Outputs.Select(x => $"{OutputName(x.Name, reservedFieldNames)} = op.{OutputName(x.Name, reservedFieldNames)}")).Indent(1)}} 
                         }
                         """,
                     };
@@ -511,7 +481,7 @@ namespace Onnxify.SourceGenerator
                     if (!hasVariadicOutput)
                     {
                         var edgeCreators = op.Outputs
-                            .Select(x => $"var edge{OutputName(x.Name)} = graph.AddEdge(name + \"_output_{x.Name.ToLower()}\");")
+                            .Select(x => $"var edge{OutputName(x.Name, reservedFieldNames)} = graph.AddEdge(name + \"_output_{x.Name.ToLower()}\");")
                             .ToArray();
 
                         extensionMethods.AppendLine($$"""
@@ -703,7 +673,7 @@ namespace Onnxify.SourceGenerator
 
                 sb.AppendLine($$"""
                 {{GetAttributeComment(x)}}
-                public{{required}}{{type}}{{nullable}} {{AttributeName(x.Name)}} { get; init; }{{(initializer is not null ? $" = {initializer};" : "")}}
+                public{{required}}{{type}}{{nullable}} {{onName(x.Name)}} { get; init; }{{(initializer is not null ? $" = {initializer};" : "")}}
                 """);
             }
 
@@ -801,7 +771,29 @@ namespace Onnxify.SourceGenerator
             return $"<c>{name}</c>";
         }
 
+        private static HashSet<string> CreateReservedFieldNames(OperatorSchema op, string className)
+        {
+            var reservedFieldNames = new HashSet<string>(StringComparer.Ordinal)
+            {
+                className,
+                "Inputs",
+                "Outputs"
+            };
+
+            if (op.Inputs.Any(x => x.Name == "shape") && op.Attributes.Any(x => x.Name == "shape"))
+            {
+                reservedFieldNames.Add("Shape");
+            }
+
+            return reservedFieldNames;
+        }
+
         public static string GetFieldName(string name, string prefix)
+        {
+            return GetFieldName(name, prefix, reservedFieldNames: null);
+        }
+
+        private static string GetFieldName(string name, string prefix, ISet<string>? reservedFieldNames)
         {
             var newName = name.PascalCase();
 
@@ -810,7 +802,7 @@ namespace Onnxify.SourceGenerator
                 newName = alias;
             }
 
-            if (_reservedFieldNames.Contains(newName))
+            if (reservedFieldNames?.Contains(newName) == true)
             {
                 return prefix + newName;
             }
@@ -825,17 +817,32 @@ namespace Onnxify.SourceGenerator
 
         public static string InputName(string name)
         {
-            return GetFieldName(name, "Input");
+            return InputName(name, reservedFieldNames: null);
+        }
+
+        private static string InputName(string name, ISet<string>? reservedFieldNames)
+        {
+            return GetFieldName(name, "Input", reservedFieldNames);
         }
 
         public static string OutputName(string name)
         {
-            return GetFieldName(name, "Output");
+            return OutputName(name, reservedFieldNames: null);
+        }
+
+        private static string OutputName(string name, ISet<string>? reservedFieldNames)
+        {
+            return GetFieldName(name, "Output", reservedFieldNames);
         }
 
         public static string AttributeName(string name)
         {
-            return GetFieldName(name, "Attribute");
+            return AttributeName(name, reservedFieldNames: null);
+        }
+
+        private static string AttributeName(string name, ISet<string>? reservedFieldNames)
+        {
+            return GetFieldName(name, "Attribute", reservedFieldNames);
         }
 
         public static bool IsVariadic(OperatorParameter parameter)

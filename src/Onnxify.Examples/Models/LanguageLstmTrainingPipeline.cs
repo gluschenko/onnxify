@@ -98,12 +98,13 @@ internal sealed class LanguageLstmTrainingPipeline
             shuffleSeed
         );
 
-        return new LanguageLstmTrainingResult(
-            model,
-            trainDataset,
-            validationDataset,
-            finalEvaluation
-        );
+        return new LanguageLstmTrainingResult
+        {
+            Model = model,
+            TrainDataset = trainDataset,
+            ValidationDataset = validationDataset,
+            FinalEvaluation = finalEvaluation
+        };
     }
 
     private static CorpusLoadResult LoadCorpus(
@@ -191,12 +192,20 @@ internal sealed class LanguageLstmTrainingPipeline
 
             foreach (var text in reservoir.Take(trainCount))
             {
-                trainSamples.Add(new LanguageTextSample(text, language));
+                trainSamples.Add(new LanguageTextSample
+                {
+                    Text = text,
+                    Language = language
+                });
             }
 
             foreach (var text in reservoir.Skip(trainCount).Take(validationCount))
             {
-                validationSamples.Add(new LanguageTextSample(text, language));
+                validationSamples.Add(new LanguageTextSample
+                {
+                    Text = text,
+                    Language = language
+                });
             }
         }
 
@@ -205,12 +214,13 @@ internal sealed class LanguageLstmTrainingPipeline
             throw new InvalidOperationException($"No training samples were read from '{datasetPath}'.");
         }
 
-        return new CorpusLoadResult(
-            trainSamples.ToArray(),
-            validationSamples.ToArray(),
-            characters,
-            totalSamples
-        );
+        return new CorpusLoadResult
+        {
+            TrainSamples = trainSamples.ToArray(),
+            ValidationSamples = validationSamples.ToArray(),
+            Characters = characters,
+            TotalSamples = totalSamples
+        };
     }
 
     private static Dictionary<string, int> BuildCharacterVocabulary(IEnumerable<string> characters)
@@ -270,12 +280,16 @@ internal sealed class LanguageLstmTrainingPipeline
         return text.Trim().Normalize(NormalizationForm.FormC).ToLowerInvariant();
     }
 
-    private sealed record CorpusLoadResult(
-        LanguageTextSample[] TrainSamples,
-        LanguageTextSample[] ValidationSamples,
-        HashSet<string> Characters,
-        long TotalSamples
-    );
+    private sealed class CorpusLoadResult
+    {
+        public required LanguageTextSample[] TrainSamples { get; init; }
+
+        public required LanguageTextSample[] ValidationSamples { get; init; }
+
+        public required HashSet<string> Characters { get; init; }
+
+        public required long TotalSamples { get; init; }
+    }
 }
 
 internal sealed class LanguageLstmTrainer
@@ -318,7 +332,12 @@ internal sealed class LanguageLstmTrainer
             schedulerGamma,
             minLearningRate
         );
-        var finalEvaluation = new LanguageLstmEvaluation(0f, 0f, 0);
+        var finalEvaluation = new LanguageLstmEvaluation
+        {
+            Loss = 0f,
+            Accuracy = 0f,
+            Samples = 0
+        };
         var optimizationStep = 0;
 
         for (var epoch = 1; epoch <= epochs; epoch++)
@@ -471,11 +490,12 @@ internal sealed class LanguageLstmTrainer
             lossSum += loss.ToSingle() * batch.Size;
         }
 
-        return new LanguageLstmEvaluation(
-            lossSum / Math.Max(1, processedSamples),
-            (float)correctPredictions / Math.Max(1, processedSamples),
-            processedSamples
-        );
+        return new LanguageLstmEvaluation
+        {
+            Loss = lossSum / Math.Max(1, processedSamples),
+            Accuracy = (float)correctPredictions / Math.Max(1, processedSamples),
+            Samples = processedSamples
+        };
     }
 }
 
@@ -607,13 +627,29 @@ internal sealed class LanguageLstmDataset
     }
 }
 
-internal sealed record LanguageTextSample(string Text, string Language);
+internal sealed class LanguageTextSample
+{
+    public required string Text { get; init; }
 
-internal sealed record LanguageLstmTrainingResult(
-    LSTMLIDModel Model,
-    LanguageLstmDataset TrainDataset,
-    LanguageLstmDataset ValidationDataset,
-    LanguageLstmEvaluation FinalEvaluation
-);
+    public required string Language { get; init; }
+}
 
-internal readonly record struct LanguageLstmEvaluation(float Loss, float Accuracy, int Samples);
+internal sealed class LanguageLstmTrainingResult
+{
+    public required LSTMLIDModel Model { get; init; }
+
+    public required LanguageLstmDataset TrainDataset { get; init; }
+
+    public required LanguageLstmDataset ValidationDataset { get; init; }
+
+    public required LanguageLstmEvaluation FinalEvaluation { get; init; }
+}
+
+internal readonly struct LanguageLstmEvaluation
+{
+    public required float Loss { get; init; }
+
+    public required float Accuracy { get; init; }
+
+    public required int Samples { get; init; }
+}
