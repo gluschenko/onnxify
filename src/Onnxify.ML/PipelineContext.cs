@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+
 namespace Onnxify.ML;
 
 /// <summary>
@@ -7,6 +9,8 @@ public sealed class PipelineContext
 {
     private readonly Dictionary<string, object?> _properties = new(StringComparer.Ordinal);
     private readonly Dictionary<Type, object> _typedState = new();
+    private readonly ConcurrentDictionary<string, int> _sequenceCounters = new(StringComparer.Ordinal);
+    private ProgressChangeEvent? _progressChangeEvent;
 
     public PipelineContext(IServiceProvider? services = null)
     {
@@ -86,5 +90,41 @@ public sealed class PipelineContext
     {
         return GetService<TService>()
             ?? throw new InvalidOperationException($"Pipeline service '{typeof(TService).FullName}' is not available.");
+    }
+
+    internal PipelineContext CreateExecutionContext(ProgressChangeEvent? progressChangeEvent)
+    {
+        var clone = new PipelineContext(Services);
+
+        foreach (var pair in _properties)
+        {
+            clone._properties.Add(pair.Key, pair.Value);
+        }
+
+        foreach (var pair in _typedState)
+        {
+            clone._typedState.Add(pair.Key, pair.Value);
+        }
+
+        clone._progressChangeEvent = progressChangeEvent;
+        return clone;
+    }
+
+    internal ValueTask ReportProgressAsync(PipelineStage stage, int current, int total)
+    {
+        return _progressChangeEvent is null
+            ? ValueTask.CompletedTask
+            : _progressChangeEvent.Invoke(stage, current, total);
+    }
+
+    public int NextSequenceNumber(PipelineStage stage, string? suffix = null)
+    {
+        ArgumentNullException.ThrowIfNull(stage);
+
+        var key = suffix is null
+            ? $"{stage.GetType().FullName}:{stage.Name}"
+            : $"{stage.GetType().FullName}:{stage.Name}:{suffix}";
+
+        return _sequenceCounters.AddOrUpdate(key, 0, static (_, current) => checked(current + 1));
     }
 }

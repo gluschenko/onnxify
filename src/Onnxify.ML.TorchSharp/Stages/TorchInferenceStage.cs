@@ -8,7 +8,6 @@ public sealed class TorchInferenceStage<TBatch, TModelOutput, TResult>
     private readonly Func<TBatch, PipelineContext, CancellationToken, ValueTask<TModelOutput>> _forward;
     private readonly Func<TBatch, TModelOutput, PipelineContext, CancellationToken, ValueTask<TResult>> _resultSelector;
     private readonly bool _disposeModelOutput;
-    private int _inferenceIndex;
 
     public TorchInferenceStage(
         Func<TBatch, PipelineContext, CancellationToken, ValueTask<TModelOutput>> forward,
@@ -36,7 +35,10 @@ public sealed class TorchInferenceStage<TBatch, TModelOutput, TResult>
         try
         {
             var result = await _resultSelector(input, output, context, token);
-            return new TorchInferenceResult<TBatch, TResult>(input, result, _inferenceIndex++);
+            return new TorchInferenceResult<TBatch, TResult>(
+                input,
+                result,
+                context.NextSequenceNumber(this));
         }
         finally
         {

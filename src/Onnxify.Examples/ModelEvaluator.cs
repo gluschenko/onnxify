@@ -151,12 +151,14 @@ namespace Onnxify.Examples
         }
     }
 
-    internal sealed record EvaluationResult(
-        int[,] ConfusionMatrix,
-        int Correct,
-        int Total
-    )
+    internal sealed class EvaluationResult
     {
+        public required int[,] ConfusionMatrix { get; init; }
+
+        public required int Correct { get; init; }
+
+        public required int Total { get; init; }
+
         public float Accuracy => Total == 0 ? 0f : (float)Correct / Total;
 
         public static EvaluationResult From(int[,] confusionMatrix)
@@ -178,7 +180,12 @@ namespace Onnxify.Examples
                 }
             }
 
-            return new EvaluationResult(confusionMatrix, correct, total);
+            return new EvaluationResult
+            {
+                ConfusionMatrix = confusionMatrix,
+                Correct = correct,
+                Total = total
+            };
         }
     }
 }

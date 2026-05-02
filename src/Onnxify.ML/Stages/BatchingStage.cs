@@ -23,17 +23,31 @@ public abstract class BatchingStage<TInput, TBatch> : PipelineStage<TInput, TBat
 
     public bool IncludeIncompleteBatch { get; }
 
-    public sealed override async IAsyncEnumerable<TBatch> ExecuteAsync(
-        IEnumerable<TInput> input,
+    public sealed override IAsyncEnumerable<TBatch> ExecuteAsync(
+        IAsyncEnumerable<TInput> input,
         PipelineContext context,
-        [EnumeratorCancellation] CancellationToken token)
+        CancellationToken token)
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(context);
 
-        var total = input.TryGetNonEnumeratedCount(out var knownTotal)
-            ? knownTotal
-            : -1;
+        var hasKnownCount = PipelineAsyncEnumerable.TryGetKnownCount(input, out var knownCount);
+        var outputCount = hasKnownCount
+            ? CalculateOutputCount(knownCount)
+            : null;
+
+        return PipelineAsyncEnumerable.WithKnownCount(
+            ExecuteCoreAsync(input, context, hasKnownCount ? knownCount : null, token),
+            outputCount);
+    }
+
+    private async IAsyncEnumerable<TBatch> ExecuteCoreAsync(
+        IAsyncEnumerable<TInput> input,
+        PipelineContext context,
+        int? knownCount,
+        [EnumeratorCancellation] CancellationToken token)
+    {
+        var total = knownCount ?? -1;
         var current = 0;
         var batchIndex = 0;
         var initialCapacity = BatchSize > 1024
@@ -41,9 +55,9 @@ public abstract class BatchingStage<TInput, TBatch> : PipelineStage<TInput, TBat
             : BatchSize;
         var buffer = new List<TInput>(initialCapacity);
 
-        await ReportProgressAsync(current, total);
+        await ReportProgressAsync(context, current, total);
 
-        foreach (var item in input)
+        await foreach (var item in input.WithCancellation(token))
         {
             token.ThrowIfCancellationRequested();
 
@@ -63,7 +77,7 @@ public abstract class BatchingStage<TInput, TBatch> : PipelineStage<TInput, TBat
                 buffer.Clear();
             }
 
-            await ReportProgressAsync(current, total);
+            await ReportProgressAsync(context, current, total);
         }
 
         if (buffer.Count > 0 && IncludeIncompleteBatch)
@@ -75,11 +89,21 @@ public abstract class BatchingStage<TInput, TBatch> : PipelineStage<TInput, TBat
                 context,
                 token);
         }
+
+        if (knownCount is null)
+        {
+            await ReportProgressAsync(context, current, current);
+        }
     }
 
     protected virtual bool ShouldFlushBatch(IReadOnlyList<TInput> buffer, int batchIndex)
     {
         return buffer.Count >= BatchSize;
+    }
+
+    protected virtual int? CalculateOutputCount(int inputCount)
+    {
+        return null;
     }
 
     protected abstract ValueTask<TBatch> CreateBatchAsync(

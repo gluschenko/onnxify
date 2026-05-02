@@ -56,4 +56,22 @@ public class TorchTensorBatchStage<TSample> : BatchingStage<TSample, TorchMiniBa
             tensors.AdditionalTensors
         );
     }
+
+    protected override int? CalculateOutputCount(int inputCount)
+    {
+        if (inputCount == 0)
+        {
+            return 0;
+        }
+
+        var fullBatches = inputCount / BatchSize;
+        var hasRemainder = inputCount % BatchSize != 0;
+
+        if (hasRemainder && IncludeIncompleteBatch)
+        {
+            return fullBatches + 1;
+        }
+
+        return fullBatches;
+    }
 }

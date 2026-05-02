@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 
 namespace Onnxify.ML;
@@ -8,20 +8,19 @@ namespace Onnxify.ML;
 /// </summary>
 public sealed class ConcurrentEnumerator<TInput, TOutput>
 {
-    private readonly IReadOnlyList<TInput> _input;
-    private readonly Func<TInput, CancellationToken, Task<TOutput>> _action;
+    private readonly IAsyncEnumerable<TInput> _input;
+    private readonly Func<TInput, CancellationToken, ValueTask<TOutput>> _action;
     private readonly ConcurrentEnumeratorOptions _options;
 
     public ConcurrentEnumerator(
-        IEnumerable<TInput> input,
-        Func<TInput, CancellationToken, Task<TOutput>> action,
-        ConcurrentEnumeratorOptions? options = null
-    )
+        IAsyncEnumerable<TInput> input,
+        Func<TInput, CancellationToken, ValueTask<TOutput>> action,
+        ConcurrentEnumeratorOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(action);
 
-        _input = input as IReadOnlyList<TInput> ?? input.ToArray();
+        _input = input;
         _action = action;
         _options = options ?? new ConcurrentEnumeratorOptions();
 
@@ -31,57 +30,112 @@ public sealed class ConcurrentEnumerator<TInput, TOutput>
         }
     }
 
+    public ConcurrentEnumerator(
+        IAsyncEnumerable<TInput> input,
+        Func<TInput, CancellationToken, Task<TOutput>> action,
+        ConcurrentEnumeratorOptions? options = null)
+        : this(
+            input,
+            (Func<TInput, CancellationToken, ValueTask<TOutput>>)((item, token) => new ValueTask<TOutput>(action(item, token))),
+            options)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+    }
+
+    public ConcurrentEnumerator(
+        IEnumerable<TInput> input,
+        Func<TInput, CancellationToken, Task<TOutput>> action,
+        ConcurrentEnumeratorOptions? options = null)
+        : this(
+            PipelineAsyncEnumerable.FromEnumerable(input),
+            (Func<TInput, CancellationToken, ValueTask<TOutput>>)((item, token) => new ValueTask<TOutput>(action(item, token))),
+            options)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(action);
+    }
+
     public async IAsyncEnumerable<TOutput> ExecuteAsync([EnumeratorCancellation] CancellationToken token = default)
     {
-        if (_input.Count == 0)
-        {
-            yield break;
-        }
-
-        var maxDegree = Math.Min(_options.MaxDegreeOfParallelism, _input.Count);
+        var maxDegree = _options.MaxDegreeOfParallelism;
         var capacity = _options.BoundedCapacity ?? maxDegree;
-        using var semaphore = new SemaphoreSlim(maxDegree);
 
-        var channel = Channel.CreateBounded<(int Index, TOutput Value)>(new BoundedChannelOptions(capacity)
+        var inputChannel = Channel.CreateBounded<(int Index, TInput Item)>(new BoundedChannelOptions(capacity)
+        {
+            FullMode = BoundedChannelFullMode.Wait,
+            SingleReader = false,
+            SingleWriter = true
+        });
+
+        var outputChannel = Channel.CreateBounded<(int Index, TOutput Value)>(new BoundedChannelOptions(capacity)
         {
             FullMode = BoundedChannelFullMode.Wait,
             SingleReader = true,
             SingleWriter = false
         });
 
-        var workers = _input.Select((item, index) => ProcessAsync(item, index, semaphore, channel.Writer, token)).ToArray();
+        var producer = Task.Run(async () =>
+        {
+            var index = 0;
 
-        var producer = Task.Run(
-            async () =>
+            try
             {
-                try
+                await foreach (var item in _input.WithCancellation(token))
                 {
-                    await Task.WhenAll(workers);
-                    channel.Writer.TryComplete();
+                    await inputChannel.Writer.WriteAsync((index, item), token);
+                    index++;
                 }
-                catch (Exception ex)
+
+                inputChannel.Writer.TryComplete();
+            }
+            catch (Exception ex)
+            {
+                inputChannel.Writer.TryComplete(ex);
+                throw;
+            }
+        }, token);
+
+        var workers = Enumerable.Range(0, maxDegree)
+            .Select(_ => Task.Run(async () =>
+            {
+                await foreach (var (index, item) in inputChannel.Reader.ReadAllAsync(token))
                 {
-                    channel.Writer.TryComplete(ex);
+                    var result = await _action(item, token);
+                    await outputChannel.Writer.WriteAsync((index, result), token);
                 }
-            }, 
-            token
-        );
+            }, token))
+            .ToArray();
+
+        var completion = Task.Run(async () =>
+        {
+            try
+            {
+                await producer;
+                await Task.WhenAll(workers);
+                outputChannel.Writer.TryComplete();
+            }
+            catch (Exception ex)
+            {
+                outputChannel.Writer.TryComplete(ex);
+                throw;
+            }
+        }, token);
 
         if (!_options.PreserveOrder)
         {
-            await foreach (var (_, result) in channel.Reader.ReadAllAsync(token))
+            await foreach (var (_, result) in outputChannel.Reader.ReadAllAsync(token))
             {
                 yield return result;
             }
 
-            await producer;
+            await completion;
             yield break;
         }
 
         var buffer = new SortedDictionary<int, TOutput>();
         var nextIndex = 0;
 
-        await foreach (var (index, result) in channel.Reader.ReadAllAsync(token))
+        await foreach (var (index, result) in outputChannel.Reader.ReadAllAsync(token))
         {
             buffer[index] = result;
 
@@ -93,26 +147,6 @@ public sealed class ConcurrentEnumerator<TInput, TOutput>
             }
         }
 
-        await producer;
-    }
-
-    private async Task ProcessAsync(
-        TInput item,
-        int index,
-        SemaphoreSlim semaphore,
-        ChannelWriter<(int Index, TOutput Value)> writer,
-        CancellationToken token)
-    {
-        await semaphore.WaitAsync(token);
-
-        try
-        {
-            var result = await _action(item, token);
-            await writer.WriteAsync((index, result), token);
-        }
-        finally
-        {
-            semaphore.Release();
-        }
+        await completion;
     }
 }

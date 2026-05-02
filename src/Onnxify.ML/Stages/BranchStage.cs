@@ -2,27 +2,43 @@ using System.Runtime.CompilerServices;
 
 namespace Onnxify.ML.Stages;
 
-public sealed class FilterStage<TInput> : PipelineStage<TInput, TInput>
+public sealed class BranchStage<TInput, TOutput> : PipelineStage<TInput, TOutput>
 {
     private readonly Func<TInput, PipelineContext, CancellationToken, ValueTask<bool>> _predicate;
+    private readonly PipelineStage<TInput, TOutput> _whenTrue;
+    private readonly PipelineStage<TInput, TOutput> _whenFalse;
 
-    public FilterStage(
+    public BranchStage(
         Func<TInput, bool> predicate,
+        PipelineStage<TInput, TOutput> whenTrue,
+        PipelineStage<TInput, TOutput> whenFalse,
         PipelineStageOptions? options = null)
-        : this((input, _, _) => ValueTask.FromResult(predicate(input)), options)
+        : this(
+            (input, _, _) => ValueTask.FromResult(predicate(input)),
+            whenTrue,
+            whenFalse,
+            options)
     {
         ArgumentNullException.ThrowIfNull(predicate);
     }
 
-    public FilterStage(
+    public BranchStage(
         Func<TInput, PipelineContext, CancellationToken, ValueTask<bool>> predicate,
+        PipelineStage<TInput, TOutput> whenTrue,
+        PipelineStage<TInput, TOutput> whenFalse,
         PipelineStageOptions? options = null)
-        : base(options ?? new PipelineStageOptions { Category = PipelineStageCategories.DataPreparation })
+        : base(options ?? new PipelineStageOptions
+        {
+            Name = "branch",
+            Category = PipelineStageCategories.Orchestration
+        })
     {
         _predicate = predicate ?? throw new ArgumentNullException(nameof(predicate));
+        _whenTrue = whenTrue ?? throw new ArgumentNullException(nameof(whenTrue));
+        _whenFalse = whenFalse ?? throw new ArgumentNullException(nameof(whenFalse));
     }
 
-    public override IAsyncEnumerable<TInput> ExecuteAsync(
+    public override IAsyncEnumerable<TOutput> ExecuteAsync(
         IAsyncEnumerable<TInput> input,
         PipelineContext context,
         CancellationToken token)
@@ -35,7 +51,12 @@ public sealed class FilterStage<TInput> : PipelineStage<TInput, TInput>
         return ExecuteCoreAsync(input, context, hasKnownCount ? knownCount : null, token);
     }
 
-    private async IAsyncEnumerable<TInput> ExecuteCoreAsync(
+    internal override IReadOnlyList<PipelineStage> GetChildren()
+    {
+        return [_whenTrue, _whenFalse];
+    }
+
+    private async IAsyncEnumerable<TOutput> ExecuteCoreAsync(
         IAsyncEnumerable<TInput> input,
         PipelineContext context,
         int? knownCount,
@@ -50,9 +71,13 @@ public sealed class FilterStage<TInput> : PipelineStage<TInput, TInput>
         {
             token.ThrowIfCancellationRequested();
 
-            if (await _predicate(item, context, token))
+            var stage = await _predicate(item, context, token)
+                ? _whenTrue
+                : _whenFalse;
+
+            await foreach (var output in stage.ExecuteSingleAsync(item, context, token))
             {
-                yield return item;
+                yield return output;
             }
 
             current++;

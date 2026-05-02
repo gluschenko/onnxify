@@ -1,6 +1,8 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Onnxify.ML;
 using Onnxify.ML.Stages;
+using Onnxify.ML.TorchSharp;
 using Onnxify.ML.TorchSharp.Stages;
 using TorchSharp;
 using static TorchSharp.torch;
@@ -49,18 +51,22 @@ internal sealed class AlexNetTrainer
             minLearningRate
         );
 
-        var run = new AlexNetTrainingRun(
-            _model,
-            _reader,
-            optimizer,
-            criterion,
-            scheduler,
-            epochs,
-            batchSize,
-            shuffleSeed,
-            device,
-            Stopwatch.StartNew()
-        );
+        var batchesPerEpoch = checked((int)((_reader.SampleCount + batchSize - 1) / batchSize));
+        var run = new AlexNetTrainingRun
+        {
+            Model = _model,
+            Reader = _reader,
+            Optimizer = optimizer,
+            Criterion = criterion,
+            Scheduler = scheduler,
+            Epochs = epochs,
+            BatchSize = batchSize,
+            ShuffleSeed = shuffleSeed,
+            Device = device,
+            BatchesPerEpoch = batchesPerEpoch,
+            TotalBatches = checked(epochs * batchesPerEpoch),
+            Stopwatch = Stopwatch.StartNew()
+        };
 
         var pipeline = Pipeline.Begin<AlexNetTrainingRun>()
             .Then(new EpochStage<AlexNetTrainingRun>(
@@ -71,39 +77,55 @@ internal sealed class AlexNetTrainer
                     Category = PipelineStageCategories.Orchestration
                 }
             ))
-            .Then(new AlexNetEpochTrainingStage())
-            .Then(new TapStage<AlexNetEpochSummary>(
-                summary =>
+            .Then(new AlexNetBatchSourceStage())
+            .Then(new AlexNetBatchTensorStage())
+            .Then(new TorchTrainingStage<AlexNetTorchBatch, Tensor, AlexNetBatchMetrics>(
+                optimizer,
+                forward: (batch, _, _) => ValueTask.FromResult(batch.Run.Model.forward(batch.Inputs)),
+                lossSelector: (batch, output, _, _) => ValueTask.FromResult(batch.Run.Criterion.call(output, batch.Targets)),
+                resultSelector: (batch, output, loss, _, _) =>
                 {
+                    using var predicted = output.argmax(1);
+                    using var correct = predicted.eq(batch.Targets);
 
+                    return ValueTask.FromResult(new AlexNetBatchMetrics
+                    {
+                        BatchSize = batch.Source.Size,
+                        CorrectPredictions = correct.sum().ToInt32()
+                    });
                 },
-                new PipelineStageOptions
+                options: new PipelineStageOptions
                 {
-                    Name = "epoch-summary",
-                    Category = PipelineStageCategories.Metrics
-                }
-            ))
-            .WithProgress(async (stage, current, total) =>
-            {
-                Console.WriteLine(
-                    $"Progress: epoch {current}/{total} | " +
-                    $"stage {stage.Name} ({stage.Category})"
-                );
-            })
+                    Name = "alexnet-train-step",
+                    Category = PipelineStageCategories.Optimization
+                }))
+            .Then(new AlexNetBatchProgressStage())
             .Build();
 
-        var context = new PipelineContext().Set(run);
+        var context = new PipelineContext()
+            .Set(run)
+            .Set(new AlexNetTrainingState());
 
-        await foreach (var summary in pipeline.ExecuteAsync([run], context))
+        await foreach (var progress in pipeline.ExecuteAsync([run], context))
         {
-            Console.WriteLine();
             Console.WriteLine(
-                $"Epoch {summary.EpochNumber}/{summary.TotalEpochs} summary | " +
-                $"samples {summary.ProcessedSamples} | " +
-                $"avg loss {summary.AverageLoss:0.000000} | " +
-                $"acc {summary.Accuracy:0.000000} | " +
-                $"lr {FormatLearningRate(summary.LearningRate)}"
-            );
+                $"[T+{Math.Round(progress.Elapsed.TotalSeconds)}s] " +
+                $"Progress: batch {progress.GlobalBatchNumber}/{progress.TotalBatches} | " +
+                $"epoch {progress.EpochNumber}/{progress.TotalEpochs} | " +
+                $"epoch batch {progress.BatchNumber}/{progress.BatchesInEpoch} | " +
+                $"loss {progress.BatchLoss:0.000000} | " +
+                $"avg loss {progress.RunningAverageLoss:0.000000} | " +
+                $"acc {progress.RunningAccuracy:0.000000} | " +
+                $"lr {FormatLearningRate(progress.LearningRate)}");
+
+            if (progress.IsLastBatchInEpoch)
+            {
+                Console.WriteLine(
+                    $"Epoch {progress.EpochNumber}/{progress.TotalEpochs} complete | " +
+                    $"samples {progress.ProcessedSamples} | " +
+                    $"avg loss {progress.RunningAverageLoss:0.000000} | " +
+                    $"acc {progress.RunningAccuracy:0.000000}");
+            }
         }
     }
 
@@ -112,103 +134,62 @@ internal sealed class AlexNetTrainer
         return learningRate.ToString("0.######E+0");
     }
 
-    private sealed class AlexNetEpochTrainingStage
-        : ItemPipelineStage<EpochItem<AlexNetTrainingRun>, AlexNetEpochSummary>
+    private sealed class AlexNetBatchSourceStage
+        : PipelineStage<EpochItem<AlexNetTrainingRun>, AlexNetBatchWorkItem>
     {
-        private readonly AlexNetBatchTensorStage _tensorStage = new();
-
-        public AlexNetEpochTrainingStage()
+        public AlexNetBatchSourceStage()
             : base(new PipelineStageOptions
             {
-                Name = "alexnet-train-epoch",
-                Category = PipelineStageCategories.Optimization
+                Name = "alexnet-batch-source",
+                Category = PipelineStageCategories.Orchestration
             })
         {
         }
 
-        protected override async ValueTask<AlexNetEpochSummary> ProcessAsync(
-            EpochItem<AlexNetTrainingRun> input,
+        public override async IAsyncEnumerable<AlexNetBatchWorkItem> ExecuteAsync(
+            IAsyncEnumerable<EpochItem<AlexNetTrainingRun>> input,
             PipelineContext context,
-            CancellationToken token)
+            [EnumeratorCancellation] CancellationToken token)
         {
-            var run = input.Value;
-            var learningRate = run.Scheduler.GetLearningRate(input.EpochNumber);
-            run.Scheduler.Apply(run.Optimizer, input.EpochNumber);
-
-            Console.WriteLine(
-                $"[T+{Math.Round(run.Stopwatch.Elapsed.TotalSeconds)}s] " +
-                $"Epoch {input.EpochNumber}/{run.Epochs} | " +
-                $"lr {FormatLearningRate(learningRate)}");
-
-            var trainingStage = new TorchTrainingStage<AlexNetTorchBatch, Tensor, AlexNetBatchMetrics>(
-                run.Optimizer,
-                forward: (batch, _, _) => ValueTask.FromResult(run.Model.forward(batch.Inputs)),
-                lossSelector: (batch, output, _, _) => ValueTask.FromResult(run.Criterion.call(output, batch.Targets)),
-                resultSelector: (batch, output, loss, _, _) =>
-                {
-                    using var predicted = output.argmax(1);
-                    using var correct = predicted.eq(batch.Targets);
-
-                    return ValueTask.FromResult(new AlexNetBatchMetrics(
-                        BatchSize: batch.Source.Size,
-                        CorrectPredictions: correct.sum().ToInt32()));
-                },
-                options: new PipelineStageOptions
-                {
-                    Name = "alexnet-train-step",
-                    Category = PipelineStageCategories.Optimization
-                });
-
-            var batchIndex = 0;
-            var processedSamples = 0;
-            var correctPredictions = 0;
-            var weightedLoss = 0f;
-
-            await foreach (var batch in run.Reader.BatchAsync(
-                run.BatchSize,
-                shuffle: true,
-                shuffleSeed: run.ShuffleSeed + input.EpochIndex,
-                cancellationToken: token))
+            await foreach (var epoch in input.WithCancellation(token))
             {
-                using var torchBatch = await _tensorStage.ExecuteSingleAsync(
-                    batch,
-                    context,
-                    token);
+                token.ThrowIfCancellationRequested();
 
-                using var step = await trainingStage.ExecuteSingleAsync(
-                    torchBatch,
-                    context,
-                    token);
+                var run = epoch.Value;
+                var learningRate = run.Scheduler.GetLearningRate(epoch.EpochNumber);
+                run.Scheduler.Apply(run.Optimizer, epoch.EpochNumber);
 
-                batchIndex++;
-                processedSamples += step.Result.BatchSize;
-                correctPredictions += step.Result.CorrectPredictions;
-                weightedLoss += step.Loss * step.Result.BatchSize;
+                var batchIndex = 0;
 
-                var accuracy = processedSamples == 0
-                    ? 0f
-                    : (float)correctPredictions / processedSamples;
+                await foreach (var batch in run.Reader.BatchAsync(
+                    run.BatchSize,
+                    shuffle: true,
+                    shuffleSeed: run.ShuffleSeed + epoch.EpochIndex,
+                    cancellationToken: token))
+                {
+                    batchIndex++;
 
-                Console.Write(
-                    $"\rTrain: epoch {input.EpochNumber}/{run.Epochs} | " +
-                    $"batch {batchIndex} | " +
-                    $"samples {processedSamples} | " +
-                    $"loss {step.Loss:0.000000} | " +
-                    $"acc {accuracy:0.000000} | " +
-                    $"lr {FormatLearningRate(learningRate)}");
+                    yield return new AlexNetBatchWorkItem
+                    {
+                        Run = run,
+                        EpochIndex = epoch.EpochIndex,
+                        EpochNumber = epoch.EpochNumber,
+                        TotalEpochs = run.Epochs,
+                        BatchIndex = batchIndex - 1,
+                        BatchNumber = batchIndex,
+                        BatchesInEpoch = run.BatchesPerEpoch,
+                        GlobalBatchIndex = epoch.EpochIndex * run.BatchesPerEpoch + (batchIndex - 1),
+                        GlobalBatchNumber = epoch.EpochIndex * run.BatchesPerEpoch + batchIndex,
+                        TotalBatches = run.TotalBatches,
+                        LearningRate = learningRate,
+                        Source = batch
+                    };
+                }
             }
-
-            return new AlexNetEpochSummary(
-                EpochNumber: input.EpochNumber,
-                TotalEpochs: run.Epochs,
-                ProcessedSamples: processedSamples,
-                CorrectPredictions: correctPredictions,
-                AverageLoss: processedSamples == 0 ? 0f : weightedLoss / processedSamples,
-                LearningRate: learningRate);
         }
     }
 
-    private sealed class AlexNetBatchTensorStage : ItemPipelineStage<DataReader.Batch, AlexNetTorchBatch>
+    private sealed class AlexNetBatchTensorStage : ItemPipelineStage<AlexNetBatchWorkItem, AlexNetTorchBatch>
     {
         public AlexNetBatchTensorStage()
             : base(new PipelineStageOptions
@@ -220,14 +201,79 @@ internal sealed class AlexNetTrainer
         }
 
         protected override ValueTask<AlexNetTorchBatch> ProcessAsync(
-            DataReader.Batch input,
+            AlexNetBatchWorkItem input,
             PipelineContext context,
             CancellationToken token)
         {
-            var device = context.GetRequired<AlexNetTrainingRun>().Device;
-            var x = input.GetDataTensor(device);
-            var y = input.GetLabelTensor(device).view(-1);
+            var x = input.Source.GetDataTensor(input.Run.Device);
+            var y = input.Source.GetLabelTensor(input.Run.Device).view(-1);
             return ValueTask.FromResult(new AlexNetTorchBatch(input, x, y));
+        }
+    }
+
+    private sealed class AlexNetBatchProgressStage
+        : ItemPipelineStage<TorchTrainingStepResult<AlexNetTorchBatch, AlexNetBatchMetrics>, AlexNetBatchProgress>
+    {
+        public AlexNetBatchProgressStage()
+            : base(new PipelineStageOptions
+            {
+                Name = "alexnet-batch-progress",
+                Category = PipelineStageCategories.Metrics
+            })
+        {
+        }
+
+        protected override ValueTask<AlexNetBatchProgress> ProcessAsync(
+            TorchTrainingStepResult<AlexNetTorchBatch, AlexNetBatchMetrics> input,
+            PipelineContext context,
+            CancellationToken token)
+        {
+            try
+            {
+                var batch = input.Batch;
+                var state = context.GetRequired<AlexNetTrainingState>();
+                var metrics = input.Result;
+
+                if (state.CurrentEpochIndex != batch.WorkItem.EpochIndex)
+                {
+                    state.CurrentEpochIndex = batch.WorkItem.EpochIndex;
+                    state.ProcessedSamples = 0;
+                    state.CorrectPredictions = 0;
+                    state.WeightedLoss = 0f;
+                }
+
+                state.ProcessedSamples += metrics.BatchSize;
+                state.CorrectPredictions += metrics.CorrectPredictions;
+                state.WeightedLoss += input.Loss * metrics.BatchSize;
+
+                var runningAverageLoss = state.ProcessedSamples == 0
+                    ? 0f
+                    : state.WeightedLoss / state.ProcessedSamples;
+                var runningAccuracy = state.ProcessedSamples == 0
+                    ? 0f
+                    : (float)state.CorrectPredictions / state.ProcessedSamples;
+
+                return ValueTask.FromResult(new AlexNetBatchProgress
+                {
+                    EpochNumber = batch.WorkItem.EpochNumber,
+                    TotalEpochs = batch.WorkItem.TotalEpochs,
+                    BatchNumber = batch.WorkItem.BatchNumber,
+                    BatchesInEpoch = batch.WorkItem.BatchesInEpoch,
+                    GlobalBatchNumber = batch.WorkItem.GlobalBatchNumber,
+                    TotalBatches = batch.WorkItem.TotalBatches,
+                    ProcessedSamples = state.ProcessedSamples,
+                    BatchLoss = input.Loss,
+                    RunningAverageLoss = runningAverageLoss,
+                    RunningAccuracy = runningAccuracy,
+                    LearningRate = batch.WorkItem.LearningRate,
+                    Elapsed = batch.WorkItem.Run.Stopwatch.Elapsed,
+                    IsLastBatchInEpoch = batch.WorkItem.BatchNumber == batch.WorkItem.BatchesInEpoch
+                });
+            }
+            finally
+            {
+                input.Dispose();
+            }
         }
     }
 
@@ -267,48 +313,124 @@ internal sealed class AlexNetTrainer
         }
     }
 
-    private sealed record AlexNetTrainingRun(
-        AlexNet Model,
-        DataReader Reader,
-        optim.Optimizer Optimizer,
-        Loss<Tensor, Tensor, Tensor> Criterion,
-        StepLearningRateScheduler Scheduler,
-        int Epochs,
-        int BatchSize,
-        int ShuffleSeed,
-        Device Device,
-        Stopwatch Stopwatch);
-
-    private sealed record AlexNetBatchMetrics(
-        int BatchSize,
-        int CorrectPredictions);
-
-    private sealed record AlexNetEpochSummary(
-        int EpochNumber,
-        int TotalEpochs,
-        int ProcessedSamples,
-        int CorrectPredictions,
-        float AverageLoss,
-        float LearningRate)
+    private sealed class AlexNetTrainingRun
     {
-        public float Accuracy => ProcessedSamples == 0
-            ? 0f
-            : (float)CorrectPredictions / ProcessedSamples;
+        public required AlexNet Model { get; init; }
+
+        public required DataReader Reader { get; init; }
+
+        public required optim.Optimizer Optimizer { get; init; }
+
+        public required Loss<Tensor, Tensor, Tensor> Criterion { get; init; }
+
+        public required StepLearningRateScheduler Scheduler { get; init; }
+
+        public required int Epochs { get; init; }
+
+        public required int BatchSize { get; init; }
+
+        public required int ShuffleSeed { get; init; }
+
+        public required Device Device { get; init; }
+
+        public required int BatchesPerEpoch { get; init; }
+
+        public required int TotalBatches { get; init; }
+
+        public required Stopwatch Stopwatch { get; init; }
+    }
+
+    private sealed class AlexNetBatchWorkItem
+    {
+        public required AlexNetTrainingRun Run { get; init; }
+
+        public required int EpochIndex { get; init; }
+
+        public required int EpochNumber { get; init; }
+
+        public required int TotalEpochs { get; init; }
+
+        public required int BatchIndex { get; init; }
+
+        public required int BatchNumber { get; init; }
+
+        public required int BatchesInEpoch { get; init; }
+
+        public required int GlobalBatchIndex { get; init; }
+
+        public required int GlobalBatchNumber { get; init; }
+
+        public required int TotalBatches { get; init; }
+
+        public required float LearningRate { get; init; }
+
+        public required DataReader.Batch Source { get; init; }
+    }
+
+    private sealed class AlexNetBatchMetrics
+    {
+        public required int BatchSize { get; init; }
+
+        public required int CorrectPredictions { get; init; }
+    }
+
+    private sealed class AlexNetBatchProgress
+    {
+        public required int EpochNumber { get; init; }
+
+        public required int TotalEpochs { get; init; }
+
+        public required int BatchNumber { get; init; }
+
+        public required int BatchesInEpoch { get; init; }
+
+        public required int GlobalBatchNumber { get; init; }
+
+        public required int TotalBatches { get; init; }
+
+        public required int ProcessedSamples { get; init; }
+
+        public required float BatchLoss { get; init; }
+
+        public required float RunningAverageLoss { get; init; }
+
+        public required float RunningAccuracy { get; init; }
+
+        public required float LearningRate { get; init; }
+
+        public required TimeSpan Elapsed { get; init; }
+
+        public required bool IsLastBatchInEpoch { get; init; }
+    }
+
+    private sealed class AlexNetTrainingState
+    {
+        public int CurrentEpochIndex { get; set; } = -1;
+
+        public int ProcessedSamples { get; set; }
+
+        public int CorrectPredictions { get; set; }
+
+        public float WeightedLoss { get; set; }
     }
 
     private sealed class AlexNetTorchBatch : IDisposable
     {
         public AlexNetTorchBatch(
-            DataReader.Batch source,
+            AlexNetBatchWorkItem workItem,
             Tensor inputs,
             Tensor targets)
         {
-            Source = source;
+            WorkItem = workItem;
             Inputs = inputs;
             Targets = targets;
         }
 
-        public DataReader.Batch Source { get; }
+        public AlexNetBatchWorkItem WorkItem { get; }
+
+        public AlexNetTrainingRun Run => WorkItem.Run;
+
+        public DataReader.Batch Source => WorkItem.Source;
 
         public Tensor Inputs { get; }
 

@@ -36,15 +36,13 @@ public abstract class PipelineStage
 
 public abstract class PipelineStage<TInput, TOutput> : PipelineStage
 {
-    private ProgressChangeEvent? _progressChangeEvent;
-
     protected PipelineStage(PipelineStageOptions? options = null)
         : base(options)
     {
     }
 
     public abstract IAsyncEnumerable<TOutput> ExecuteAsync(
-        IEnumerable<TInput> input,
+        IAsyncEnumerable<TInput> input,
         PipelineContext context,
         CancellationToken token);
 
@@ -52,28 +50,13 @@ public abstract class PipelineStage<TInput, TOutput> : PipelineStage
     {
         ArgumentNullException.ThrowIfNull(stage);
 
-        var result = new CompositeStage<TInput, TOutput, TOutputNext>(this, stage);
-
-        if (_progressChangeEvent is not null)
-        {
-            result.WithProgress(_progressChangeEvent);
-        }
-
-        return result;
+        return new CompositeStage<TInput, TOutput, TOutputNext>(this, stage);
     }
 
-    public virtual PipelineStage<TInput, TOutput> WithProgress(ProgressChangeEvent progressChangeEvent)
+    protected ValueTask ReportProgressAsync(PipelineContext context, int current, int total)
     {
-        ArgumentNullException.ThrowIfNull(progressChangeEvent);
-        _progressChangeEvent = progressChangeEvent;
-        return this;
-    }
-
-    protected ValueTask ReportProgressAsync(int current, int total)
-    {
-        return _progressChangeEvent is null
-            ? ValueTask.CompletedTask
-            : _progressChangeEvent.Invoke(this, current, total);
+        ArgumentNullException.ThrowIfNull(context);
+        return context.ReportProgressAsync(this, current, total);
     }
 
     public virtual Pipeline<TInput, TOutput> Build()

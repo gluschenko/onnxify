@@ -16,18 +16,19 @@ public sealed class EpochStage<TInput> : BatchPipelineStage<TInput, EpochItem<TI
     public int Epochs { get; }
 
     protected override async IAsyncEnumerable<EpochItem<TInput>> ExecuteBatchAsync(
-        IReadOnlyList<TInput> input,
+        IAsyncEnumerable<TInput> input,
         PipelineContext context,
         [EnumeratorCancellation] CancellationToken token)
     {
-        var total = input.Count * Epochs;
+        var items = await MaterializeAsync(input, token);
+        var total = items.Count * Epochs;
         var current = 0;
 
-        await ReportProgressAsync(current, total);
+        await ReportProgressAsync(context, current, total);
 
         for (var epochIndex = 0; epochIndex < Epochs; epochIndex++)
         {
-            for (var position = 0; position < input.Count; position++)
+            for (var position = 0; position < items.Count; position++)
             {
                 token.ThrowIfCancellationRequested();
 
@@ -35,15 +36,22 @@ public sealed class EpochStage<TInput> : BatchPipelineStage<TInput, EpochItem<TI
                 
                 yield return new EpochItem<TInput>
                 {
-                    Value = input[position],
+                    Value = items[position],
                     EpochIndex = epochIndex,
                     EpochNumber = epochIndex + 1,
                     Position = position,
-                    IsLastInEpoch = position == input.Count - 1,
+                    IsLastInEpoch = position == items.Count - 1,
                 };
 
-                await ReportProgressAsync(current, total);
+                await ReportProgressAsync(context, current, total);
             }
         }
+    }
+
+    protected override int? GetKnownOutputCount(IAsyncEnumerable<TInput> input)
+    {
+        return PipelineAsyncEnumerable.TryGetKnownCount(input, out var count)
+            ? checked(count * Epochs)
+            : null;
     }
 }

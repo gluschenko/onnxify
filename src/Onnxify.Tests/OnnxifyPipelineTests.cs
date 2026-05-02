@@ -70,14 +70,14 @@ public sealed class OnnxifyPipelineTests
 
         var pipeline = new Pipeline<int, int[]>(root);
         var progressUpdates = new List<PipelineProgress>();
-
-        root.WithProgress((stage, current, total) =>
-        {
-            progressUpdates.Add(pipeline.CalculateProgress(stage, current, total));
-            return ValueTask.CompletedTask;
-        });
-
-        var result = await pipeline.RunToListAsync([1, 2, 3, 4, 5, 6], context);
+        var result = await pipeline.RunToListAsync(
+            [1, 2, 3, 4, 5, 6],
+            context,
+            progressChangeEvent: (stage, current, total) =>
+            {
+                progressUpdates.Add(pipeline.CalculateProgress(stage, current, total));
+                return ValueTask.CompletedTask;
+            });
 
         Assert.Equal(2, result.Count);
         Assert.Equal([6, 12, 18], observed);
@@ -144,6 +144,39 @@ public sealed class OnnxifyPipelineTests
         var result = await pipeline.RunToListAsync([1, 2, 3, 4]);
 
         Assert.Equal([1, 4, 9, 16], result);
+    }
+
+    [Fact]
+    public async Task BranchStage_CanRouteItemsThroughDifferentStageChains()
+    {
+        var stage = new BranchStage<int, string>(
+            value => value % 2 == 0,
+            whenTrue: new MapStage<int, string>(value => $"even:{value}"),
+            whenFalse: new MapStage<int, string>(value => $"odd:{value}"));
+
+        var pipeline = new Pipeline<int, string>(stage);
+        var result = await pipeline.RunToListAsync([1, 2, 3, 4]);
+
+        Assert.Equal(["odd:1", "even:2", "odd:3", "even:4"], result);
+    }
+
+    [Fact]
+    public async Task ForkStage_CanProduceParallelOutputsForEachInput()
+    {
+        var stage = new ForkStage<int, string, int>(
+            left: new MapStage<int, string>(value => $"value:{value}"),
+            right: new MapStage<int, int>(value => value * value));
+
+        var pipeline = new Pipeline<int, ForkResult<int, string, int>>(stage);
+        var result = await pipeline.RunToListAsync([2, 3]);
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal(2, result[0].Input);
+        Assert.Equal(["value:2"], result[0].Left);
+        Assert.Equal([4], result[0].Right);
+        Assert.Equal(3, result[1].Input);
+        Assert.Equal(["value:3"], result[1].Left);
+        Assert.Equal([9], result[1].Right);
     }
 
     [Fact]

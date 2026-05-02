@@ -8,23 +8,32 @@ public abstract class BatchPipelineStage<TInput, TOutput> : PipelineStage<TInput
     }
 
     public sealed override IAsyncEnumerable<TOutput> ExecuteAsync(
-        IEnumerable<TInput> input,
+        IAsyncEnumerable<TInput> input,
         PipelineContext context,
         CancellationToken token)
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(context);
 
-        return ExecuteBatchAsync(Materialize(input), context, token);
+        return PipelineAsyncEnumerable.WithKnownCount(
+            ExecuteBatchAsync(input, context, token),
+            GetKnownOutputCount(input));
     }
 
     protected abstract IAsyncEnumerable<TOutput> ExecuteBatchAsync(
-        IReadOnlyList<TInput> input,
+        IAsyncEnumerable<TInput> input,
         PipelineContext context,
         CancellationToken token);
 
-    protected static IReadOnlyList<TInput> Materialize(IEnumerable<TInput> input)
+    protected static Task<IReadOnlyList<TInput>> MaterializeAsync(
+        IAsyncEnumerable<TInput> input,
+        CancellationToken cancellationToken)
     {
-        return input as IReadOnlyList<TInput> ?? input.ToArray();
+        return PipelineExecutionExtensions.ToListAsync(input, cancellationToken);
+    }
+
+    protected virtual int? GetKnownOutputCount(IAsyncEnumerable<TInput> input)
+    {
+        return null;
     }
 }

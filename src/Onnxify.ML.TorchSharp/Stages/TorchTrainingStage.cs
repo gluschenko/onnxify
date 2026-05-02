@@ -14,7 +14,6 @@ public sealed class TorchTrainingStage<TBatch, TModelOutput, TResult>
     private readonly Func<TBatch, TModelOutput, Tensor, PipelineContext, CancellationToken, ValueTask<TResult>> _resultSelector;
     private readonly bool _disposeModelOutput;
     private readonly bool _zeroGradBeforeStep;
-    private int _stepIndex;
 
     public TorchTrainingStage(
         TorchOptimizer optimizer,
@@ -59,7 +58,11 @@ public sealed class TorchTrainingStage<TBatch, TModelOutput, TResult>
             loss.backward();
             _optimizer.step();
 
-            return new TorchTrainingStepResult<TBatch, TResult>(input, summary, _stepIndex++, lossValue);
+            return new TorchTrainingStepResult<TBatch, TResult>(
+                input,
+                summary,
+                context.NextSequenceNumber(this),
+                lossValue);
         }
         finally
         {

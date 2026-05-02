@@ -14,10 +14,22 @@ public sealed class Pipeline<TInput, TOutput> : Pipeline
     public IAsyncEnumerable<TOutput> ExecuteAsync(
         IEnumerable<TInput> input,
         PipelineContext? context = null,
+        ProgressChangeEvent? progressChangeEvent = null,
         CancellationToken token = default)
     {
         ArgumentNullException.ThrowIfNull(input);
-        return _stage.ExecuteAsync(input, context ?? PipelineContext.Empty, token);
+        return ExecuteAsync(PipelineAsyncEnumerable.FromEnumerable(input), context, progressChangeEvent, token);
+    }
+
+    public IAsyncEnumerable<TOutput> ExecuteAsync(
+        IAsyncEnumerable<TInput> input,
+        PipelineContext? context = null,
+        ProgressChangeEvent? progressChangeEvent = null,
+        CancellationToken token = default)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        var executionContext = (context ?? PipelineContext.Empty).CreateExecutionContext(progressChangeEvent);
+        return _stage.ExecuteAsync(input, executionContext, token);
     }
 
     public PipelineProgress CalculateProgress(PipelineStage stage, int current, int total)
@@ -28,7 +40,18 @@ public sealed class Pipeline<TInput, TOutput> : Pipeline
 
         if (leafStages.Count == 0)
         {
-            return new PipelineProgress(0, 0, string.Empty, string.Empty, 0, 0, 0, 0, 0);
+            return new PipelineProgress
+            {
+                StageIndex = 0,
+                StageCount = 0,
+                StageName = string.Empty,
+                StageCategory = string.Empty,
+                StageWeight = 0,
+                CompletedWeight = 0,
+                TotalWeight = 0,
+                StageProgress = 0,
+                Value = 0
+            };
         }
 
         var stageIndex = -1;
@@ -62,16 +85,18 @@ public sealed class Pipeline<TInput, TOutput> : Pipeline
             ? (completedWeight + (stageWeight * stageProgress)) / totalWeight
             : 0.0;
 
-        return new PipelineProgress(
-            StageIndex: stageIndex,
-            StageCount: leafStages.Count,
-            StageName: stage.Name,
-            StageCategory: stage.Category,
-            StageWeight: stageWeight,
-            CompletedWeight: completedWeight,
-            TotalWeight: totalWeight,
-            StageProgress: stageProgress,
-            Value: value);
+        return new PipelineProgress
+        {
+            StageIndex = stageIndex,
+            StageCount = leafStages.Count,
+            StageName = stage.Name,
+            StageCategory = stage.Category,
+            StageWeight = stageWeight,
+            CompletedWeight = completedWeight,
+            TotalWeight = totalWeight,
+            StageProgress = stageProgress,
+            Value = value
+        };
     }
 
     private static IReadOnlyList<PipelineStage> FlattenLeafStages(PipelineStage root)

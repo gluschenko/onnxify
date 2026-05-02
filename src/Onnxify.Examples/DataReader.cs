@@ -126,7 +126,12 @@ internal sealed class DataReader
 
             await Task.WhenAll(tasks);
 
-            yield return new LoadingProgress(current, failed, total);
+            yield return new LoadingProgress
+            {
+                Current = current,
+                Failed = failed,
+                All = total
+            };
         }
     }
 
@@ -269,11 +274,12 @@ internal sealed class DataReader
                     throw new InvalidOperationException($"No label mapping for '{label}' from '{path}'.");
                 }
 
-                return new SampleInfo(
-                    SourcePath: path,
-                    CachePath: GetCachePath(path),
-                    LabelIndex: labelIndex
-                );
+                return new SampleInfo
+                {
+                    SourcePath = path,
+                    CachePath = GetCachePath(path),
+                    LabelIndex = labelIndex
+                };
             })
             .ToArray();
     }
@@ -349,11 +355,14 @@ internal sealed class DataReader
         }
     }
 
-    private sealed record SampleInfo(
-        string SourcePath,
-        string CachePath,
-        int LabelIndex
-    );
+    private sealed class SampleInfo
+    {
+        public required string SourcePath { get; init; }
+
+        public required string CachePath { get; init; }
+
+        public required int LabelIndex { get; init; }
+    }
 
     public static string MD5(string input)
     {
@@ -410,4 +419,11 @@ public class ImageData
     }
 }
 
-public record LoadingProgress(long Current, long Failed, long All);
+public readonly struct LoadingProgress
+{
+    public required long Current { get; init; }
+
+    public required long Failed { get; init; }
+
+    public required long All { get; init; }
+}

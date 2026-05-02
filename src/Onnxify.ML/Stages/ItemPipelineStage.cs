@@ -17,29 +17,45 @@ public abstract class ItemPipelineStage<TInput, TOutput> : PipelineStage<TInput,
         return ProcessAsync(input, context ?? PipelineContext.Empty, token);
     }
 
-    public sealed override async IAsyncEnumerable<TOutput> ExecuteAsync(
-        IEnumerable<TInput> input,
+    public sealed override IAsyncEnumerable<TOutput> ExecuteAsync(
+        IAsyncEnumerable<TInput> input,
         PipelineContext context,
-        [EnumeratorCancellation] CancellationToken token)
+        CancellationToken token)
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(context);
 
+        var hasKnownCount = PipelineAsyncEnumerable.TryGetKnownCount(input, out var knownCount);
+
+        return PipelineAsyncEnumerable.WithKnownCount(
+            ExecuteCoreAsync(input, context, hasKnownCount ? knownCount : null, token),
+            hasKnownCount ? knownCount : null);
+    }
+
+    private async IAsyncEnumerable<TOutput> ExecuteCoreAsync(
+        IAsyncEnumerable<TInput> input,
+        PipelineContext context,
+        int? knownCount,
+        [EnumeratorCancellation] CancellationToken token)
+    {
         var current = 0;
-        var total = input.TryGetNonEnumeratedCount(out var knownTotal)
-            ? knownTotal
-            : -1;
+        var total = knownCount ?? -1;
 
-        await ReportProgressAsync(current, total);
+        await ReportProgressAsync(context, current, total);
 
-        foreach (var item in input)
+        await foreach (var item in input.WithCancellation(token))
         {
             token.ThrowIfCancellationRequested();
 
             yield return await ProcessAsync(item, context, token);
 
             current++;
-            await ReportProgressAsync(current, total);
+            await ReportProgressAsync(context, current, total);
+        }
+
+        if (knownCount is null)
+        {
+            await ReportProgressAsync(context, current, current);
         }
     }
 
