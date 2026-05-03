@@ -10,12 +10,7 @@
     <Copyright>© 2026 Alexander Gluschenko</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>onnx</PackageTags>
-    <PackageReleaseNotes>
-      TBD
-    </PackageReleaseNotes>
-    <Description>
-      TBD
-    </Description>
+    <Description>TorchSharp-oriented pipeline extensions for Onnxify.ML, including tensor batching, inference stages, and training-step orchestration.</Description>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">

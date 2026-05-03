@@ -10,12 +10,7 @@
     <Copyright>© 2026 Alexander Gluschenko</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>onnx</PackageTags>
-    <PackageReleaseNotes>
-      TBD
-    </PackageReleaseNotes>
-    <Description>
-      TBD
-    </Description>
+    <Description>Composable .NET pipeline primitives for ML workflows, including batching, branching, mapping, progress-aware execution, and reusable runtime stages.</Description>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">

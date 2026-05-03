@@ -10,12 +10,7 @@
     <Copyright>© 2026 Alexander Gluschenko</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>onnx</PackageTags>
-    <PackageReleaseNotes>
-      TBD
-    </PackageReleaseNotes>
-    <Description>
-      TBD
-    </Description>
+    <Description>Code generation library that turns an existing ONNX model into a C# project or program that reconstructs the model through the Onnxify API.</Description>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">

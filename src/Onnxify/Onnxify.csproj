@@ -10,12 +10,7 @@
     <Copyright>© 2026 Alexander Gluschenko</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>onnx</PackageTags>
-    <PackageReleaseNotes>
-      TBD
-    </PackageReleaseNotes>
-    <Description>
-      TBD
-    </Description>
+    <Description>Core .NET library for loading, inspecting, creating, editing, and saving ONNX models through a lightweight wrapper object model over the ONNX protobuf schema.</Description>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">

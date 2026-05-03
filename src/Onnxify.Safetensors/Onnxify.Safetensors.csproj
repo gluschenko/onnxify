@@ -10,12 +10,7 @@
     <Copyright>© 2026 Alexander Gluschenko</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>onnx</PackageTags>
-    <PackageReleaseNotes>
-      TBD
-    </PackageReleaseNotes>
-    <Description>
-      TBD
-    </Description>
+    <Description>Safetensors-focused .NET library for reading metadata, indexing tensor slices, and working with safetensors-backed tensor storage.</Description>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">

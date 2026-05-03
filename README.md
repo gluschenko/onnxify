@@ -2,6 +2,10 @@
 
 Onnxify is an experimental .NET library for reading, inspecting, and writing ONNX models.
 
+Machine learning workflows are often difficult not because models are impossible to run, but because they are difficult to understand, inspect, adapt, and carry from one environment to another. A lot of useful work happens in that space between research and production, where people need clarity, control, and confidence rather than another opaque black box. Onnxify exists for that middle ground.
+
+The idea behind this repository is simple: models should be easier to work with, easier to reason about, and easier to integrate into real development workflows. If ONNX is meant to be a common language for models, then the tools around it should help people move faster, make smaller changes safely, and build their own workflows without unnecessary friction. That is the direction Onnxify is trying to push.
+
 ## Master plan
 
 - [x] `Onnxify`

@@ -11,6 +11,7 @@
     <Copyright>© 2026 Alexander Gluschenko</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>onnx</PackageTags>
+    <Description>Command-line tool for inspecting ONNX and safetensors files and generating C# project output from existing ONNX models.</Description>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>onnxify</ToolCommandName>
   </PropertyGroup>

@@ -5,6 +5,24 @@
   <Folder Name="/.docs/">
     <File Path="../README.md" />
   </Folder>
+  <Folder Name="/.docs/nuget/">
+    <File Path="../.docs/nuget/Onnxify.CLI.md" />
+    <File Path="../.docs/nuget/Onnxify.md" />
+    <File Path="../.docs/nuget/Onnxify.ML.md" />
+    <File Path="../.docs/nuget/Onnxify.ML.TorchSharp.md" />
+    <File Path="../.docs/nuget/Onnxify.ProjectGenerator.md" />
+    <File Path="../.docs/nuget/Onnxify.Safetensors.md" />
+    <File Path="../.docs/nuget/Onnxify.TorchSharp.md" />
+  </Folder>
+  <Folder Name="/.docs/nuget/release-notes/">
+    <File Path="../.docs/nuget/release-notes/Onnxify.CLI.md" />
+    <File Path="../.docs/nuget/release-notes/Onnxify.md" />
+    <File Path="../.docs/nuget/release-notes/Onnxify.ML.md" />
+    <File Path="../.docs/nuget/release-notes/Onnxify.ML.TorchSharp.md" />
+    <File Path="../.docs/nuget/release-notes/Onnxify.ProjectGenerator.md" />
+    <File Path="../.docs/nuget/release-notes/Onnxify.Safetensors.md" />
+    <File Path="../.docs/nuget/release-notes/Onnxify.TorchSharp.md" />
+  </Folder>
   <Folder Name="/.misc/">
     <File Path=".editorconfig" />
   </Folder>
