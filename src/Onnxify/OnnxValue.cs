@@ -1,4 +1,4 @@
-using Onnx;
+﻿using Onnx;
 
 namespace Onnxify;
 
@@ -65,6 +65,8 @@ public class OnnxValue<T> : OnnxValue where T : OnnxValueType
     public override T Type { get; }
 
     private readonly ValueInfoProto _valueInfo;
+
+    public OnnxValue(string name, T type) : this(name, type, null) { }
 
     internal OnnxValue(
         string name,
