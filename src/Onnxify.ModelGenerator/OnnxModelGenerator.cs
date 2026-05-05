@@ -751,7 +751,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
                 var relativePath = GetProjectRelativePath(projectDirectory, filePath);
                 if (!relativePath.StartsWith("..", StringComparison.Ordinal) && !Path.IsPathRooted(relativePath))
                 {
-                    return relativePath;
+                    return NormalizeGeneratedPath(relativePath);
                 }
             }
             catch
@@ -759,7 +759,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             }
         }
 
-        return Path.GetFileName(filePath);
+        return NormalizeGeneratedPath(Path.GetFileName(filePath));
     }
 
     private static bool TryGetProjectDirectory(
@@ -952,6 +952,11 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         }
 
         return filePath;
+    }
+
+    private static string NormalizeGeneratedPath(string path)
+    {
+        return path.Replace('/', '\\');
     }
 
     private sealed record ModelAnalysisResult(
