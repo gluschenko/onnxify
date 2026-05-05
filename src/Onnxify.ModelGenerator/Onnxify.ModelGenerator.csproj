@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Version>0.0.0.8</Version>
+    <RepositoryUrl>https://github.com/gluschenko/onnxify</RepositoryUrl>
+    <Authors>Alexander Gluschenko</Authors>
+    <Copyright>© 2026 Alexander Gluschenko</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>onnx;onnxruntime;source-generator;roslyn</PackageTags>
+    <Description>Source generator that emits typed Microsoft.ML.OnnxRuntime wrappers for ONNX models added to a project as AdditionalFiles.</Description>
+    
+    <EmitCompilerGeneratedFiles Condition="'$(OnnxifyEmitCompilerGeneratedFiles)'=='true'">true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath Condition="'$(OnnxifyEmitCompilerGeneratedFiles)'=='true'">$(BaseIntermediateOutputPath)Generated</CompilerGeneratedFilesOutputPath>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <IsRoslynComponent>true</IsRoslynComponent>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <LangVersion>latest</LangVersion>
+    <NoWarn>$(NoWarn);1591,1573,RS1035,RS2008</NoWarn>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <NoPackageAnalysis>true</NoPackageAnalysis>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);PackAnalyzerArtifacts</TargetsForTfmSpecificContentInPackage>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" PrivateAssets="all" />
+  </ItemGroup>
+
+  <Target Name="PackAnalyzerArtifacts">
+    <ItemGroup>
+      <TfmSpecificPackageFile Include="$(TargetPath)" PackagePath="analyzers/dotnet/cs" />
+      <TfmSpecificPackageFile Include="$(TargetDir)$(AssemblyName).pdb" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)$(AssemblyName).pdb')" />
+    </ItemGroup>
+  </Target>
+
+</Project>
