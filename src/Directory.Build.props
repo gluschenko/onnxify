@@ -1,19 +1,32 @@
 <Project>
   <PropertyGroup>
     <OnnxifyRepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\'))</OnnxifyRepoRoot>
+
     <OnnxifyPackageIconSource>$([System.IO.Path]::Combine('$(OnnxifyRepoRoot)', '.assets', 'icons', '$(MSBuildProjectName).png'))</OnnxifyPackageIconSource>
     <OnnxifyPackageReadmeSource>$([System.IO.Path]::Combine('$(OnnxifyRepoRoot)', '.docs', 'nuget', '$(MSBuildProjectName).md'))</OnnxifyPackageReadmeSource>
     <OnnxifyPackageReleaseNotesSource>$([System.IO.Path]::Combine('$(OnnxifyRepoRoot)', '.docs', 'nuget', 'release-notes', '$(MSBuildProjectName).md'))</OnnxifyPackageReleaseNotesSource>
-    <PackageIcon Condition="Exists('$(OnnxifyPackageIconSource)')">$(MSBuildProjectName).png</PackageIcon>
-    <PackageReadmeFile Condition="Exists('$(OnnxifyPackageReadmeSource)')">$(MSBuildProjectName).md</PackageReadmeFile>
+
+    <PackageIcon Condition="Exists('$(OnnxifyPackageIconSource)')">Icon.png</PackageIcon>
+    <PackageReadmeFile Condition="Exists('$(OnnxifyPackageReadmeSource)')">README.md</PackageReadmeFile>
+
     <PackageReleaseNotes Condition="Exists('$(OnnxifyPackageReleaseNotesSource)')">$([System.IO.File]::ReadAllText('$(OnnxifyPackageReleaseNotesSource)').Trim())</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup Condition="Exists('$(OnnxifyPackageIconSource)')">
-    <None Include="$(OnnxifyPackageIconSource)" Pack="true" PackagePath="" Link="$(MSBuildProjectName).png" Visible="false" />
+    <None
+      Include="$(OnnxifyPackageIconSource)"
+      Pack="true"
+      PackagePath="Icon.png"
+      Link="Icon.png"
+      Visible="false" />
   </ItemGroup>
 
   <ItemGroup Condition="Exists('$(OnnxifyPackageReadmeSource)')">
-    <None Include="$(OnnxifyPackageReadmeSource)" Pack="true" PackagePath="" Link="$(MSBuildProjectName).md" Visible="false" />
+    <None
+      Include="$(OnnxifyPackageReadmeSource)"
+      Pack="true"
+      PackagePath="README.md"
+      Link="README.md"
+      Visible="false" />
   </ItemGroup>
 </Project>

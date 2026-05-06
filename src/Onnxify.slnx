@@ -27,6 +27,7 @@
   </Folder>
   <Folder Name="/.misc/">
     <File Path=".editorconfig" />
+    <File Path="Directory.Build.props" />
   </Folder>
   <Folder Name="/generators/">
     <Project Path="Onnxify.AgentSkillGenerator/Onnxify.AgentSkillGenerator.csproj" Id="72e6ec8b-29a2-451f-813c-ae32ff6e8228" />

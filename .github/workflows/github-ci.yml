@@ -37,7 +37,12 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Setup .NET SDK
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Setup .NET 10 SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
@@ -45,6 +50,12 @@ jobs:
           cache-dependency-path: |
             src/**/*.csproj
             src/Onnxify.slnx
+
+      - name: Show .NET environment
+        run: |
+          dotnet --info
+          dotnet --list-sdks
+          dotnet --list-runtimes
 
       - name: Prepare .NET CLI home
         shell: pwsh
@@ -62,6 +73,7 @@ jobs:
           --configuration ${{ env.CONFIGURATION }}
           --framework net8.0
           --no-build
+          --no-restore
           --logger "trx;LogFileName=Onnxify.Tests.net8.0.trx"
 
       - name: Run tests (net10.0)
@@ -70,6 +82,7 @@ jobs:
           --configuration ${{ env.CONFIGURATION }}
           --framework net10.0
           --no-build
+          --no-restore
           --logger "trx;LogFileName=Onnxify.Tests.net10.0.trx"
 
       - name: Upload test results

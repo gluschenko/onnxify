@@ -22,9 +22,9 @@ namespace Onnxify.ConsoleTest
             Test1();
             Test2();
             Test6();
-            //Test9();
             Test7();
-            Text8();
+            Test8();
+            Test9();
 
             Console.WriteLine("Press any key to pay respect...");
             Console.ReadKey();
@@ -270,8 +270,10 @@ namespace Onnxify.ConsoleTest
             return;
         }
 
-        private static void Text8()
+        private static void Test8()
         {
+            using var gptModel = new GptOssQ4f16Model();
+
             using var model = new Mobilenetv212Model();
 
             var input = new DenseTensor<float>([1, 3, 224, 224]);

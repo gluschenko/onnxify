@@ -26,6 +26,13 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+  
+  <ItemGroup>
+    <AdditionalFiles Include="Assets\gpt-oss_q4f16.onnx" />
+    <None Update="Assets\gpt-oss_q4f16.onnx">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 
   <ItemGroup>
     <None Update="Assets\**">

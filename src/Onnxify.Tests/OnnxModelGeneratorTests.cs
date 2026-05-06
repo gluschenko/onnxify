@@ -23,9 +23,9 @@ public sealed class OnnxModelGeneratorTests
             CreateTensorModel(
                 modelPath: modelPath,
                 inputName: "input_ids",
-                inputType: OnnxTensorType.Create<long>(new OnnxDimension[] { 1L, "sequence_length" }),
+                inputType: OnnxTensorType.Create<long>(new OnnxDimension[] { 1L, "sequence_length" }, "token_ids"),
                 outputName: "logits",
-                outputType: OnnxTensorType.Create<float>(new OnnxDimension[] { 1L, "sequence_length", 128L }));
+                outputType: OnnxTensorType.Create<float>(new OnnxDimension[] { 1L, "sequence_length", 128L }, "class_scores"));
 
             var driver = CreateDriver(
                 additionalFiles: [new BinaryAdditionalText(modelPath)],
@@ -44,12 +44,30 @@ public sealed class OnnxModelGeneratorTests
             var generatedSource = GetGeneratedSource(driver);
             Assert.Contains("namespace Demo.App", generatedSource);
             Assert.Contains("public sealed class SampleClassifierModel", generatedSource);
+            Assert.Contains("/// <summary>", generatedSource);
+            Assert.Contains("Provides a typed ONNX Runtime wrapper for the model file 'sample-classifier.onnx'.", generatedSource);
+            Assert.Contains("public sealed class SampleClassifierModelInputs", generatedSource);
+            Assert.Contains("Input property <c>InputIds</c> maps to ONNX name <c>input_ids</c>; tensor type <c>Tensor&lt;long&gt;</c>; shape <c>[1, sequence_length]</c>; denotation <c>token_ids</c>", generatedSource);
+            Assert.Contains("public sealed class SampleClassifierModelOutputs", generatedSource);
+            Assert.Contains("Output property <c>Logits</c> maps to ONNX name <c>logits</c>; tensor type <c>Tensor&lt;float&gt;</c>; shape <c>[1, sequence_length, 128]</c>; denotation <c>class_scores</c>", generatedSource);
             Assert.Contains("public Tensor<long>? InputIds", generatedSource);
+            Assert.Contains("Gets or sets the tensor supplied for model input 'input_ids'.", generatedSource);
+            Assert.Contains("Tensor type: <c>Tensor&lt;long&gt;</c>", generatedSource);
+            Assert.Contains("Element type: <c>long</c>", generatedSource);
+            Assert.Contains("Shape: <c>[1, sequence_length]</c>", generatedSource);
+            Assert.Contains("Denotation: <c>token_ids</c>", generatedSource);
             Assert.Contains("public Tensor<float> Logits => GetTensor<float>(\"logits\")", generatedSource);
+            Assert.Contains("Gets the tensor returned for model output 'logits'.", generatedSource);
+            Assert.Contains("Tensor type: <c>Tensor&lt;float&gt;</c>", generatedSource);
+            Assert.Contains("Shape: <c>[1, sequence_length, 128]</c>", generatedSource);
+            Assert.Contains("Denotation: <c>class_scores</c>", generatedSource);
             Assert.Contains("NamedOnnxValue.CreateFromTensor(\"input_ids\"", generatedSource);
             Assert.Contains("ModelProjectRelativePath = @\"Models\\sample-classifier.onnx\"", generatedSource);
             Assert.Contains("public static IReadOnlyList<Onnxify.OnnxValue> Inputs { get; } = CreateInputs();", generatedSource);
             Assert.Contains("public static IReadOnlyList<Onnxify.OnnxValue> Outputs { get; } = CreateOutputs();", generatedSource);
+            Assert.Contains("<c>input_ids</c>: <c>Tensor&lt;long&gt;</c>, shape <c>[1, sequence_length]</c>, denotation <c>token_ids</c>", generatedSource);
+            Assert.Contains("<c>logits</c>: <c>Tensor&lt;float&gt;</c>, shape <c>[1, sequence_length, 128]</c>, denotation <c>class_scores</c>", generatedSource);
+            Assert.Contains("/// <param name=\"inputIds\">Tensor value for model input <c>input_ids</c>; parameter type <c>Tensor&lt;long&gt;</c>; shape <c>[1, sequence_length]</c>; denotation <c>token_ids</c></param>", generatedSource);
             Assert.Contains("public SampleClassifierModel()", generatedSource);
             Assert.Contains("public SampleClassifierModel(SessionOptions? sessionOptions)", generatedSource);
             Assert.Contains("new Onnxify.OnnxValue<Onnxify.OnnxTensorType>(", generatedSource);
