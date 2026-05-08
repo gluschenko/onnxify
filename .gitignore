@@ -404,3 +404,6 @@ src/out/**
 .dotnet/**
 .nuget/**
 *.xml
+
+.appdata/**
+

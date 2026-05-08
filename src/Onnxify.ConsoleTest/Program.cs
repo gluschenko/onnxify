@@ -277,6 +277,8 @@ namespace Onnxify.ConsoleTest
             try
             {
                 using var gptModel = new GptOssQ4f16Model();
+                using var alexNetModel = new Bvlcalexnet12QdqModel();
+                using var realEsrganModel = new RealEsrganX4plusModel();
             }
             catch (Exception ex)
             {

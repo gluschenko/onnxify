@@ -1,11 +1,13 @@
-﻿using System.Text;
+extern alias ModelGen;
+
+using System.Text;
 using Google.Protobuf;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
 using Onnx;
-using Onnxify.ModelGenerator;
+using OnnxModelGenerator = ModelGen::Onnxify.ModelGenerator.OnnxModelGenerator;
 
 namespace Onnxify.Tests;
 

@@ -35,6 +35,20 @@
   </ItemGroup>
 
   <ItemGroup>
+    <AdditionalFiles Include="Assets\bvlcalexnet-12-qdq.onnx" />
+    <None Update="Assets\bvlcalexnet-12-qdq.onnx">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="Assets\real_esrgan_x4plus-onnx-float\real_esrgan_x4plus.onnx" />
+    <None Update="Assets\real_esrgan_x4plus-onnx-float\real_esrgan_x4plus.onnx">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="Assets\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
