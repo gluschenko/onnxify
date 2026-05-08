@@ -13,6 +13,7 @@ The idea behind this repository is simple: models should be easier to work with,
 - [x] `Onnxify.ML`
 - [x] `Onnxify.ML.TorchSharp`
 - [x] `Onnxify.ProjectGenerator`
+- [x] `Onnxify.ModelGenerator`
 - [x] `Onnxify.Safetensors`
 - [x] `Onnxify.CLI`
 

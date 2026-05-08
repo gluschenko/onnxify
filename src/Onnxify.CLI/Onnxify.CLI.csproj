@@ -5,12 +5,12 @@
     <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.0.0.8</Version>
+    <Version>0.0.0.9</Version>
     <RepositoryUrl>https://github.com/gluschenko/onnxify</RepositoryUrl>
     <Authors>Alexander Gluschenko</Authors>
     <Copyright>© 2026 Alexander Gluschenko</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageTags>onnx</PackageTags>
+    <PackageTags>onnx;cli;dotnet-tool;safetensors;code-generation</PackageTags>
     <Description>Command-line tool for inspecting ONNX and safetensors files and generating C# project output from existing ONNX models.</Description>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>onnxify</ToolCommandName>

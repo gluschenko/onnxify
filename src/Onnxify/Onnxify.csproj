@@ -4,12 +4,12 @@
     <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.0.0.8</Version>
+    <Version>0.0.0.9</Version>
     <RepositoryUrl>https://github.com/gluschenko/onnxify</RepositoryUrl>
     <Authors>Alexander Gluschenko</Authors>
     <Copyright>© 2026 Alexander Gluschenko</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageTags>onnx</PackageTags>
+    <PackageTags>onnx;dotnet;protobuf;model-editing;graph-api</PackageTags>
     <Description>Core .NET library for loading, inspecting, creating, editing, and saving ONNX models through a lightweight wrapper object model over the ONNX protobuf schema.</Description>
   </PropertyGroup>
 

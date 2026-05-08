@@ -4,12 +4,12 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.0.0.8</Version>
+    <Version>0.0.0.9</Version>
     <RepositoryUrl>https://github.com/gluschenko/onnxify</RepositoryUrl>
     <Authors>Alexander Gluschenko</Authors>
     <Copyright>© 2026 Alexander Gluschenko</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageTags>onnx;onnxruntime;source-generator;roslyn</PackageTags>
+    <PackageTags>onnx;onnxruntime;dotnet;source-generator;roslyn-analyzer</PackageTags>
     <Description>Source generator that emits typed Microsoft.ML.OnnxRuntime wrappers for ONNX models added to a project as AdditionalFiles.</Description>
     
     <EmitCompilerGeneratedFiles Condition="'$(OnnxifyEmitCompilerGeneratedFiles)'=='true'">true</EmitCompilerGeneratedFiles>
@@ -56,6 +56,14 @@
     <PackageReference Include="Grpc.Tools" Version="2.78.0" PrivateAssets="all" />
   </ItemGroup>
 
+  <ItemGroup Condition="Exists('$(ProtoOnnxMLSourcePath)')">
+    <Protobuf Include="Assets\onnx-ml.proto3" OutputOptions="file_extension=.cs,internal_access" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(AssemblyName).props" Pack="true" PackagePath="build" />
+  </ItemGroup>
+
   <Target Name="CopyAnalyzerRuntimeDependencies" AfterTargets="Build">
     <ItemGroup>
       <AnalyzerRuntimeDependency Include="$(PkgGoogle_Protobuf)\lib\netstandard2.0\Google.Protobuf.dll" Condition="Exists('$(PkgGoogle_Protobuf)\lib\netstandard2.0\Google.Protobuf.dll')" />
@@ -81,14 +89,6 @@
       </TargetPathWithTargetPlatformMoniker>
     </ItemGroup>
   </Target>
-
-  <ItemGroup Condition="Exists('$(ProtoOnnxMLSourcePath)')">
-    <Protobuf Include="Assets\onnx-ml.proto3" OutputOptions="file_extension=.cs,internal_access" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="$(AssemblyName).props" Pack="true" PackagePath="build" />
-  </ItemGroup>
 
   <Target Name="PackAnalyzerArtifacts">
     <ItemGroup>
