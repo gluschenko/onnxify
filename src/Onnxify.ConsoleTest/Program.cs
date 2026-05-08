@@ -274,7 +274,14 @@ namespace Onnxify.ConsoleTest
 
         private static void Test8()
         {
-            // using var gptModel = new GptOssQ4f16Model();
+            try
+            {
+                using var gptModel = new GptOssQ4f16Model();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
 
             using var model = new Mobilenetv212Model();
 
