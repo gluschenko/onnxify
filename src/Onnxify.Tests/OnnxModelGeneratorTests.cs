@@ -227,6 +227,84 @@ public sealed class OnnxModelGeneratorTests
     }
 
     [Fact]
+    public void Generate_InvalidOnnxFile_ReportsInvalidModelDiagnostic()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, "broken.onnx");
+
+        try
+        {
+            File.WriteAllBytes(modelPath, new byte[] { 0x3A, 0x02, 0x0A });
+
+            var driver = CreateDriver(
+                additionalFiles: [new BinaryAdditionalText(modelPath)],
+                globalOptions: new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["build_property.ProjectDir"] = tempRoot + Path.DirectorySeparatorChar,
+                    ["build_property.RootNamespace"] = "Demo.App",
+                });
+
+            var compilation = CreateCompilation();
+            driver = driver.RunGenerators(compilation);
+
+            var diagnostics = driver.GetRunResult().Diagnostics;
+            var diagnostic = Assert.Single(diagnostics, static x => x.Id == "OMG001");
+
+            Assert.Contains("broken.onnx", diagnostic.GetMessage(), StringComparison.Ordinal);
+            Assert.Contains("Unable to parse ONNX protobuf payload.", diagnostic.GetMessage(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Generate_ModelWithoutGraph_ProducesParameterlessWrapper()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, "empty-graph.onnx");
+
+        try
+        {
+            File.WriteAllBytes(modelPath, new ModelProto().ToByteArray());
+
+            var driver = CreateDriver(
+                additionalFiles: [new BinaryAdditionalText(modelPath)],
+                globalOptions: new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["build_property.ProjectDir"] = tempRoot + Path.DirectorySeparatorChar,
+                    ["build_property.RootNamespace"] = "Demo.App",
+                });
+
+            var compilation = CreateCompilation();
+            driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var updatedCompilation, out var generatorDiagnostics);
+
+            Assert.DoesNotContain(generatorDiagnostics, static x => x.Severity == DiagnosticSeverity.Error);
+            Assert.DoesNotContain(updatedCompilation.GetDiagnostics(), static x => x.Severity == DiagnosticSeverity.Error);
+
+            var generatedSource = GetGeneratedSource(driver);
+            Assert.Contains("public sealed class EmptyGraphModel", generatedSource);
+            Assert.Contains("public EmptyGraphModelOutputs Run()", generatedSource);
+            Assert.Contains("public EmptyGraphModelOutputs Run(RunOptions? runOptions)", generatedSource);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void Generate_ReportsDuplicateTypeNames()
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));

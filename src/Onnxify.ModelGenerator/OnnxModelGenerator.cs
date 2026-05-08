@@ -1,8 +1,10 @@
 ﻿using System.Collections.Immutable;
 using System.Text;
+using Google.Protobuf;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Onnx;
 
 namespace Onnxify.ModelGenerator;
 
@@ -77,11 +79,24 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         var fileName = Path.GetFileName(file.Path);
         var diagnostics = new List<Diagnostic>();
 
-        ParsedOnnxModel model;
+        ModelProto model;
         try
         {
             var bytes = File.ReadAllBytes(file.Path);
-            model = OnnxModelMetadataReader.ReadModel(bytes);
+            model = ModelProto.Parser.ParseFrom(bytes);
+        }
+        catch (InvalidProtocolBufferException ex)
+        {
+            diagnostics.Add(
+                Diagnostic.Create(
+                    _invalidModelDescriptor,
+                    location: Location.None,
+                    fileName,
+                    new InvalidDataException("Unable to parse ONNX protobuf payload.", ex).Message
+                )
+            );
+
+            return new ModelAnalysisResult(null, diagnostics.ToImmutableArray());
         }
         catch (Exception ex)
         {
@@ -99,7 +114,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
 
         var graph = model.Graph;
         var initializerNames = new HashSet<string>(
-            graph.Initializers.Select(static x => x.Name),
+            graph?.Initializer.Select(static x => x.Name) ?? Enumerable.Empty<string>(),
             StringComparer.Ordinal
         );
 
@@ -112,7 +127,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         var inputMethodParameterNames = new HashSet<string>(StringComparer.Ordinal);
 
         var inputs = new List<ModelTensorContract>();
-        foreach (var input in graph.Inputs)
+        foreach (var input in graph?.Input ?? Enumerable.Empty<ValueInfoProto>())
         {
             if (!TryCreateTensorContract(
                 ownerFileName: fileName,
@@ -132,7 +147,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         }
 
         var outputs = new List<ModelTensorContract>();
-        foreach (var output in graph.Outputs)
+        foreach (var output in graph?.Output ?? Enumerable.Empty<ValueInfoProto>())
         {
             if (!TryCreateTensorContract(
                 ownerFileName: fileName,
@@ -151,7 +166,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             outputs.Add(contract ?? throw new InvalidOperationException("Failed to create output tensor contract."));
         }
 
-        if (graph.Initializers.Any(static x => x.HasExternalData))
+        if (graph?.Initializer.Any(HasExternalData) == true)
         {
             diagnostics.Add(
                 Diagnostic.Create(
@@ -691,7 +706,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
 
     private static bool TryCreateTensorContract(
         string ownerFileName,
-        ParsedOnnxValueInfo valueInfo,
+        ValueInfoProto valueInfo,
         string kind,
         bool hasDefaultInitializer,
         HashSet<string> usedPropertyNames,
@@ -702,7 +717,8 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
     {
         contract = null;
 
-        if ((valueInfo.Type.Kind != OnnxValueKind.Tensor && valueInfo.Type.Kind != OnnxValueKind.Optional) || valueInfo.Type.TensorType is null)
+        var tensorType = GetTensorType(valueInfo.Type, out var onnxTypeName, out var isOptionalType);
+        if (tensorType is null)
         {
             diagnostics.Add(
                 Diagnostic.Create(
@@ -711,15 +727,14 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
                     ownerFileName,
                     kind,
                     valueInfo.Name,
-                    valueInfo.Type.Kind.ToString()
+                    onnxTypeName
                 )
             );
 
             return false;
         }
 
-        var tensorType = valueInfo.Type.TensorType;
-        var elementType = tensorType.ElementType;
+        var elementType = (TensorProto.Types.DataType)tensorType.ElemType;
         if (!TryMapElementType(elementType, out var clrTypeName))
         {
             diagnostics.Add(
@@ -752,20 +767,21 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             );
         }
 
-        var shape = tensorType.Shape
+        var shape = tensorType.Shape?.Dim
             .Select(ToDimensionContract)
-            .ToImmutableArray();
+            .ToImmutableArray() ?? ImmutableArray<ModelDimensionContract>.Empty;
 
-        var denotation = string.IsNullOrWhiteSpace(valueInfo.Type.Denotation)
+        var typeDenotation = valueInfo.Type?.Denotation;
+        var denotation = string.IsNullOrWhiteSpace(typeDenotation)
             ? null
-            : valueInfo.Type.Denotation;
+            : typeDenotation;
 
         var denotationLiteral = denotation is null
             ? "\"\""
             : $"\"{Escape(denotation)}\"";
 
         var isOptional = kind == "input" &&
-            (valueInfo.Type.Kind == OnnxValueKind.Optional || hasDefaultInitializer);
+            (isOptionalType || hasDefaultInitializer);
 
         contract = new ModelTensorContract(
             valueInfo.Name,
@@ -776,29 +792,70 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             denotationLiteral,
             shape,
             !isOptional,
-            valueInfo.Type.Kind == OnnxValueKind.Optional,
+            isOptionalType,
             hasDefaultInitializer
         );
 
         return true;
     }
 
-    private static ModelDimensionContract ToDimensionContract(ParsedOnnxDimension dimension)
+    private static TypeProto.Types.Tensor? GetTensorType(
+        TypeProto? type,
+        out string onnxTypeName,
+        out bool isOptionalType
+    )
     {
-        if (dimension.NumericValue.HasValue)
+        isOptionalType = false;
+
+        if (type is null)
+        {
+            onnxTypeName = "Unknown";
+            return null;
+        }
+
+        switch (type.ValueCase)
+        {
+            case TypeProto.ValueOneofCase.TensorType:
+                onnxTypeName = "Tensor";
+                return type.TensorType;
+            case TypeProto.ValueOneofCase.OptionalType:
+                onnxTypeName = "Optional";
+                isOptionalType = true;
+                return type.OptionalType?.ElemType?.TensorType;
+            case TypeProto.ValueOneofCase.SequenceType:
+                onnxTypeName = "Sequence";
+                return null;
+            case TypeProto.ValueOneofCase.MapType:
+                onnxTypeName = "Map";
+                return null;
+            case TypeProto.ValueOneofCase.OpaqueType:
+                onnxTypeName = "Opaque";
+                return null;
+            case TypeProto.ValueOneofCase.SparseTensorType:
+                onnxTypeName = "SparseTensor";
+                return null;
+            default:
+                onnxTypeName = "Unknown";
+                return null;
+        }
+    }
+
+    private static ModelDimensionContract ToDimensionContract(TensorShapeProto.Types.Dimension dimension)
+    {
+        if (dimension.HasDimValue)
         {
             return new ModelDimensionContract(
-                $"{dimension.NumericValue.Value}L",
+                $"{dimension.DimValue}L",
                 null,
                 false
             );
         }
 
-        if (!string.IsNullOrWhiteSpace(dimension.SymbolicName))
+        if (dimension.HasDimParam && !string.IsNullOrWhiteSpace(dimension.DimParam))
         {
             return new ModelDimensionContract(
                 null,
-                $"\"{Escape(dimension.SymbolicName!)}\"",
+                $"\"{Escape(dimension.DimParam)}\"",
                 false
             );
         }
@@ -1005,26 +1062,31 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         return candidate + counter.ToString();
     }
 
+    private static bool HasExternalData(TensorProto tensor)
+    {
+        return tensor.DataLocation == TensorProto.Types.DataLocation.External || tensor.ExternalData.Count > 0;
+    }
+
     private static bool TryMapElementType(
-        OnnxTensorDataType dataType,
+        TensorProto.Types.DataType dataType,
         out string? clrTypeName
     )
     {
         clrTypeName = dataType switch
         {
-            OnnxTensorDataType.Float => "float",
-            OnnxTensorDataType.Double => "double",
-            OnnxTensorDataType.Int64 => "long",
-            OnnxTensorDataType.Uint64 => "ulong",
-            OnnxTensorDataType.Int32 => "int",
-            OnnxTensorDataType.Uint32 => "uint",
-            OnnxTensorDataType.Int16 => "short",
-            OnnxTensorDataType.Uint16 => "ushort",
-            OnnxTensorDataType.Int8 => "sbyte",
-            OnnxTensorDataType.Uint8 => "byte",
-            OnnxTensorDataType.Bool => "bool",
-            OnnxTensorDataType.String => "string",
-            OnnxTensorDataType.Float16 => "Half",
+            TensorProto.Types.DataType.Float => "float",
+            TensorProto.Types.DataType.Double => "double",
+            TensorProto.Types.DataType.Int64 => "long",
+            TensorProto.Types.DataType.Uint64 => "ulong",
+            TensorProto.Types.DataType.Int32 => "int",
+            TensorProto.Types.DataType.Uint32 => "uint",
+            TensorProto.Types.DataType.Int16 => "short",
+            TensorProto.Types.DataType.Uint16 => "ushort",
+            TensorProto.Types.DataType.Int8 => "sbyte",
+            TensorProto.Types.DataType.Uint8 => "byte",
+            TensorProto.Types.DataType.Bool => "bool",
+            TensorProto.Types.DataType.String => "string",
+            TensorProto.Types.DataType.Float16 => "Half",
             _ => null,
         };
 
