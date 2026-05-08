@@ -17,7 +17,7 @@
     <ProjectReference Include="..\Onnxify.ProjectGenerator\Onnxify.ProjectGenerator.csproj" />
     <ProjectReference Include="..\Onnxify.Safetensors\Onnxify.Safetensors.csproj" />
     <ProjectReference Include="..\Onnxify.TorchSharp\Onnxify.TorchSharp.csproj" />
-    <ProjectReference Include="..\Onnxify.ModelGenerator\Onnxify.ModelGenerator.csproj" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Onnxify.ModelGenerator\Onnxify.ModelGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>

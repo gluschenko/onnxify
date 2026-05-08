@@ -29,6 +29,10 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <GetTargetPathDependsOn>$(GetTargetPathDependsOn);AddAnalyzerRuntimeDependencyTargetPaths</GetTargetPathDependsOn>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <CurrentAbsolutePath>$(MSBuildThisFileDirectory)</CurrentAbsolutePath>
     <ThirdPartySourcePath>$([System.IO.Path]::Combine('$(CurrentAbsolutePath)', '../../third_party/onnxruntime/cmake/external/onnx'))</ThirdPartySourcePath>
     <AssetsTargetPath>$([System.IO.Path]::Combine('$(CurrentAbsolutePath)', 'Assets'))</AssetsTargetPath>
@@ -48,9 +52,35 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" PrivateAssets="all" />
-    <PackageReference Include="Google.Protobuf" Version="3.34.0" PrivateAssets="all" />
+    <PackageReference Include="Google.Protobuf" Version="3.34.0" PrivateAssets="all" GeneratePathProperty="true" />
     <PackageReference Include="Grpc.Tools" Version="2.78.0" PrivateAssets="all" />
   </ItemGroup>
+
+  <Target Name="CopyAnalyzerRuntimeDependencies" AfterTargets="Build">
+    <ItemGroup>
+      <AnalyzerRuntimeDependency Include="$(PkgGoogle_Protobuf)\lib\netstandard2.0\Google.Protobuf.dll" Condition="Exists('$(PkgGoogle_Protobuf)\lib\netstandard2.0\Google.Protobuf.dll')" />
+      <AnalyzerRuntimeDependency Include="$(PkgGoogle_Protobuf)\lib\netstandard2.0\Google.Protobuf.pdb" Condition="Exists('$(PkgGoogle_Protobuf)\lib\netstandard2.0\Google.Protobuf.pdb')" />
+      <AnalyzerRuntimeDependency Include="$(PkgGoogle_Protobuf)\lib\netstandard2.0\Google.Protobuf.xml" Condition="Exists('$(PkgGoogle_Protobuf)\lib\netstandard2.0\Google.Protobuf.xml')" />
+    </ItemGroup>
+
+    <Copy
+      SourceFiles="@(AnalyzerRuntimeDependency)"
+      DestinationFolder="$(TargetDir)"
+      SkipUnchangedFiles="true"
+      Condition="'@(AnalyzerRuntimeDependency)' != ''" />
+  </Target>
+
+  <Target Name="AddAnalyzerRuntimeDependencyTargetPaths">
+    <ItemGroup>
+      <TargetPathWithTargetPlatformMoniker Include="$(PkgGoogle_Protobuf)\lib\netstandard2.0\Google.Protobuf.dll" Condition="Exists('$(PkgGoogle_Protobuf)\lib\netstandard2.0\Google.Protobuf.dll')">
+        <TargetPlatformMoniker>$(TargetPlatformMoniker)</TargetPlatformMoniker>
+        <TargetPlatformIdentifier>$(TargetPlatformIdentifier)</TargetPlatformIdentifier>
+        <TargetFrameworkIdentifier>$(TargetFrameworkIdentifier)</TargetFrameworkIdentifier>
+        <TargetFrameworkVersion>$(TargetFrameworkVersion.TrimStart('vV'))</TargetFrameworkVersion>
+        <CopyUpToDateMarker>@(CopyUpToDateMarker)</CopyUpToDateMarker>
+      </TargetPathWithTargetPlatformMoniker>
+    </ItemGroup>
+  </Target>
 
   <ItemGroup Condition="Exists('$(ProtoOnnxMLSourcePath)')">
     <Protobuf Include="Assets\onnx-ml.proto3" OutputOptions="file_extension=.cs,internal_access" />
@@ -64,6 +94,9 @@
     <ItemGroup>
       <TfmSpecificPackageFile Include="$(TargetPath)" PackagePath="analyzers/dotnet/cs" />
       <TfmSpecificPackageFile Include="$(TargetDir)$(AssemblyName).pdb" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)$(AssemblyName).pdb')" />
+      <TfmSpecificPackageFile Include="$(TargetDir)Google.Protobuf.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Google.Protobuf.dll')" />
+      <TfmSpecificPackageFile Include="$(TargetDir)Google.Protobuf.pdb" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Google.Protobuf.pdb')" />
+      <TfmSpecificPackageFile Include="$(TargetDir)Google.Protobuf.xml" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Google.Protobuf.xml')" />
     </ItemGroup>
   </Target>
 

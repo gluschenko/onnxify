@@ -274,7 +274,7 @@ namespace Onnxify.ConsoleTest
 
         private static void Test8()
         {
-            using var gptModel = new GptOssQ4f16Model();
+            // using var gptModel = new GptOssQ4f16Model();
 
             using var model = new Mobilenetv212Model();
 
