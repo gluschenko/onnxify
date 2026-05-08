@@ -21,15 +21,43 @@
     <NoWarn>$(NoWarn);1591,1573,RS1035,RS2008</NoWarn>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <NoPackageAnalysis>true</NoPackageAnalysis>
+    <DevelopmentDependency>true</DevelopmentDependency>
   </PropertyGroup>
 
   <PropertyGroup>
     <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);PackAnalyzerArtifacts</TargetsForTfmSpecificContentInPackage>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <CurrentAbsolutePath>$(MSBuildThisFileDirectory)</CurrentAbsolutePath>
+    <ThirdPartySourcePath>$([System.IO.Path]::Combine('$(CurrentAbsolutePath)', '../../third_party/onnxruntime/cmake/external/onnx'))</ThirdPartySourcePath>
+    <AssetsTargetPath>$([System.IO.Path]::Combine('$(CurrentAbsolutePath)', 'Assets'))</AssetsTargetPath>
+    <ProtoAssetsSourcePath>$([System.IO.Path]::Combine('$(ThirdPartySourcePath)', 'onnx'))</ProtoAssetsSourcePath>
+    <ProtoOnnxMLSourcePath>$([System.IO.Path]::Combine('$(AssetsTargetPath)', 'onnx-ml.proto3'))</ProtoOnnxMLSourcePath>
+  </PropertyGroup>
+
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <ItemGroup>
+      <ProtoAssetFiles Include="$(ProtoAssetsSourcePath)\*.proto3" />
+    </ItemGroup>
+
+    <MakeDir Condition="!Exists('$(AssetsTargetPath)')" Directories="$(AssetsTargetPath)" />
+    <Copy SourceFiles="@(ProtoAssetFiles)" DestinationFolder="$(AssetsTargetPath)" SkipUnchangedFiles="true" />
+  </Target>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" PrivateAssets="all" />
+    <PackageReference Include="Google.Protobuf" Version="3.34.0" PrivateAssets="all" />
+    <PackageReference Include="Grpc.Tools" Version="2.78.0" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup Condition="Exists('$(ProtoOnnxMLSourcePath)')">
+    <Protobuf Include="Assets\onnx-ml.proto3" OutputOptions="file_extension=.cs,internal_access" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(AssemblyName).props" Pack="true" PackagePath="build" />
   </ItemGroup>
 
   <Target Name="PackAnalyzerArtifacts">
