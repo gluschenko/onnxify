@@ -242,7 +242,8 @@ namespace Onnxify.ConsoleTest
             var tensor = new TensorView(
                 dtype: DataType.F32,
                 shape: [2, 2],
-                data: data);
+                data: data
+            );
 
             Onnxify.Safetensors.SafeTensors.SerializeToFile(
                 data: [new KeyValuePair<string, TensorView>("weights", tensor)],
@@ -251,7 +252,8 @@ namespace Onnxify.ConsoleTest
                     ["framework"] = "onnxify-console-test",
                     ["purpose"] = "roundtrip-demo",
                 },
-                path: outputPath);
+                path: outputPath
+            );
 
             var raw = File.ReadAllBytes(outputPath);
             var safetensors = Onnxify.Safetensors.SafeTensors.Deserialize(raw);

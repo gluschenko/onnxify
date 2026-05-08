@@ -160,9 +160,13 @@ internal static class OnnxModelMetadataReader
                     SkipField(data, ref index, end, wireType);
                     break;
                 case 9:
+                {
                     kind = OnnxValueKind.Optional;
-                    SkipField(data, ref index, end, wireType);
+                    var messageEnd = ReadLengthDelimitedEnd(data, ref index, end);
+                    var elementType = ReadOptionalType(data, ref index, messageEnd);
+                    tensorType = elementType?.TensorType;
                     break;
+                }
                 case 6 when wireType == 2:
                     denotation = ReadString(data, ref index, end);
                     break;
@@ -173,6 +177,25 @@ internal static class OnnxModelMetadataReader
         }
 
         return new ParsedOnnxType(kind, tensorType, denotation);
+    }
+
+    private static ParsedOnnxType? ReadOptionalType(byte[] data, ref int index, int end)
+    {
+        ParsedOnnxType? elementType = null;
+
+        while (TryReadTag(data, ref index, end, out var fieldNumber, out var wireType))
+        {
+            if (fieldNumber == 1 && wireType == 2)
+            {
+                var messageEnd = ReadLengthDelimitedEnd(data, ref index, end);
+                elementType = ReadType(data, ref index, messageEnd);
+                continue;
+            }
+
+            SkipField(data, ref index, end, wireType);
+        }
+
+        return elementType;
     }
 
     private static ParsedOnnxTensorType ReadTensorType(byte[] data, ref int index, int end)

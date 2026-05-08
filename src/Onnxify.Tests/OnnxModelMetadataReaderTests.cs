@@ -1,4 +1,4 @@
-using Google.Protobuf;
+﻿using Google.Protobuf;
 using Onnx;
 using Onnxify.ModelGenerator;
 
@@ -129,6 +129,57 @@ public sealed class OnnxModelMetadataReaderTests
         var initializer = Assert.Single(parsed.Graph.Initializers);
         Assert.Equal("weights", initializer.Name);
         Assert.True(initializer.HasExternalData);
+    }
+
+    [Fact]
+    public void ReadModel_ParsesOptionalTensorInputMetadata()
+    {
+        var bytes = CreateMutatedModelBytes(proto =>
+        {
+            proto.Graph.Input[0].Type = new TypeProto
+            {
+                Denotation = "mask",
+                OptionalType = new TypeProto.Types.Optional
+                {
+                    ElemType = new TypeProto
+                    {
+                        TensorType = new TypeProto.Types.Tensor
+                        {
+                            ElemType = (int)TensorProto.Types.DataType.Float,
+                            Shape = new TensorShapeProto
+                            {
+                                Dim =
+                                {
+                                    new TensorShapeProto.Types.Dimension { DimValue = 1L },
+                                    new TensorShapeProto.Types.Dimension { DimParam = "sequence_length" },
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+        });
+
+        var parsed = OnnxModelMetadataReader.ReadModel(bytes);
+
+        var input = Assert.Single(parsed.Graph.Inputs);
+        Assert.Equal("input", input.Name);
+        Assert.Equal(OnnxValueKind.Optional, input.Type.Kind);
+        Assert.Equal("mask", input.Type.Denotation);
+        var tensorType = Assert.IsType<ParsedOnnxTensorType>(input.Type.TensorType);
+        Assert.Equal(OnnxTensorDataType.Float, tensorType.ElementType);
+        Assert.Collection(
+            tensorType.Shape,
+            dimension =>
+            {
+                Assert.Equal(1L, dimension.NumericValue);
+                Assert.Null(dimension.SymbolicName);
+            },
+            dimension =>
+            {
+                Assert.Null(dimension.NumericValue);
+                Assert.Equal("sequence_length", dimension.SymbolicName);
+            });
     }
 
     [Fact]

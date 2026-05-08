@@ -1,8 +1,10 @@
-using System.Text;
+﻿using System.Text;
+using Google.Protobuf;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
+using Onnx;
 using Onnxify.ModelGenerator;
 
 namespace Onnxify.Tests;
@@ -50,8 +52,8 @@ public sealed class OnnxModelGeneratorTests
             Assert.Contains("Input property <c>InputIds</c> maps to ONNX name <c>input_ids</c>; tensor type <c>Tensor&lt;long&gt;</c>; shape <c>[1, sequence_length]</c>; denotation <c>token_ids</c>", generatedSource);
             Assert.Contains("public sealed class SampleClassifierModelOutputs", generatedSource);
             Assert.Contains("Output property <c>Logits</c> maps to ONNX name <c>logits</c>; tensor type <c>Tensor&lt;float&gt;</c>; shape <c>[1, sequence_length, 128]</c>; denotation <c>class_scores</c>", generatedSource);
-            Assert.Contains("public Tensor<long>? InputIds", generatedSource);
-            Assert.Contains("Gets or sets the tensor supplied for model input 'input_ids'.", generatedSource);
+            Assert.Contains("public required Tensor<long> InputIds { get; init; }", generatedSource);
+            Assert.Contains("Gets or initializes the tensor supplied for model input 'input_ids'.", generatedSource);
             Assert.Contains("Tensor type: <c>Tensor&lt;long&gt;</c>", generatedSource);
             Assert.Contains("Element type: <c>long</c>", generatedSource);
             Assert.Contains("Shape: <c>[1, sequence_length]</c>", generatedSource);
@@ -122,6 +124,98 @@ public sealed class OnnxModelGeneratorTests
             var generatedSource = GetGeneratedSource(driver);
             Assert.Contains("namespace Demo.Custom.Models", generatedSource);
             Assert.Contains("public sealed class VisionWrapperModel", generatedSource);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Generate_OptionalInputsUseNullablePropertiesAndSortedRunParameters()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, "Models", "mixed-optional-inputs.onnx");
+        Directory.CreateDirectory(Path.GetDirectoryName(modelPath)!);
+
+        try
+        {
+            var model = OnnxModel.Create(new OnnxModelCreationOptions
+            {
+                ProducerName = "generator-tests",
+                IrVersion = 9,
+                Opset = 13,
+            });
+
+            model.Graph.AddInput("attention_mask", OnnxTensorType.Create<float>(new OnnxDimension[] { 1L, "sequence_length" }, "mask"));
+            model.Graph.AddInput("input_ids", OnnxTensorType.Create<long>(new OnnxDimension[] { 1L, "sequence_length" }, "tokens"));
+            model.Graph.AddInput("bias", OnnxTensorType.Create<float>(new OnnxDimension[] { 1L }, "bias_default"));
+            model.Graph.AddOutput("logits", OnnxTensorType.Create<float>(new OnnxDimension[] { 1L, "sequence_length", 128L }, "scores"));
+
+            var proto = model.ToProto();
+            proto.Graph.Input[0].Type = new TypeProto
+            {
+                Denotation = "mask",
+                OptionalType = new TypeProto.Types.Optional
+                {
+                    ElemType = new TypeProto
+                    {
+                        TensorType = new TypeProto.Types.Tensor
+                        {
+                            ElemType = (int)TensorProto.Types.DataType.Float,
+                            Shape = new TensorShapeProto
+                            {
+                                Dim =
+                                {
+                                    new TensorShapeProto.Types.Dimension { DimValue = 1L },
+                                    new TensorShapeProto.Types.Dimension { DimParam = "sequence_length" },
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+            proto.Graph.Initializer.Add(new TensorProto
+            {
+                Name = "bias",
+                DataType = (int)TensorProto.Types.DataType.Float,
+                Dims = { 1L },
+                FloatData = { 0.0f },
+            });
+
+            File.WriteAllBytes(modelPath, proto.ToByteArray());
+
+            var driver = CreateDriver(
+                additionalFiles: [new BinaryAdditionalText(modelPath)],
+                globalOptions: new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["build_property.ProjectDir"] = tempRoot + Path.DirectorySeparatorChar,
+                    ["build_property.RootNamespace"] = "Demo.App",
+                });
+
+            var compilation = CreateCompilation();
+            driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var updatedCompilation, out var generatorDiagnostics);
+
+            Assert.DoesNotContain(generatorDiagnostics, static x => x.Severity == DiagnosticSeverity.Error);
+            Assert.DoesNotContain(updatedCompilation.GetDiagnostics(), static x => x.Severity == DiagnosticSeverity.Error);
+
+            var generatedSource = GetGeneratedSource(driver);
+            Assert.Contains("public Tensor<float>? AttentionMask { get; init; }", generatedSource);
+            Assert.Contains("public required Tensor<long> InputIds { get; init; }", generatedSource);
+            Assert.Contains("public Tensor<float>? Bias { get; init; }", generatedSource);
+            Assert.Contains("public MixedOptionalInputsModelOutputs Run(Tensor<long> inputIds, Tensor<float>? attentionMask = null, Tensor<float>? bias = null)", generatedSource);
+            Assert.Contains("public MixedOptionalInputsModelOutputs Run(Tensor<long> inputIds, RunOptions? runOptions, Tensor<float>? attentionMask = null, Tensor<float>? bias = null)", generatedSource);
+            Assert.Contains("if (inputs.AttentionMask is not null)", generatedSource);
+            Assert.Contains("if (inputs.Bias is not null)", generatedSource);
+            Assert.Contains("NamedOnnxValue.CreateFromTensor(\"input_ids\", inputs.InputIds ?? throw new InvalidOperationException(\"Model input 'input_ids' must be provided.\"))", generatedSource);
+            Assert.Contains("parameter type <c>Tensor&lt;float&gt;?</c>", generatedSource);
+            Assert.Contains("pass null to omit this input and let the model use its initializer-backed default", generatedSource);
+            Assert.Contains("pass null to omit this optional ONNX input", generatedSource);
         }
         finally
         {
