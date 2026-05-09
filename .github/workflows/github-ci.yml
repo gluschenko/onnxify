@@ -192,6 +192,8 @@ jobs:
       packages: write
     env:
       GITHUB_NUGET_SOURCE: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+      NUGET_ORG_SOURCE: https://api.nuget.org/v3/index.json
+      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
 
     steps:
       - name: Setup .NET SDK
@@ -217,6 +219,17 @@ jobs:
           find "${{ github.workspace }}/artifacts/packages" -name '*.nupkg' ! -name '*.symbols.nupkg' -print0 | while IFS= read -r -d '' package; do
             dotnet nuget push "$package" \
               --api-key "${{ secrets.GITHUB_TOKEN }}" \
+              --no-symbols \
               --skip-duplicate \
               --source "${{ env.GITHUB_NUGET_SOURCE }}"
+          done
+
+      - name: Publish symbol packages to NuGet.org
+        if: env.NUGET_API_KEY != ''
+        run: |
+          find "${{ github.workspace }}/artifacts/packages" -name '*.snupkg' -print0 | while IFS= read -r -d '' package; do
+            dotnet nuget push "$package" \
+              --api-key "${{ env.NUGET_API_KEY }}" \
+              --skip-duplicate \
+              --source "${{ env.NUGET_ORG_SOURCE }}"
           done

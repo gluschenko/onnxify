@@ -6,6 +6,9 @@
     <OnnxifyPackageReadmeSource>$([System.IO.Path]::Combine('$(OnnxifyRepoRoot)', '.docs', 'nuget', '$(MSBuildProjectName).md'))</OnnxifyPackageReadmeSource>
     <OnnxifyPackageReleaseNotesSource>$([System.IO.Path]::Combine('$(OnnxifyRepoRoot)', '.docs', 'nuget', 'release-notes', '$(MSBuildProjectName).md'))</OnnxifyPackageReleaseNotesSource>
 
+    <IncludeSymbols Condition="'$(IsPackable)' != 'false'">true</IncludeSymbols>
+    <SymbolPackageFormat Condition="'$(IsPackable)' != 'false'">snupkg</SymbolPackageFormat>
+
     <PackageIcon Condition="Exists('$(OnnxifyPackageIconSource)')">Icon.png</PackageIcon>
     <PackageReadmeFile Condition="Exists('$(OnnxifyPackageReadmeSource)')">README.md</PackageReadmeFile>
 
