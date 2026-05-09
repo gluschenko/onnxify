@@ -293,7 +293,7 @@ namespace Onnxify.ConsoleTest
 
             using var outputs = model.Run(input);
 
-            Tensor<float> logits = outputs.Output;
+            var logits = outputs.Output;
 
             var top5 = GetTopK(logits, k: 5);
 

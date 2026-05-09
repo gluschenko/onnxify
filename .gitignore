@@ -406,4 +406,7 @@ src/out/**
 *.xml
 
 .appdata/**
+.dump-runtime/**
+.dotnet/**
+.tools/**
 
