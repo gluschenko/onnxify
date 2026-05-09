@@ -1,22 +1,18 @@
 <Project>
 
-  <Target Name="OnnxifyModelGenerator_IncludeOnnxModels"
-          BeforeTargets="AssignTargetPaths"
-          Condition="'@(OnnxModel)' != ''">
-    <ItemGroup>
-      <AdditionalFiles Include="@(OnnxModel)">
-        <OnnxifyModelClassName>%(OnnxModel.OnnxifyModelClassName)</OnnxifyModelClassName>
-        <OnnxifyModelNamespace>%(OnnxModel.OnnxifyModelNamespace)</OnnxifyModelNamespace>
-      </AdditionalFiles>
+  <ItemGroup Condition="'@(OnnxModel)' != ''">
+    <AdditionalFiles Include="@(OnnxModel)">
+      <OnnxifyModelClassName>%(OnnxModel.OnnxifyModelClassName)</OnnxifyModelClassName>
+      <OnnxifyModelNamespace>%(OnnxModel.OnnxifyModelNamespace)</OnnxifyModelNamespace>
+    </AdditionalFiles>
 
-      <None Update="@(OnnxModel)">
-        <CopyToOutputDirectory Condition="'%(OnnxModel.CopyToOutputDirectory)' != ''">%(OnnxModel.CopyToOutputDirectory)</CopyToOutputDirectory>
-        <CopyToPublishDirectory Condition="'%(OnnxModel.CopyToPublishDirectory)' != ''">%(OnnxModel.CopyToPublishDirectory)</CopyToPublishDirectory>
-        <TargetPath Condition="'%(OnnxModel.TargetPath)' != ''">%(OnnxModel.TargetPath)</TargetPath>
-        <Link Condition="'%(OnnxModel.Link)' != ''">%(OnnxModel.Link)</Link>
-        <LinkBase Condition="'%(OnnxModel.LinkBase)' != ''">%(OnnxModel.LinkBase)</LinkBase>
-      </None>
-    </ItemGroup>
-  </Target>
+    <None Update="@(OnnxModel)">
+      <CopyToOutputDirectory Condition="'%(OnnxModel.CopyToOutputDirectory)' != ''">%(OnnxModel.CopyToOutputDirectory)</CopyToOutputDirectory>
+      <CopyToPublishDirectory Condition="'%(OnnxModel.CopyToPublishDirectory)' != ''">%(OnnxModel.CopyToPublishDirectory)</CopyToPublishDirectory>
+      <TargetPath Condition="'%(OnnxModel.TargetPath)' != ''">%(OnnxModel.TargetPath)</TargetPath>
+      <Link Condition="'%(OnnxModel.Link)' != ''">%(OnnxModel.Link)</Link>
+      <LinkBase Condition="'%(OnnxModel.LinkBase)' != ''">%(OnnxModel.LinkBase)</LinkBase>
+    </None>
+  </ItemGroup>
 
 </Project>
