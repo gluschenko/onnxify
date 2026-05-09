@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using System.Text;
+using Microsoft.ML.OnnxRuntime.Tensors;
 using Onnxify.ProjectGenerator;
 using Onnxify.Safetensors;
 
@@ -22,6 +23,8 @@ namespace Onnxify.ConsoleTest
             Test2();
             Test6();
             Test7();
+            Test8();
+            Test9();
 
             Console.WriteLine("Press any key to pay respect...");
             Console.ReadKey();
@@ -192,6 +195,37 @@ namespace Onnxify.ConsoleTest
 
             return;
         }
+        
+        static void Test9()
+        {
+            var inputModelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "mobilenetv2-12.onnx");
+            var outputDirectoryPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Generated", "MobileNetProject");
+
+            var generator = new OnnxProjectGenerator();
+            var result = generator.Generate(new ProjectGeneratorOptions
+            {
+                InputModelPath = inputModelPath,
+                OutputDirectoryPath = outputDirectoryPath,
+                ProjectName = "MobileNetGeneratedSample",
+                Namespace = "Onnxify.Generated.MobileNet",
+                Overwrite = true,
+            });
+
+            Console.WriteLine($"Generated Program: {result.ProgramFilePath}");
+            Console.WriteLine($"Generated Project: {result.ProjectFilePath}");
+
+            foreach (var tensorFilePath in result.TensorFilePaths)
+            {
+                Console.WriteLine($"Generated Tensor: {tensorFilePath}");
+            }
+
+            foreach (var warning in result.Warnings)
+            {
+                Console.WriteLine($"Generator Warning: {warning}");
+            }
+
+            return;
+        }
 
         static void Test7()
         {
@@ -208,7 +242,8 @@ namespace Onnxify.ConsoleTest
             var tensor = new TensorView(
                 dtype: DataType.F32,
                 shape: [2, 2],
-                data: data);
+                data: data
+            );
 
             Onnxify.Safetensors.SafeTensors.SerializeToFile(
                 data: [new KeyValuePair<string, TensorView>("weights", tensor)],
@@ -217,7 +252,8 @@ namespace Onnxify.ConsoleTest
                     ["framework"] = "onnxify-console-test",
                     ["purpose"] = "roundtrip-demo",
                 },
-                path: outputPath);
+                path: outputPath
+            );
 
             var raw = File.ReadAllBytes(outputPath);
             var safetensors = Onnxify.Safetensors.SafeTensors.Deserialize(raw);
@@ -234,6 +270,63 @@ namespace Onnxify.ConsoleTest
             Console.WriteLine($"Safetensors round-trip ok: {values.SequenceEqual(loadedValues)}");
 
             return;
+        }
+
+        private static void Test8()
+        {
+            try
+            {
+                using var gptModel = new GptOssQ4f16Model();
+                using var alexNetModel = new Bvlcalexnet12QdqModel();
+                using var realEsrganModel = new RealEsrganX4plusModel();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
+
+            using var model = new Mobilenetv212Model();
+
+            var input = new DenseTensor<float>([1, 3, 224, 224]);
+
+            FillWithDummyImage(input);
+
+            using var outputs = model.Run(input);
+
+            var logits = outputs.Output;
+
+            var top5 = GetTopK(logits, k: 5);
+
+            Console.WriteLine("Top-5 predictions:");
+            foreach (var item in top5)
+            {
+                Console.WriteLine($"Class #{item.Index}: score={item.Score:F6}");
+            }
+        }
+
+        private static void FillWithDummyImage(DenseTensor<float> input)
+        {
+            for (var y = 0; y < 224; y++)
+            {
+                for (var x = 0; x < 224; x++)
+                {
+                    input[0, 0, y, x] = 0.5f; // R
+                    input[0, 1, y, x] = 0.5f; // G
+                    input[0, 2, y, x] = 0.5f; // B
+                }
+            }
+        }
+
+        private static IReadOnlyList<(int Index, float Score)> GetTopK(Tensor<float> output, int k)
+        {
+            var classCount = output.Dimensions[1];
+
+            return Enumerable
+                .Range(0, classCount)
+                .Select(i => (Index: i, Score: output[0, i]))
+                .OrderByDescending(x => x.Score)
+                .Take(k)
+                .ToArray();
         }
     }
 }

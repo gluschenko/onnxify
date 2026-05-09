@@ -212,8 +212,8 @@ public static class TorchModuleSafetensorsExtensions
                 var values = ToArray<float>(source.Data.Span);
                 var complexShape = AppendComplexComponentDimension(targetShape);
                 using var sourceTensor = torch.tensor(values, complexShape, dtype: ScalarType.Float32, device: detached.device);
-                using var complexTensor = sourceTensor.view_as_complex();
-                detached.copy_(complexTensor);
+                using var realTarget = detached.view_as_real();
+                realTarget.copy_(sourceTensor);
                 break;
             }
             case ScalarType.ComplexFloat64:
@@ -221,8 +221,8 @@ public static class TorchModuleSafetensorsExtensions
                 var values = ToArray<double>(source.Data.Span);
                 var complexShape = AppendComplexComponentDimension(targetShape);
                 using var sourceTensor = torch.tensor(values, complexShape, dtype: ScalarType.Float64, device: detached.device);
-                using var complexTensor = sourceTensor.view_as_complex();
-                detached.copy_(complexTensor);
+                using var realTarget = detached.view_as_real();
+                realTarget.copy_(sourceTensor);
                 break;
             }
             case ScalarType.Bool:

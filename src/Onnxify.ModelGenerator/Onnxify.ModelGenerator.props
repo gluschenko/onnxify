@@ -1,0 +1,7 @@
+<Project>
+
+  <ItemGroup>
+    <AdditionalFiles Include="**/*.onnx" />
+  </ItemGroup>
+
+</Project>

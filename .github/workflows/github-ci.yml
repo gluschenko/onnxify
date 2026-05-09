@@ -37,7 +37,12 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Setup .NET SDK
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Setup .NET 10 SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
@@ -45,6 +50,12 @@ jobs:
           cache-dependency-path: |
             src/**/*.csproj
             src/Onnxify.slnx
+
+      - name: Show .NET environment
+        run: |
+          dotnet --info
+          dotnet --list-sdks
+          dotnet --list-runtimes
 
       - name: Prepare .NET CLI home
         shell: pwsh
@@ -56,15 +67,55 @@ jobs:
       - name: Build test project
         run: dotnet build src/Onnxify.Tests/Onnxify.Tests.csproj --configuration ${{ env.CONFIGURATION }} --no-restore
 
-      - name: Run tests
-        run: dotnet test src/Onnxify.Tests/Onnxify.Tests.csproj --configuration ${{ env.CONFIGURATION }} --no-build --logger "trx;LogFileName=Onnxify.Tests.trx"
+      - name: Run tests (net8.0)
+        env:
+          DOTNET_DbgEnableMiniDump: 1
+          DOTNET_DbgMiniDumpType: 4
+          DOTNET_DbgMiniDumpName: ${{ runner.temp }}/dotnet-crash-net8-%p.dmp
+        run: >
+          dotnet test src/Onnxify.Tests/Onnxify.Tests.csproj
+          --configuration ${{ env.CONFIGURATION }}
+          --framework net8.0
+          --no-build
+          --no-restore
+          --logger "trx;LogFileName=Onnxify.Tests.net8.0.trx"
+          --logger "console;verbosity=detailed"
+          --diag "${{ runner.temp }}/vstest-net8.log"
+          --blame
+          --blame-crash
+          --blame-hang
+          --blame-hang-timeout 5m
 
-      - name: Upload test results
+      - name: Run tests (net10.0)
+        env:
+          DOTNET_DbgEnableMiniDump: 1
+          DOTNET_DbgMiniDumpType: 4
+          DOTNET_DbgMiniDumpName: ${{ runner.temp }}/dotnet-crash-net10-%p.dmp
+        run: >
+          dotnet test src/Onnxify.Tests/Onnxify.Tests.csproj
+          --configuration ${{ env.CONFIGURATION }}
+          --framework net10.0
+          --no-build
+          --no-restore
+          --logger "trx;LogFileName=Onnxify.Tests.net10.0.trx"
+          --logger "console;verbosity=detailed"
+          --diag "${{ runner.temp }}/vstest-net10.log"
+          --blame
+          --blame-crash
+          --blame-hang
+          --blame-hang-timeout 5m
+
+      - name: Upload test diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results-${{ matrix.os }}
-          path: src/Onnxify.Tests/TestResults/**/*.trx
+          name: test-diagnostics-${{ matrix.os }}
+          path: |
+            src/Onnxify.Tests/TestResults/**
+            ${{ runner.temp }}/vstest-*.log
+            ${{ runner.temp }}/dotnet-crash-*.dmp
+            ${{ runner.temp }}/*.dmp
+            ${{ runner.temp }}/*.crashdump
           if-no-files-found: ignore
 
   pack:
@@ -87,6 +138,8 @@ jobs:
             project: src/Onnxify.ML.TorchSharp/Onnxify.ML.TorchSharp.csproj
           - id: Onnxify.ProjectGenerator
             project: src/Onnxify.ProjectGenerator/Onnxify.ProjectGenerator.csproj
+          - id: Onnxify.ModelGenerator
+            project: src/Onnxify.ModelGenerator/Onnxify.ModelGenerator.csproj
           - id: Onnxify.CLI
             project: src/Onnxify.CLI/Onnxify.CLI.csproj
 
