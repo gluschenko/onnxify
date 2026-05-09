@@ -68,6 +68,10 @@ jobs:
         run: dotnet build src/Onnxify.Tests/Onnxify.Tests.csproj --configuration ${{ env.CONFIGURATION }} --no-restore
 
       - name: Run tests (net8.0)
+        env:
+          DOTNET_DbgEnableMiniDump: 1
+          DOTNET_DbgMiniDumpType: 4
+          DOTNET_DbgMiniDumpName: ${{ runner.temp }}/dotnet-crash-net8-%p.dmp
         run: >
           dotnet test src/Onnxify.Tests/Onnxify.Tests.csproj
           --configuration ${{ env.CONFIGURATION }}
@@ -75,8 +79,18 @@ jobs:
           --no-build
           --no-restore
           --logger "trx;LogFileName=Onnxify.Tests.net8.0.trx"
+          --logger "console;verbosity=detailed"
+          --diag "${{ runner.temp }}/vstest-net8.log"
+          --blame
+          --blame-crash
+          --blame-hang
+          --blame-hang-timeout 5m
 
       - name: Run tests (net10.0)
+        env:
+          DOTNET_DbgEnableMiniDump: 1
+          DOTNET_DbgMiniDumpType: 4
+          DOTNET_DbgMiniDumpName: ${{ runner.temp }}/dotnet-crash-net10-%p.dmp
         run: >
           dotnet test src/Onnxify.Tests/Onnxify.Tests.csproj
           --configuration ${{ env.CONFIGURATION }}
@@ -84,13 +98,24 @@ jobs:
           --no-build
           --no-restore
           --logger "trx;LogFileName=Onnxify.Tests.net10.0.trx"
+          --logger "console;verbosity=detailed"
+          --diag "${{ runner.temp }}/vstest-net10.log"
+          --blame
+          --blame-crash
+          --blame-hang
+          --blame-hang-timeout 5m
 
-      - name: Upload test results
+      - name: Upload test diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results-${{ matrix.os }}
-          path: src/Onnxify.Tests/TestResults/**/*.trx
+          name: test-diagnostics-${{ matrix.os }}
+          path: |
+            src/Onnxify.Tests/TestResults/**
+            ${{ runner.temp }}/vstest-*.log
+            ${{ runner.temp }}/dotnet-crash-*.dmp
+            ${{ runner.temp }}/*.dmp
+            ${{ runner.temp }}/*.crashdump
           if-no-files-found: ignore
 
   pack:
