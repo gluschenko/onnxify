@@ -1095,9 +1095,57 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
 
     private static string Escape(string value)
     {
-        return value
-            .Replace("\\", "\\\\")
-            .Replace("\"", "\\\"");
+        var builder = new StringBuilder(value.Length);
+        foreach (var ch in value)
+        {
+            switch (ch)
+            {
+                case '\\':
+                    builder.Append("\\\\");
+                    break;
+                case '\"':
+                    builder.Append("\\\"");
+                    break;
+                case '\0':
+                    builder.Append("\\0");
+                    break;
+                case '\a':
+                    builder.Append("\\a");
+                    break;
+                case '\b':
+                    builder.Append("\\b");
+                    break;
+                case '\f':
+                    builder.Append("\\f");
+                    break;
+                case '\n':
+                    builder.Append("\\n");
+                    break;
+                case '\r':
+                    builder.Append("\\r");
+                    break;
+                case '\t':
+                    builder.Append("\\t");
+                    break;
+                case '\v':
+                    builder.Append("\\v");
+                    break;
+                default:
+                    if (char.IsControl(ch))
+                    {
+                        builder.Append("\\u");
+                        builder.Append(((int)ch).ToString("x4"));
+                    }
+                    else
+                    {
+                        builder.Append(ch);
+                    }
+
+                    break;
+            }
+        }
+
+        return builder.ToString();
     }
 
     private static string ToVerbatimStringLiteral(string value)
