@@ -31,15 +31,15 @@
   </Folder>
   <Folder Name="/generators/">
     <Project Path="Onnxify.AgentSkillGenerator/Onnxify.AgentSkillGenerator.csproj" Id="72e6ec8b-29a2-451f-813c-ae32ff6e8228" />
-    <Project Path="Onnxify.CLI/Onnxify.CLI.csproj" Id="dd170c00-1934-4565-8bdb-cd1e1f58c340" />
-    <Project Path="Onnxify.ModelGenerator/Onnxify.ModelGenerator.csproj" Id="5703ec41-d29c-480a-a730-e79eb00d7e30" />
-    <Project Path="Onnxify.ProjectGenerator/Onnxify.ProjectGenerator.csproj" Id="1aa227d0-394a-4013-ba5d-9193f0ab85a3" />
     <Project Path="Onnxify.SourceGenerator/Onnxify.SourceGenerator.csproj" Id="947c739d-8301-49a4-94d1-75976cdf6dea" />
     <Project Path="Onnxify.TorchSharp.Observer/Onnxify.TorchSharp.Observer.csproj" Id="a26d657d-9f3f-4c46-a617-7bc76f5ffe4f" />
   </Folder>
-  <Folder Name="/libs/">
+  <Folder Name="/packages/">
+    <Project Path="Onnxify.CLI/Onnxify.CLI.csproj" Id="dd170c00-1934-4565-8bdb-cd1e1f58c340" />
     <Project Path="Onnxify.ML.TorchSharp/Onnxify.ML.TorchSharp.csproj" Id="46f9c991-61a8-4907-8d07-d3b927c35c01" />
     <Project Path="Onnxify.ML/Onnxify.ML.csproj" Id="ba388d6c-720a-4ab0-91ca-ba72e5b6c5a9" />
+    <Project Path="Onnxify.ModelGenerator/Onnxify.ModelGenerator.csproj" Id="5703ec41-d29c-480a-a730-e79eb00d7e30" />
+    <Project Path="Onnxify.ProjectGenerator/Onnxify.ProjectGenerator.csproj" Id="1aa227d0-394a-4013-ba5d-9193f0ab85a3" />
     <Project Path="Onnxify.Safetensors/Onnxify.Safetensors.csproj" Id="cdb0c08a-09e2-4d60-9070-f5363374abe3" />
     <Project Path="Onnxify.TorchSharp/Onnxify.TorchSharp.csproj" Id="90452197-f039-4f45-a177-04f0af4e1957" />
     <Project Path="Onnxify/Onnxify.csproj" Id="c2d6af74-de08-469c-ae86-91955fc31cb4" />
