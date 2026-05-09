@@ -137,6 +137,7 @@ public static class TorchModuleExtensions
     /// </remarks>
     /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::conv1d")]
+    [TorchOp("aten::convolution")]
     public static IOnnxGraphEdge Export(
         this TorchModules.Conv1d module,
         OnnxGraph graph,
@@ -197,6 +198,7 @@ public static class TorchModuleExtensions
     /// </remarks>
     /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::conv2d")]
+    [TorchOp("aten::convolution")]
     public static IOnnxGraphEdge Export(
         this TorchModules.Conv2d module,
         OnnxGraph graph,
@@ -257,6 +259,7 @@ public static class TorchModuleExtensions
     /// </remarks>
     /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::conv3d")]
+    [TorchOp("aten::convolution")]
     public static IOnnxGraphEdge Export(
         this TorchModules.Conv3d module,
         OnnxGraph graph,
@@ -939,6 +942,7 @@ public static class TorchModuleExtensions
     /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::softmax.int")]
     [TorchOp("aten::_softmax")]
+    [TorchOp("aten::special_softmax")]
     public static IOnnxGraphEdge Export(
         this TorchModules.Softmax module,
         OnnxGraph graph,
@@ -1560,6 +1564,7 @@ public static class TorchModuleExtensions
     /// </remarks>
     /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::dropout")]
+    [TorchOp("aten::native_dropout")]
     public static IOnnxGraphEdge Export(
         this TorchModules.Dropout module,
         OnnxGraph graph,
@@ -1812,6 +1817,7 @@ public static class TorchModuleExtensions
     /// </remarks>
     /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::layer_norm")]
+    [TorchOp("aten::native_layer_norm")]
     public static IOnnxGraphEdge Export(
         this TorchModules.LayerNorm module,
         OnnxGraph graph,
@@ -1960,6 +1966,7 @@ public static class TorchModuleExtensions
     /// </remarks>
     /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::group_norm")]
+    [TorchOp("aten::native_group_norm")]
     public static IOnnxGraphEdge Export(
         this TorchModules.GroupNorm module,
         OnnxGraph graph,

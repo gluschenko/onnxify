@@ -8,7 +8,7 @@ Do not hand-edit this file; rerun the generator instead.
 - Source: src/Onnxify.TorchSharp/TorchModuleExtensions.cs
 - Receiver: Softmax
 - Return type: IOnnxGraphEdge
-- Torch ops: aten::_softmax, aten::softmax.int
+- Torch ops: aten::_softmax, aten::softmax.int, aten::special_softmax
 
 ## Parameters
 

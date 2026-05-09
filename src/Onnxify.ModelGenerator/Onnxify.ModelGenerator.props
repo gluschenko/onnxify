@@ -1,7 +1,19 @@
 <Project>
 
+  <PropertyGroup>
+    <EnableDefaultOnnxModelItems Condition="'$(EnableDefaultOnnxModelItems)' == ''">false</EnableDefaultOnnxModelItems>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup>
+    <OnnxModel>
+      <CopyToOutputDirectory Condition="'%(OnnxModel.CopyToOutputDirectory)' == ''">PreserveNewest</CopyToOutputDirectory>
+    </OnnxModel>
+  </ItemDefinitionGroup>
+
   <ItemGroup>
-    <AdditionalFiles Include="**/*.onnx" />
+    <AvailableItemName Include="OnnxModel" />
+    <OnnxModel Include="**/*.onnx"
+               Condition="'$(EnableDefaultItems)' == 'true' and '$(EnableDefaultOnnxModelItems)' == 'true'" />
   </ItemGroup>
 
 </Project>

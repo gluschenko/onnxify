@@ -8,7 +8,7 @@ Do not hand-edit this file; rerun the generator instead.
 - Source: src/Onnxify.TorchSharp/TorchModuleExtensions.cs
 - Receiver: LayerNorm
 - Return type: IOnnxGraphEdge
-- Torch ops: aten::layer_norm
+- Torch ops: aten::layer_norm, aten::native_layer_norm
 
 ## Parameters
 

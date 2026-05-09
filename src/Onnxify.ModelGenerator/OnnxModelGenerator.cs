@@ -39,7 +39,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
     private static readonly DiagnosticDescriptor _duplicateTypeDescriptor = new(
         id: "OMG003",
         title: "Duplicate generated model type",
-        messageFormat: "Multiple ONNX AdditionalFiles would generate the same wrapper type '{0}'. Override at least one file with the metadata OnnxifyModelClassName or OnnxifyModelNamespace.",
+        messageFormat: "Multiple ONNX model inputs would generate the same wrapper type '{0}'. Override at least one file with the metadata OnnxifyModelClassName or OnnxifyModelNamespace.",
         category: "Onnxify.ModelGenerator",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true

@@ -9,7 +9,12 @@ namespace Onnxify.AgentSkillGenerator;
 internal static class TorchSharpConverterSkillGenerator
 {
     private const string NewLine = "\n";
-    private const string SourceFilePath = "src/Onnxify.TorchSharp/TorchModuleExtensions.cs";
+    private static readonly IReadOnlyDictionary<Type, string> SourceFilePaths =
+        new Dictionary<Type, string>
+        {
+            [typeof(TorchModuleExtensions)] = "src/Onnxify.TorchSharp/TorchModuleExtensions.cs",
+            [typeof(TorchTensorOperatorExtensions)] = "src/Onnxify.TorchSharp/TorchTensorOperatorExtensions.cs",
+        };
 
     public static int Run(string[] args)
     {
@@ -28,7 +33,8 @@ internal static class TorchSharpConverterSkillGenerator
 
         Console.WriteLine($"Repository root: {MakeRelative(repoRoot, repoRoot)}");
         Console.WriteLine($"Skill root: {MakeRelative(repoRoot, skillRoot)}");
-        Console.WriteLine($"TorchSharp converter source: {SourceFilePath}");
+        Console.WriteLine(
+            $"TorchSharp converter sources: {string.Join(", ", SourceFilePaths.Values.OrderBy(static x => x, StringComparer.Ordinal))}");
         Console.WriteLine($"Generated converter files: {converterCount}");
         Console.WriteLine($"Torch-op-backed converter files: {torchOpFileCount}");
         Console.WriteLine($"Index file: {MakeRelative(repoRoot, Path.Combine(outputRoot, "index.md"))}");
@@ -38,10 +44,19 @@ internal static class TorchSharpConverterSkillGenerator
 
     internal static IReadOnlyDictionary<string, string> BuildGeneratedFiles()
     {
-        var converters = typeof(TorchModuleExtensions)
-            .GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly)
-            .Where(IsPublicExportExtension)
-            .Select(CreateConverterDoc)
+        var converterMethods = SourceFilePaths
+            .SelectMany(static entry => entry.Key
+                .GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly)
+                .Where(IsPublicExportExtension)
+                .Select(method => (Method: method, SourceFile: entry.Value)))
+            .ToArray();
+
+        var receiverCounts = converterMethods
+            .GroupBy(static x => GetFriendlyTypeName(x.Method.GetParameters()[0].ParameterType))
+            .ToDictionary(static group => group.Key, static group => group.Count(), StringComparer.Ordinal);
+
+        var converters = converterMethods
+            .Select(x => CreateConverterDoc(x.Method, x.SourceFile, receiverCounts))
             .OrderBy(x => x.Kind)
             .ThenBy(x => x.ReceiverTypeName, StringComparer.Ordinal)
             .ThenBy(x => x.Signature, StringComparer.Ordinal)
@@ -64,7 +79,7 @@ internal static class TorchSharpConverterSkillGenerator
     {
         if (!method.IsPublic ||
             !method.IsStatic ||
-            !string.Equals(method.Name, "Export", StringComparison.Ordinal) ||
+            !method.Name.StartsWith("Export", StringComparison.Ordinal) ||
             !method.IsDefined(typeof(ExtensionAttribute), inherit: false))
         {
             return false;
@@ -73,7 +88,10 @@ internal static class TorchSharpConverterSkillGenerator
         return method.GetParameters().Length > 0;
     }
 
-    private static ConverterDoc CreateConverterDoc(MethodInfo method)
+    private static ConverterDoc CreateConverterDoc(
+        MethodInfo method,
+        string sourceFile,
+        IReadOnlyDictionary<string, int> receiverCounts)
     {
         ParameterInfo[] parameters = method.GetParameters();
         Type receiverType = parameters[0].ParameterType;
@@ -87,14 +105,16 @@ internal static class TorchSharpConverterSkillGenerator
 
         ConverterKind kind = GetConverterKind(receiverType, torchOps);
         string receiverTypeName = GetFriendlyTypeName(receiverType);
-        string fileName = $"{SanitizeFileName(receiverTypeName)}.md";
+        string fileName = receiverCounts.TryGetValue(receiverTypeName, out int count) && count > 1
+            ? $"{SanitizeFileName(receiverTypeName)}__{SanitizeFileName(GetConverterSlug(method, torchOps))}.md"
+            : $"{SanitizeFileName(receiverTypeName)}.md";
         string relativePath = Path.Combine(GetFolderName(kind), fileName);
 
         return new ConverterDoc(
             receiverTypeName,
             GetFriendlyTypeName(method.ReturnType),
             GetConverterDisplaySignature(method),
-            SourceFilePath,
+            sourceFile,
             kind,
             relativePath,
             parameters.Select((parameter, index) => CreateParameterDoc(parameter, index)).ToArray(),
@@ -176,7 +196,8 @@ internal static class TorchSharpConverterSkillGenerator
         builder.AppendLine($"- Total public Export(...) signatures: {converters.Count}");
         builder.AppendLine($"- Torch-op-backed converters: {converters.Count(x => x.Kind == ConverterKind.TorchOpBacked)}");
         builder.AppendLine($"- Distinct Torch ops declared through [TorchOp]: {converters.SelectMany(x => x.TorchOps).Distinct(StringComparer.Ordinal).Count()}");
-        builder.AppendLine($"- Source file: {SourceFilePath}");
+        builder.AppendLine(
+            $"- Source files: {string.Join(", ", SourceFilePaths.Values.OrderBy(static x => x, StringComparer.Ordinal))}");
         builder.AppendLine();
 
         foreach (ConverterKind kind in Enum.GetValues<ConverterKind>())
@@ -328,6 +349,24 @@ internal static class TorchSharpConverterSkillGenerator
         }
 
         return builder.ToString();
+    }
+
+    private static string GetConverterSlug(MethodInfo method, IReadOnlyList<string> torchOps)
+    {
+        if (torchOps.Count != 0)
+        {
+            return torchOps[0];
+        }
+
+        string parameterSuffix = string.Join(
+            "_",
+            method.GetParameters()
+                .Skip(1)
+                .Select(parameter => GetFriendlyTypeName(parameter.ParameterType)));
+
+        return string.IsNullOrWhiteSpace(parameterSuffix)
+            ? method.Name
+            : $"{method.Name}_{parameterSuffix}";
     }
 
     private static string GetConverterDisplaySignature(MethodInfo method)

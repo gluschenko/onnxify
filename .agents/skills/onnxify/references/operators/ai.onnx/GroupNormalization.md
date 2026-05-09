@@ -69,4 +69,4 @@ is equivalent to LayerNormalization.
 
 | Converter | Torch ops |
 | --- | --- |
-| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this GroupNorm module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::group_norm` |
+| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this GroupNorm module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::group_norm`, `aten::native_group_norm` |

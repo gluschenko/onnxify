@@ -10,7 +10,7 @@
     <Copyright>© 2026 Alexander Gluschenko</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>onnx;onnxruntime;dotnet;source-generator;roslyn-analyzer</PackageTags>
-    <Description>Source generator that emits typed Microsoft.ML.OnnxRuntime wrappers for ONNX models added to a project as AdditionalFiles.</Description>
+    <Description>Source generator that emits typed Microsoft.ML.OnnxRuntime wrappers for ONNX models added to a project as OnnxModel items or AdditionalFiles.</Description>
     
     <EmitCompilerGeneratedFiles Condition="'$(OnnxifyEmitCompilerGeneratedFiles)'=='true'">true</EmitCompilerGeneratedFiles>
     <CompilerGeneratedFilesOutputPath Condition="'$(OnnxifyEmitCompilerGeneratedFiles)'=='true'">$(BaseIntermediateOutputPath)Generated</CompilerGeneratedFilesOutputPath>
@@ -62,6 +62,7 @@
 
   <ItemGroup>
     <None Include="$(AssemblyName).props" Pack="true" PackagePath="build" />
+    <None Include="$(AssemblyName).targets" Pack="true" PackagePath="build" />
   </ItemGroup>
 
   <Target Name="CopyAnalyzerRuntimeDependencies" AfterTargets="Build">

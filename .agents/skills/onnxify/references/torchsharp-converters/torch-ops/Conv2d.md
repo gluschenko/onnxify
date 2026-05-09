@@ -8,7 +8,7 @@ Do not hand-edit this file; rerun the generator instead.
 - Source: src/Onnxify.TorchSharp/TorchModuleExtensions.cs
 - Receiver: Conv2d
 - Return type: IOnnxGraphEdge
-- Torch ops: aten::conv2d
+- Torch ops: aten::conv2d, aten::convolution
 
 ## Parameters
 

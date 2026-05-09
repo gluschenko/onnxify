@@ -89,4 +89,4 @@ This is layer normalization defined in ONNX as function.
 
 | Converter | Torch ops |
 | --- | --- |
-| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this LayerNorm module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::layer_norm` |
+| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this LayerNorm module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::layer_norm`, `aten::native_layer_norm` |

@@ -57,4 +57,4 @@ This operator has **optional** inputs/outputs. See [the doc](../common/IR.md) fo
 
 | Converter | Torch ops |
 | --- | --- |
-| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this Dropout module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::dropout` |
+| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this Dropout module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::dropout`, `aten::native_dropout` |

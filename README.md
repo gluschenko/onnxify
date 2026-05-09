@@ -19,6 +19,7 @@ The idea behind this repository is simple: models should be easier to work with,
 
 ## TODO
 
+- [ ] OnnxGraph rework
 - [ ] SourceGenerator: operator type annotations
 - [ ] SourceGenerator: fully-typed operator Input/Output fields (OneOf?)
 - [ ] Async I/O ops

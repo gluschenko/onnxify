@@ -51,6 +51,6 @@ computes the output.
 
 | Converter | Torch ops |
 | --- | --- |
-| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this Conv1d module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::conv1d` |
-| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this Conv2d module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::conv2d` |
-| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this Conv3d module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::conv3d` |
+| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this Conv1d module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::conv1d`, `aten::convolution` |
+| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this Conv2d module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::conv2d`, `aten::convolution` |
+| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this Conv3d module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::conv3d`, `aten::convolution` |

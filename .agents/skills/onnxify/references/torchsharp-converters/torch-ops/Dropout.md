@@ -8,7 +8,7 @@ Do not hand-edit this file; rerun the generator instead.
 - Source: src/Onnxify.TorchSharp/TorchModuleExtensions.cs
 - Receiver: Dropout
 - Return type: IOnnxGraphEdge
-- Torch ops: aten::dropout
+- Torch ops: aten::dropout, aten::native_dropout
 
 ## Parameters
 

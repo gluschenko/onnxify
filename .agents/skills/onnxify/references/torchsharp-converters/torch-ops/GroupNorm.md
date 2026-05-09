@@ -8,7 +8,7 @@ Do not hand-edit this file; rerun the generator instead.
 - Source: src/Onnxify.TorchSharp/TorchModuleExtensions.cs
 - Receiver: GroupNorm
 - Return type: IOnnxGraphEdge
-- Torch ops: aten::group_norm
+- Torch ops: aten::group_norm, aten::native_group_norm
 
 ## Parameters
 

@@ -49,4 +49,4 @@ and contains the Softmax values of the corresponding input.
 
 | Converter | Torch ops |
 | --- | --- |
-| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this Softmax module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::_softmax`, `aten::softmax.int` |
+| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this Softmax module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::_softmax`, `aten::softmax.int`, `aten::special_softmax` |
