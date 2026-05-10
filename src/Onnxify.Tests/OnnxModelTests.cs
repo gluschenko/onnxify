@@ -262,6 +262,96 @@ public sealed class OnnxModelTests
             }
         }
     }
+
+    [Fact]
+    public void Save_AndLoad_RoundTripsNonTensorGraphValueTypes()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            ProducerName = "non-tensor-type-tests",
+            IrVersion = 9,
+            Opset = 13,
+        });
+
+        model.Graph.AddInput(
+            "sequence_input",
+            new OnnxSequenceType(
+                OnnxTensorType.Create<long>(new OnnxDimension[] { "tokens" }),
+                "sequence-items"));
+        model.Graph.AddInput(
+            "map_input",
+            new OnnxMapType(
+                typeof(string),
+                OnnxTensorType.Create<float>(new OnnxDimension[] { 1L }),
+                "lookup"));
+        model.Graph.AddInput(
+            "opaque_input",
+            new OnnxOpaqueType(
+                "ai.onnx.ml",
+                "Vocabulary",
+                "opaque-metadata"));
+        model.Graph.AddValue(
+            "sparse_hidden",
+            new OnnxSparseTensorType(
+                typeof(float),
+                OnnxTensorShape.Create(new OnnxDimension[] { 2L, "nnz" }),
+                "sparse-values"));
+        model.Graph.AddOutput(
+            "optional_output",
+            new OnnxOptionalType(
+                OnnxTensorType.Create<bool>(new OnnxDimension[] { 1L }),
+                "optional-flag"));
+
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+
+        try
+        {
+            model.Save(path);
+            var loaded = OnnxModel.FromFile(path);
+
+            Assert.Equal(3, loaded.Graph.Inputs.Count);
+
+            var loadedSequence = Assert.IsType<OnnxValue<OnnxSequenceType>>(loaded.Graph.Inputs[0]);
+            Assert.Equal("sequence_input", loadedSequence.Name);
+            Assert.Equal("sequence-items", loadedSequence.Type.Denotation);
+            var sequenceElementType = Assert.IsType<OnnxTensorType>(loadedSequence.Type.ElementType);
+            Assert.Equal(typeof(long), sequenceElementType.Type);
+            Assert.NotNull(sequenceElementType.Shape);
+            Assert.Equal("tokens", Assert.IsType<OnnxDimension<string>>(sequenceElementType.Shape!.Dimensions[0]).Value);
+
+            var loadedMap = Assert.IsType<OnnxValue<OnnxMapType>>(loaded.Graph.Inputs[1]);
+            Assert.Equal("lookup", loadedMap.Type.Denotation);
+            Assert.Equal(typeof(string), loadedMap.Type.KeyType);
+            var mapValueType = Assert.IsType<OnnxTensorType>(loadedMap.Type.ValueType);
+            Assert.Equal(typeof(float), mapValueType.Type);
+
+            var loadedOpaque = Assert.IsType<OnnxValue<OnnxOpaqueType>>(loaded.Graph.Inputs[2]);
+            Assert.Equal("opaque-metadata", loadedOpaque.Type.Denotation);
+            Assert.Equal("ai.onnx.ml", loadedOpaque.Type.Domain);
+            Assert.Equal("Vocabulary", loadedOpaque.Type.Name);
+
+            var loadedSparse = Assert.IsType<OnnxValue<OnnxSparseTensorType>>(Assert.Single(loaded.Graph.Placeholders));
+            Assert.Equal("sparse-values", loadedSparse.Type.Denotation);
+            Assert.Equal(typeof(float), loadedSparse.Type.Type);
+            Assert.NotNull(loadedSparse.Type.Shape);
+            Assert.Equal(2L, Assert.IsType<OnnxDimension<long>>(loadedSparse.Type.Shape!.Dimensions[0]).Value);
+            Assert.Equal("nnz", Assert.IsType<OnnxDimension<string>>(loadedSparse.Type.Shape!.Dimensions[1]).Value);
+
+            var loadedOptional = Assert.IsType<OnnxValue<OnnxOptionalType>>(Assert.Single(loaded.Graph.Outputs));
+            Assert.Equal("optional-flag", loadedOptional.Type.Denotation);
+            var optionalElementType = Assert.IsType<OnnxTensorType>(loadedOptional.Type.ElementType);
+            Assert.Equal(typeof(bool), optionalElementType.Type);
+            Assert.NotNull(optionalElementType.Shape);
+            Assert.Equal(1L, Assert.IsType<OnnxDimension<long>>(optionalElementType.Shape!.Dimensions[0]).Value);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
 }
 
 public sealed class OnnxGraphTests

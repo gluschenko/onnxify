@@ -913,43 +913,111 @@ public class OnnxNodeGenerator : IIncrementalGenerator
 
     public static string MapType(string type)
     {
-        return type switch
+        var normalizedType = type.Trim();
+
+        if (TryUnwrapType(normalizedType, "optional", out _))
         {
-            "tensor(int8)" => "OnnxTensor<sbyte>",
-            "tensor(uint8)" => "OnnxTensor<byte>",
-            "tensor(int16)" => "OnnxTensor<short>",
-            "tensor(uint16)" => "OnnxTensor<ushort>",
-            "tensor(int32)" => "OnnxTensor<int>",
-            "tensor(uint32)" => "OnnxTensor<uint>",
-            "tensor(int64)" => "OnnxTensor<long>",
-            "tensor(uint64)" => "OnnxTensor<ulong>",
+            return "OnnxValue<OnnxOptionalType>";
+        }
 
-            "tensor(float)" => "OnnxTensor<float>",
-            "tensor(double)" => "OnnxTensor<double>",
-            "tensor(float16)" => "OnnxTensor<Half>",
-            "tensor(bfloat16)" => "OnnxTensor<BFloat16>",
+        if (TryMapTypedEdge(normalizedType, "tensor", "OnnxTensor", out var tensorType))
+        {
+            return tensorType;
+        }
 
-            "tensor(float8e4m3fn)" => "OnnxTensor<Float8E4M3FN>",
-            "tensor(float8e4m3fnuz)" => "OnnxTensor<Float8E4M3FNUZ>",
-            "tensor(float8e5m2)" => "OnnxTensor<Float8E5M2>",
-            "tensor(float8e5m2fnuz)" => "OnnxTensor<Float8E5M2FNUZ>",
-            "tensor(float8e8m0)" => "OnnxTensor<Float8E8M0>",
+        if (TryUnwrapType(normalizedType, "sparse_tensor", out _))
+        {
+            return "OnnxValue<OnnxSparseTensorType>";
+        }
 
-            "tensor(float4e2m1)" => "OnnxTensor<Float4E2M1>",
+        if (TryUnwrapType(normalizedType, "seq", out _))
+        {
+            return "OnnxValue<OnnxSequenceType>";
+        }
 
-            "tensor(uint4)" => "OnnxTensor<UInt4>",
-            "tensor(int4)" => "OnnxTensor<Int4>",
-            "tensor(uint2)" => "OnnxTensor<UInt2>",
-            "tensor(int2)" => "OnnxTensor<Int2>",
+        if (TryUnwrapType(normalizedType, "map", out _))
+        {
+            return "OnnxValue<OnnxMapType>";
+        }
 
-            "tensor(bool)" => "OnnxTensor<bool>",
-            "tensor(string)" => "OnnxTensor<string>",
+        if (TryUnwrapType(normalizedType, "opaque", out _))
+        {
+            return "OnnxValue<OnnxOpaqueType>";
+        }
 
-            "tensor(complex64)" => "OnnxTensor<Complex64>",
-            "tensor(complex128)" => "OnnxTensor<Complex128>",
+        return normalizedType; // throw new NotSupportedException($"Unsupported ONNX type: {type}")
+    }
 
-            _ => type, // throw new NotSupportedException($"Unsupported ONNX type: {type}")
+    private static bool TryMapTypedEdge(string type, string containerName, string edgeTypeName, out string mappedType)
+    {
+        if (TryUnwrapType(type, containerName, out var innerType) &&
+            TryMapElementType(innerType, out var mappedElementType))
+        {
+            mappedType = $"{edgeTypeName}<{mappedElementType}>";
+            return true;
+        }
+
+        mappedType = string.Empty;
+        return false;
+    }
+
+    private static bool TryMapElementType(string type, out string mappedType)
+    {
+        mappedType = type switch
+        {
+            "int8" => "sbyte",
+            "uint8" => "byte",
+            "int16" => "short",
+            "uint16" => "ushort",
+            "int32" => "int",
+            "uint32" => "uint",
+            "int64" => "long",
+            "uint64" => "ulong",
+
+            "float" => "float",
+            "double" => "double",
+            "float16" => "Half",
+            "bfloat16" => "BFloat16",
+
+            "float8e4m3fn" => "Float8E4M3FN",
+            "float8e4m3fnuz" => "Float8E4M3FNUZ",
+            "float8e5m2" => "Float8E5M2",
+            "float8e5m2fnuz" => "Float8E5M2FNUZ",
+            "float8e8m0" => "Float8E8M0",
+
+            "float4e2m1" => "Float4E2M1",
+
+            "uint4" => "UInt4",
+            "int4" => "Int4",
+            "uint2" => "UInt2",
+            "int2" => "Int2",
+
+            "bool" => "bool",
+            "string" => "string",
+
+            "complex64" => "Complex64",
+            "complex128" => "Complex128",
+            "undefined" => "object",
+
+            _ => string.Empty,
         };
+
+        return mappedType.Length > 0;
+    }
+
+    private static bool TryUnwrapType(string type, string containerName, out string innerType)
+    {
+        var prefix = $"{containerName}(";
+
+        if (type.StartsWith(prefix, StringComparison.Ordinal) &&
+            type.EndsWith(")", StringComparison.Ordinal))
+        {
+            innerType = type.Substring(prefix.Length, type.Length - prefix.Length - 1);
+            return true;
+        }
+
+        innerType = string.Empty;
+        return false;
     }
 
     public static string FromProto(AttributeType attributeType)
