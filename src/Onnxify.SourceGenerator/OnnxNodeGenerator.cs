@@ -282,6 +282,7 @@ public class OnnxNodeGenerator : IIncrementalGenerator
                     var type = FromProto((AttributeType)x.Type);
 
                     nodeFields.AppendLine(GetAttributeComment(x));
+                    nodeFields.AppendLine(GetAcceptTypeAttributes(x));
 
                     if (!x.IsNullable())
                     {
@@ -680,6 +681,7 @@ public class OnnxNodeGenerator : IIncrementalGenerator
 
             sb.AppendLine($$"""
             {{GetAttributeComment(x)}}
+            {{GetAcceptTypeAttributes(x)}}
             public{{required}}{{type}}{{nullable}} {{onName(x.Name)}} { get; init; }{{(initializer is not null ? $" = {initializer};" : "")}}
             """);
         }
@@ -749,7 +751,7 @@ public class OnnxNodeGenerator : IIncrementalGenerator
         """;
     }
 
-    public static string GetAttributeComment()
+    public static string GetAttributeComment(OperatorAttribute x)
     {
         var typeEnum = (AttributeType)x.Type;
         string[] types = [FromProto(typeEnum)];
@@ -784,7 +786,10 @@ public class OnnxNodeGenerator : IIncrementalGenerator
 
     public static string GetAcceptTypeAttributes(OperatorAttribute x)
     {
-        var allowedTypes = x.Types
+        var typeEnum = (AttributeType)x.Type;
+        string[] types = [FromProto(typeEnum)];
+
+        var allowedTypes = types
             .Select(x => MapType(x))
             .Select(x => $"[AcceptType<{x}>]")
             .ToArray();
