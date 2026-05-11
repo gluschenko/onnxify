@@ -315,15 +315,26 @@ public class OnnxNodeGenerator : IIncrementalGenerator
                     }
                 }
 
-                var list1 = new List<string>();
+                var factoryInputOutputOptions = new List<string>();
 
-                list1.AddRange(op.Inputs.Select(x => $"{InputName(x.Name, reservedFieldNames)} = options.{InputName(x.Name, reservedFieldNames)}"));
-                list1.AddRange(op.Attributes.Select(x => $"{AttributeName(x.Name, reservedFieldNames)} = options.{AttributeName(x.Name, reservedFieldNames)}"));
-                list1.AddRange(op.Outputs.Where(x => !IsVariadic(x)).Select(x => $"{OutputName(x.Name, reservedFieldNames)} = edge{OutputName(x.Name, reservedFieldNames)}"));
+                factoryInputOutputOptions.AddRange(op.Inputs.Select(x =>
+                {
+                    return $"{InputName(x.Name, reservedFieldNames)} = options.{InputName(x.Name, reservedFieldNames)}";
+                }));
 
-                var list2 = new List<string>();
+                factoryInputOutputOptions.AddRange(op.Attributes.Select(x =>
+                {
+                    return $"{AttributeName(x.Name, reservedFieldNames)} = options.{AttributeName(x.Name, reservedFieldNames)}";
+                }));
 
-                list2.AddRange(op.Inputs.Select((x, i) =>
+                factoryInputOutputOptions.AddRange(op.Outputs.Where(x => !IsVariadic(x)).Select(x =>
+                {
+                    return $"{OutputName(x.Name, reservedFieldNames)} = edge{OutputName(x.Name, reservedFieldNames)}";
+                }));
+
+                var protoInputOutputOptions = new List<string>();
+
+                protoInputOutputOptions.AddRange(op.Inputs.Select((x, i) =>
                 {
                     if (IsVariadic(x))
                     {
@@ -336,11 +347,11 @@ public class OnnxNodeGenerator : IIncrementalGenerator
                     }
                     else
                     {
-                        return $"{InputName(x.Name, reservedFieldNames)} = inputs.Length > {i} ? inputs[{i}] : null";
+                        return $"{InputName(x.Name, reservedFieldNames)} = inputs.Count > {i} ? inputs[{i}] : null";
                     }
                 }));
 
-                list2.AddRange(op.Attributes
+                protoInputOutputOptions.AddRange(op.Attributes
                     .Where(x => x.Required || x.Default is null)
                     .Select(x =>
                     {
@@ -356,7 +367,7 @@ public class OnnxNodeGenerator : IIncrementalGenerator
                         }
                     }));
 
-                list2.AddRange(op.Outputs.Select((x, i) =>
+                protoInputOutputOptions.AddRange(op.Outputs.Select((x, i) =>
                 {
                     if (IsVariadic(x))
                     {
@@ -369,7 +380,7 @@ public class OnnxNodeGenerator : IIncrementalGenerator
                     }
                     else
                     {
-                        return $"{OutputName(x.Name, reservedFieldNames)} = outputs.Length > {i} ? outputs[{i}] : null";
+                        return $"{OutputName(x.Name, reservedFieldNames)} = outputs.Count > {i} ? outputs[{i}] : null";
                     }
                 }));
 
@@ -424,22 +435,47 @@ public class OnnxNodeGenerator : IIncrementalGenerator
                         {
                             throw new InvalidOperationException($"Node type is not valid '{node.OpType}' != '{{op.Name}}'");
                         }
-                            
-                        var inputs = node.Input
-                            .Select(x => string.IsNullOrEmpty(x) ? null : graph.GetValue(x) ?? throw new InvalidOperationException($"Missing value '{x}'"))
-                            .ToArray();
-
-                        var outputs = node.Output
-                            .Select(x => string.IsNullOrEmpty(x) ? null : graph.GetValue(x) ?? throw new InvalidOperationException($"Missing value '{x}'"))
-                            .ToArray();
 
                         var attributes = node.Attribute.ToDictionary(x => x.Name, x => x.GetValue(options));
+
+                        var inputs = new List<IOnnxGraphEdge?>({{op.Inputs.Count}});
+                        var outputs = new List<IOnnxGraphEdge?>({{op.Outputs.Count}});
+                        
+                        for (var i = 0; i < {{op.Inputs.Count}}; i++)
+                        {
+                            var edgeName = node.Input.ElementAtOrDefault(i);
+                            var edge = string.IsNullOrEmpty(edgeName) ? null : graph.GetValue(edgeName);
+
+                            if (edge is not null)
+                            {
+                                inputs.Add(edge);
+                            }
+                            else
+                            {
+                                inputs.Add(null);
+                            }
+                        }
+
+                        for (var i = 0; i < {{op.Outputs.Count}}; i++)
+                        {
+                            var edgeName = node.Output.ElementAtOrDefault(i);
+                            var edge = string.IsNullOrEmpty(edgeName) ? null : graph.GetValue(edgeName);
+
+                            if (edge is not null)
+                            {
+                                outputs.Add(edge);
+                            }
+                            else
+                            {
+                                outputs.Add(null);
+                            }
+                        }
 
                         var op = new {{className}}(
                             name: node.Name,
                             options: new {{className}}InputOutputOptions
                             {
-                                {{string.Join(",\n", list2).Indent(4)}},
+                                {{string.Join(",\n", protoInputOutputOptions).Indent(4)}},
                             }
                         );
 
@@ -506,7 +542,7 @@ public class OnnxNodeGenerator : IIncrementalGenerator
                             name: name,
                             options: new {{currentNamespace}}.{{className}}InputOutputOptions
                             {
-                                {{string.Join(",\n", list1).Indent(3)}}
+                                {{string.Join(",\n", factoryInputOutputOptions).Indent(3)}}
                             }
                         );
                     

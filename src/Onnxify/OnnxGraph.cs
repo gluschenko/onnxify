@@ -129,6 +129,8 @@ public class OnnxGraph
     /// <returns>The matching node, or <see langword="null"/> when the graph does not contain one.</returns>
     public OnnxNode? GetNode(string name)
     {
+        ArgumentNullException.ThrowIfNull(name);
+
         if (_nodes.TryGetValue(name, out var result))
         {
             return result;
@@ -147,6 +149,8 @@ public class OnnxGraph
     /// </remarks>
     public IOnnxGraphEdge? GetValue(string name)
     {
+        ArgumentNullException.ThrowIfNull(name);
+
         if (_inputs.TryGetValue(name, out var input))
         {
             return input;
