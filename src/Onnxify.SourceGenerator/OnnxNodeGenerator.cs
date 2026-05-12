@@ -39,10 +39,11 @@ public class OnnxNodeGenerator : IIncrementalGenerator
     {
         var json = file.GetText(context.CancellationToken)?.ToString() ?? string.Empty;
         var root = JsonSerializer.Deserialize<OperatorSchemaRoot>(json) ?? throw new Exception();
+        var latestOperators = GetLatestOperatorSchemas(root.Operators);
 
         var typeResolver = new List<string>();
 
-        var domains = root.Operators
+        var domains = latestOperators
             .GroupBy(x => x.Domain)
             .Select(x =>
             {
@@ -438,10 +439,10 @@ public class OnnxNodeGenerator : IIncrementalGenerator
 
                         var attributes = node.Attribute.ToDictionary(x => x.Name, x => x.GetValue(options));
 
-                        var inputs = new List<IOnnxGraphEdge?>({{op.Inputs.Count}});
-                        var outputs = new List<IOnnxGraphEdge?>({{op.Outputs.Count}});
+                        var inputs = new List<IOnnxGraphEdge?>(Math.Max(node.Input.Count, {{op.Inputs.Count}}));
+                        var outputs = new List<IOnnxGraphEdge?>(Math.Max(node.Output.Count, {{op.Outputs.Count}}));
                         
-                        for (var i = 0; i < {{op.Inputs.Count}}; i++)
+                        for (var i = 0; i < Math.Max(node.Input.Count, {{op.Inputs.Count}}); i++)
                         {
                             var edgeName = node.Input.ElementAtOrDefault(i);
                             var edge = string.IsNullOrEmpty(edgeName) ? null : graph.GetValue(edgeName);
@@ -456,7 +457,7 @@ public class OnnxNodeGenerator : IIncrementalGenerator
                             }
                         }
 
-                        for (var i = 0; i < {{op.Outputs.Count}}; i++)
+                        for (var i = 0; i < Math.Max(node.Output.Count, {{op.Outputs.Count}}); i++)
                         {
                             var edgeName = node.Output.ElementAtOrDefault(i);
                             var edge = string.IsNullOrEmpty(edgeName) ? null : graph.GetValue(edgeName);
@@ -663,6 +664,16 @@ public class OnnxNodeGenerator : IIncrementalGenerator
 
             context.AddSource($"{namespaceName}.g.cs", SourceText.From(code, Encoding.UTF8));
         }
+    }
+
+    internal static IReadOnlyList<OperatorSchema> GetLatestOperatorSchemas(IEnumerable<OperatorSchema> operators)
+    {
+        return operators
+            .GroupBy(x => (Domain: x.Domain, Name: x.Name))
+            .Select(x => x.OrderByDescending(schema => schema.SinceVersion).First())
+            .OrderBy(x => x.Domain, StringComparer.Ordinal)
+            .ThenBy(x => x.Name, StringComparer.Ordinal)
+            .ToArray();
     }
 
     private string GetFields(IEnumerable<OperatorParameter> items, Func<string, string> onName)

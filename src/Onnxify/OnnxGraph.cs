@@ -122,6 +122,23 @@ public class OnnxGraph
         return _options;
     }
 
+    internal bool TryGetImportedOpset(string domain, out long version)
+    {
+        if (_options.OpsetImports is null)
+        {
+            version = default;
+            return false;
+        }
+
+        if (!_options.OpsetImports.TryGetValue(domain, out version))
+        {
+            version = default;
+            return false;
+        }
+
+        return true;
+    }
+
     /// <summary>
     /// Finds a node by its exact graph-local name.
     /// </summary>

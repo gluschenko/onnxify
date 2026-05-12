@@ -295,7 +295,10 @@ public sealed class OnnxProjectGeneratorTests
 
         try
         {
-            var model = OnnxModel.Create();
+            var model = OnnxModel.Create(new OnnxModelCreationOptions
+            {
+                Opset = 23,
+            });
 
             var input = model.Graph.AddInput("OC2_DUMMY_0", OnnxTensorType.Create<float>([1]));
             var output = model.Graph.AddOutput("OC2_DUMMY_0_quantized", OnnxTensorType.Create<float>([1]));
@@ -345,7 +348,10 @@ public sealed class OnnxProjectGeneratorTests
 
         try
         {
-            var model = OnnxModel.Create();
+            var model = OnnxModel.Create(new OnnxModelCreationOptions
+            {
+                Opset = 23,
+            });
 
             var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([1, 1, 3, 3]));
             var output = model.Graph.AddOutput("output", OnnxTensorType.Create<float>([1, 1, 3, 3]));

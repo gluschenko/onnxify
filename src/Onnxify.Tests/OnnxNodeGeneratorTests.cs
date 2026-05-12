@@ -84,4 +84,248 @@ public class OnnxNodeGeneratorTests
             unsupportedTypes.Length == 0,
             $"Unmapped concrete ONNX types: {string.Join(", ", unsupportedTypes)}");
     }
+
+    [Fact]
+    public void GetLatestOperatorSchemas_PrefersHighestSinceVersionPerDomainAndName()
+    {
+        var latest = OnnxNodeGenerator.GetLatestOperatorSchemas(
+        [
+            new OperatorSchema
+            {
+                Name = "Add",
+                Domain = "",
+                SinceVersion = 7,
+                Doc = "older",
+                Attributes = [],
+                Inputs = [],
+                Outputs = [],
+            },
+            new OperatorSchema
+            {
+                Name = "Add",
+                Domain = "",
+                SinceVersion = 14,
+                Doc = "newer",
+                Attributes = [],
+                Inputs = [],
+                Outputs = [],
+            },
+            new OperatorSchema
+            {
+                Name = "Normalizer",
+                Domain = "ai.onnx.ml",
+                SinceVersion = 1,
+                Doc = null,
+                Attributes = [],
+                Inputs = [],
+                Outputs = [],
+            },
+        ]);
+
+        Assert.Equal(2, latest.Count);
+        Assert.Contains(latest, x => x.Domain == "" && x.Name == "Add" && x.SinceVersion == 14 && x.Doc == "newer");
+        Assert.DoesNotContain(latest, x => x.Domain == "" && x.Name == "Add" && x.SinceVersion == 7);
+        Assert.Contains(latest, x => x.Domain == "ai.onnx.ml" && x.Name == "Normalizer" && x.SinceVersion == 1);
+    }
+
+    [Fact]
+    public void CompatibilityMetadataGenerator_PreservesHistoryAndDerivesLatestFromSameSchemaSet()
+    {
+        var schemas =
+        new[]
+        {
+            new OperatorSchema
+            {
+                Name = "Add",
+                Domain = "",
+                SinceVersion = 1,
+                Doc = null,
+                Attributes = [],
+                Inputs = [],
+                Outputs = [],
+            },
+            new OperatorSchema
+            {
+                Name = "Add",
+                Domain = "",
+                SinceVersion = 7,
+                Doc = null,
+                Attributes = [],
+                Inputs = [],
+                Outputs = [],
+            },
+            new OperatorSchema
+            {
+                Name = "Add",
+                Domain = "",
+                SinceVersion = 14,
+                Doc = null,
+                Attributes = [],
+                Inputs = [],
+                Outputs = [],
+            },
+            new OperatorSchema
+            {
+                Name = "TreeEnsemble",
+                Domain = "ai.onnx.ml",
+                SinceVersion = 3,
+                Doc = null,
+                Attributes = [],
+                Inputs = [],
+                Outputs = [],
+            },
+        };
+
+        var historical = OnnxCompatibilityMetadataGenerator.GetHistoricalOperatorSchemas(schemas);
+        var latest = OnnxCompatibilityMetadataGenerator.GetLatestOperatorSchemas(schemas);
+
+        Assert.Equal([1, 7, 14], historical.Where(x => x.Domain == "" && x.Name == "Add").Select(x => x.SinceVersion).ToArray());
+        Assert.Equal(2, latest.Count);
+        Assert.Contains(latest, x => x.Domain == "" && x.Name == "Add" && x.SinceVersion == 14);
+        Assert.DoesNotContain(latest, x => x.Domain == "" && x.Name == "Add" && x.SinceVersion == 7);
+        Assert.Contains(latest, x => x.Domain == "ai.onnx.ml" && x.Name == "TreeEnsemble" && x.SinceVersion == 3);
+    }
+
+    [Fact]
+    public void CompatibilityMetadataGenerator_ComputesMinimumVersionForCurrentOperatorStructure()
+    {
+        var structuralCompatibility = OnnxCompatibilityMetadataGenerator.GetCurrentStructuralCompatibility(
+        [
+            new OperatorSchema
+            {
+                Name = "Add",
+                Domain = "",
+                SinceVersion = 1,
+                Doc = null,
+                Attributes =
+                [
+                    new OperatorAttribute
+                    {
+                        Name = "broadcast",
+                        Description = null,
+                        Required = false,
+                        Type = (int)AttributeType.Int,
+                        Default = null,
+                    },
+                ],
+                Inputs =
+                [
+                    new OperatorParameter
+                    {
+                        Name = "A",
+                        Description = null,
+                        Option = FormalParameterOption.Single,
+                        MinArity = 1,
+                        Type = "T",
+                        Types = ["tensor(float)"],
+                    },
+                    new OperatorParameter
+                    {
+                        Name = "B",
+                        Description = null,
+                        Option = FormalParameterOption.Single,
+                        MinArity = 1,
+                        Type = "T",
+                        Types = ["tensor(float)"],
+                    },
+                ],
+                Outputs =
+                [
+                    new OperatorParameter
+                    {
+                        Name = "C",
+                        Description = null,
+                        Option = FormalParameterOption.Single,
+                        MinArity = 1,
+                        Type = "T",
+                        Types = ["tensor(float)"],
+                    },
+                ],
+            },
+            new OperatorSchema
+            {
+                Name = "Add",
+                Domain = "",
+                SinceVersion = 7,
+                Doc = null,
+                Attributes = [],
+                Inputs =
+                [
+                    new OperatorParameter
+                    {
+                        Name = "A",
+                        Description = null,
+                        Option = FormalParameterOption.Single,
+                        MinArity = 1,
+                        Type = "T",
+                        Types = ["tensor(float)"],
+                    },
+                    new OperatorParameter
+                    {
+                        Name = "B",
+                        Description = null,
+                        Option = FormalParameterOption.Single,
+                        MinArity = 1,
+                        Type = "TNewer",
+                        Types = ["tensor(int32)"],
+                    },
+                ],
+                Outputs =
+                [
+                    new OperatorParameter
+                    {
+                        Name = "C",
+                        Description = null,
+                        Option = FormalParameterOption.Single,
+                        MinArity = 1,
+                        Type = "TNewer",
+                        Types = ["tensor(int32)"],
+                    },
+                ],
+            },
+            new OperatorSchema
+            {
+                Name = "Add",
+                Domain = "",
+                SinceVersion = 14,
+                Doc = null,
+                Attributes = [],
+                Inputs =
+                [
+                    new OperatorParameter
+                    {
+                        Name = "A",
+                        Description = null,
+                        Option = FormalParameterOption.Single,
+                        MinArity = 1,
+                        Type = "TLatest",
+                        Types = ["tensor(double)"],
+                    },
+                    new OperatorParameter
+                    {
+                        Name = "B",
+                        Description = null,
+                        Option = FormalParameterOption.Single,
+                        MinArity = 1,
+                        Type = "TLatest",
+                        Types = ["tensor(double)"],
+                    },
+                ],
+                Outputs =
+                [
+                    new OperatorParameter
+                    {
+                        Name = "C",
+                        Description = null,
+                        Option = FormalParameterOption.Single,
+                        MinArity = 1,
+                        Type = "TLatest",
+                        Types = ["tensor(double)"],
+                    },
+                ],
+            },
+        ]);
+
+        Assert.Equal(7, structuralCompatibility[("", "Add")]);
+    }
 }
