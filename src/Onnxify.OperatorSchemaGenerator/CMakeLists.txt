@@ -38,8 +38,14 @@ add_executable(Onnxify.OperatorSchemaGenerator main.cpp)
 
 target_include_directories(Onnxify.OperatorSchemaGenerator PRIVATE
     ${ONNXRUNTIME_ROOT}/include/onnxruntime
-    ${CMAKE_BINARY_DIR}/onnxruntime-build/external/onnx
-    ${CMAKE_BINARY_DIR}/_deps/nlohmann_json-src/include
+)
+
+onnxruntime_add_include_to_target(
+    Onnxify.OperatorSchemaGenerator
+    onnx
+    onnx_proto
+    protobuf::libprotobuf
+    nlohmann_json::nlohmann_json
 )
 
 target_link_libraries(Onnxify.OperatorSchemaGenerator PRIVATE
