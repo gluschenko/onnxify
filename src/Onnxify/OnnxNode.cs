@@ -145,7 +145,7 @@ public class OnnxNode : IOnnxGraphNode
 
         if (graph.TryGetImportedOpset(node.Domain, out var opsetVersion))
         {
-            var isCompatible = OnnxOperatorSchemaRepository.Instance.IsCurrentStructureCompatible(
+            var isCompatible = OnnxOperatorSchemaResolver.Instance.IsCurrentStructureCompatible(
                 domain: node.Domain,
                 opType: node.OpType,
                 opset: opsetVersion
@@ -183,6 +183,13 @@ public class OnnxNode : IOnnxGraphNode
                 return typedNode;
             }
         }
+
+        return FromProtoUntyped(node, graph);
+    }
+
+    internal static OnnxNode FromProtoUntyped(NodeProto node, OnnxGraph graph)
+    {
+        var options = graph.GetOptions();
 
         var name = node.Name;
         var opType = node.OpType;

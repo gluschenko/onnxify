@@ -223,7 +223,7 @@ public class OnnxModel
 
     private void EnsureCurrentOperatorStructuresAreCompatible()
     {
-        var schemaRepository = OnnxOperatorSchemaRepository.Instance;
+        var schemaRepository = OnnxOperatorSchemaResolver.Instance;
 
         foreach (var node in Graph.Nodes)
         {

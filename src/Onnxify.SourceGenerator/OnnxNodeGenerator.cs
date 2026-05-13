@@ -17,29 +17,40 @@ public class OnnxNodeGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var operatorSchemaFiles = context.AdditionalTextsProvider
-            .Where(static file => string.Equals(Path.GetFileName(file.Path), "onnx_operators.json", StringComparison.OrdinalIgnoreCase));
+        var relevantFiles = context.AdditionalTextsProvider
+            .Where(static file =>
+            {
+                var fileName = Path.GetFileName(file.Path);
+                return string.Equals(fileName, "onnx_operators.json", StringComparison.OrdinalIgnoreCase);
+            })
+            .Collect();
 
         context.RegisterSourceOutput(
-            operatorSchemaFiles,
-            (productionContext, file) =>
-            {
-                Generate(
-                    context: productionContext,
-                    file: file
-                );
-            }
+            relevantFiles,
+            (productionContext, files) => Generate(productionContext, files)
         );
     }
 
-    public void Generate(
+    private void Generate(
         SourceProductionContext context,
-        AdditionalText file
+        IReadOnlyList<AdditionalText> files
     )
     {
-        var json = file.GetText(context.CancellationToken)?.ToString() ?? string.Empty;
-        var root = JsonSerializer.Deserialize<OperatorSchemaRoot>(json) ?? throw new Exception();
-        var latestOperators = GetLatestOperatorSchemas(root.Operators);
+        var fileMap = files.ToDictionary(x => Path.GetFileName(x.Path), StringComparer.OrdinalIgnoreCase);
+
+        if (!fileMap.TryGetValue("onnx_operators.json", out var schemaFile))
+        {
+            return;
+        }
+
+        var schemaJson = schemaFile.GetText(context.CancellationToken)?.ToString() ?? string.Empty;
+        var schemaRoot = JsonSerializer.Deserialize<OperatorSchemaRoot>(schemaJson);
+        if (schemaRoot is null)
+        {
+            return;
+        }
+
+        var latestOperators = GetLatestOperatorSchemas(schemaRoot.Operators);
 
         var typeResolver = new List<string>();
 

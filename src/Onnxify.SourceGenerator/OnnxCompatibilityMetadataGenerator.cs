@@ -21,10 +21,11 @@ public sealed class OnnxCompatibilityMetadataGenerator : IIncrementalGenerator
 
         context.RegisterSourceOutput(
             relevantFiles,
-            static (productionContext, files) => Generate(productionContext, files));
+            (productionContext, files) => Generate(productionContext, files)
+        );
     }
 
-    private static void Generate(SourceProductionContext context, IReadOnlyList<AdditionalText> files)
+    private void Generate(SourceProductionContext context, IReadOnlyList<AdditionalText> files)
     {
         var fileMap = files.ToDictionary(x => Path.GetFileName(x.Path), StringComparer.OrdinalIgnoreCase);
 
@@ -67,16 +68,16 @@ public sealed class OnnxCompatibilityMetadataGenerator : IIncrementalGenerator
         var historicalSchemaLines = historicalSchemas
             .Select(x => $$"""
             AddHistorical(
-                historicalSchemas,
-                {{AsStringLiteral(x.Domain)}},
-                {{AsStringLiteral(x.Name)}},
-                {{x.SinceVersion}},
-                {{x.MinimumInputs}},
-                {{AsNullableIntLiteral(x.MaximumInputs)}},
-                {{x.MinimumOutputs}},
-                {{AsNullableIntLiteral(x.MaximumOutputs)}},
-                {{AsStringArrayLiteral(x.KnownAttributes)}},
-                {{AsStringArrayLiteral(x.RequiredAttributes)}}
+                target: historicalSchemas,
+                domain: {{AsStringLiteral(x.Domain)}},
+                name: {{AsStringLiteral(x.Name)}},
+                sinceVersion: {{x.SinceVersion}},
+                minimumInputs: {{x.MinimumInputs}},
+                maximumInputs: {{AsNullableIntLiteral(x.MaximumInputs)}},
+                minimumOutputs: {{x.MinimumOutputs}},
+                maximumOutputs: {{AsNullableIntLiteral(x.MaximumOutputs)}},
+                knownAttributes: {{AsStringArrayLiteral(x.KnownAttributes)}},
+                requiredAttributes: {{AsStringArrayLiteral(x.RequiredAttributes)}}
             );
             """)
             .ToArray();
@@ -129,7 +130,8 @@ public sealed class OnnxCompatibilityMetadataGenerator : IIncrementalGenerator
                     int minimumOutputs,
                     int? maximumOutputs,
                     string[] knownAttributes,
-                    string[] requiredAttributes)
+                    string[] requiredAttributes
+                )
                 {
                     var key = new OperatorKey(domain, name);
 
@@ -154,19 +156,25 @@ public sealed class OnnxCompatibilityMetadataGenerator : IIncrementalGenerator
                     };
                 }
 
-                {{string.Join("\n\n", historicalSchemaLines).Indent(4)}}
+                {{string.Join("\n\n", historicalSchemaLines).Indent(2)}}
             }
 
             internal static partial void PopulateLatestSchemas(
-                Dictionary<OperatorKey, OnnxBundledOperatorSchema> latestSchemas)
+                Dictionary<OperatorKey, OnnxBundledOperatorSchema> latestSchemas
+            )
             {
-                {{(latestSchemaLines.Length > 0 ? string.Join("\n\n", latestSchemaLines).Indent(4) : string.Empty)}}
+                {{(latestSchemaLines.Length > 0 
+                    ? string.Join("\n\n", latestSchemaLines).Indent(2) 
+                    : string.Empty)}}
             }
 
             internal static partial void PopulateCurrentStructuralCompatibility(
-                Dictionary<OperatorKey, int> currentStructuralCompatibility)
+                Dictionary<OperatorKey, int> currentStructuralCompatibility
+            )
             {
-                {{(currentStructuralCompatibilityLines.Length > 0 ? string.Join("\n", currentStructuralCompatibilityLines).Indent(4) : string.Empty)}}
+                {{(currentStructuralCompatibilityLines.Length > 0 
+                    ? string.Join("\n", currentStructuralCompatibilityLines).Indent(2) 
+                    : string.Empty)}}
             }
         }
         #nullable restore
