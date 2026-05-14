@@ -6,44 +6,44 @@ namespace Onnxify.ML;
 public static class PipelineStageCategories
 {
     /// <summary>Stage category for data loading sources.</summary>
-    public const string DataSource = "data/source";
+    public const string DATA_SOURCE = "data/source";
 
     /// <summary>Stage category for preprocessing and feature shaping.</summary>
-    public const string DataPreparation = "data/preparation";
+    public const string DATA_PREPARATION = "data/preparation";
 
     /// <summary>Stage category for augmentation and sampling transforms.</summary>
-    public const string Augmentation = "data/augmentation";
+    public const string AUGMENTATION = "data/augmentation";
 
     /// <summary>Stage category for mini-batching and collation.</summary>
-    public const string Batching = "data/batching";
+    public const string BATCHING = "data/batching";
 
     /// <summary>Stage category for device transfers and runtime placement.</summary>
-    public const string DevicePlacement = "runtime/device";
+    public const string DEVICE_PLACEMENT = "runtime/device";
 
     /// <summary>Stage category for orchestration, control flow, and repetition.</summary>
-    public const string Orchestration = "runtime/orchestration";
+    public const string ORCHESTRATION = "runtime/orchestration";
 
     /// <summary>Stage category for forward-only inference work.</summary>
-    public const string Inference = "model/inference";
+    public const string INFERENCE = "model/inference";
 
     /// <summary>Stage category for loss computation.</summary>
-    public const string Loss = "training/loss";
+    public const string LOSS = "training/loss";
 
     /// <summary>Stage category for optimizer and gradient update work.</summary>
-    public const string Optimization = "training/optimization";
+    public const string OPTIMIZATION = "training/optimization";
 
     /// <summary>Stage category for evaluation and metric reporting.</summary>
-    public const string Metrics = "evaluation/metrics";
+    public const string METRICS = "evaluation/metrics";
 
     /// <summary>Stage category for output decoding and postprocessing.</summary>
-    public const string PostProcessing = "postprocess";
+    public const string POST_PROCESSING = "postprocess";
 
     /// <summary>Stage category for checkpoint persistence.</summary>
-    public const string Checkpointing = "training/checkpointing";
+    public const string CHECKPOINTING = "training/checkpointing";
 
     /// <summary>Stage category for model export and serialization.</summary>
-    public const string Export = "output/export";
+    public const string EXPORT = "output/export";
 
     /// <summary>Fallback category for custom stages.</summary>
-    public const string Custom = "custom";
+    public const string CUSTOM = "custom";
 }

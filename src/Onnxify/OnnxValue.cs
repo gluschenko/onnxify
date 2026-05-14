@@ -29,11 +29,11 @@ public abstract class OnnxValue : IOnnxGraphEdge
         return type switch
         {
             TypeProto.ValueOneofCase.TensorType => FromProto<OnnxTensorType>(proto),
-            TypeProto.ValueOneofCase.SequenceType => throw new NotImplementedException("TODO"),
-            TypeProto.ValueOneofCase.MapType => throw new NotImplementedException("TODO"),
-            TypeProto.ValueOneofCase.SparseTensorType => throw new NotImplementedException("TODO"),
-            TypeProto.ValueOneofCase.OpaqueType => throw new NotImplementedException("TODO"),
-            TypeProto.ValueOneofCase.OptionalType => throw new NotImplementedException("TODO"),
+            TypeProto.ValueOneofCase.SequenceType => FromProto<OnnxSequenceType>(proto),
+            TypeProto.ValueOneofCase.MapType => FromProto<OnnxMapType>(proto),
+            TypeProto.ValueOneofCase.SparseTensorType => FromProto<OnnxSparseTensorType>(proto),
+            TypeProto.ValueOneofCase.OpaqueType => FromProto<OnnxOpaqueType>(proto),
+            TypeProto.ValueOneofCase.OptionalType => FromProto<OnnxOptionalType>(proto),
             TypeProto.ValueOneofCase.None => throw new NotImplementedException($"Not implemented for '{type}'"),
             _ => throw new NotImplementedException($"Not implemented for '{type}'"),
         };

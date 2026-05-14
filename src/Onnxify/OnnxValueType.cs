@@ -8,7 +8,7 @@ namespace Onnxify;
 /// Base type for ONNX value type descriptors used by graph inputs, outputs, and intermediate values.
 /// </summary>
 /// <remarks>
-/// ONNX supports tensor, sparse tensor, sequence, map, opaque, and optional value types. The currently usable construction surface focuses on tensor types through <see cref="OnnxTensorType"/>.
+/// ONNX supports tensor, sparse tensor, sequence, map, opaque, and optional value types. Onnxify exposes concrete descriptors for each of those categories through this hierarchy.
 /// </remarks>
 public abstract class OnnxValueType
 {
@@ -71,27 +71,44 @@ public abstract class OnnxValueType
 
     internal static OnnxValueType FromProto(TypeProto.Types.SparseTensor tensor, TypeProto typeProto)
     {
-        throw new Exception("TODO");
+        var type = OnnxHelper.GetSystemType((TensorProto.Types.DataType)tensor.ElemType);
+        var shape = OnnxTensorShape.FromProto(tensor.Shape);
+        var denotation = typeProto.Denotation;
+
+        return new OnnxSparseTensorType(type, shape, denotation);
     }
 
     internal static OnnxValueType FromProto(TypeProto.Types.Opaque tensor, TypeProto typeProto)
     {
-        throw new Exception("TODO");
+        return new OnnxOpaqueType(
+            domain: tensor.Domain,
+            name: tensor.Name,
+            denotation: typeProto.Denotation);
     }
 
     internal static OnnxValueType FromProto(TypeProto.Types.Sequence tensor, TypeProto typeProto)
     {
-        throw new Exception("TODO");
+        var denotation = typeProto.Denotation;
+        var elementType = FromProto(tensor.ElemType);
+
+        return new OnnxSequenceType(elementType, denotation);
     }
 
     internal static OnnxValueType FromProto(TypeProto.Types.Map tensor, TypeProto typeProto)
     {
-        throw new Exception("TODO");
+        var denotation = typeProto.Denotation;
+        var keyType = OnnxHelper.GetSystemType((TensorProto.Types.DataType)tensor.KeyType);
+        var valueType = FromProto(tensor.ValueType);
+
+        return new OnnxMapType(keyType, valueType, denotation);
     }
 
     internal static OnnxValueType FromProto(TypeProto.Types.Optional tensor, TypeProto typeProto)
     {
-        throw new Exception("TODO");
+        var denotation = typeProto.Denotation;
+        var elementType = FromProto(tensor.ElemType);
+
+        return new OnnxOptionalType(elementType, denotation);
     }
 }
 
@@ -195,6 +212,259 @@ public sealed class OnnxTensorType : OnnxValueType
             : $" ({Denotation})";
 
         return $"{Type.Name}{shape}{denotation}";
+    }
+}
+
+/// <summary>
+/// Describes an ONNX sparse tensor value: element type, optional dense shape, and optional denotation.
+/// </summary>
+public sealed class OnnxSparseTensorType : OnnxValueType
+{
+    /// <summary>
+    /// Gets the CLR element type that maps to the sparse tensor element type.
+    /// </summary>
+    public Type Type { get; }
+
+    /// <summary>
+    /// Gets the optional dense shape of the sparse tensor.
+    /// </summary>
+    public OnnxTensorShape? Shape { get; }
+
+    /// <summary>
+    /// Creates a sparse tensor type descriptor from a CLR element type and optional dense shape.
+    /// </summary>
+    public OnnxSparseTensorType(
+        Type type,
+        OnnxTensorShape? shape,
+        string denotation
+    ) : base(denotation)
+    {
+        Type = type;
+        Shape = shape;
+    }
+
+    internal override TypeProto ToProto()
+    {
+        var proto = base.ToProto();
+
+        proto.SparseTensorType = new TypeProto.Types.SparseTensor
+        {
+            ElemType = (int)OnnxHelper.GetDataType(Type),
+            Shape = Shape?.ToProto(),
+        };
+
+        return proto;
+    }
+
+    /// <summary>
+    /// Returns a compact diagnostic representation including element type, shape when known, and denotation when present.
+    /// </summary>
+    public override string ToString()
+    {
+        var shape = Shape is null
+            ? string.Empty
+            : $"[{string.Join(", ", Shape.Dimensions)}]";
+
+        var denotation = string.IsNullOrWhiteSpace(Denotation)
+            ? string.Empty
+            : $" ({Denotation})";
+
+        return $"Sparse<{Type.Name}>{shape}{denotation}";
+    }
+}
+
+/// <summary>
+/// Describes an ONNX sequence value whose elements share one nested ONNX value type.
+/// </summary>
+public sealed class OnnxSequenceType : OnnxValueType
+{
+    /// <summary>
+    /// Gets the element type stored by the sequence.
+    /// </summary>
+    public OnnxValueType ElementType { get; }
+
+    /// <summary>
+    /// Creates a sequence type descriptor from its element type.
+    /// </summary>
+    public OnnxSequenceType(OnnxValueType elementType, string denotation = "") : base(denotation)
+    {
+        ArgumentNullException.ThrowIfNull(elementType);
+        ElementType = elementType;
+    }
+
+    internal override TypeProto ToProto()
+    {
+        var proto = base.ToProto();
+
+        proto.SequenceType = new TypeProto.Types.Sequence
+        {
+            ElemType = ElementType.ToProto(),
+        };
+
+        return proto;
+    }
+
+    /// <summary>
+    /// Returns a compact diagnostic representation of the sequence element type.
+    /// </summary>
+    public override string ToString()
+    {
+        var denotation = string.IsNullOrWhiteSpace(Denotation)
+            ? string.Empty
+            : $" ({Denotation})";
+
+        return $"Sequence<{ElementType}>{denotation}";
+    }
+}
+
+/// <summary>
+/// Describes an ONNX map value from an integral or string key type to a nested ONNX value type.
+/// </summary>
+public sealed class OnnxMapType : OnnxValueType
+{
+    /// <summary>
+    /// Gets the CLR key type for the map.
+    /// </summary>
+    public Type KeyType { get; }
+
+    /// <summary>
+    /// Gets the nested ONNX value type stored in the map values.
+    /// </summary>
+    public OnnxValueType ValueType { get; }
+
+    /// <summary>
+    /// Creates a map type descriptor from its key and value types.
+    /// </summary>
+    public OnnxMapType(Type keyType, OnnxValueType valueType, string denotation = "") : base(denotation)
+    {
+        ArgumentNullException.ThrowIfNull(keyType);
+        ArgumentNullException.ThrowIfNull(valueType);
+
+        KeyType = keyType;
+        ValueType = valueType;
+    }
+
+    internal override TypeProto ToProto()
+    {
+        var proto = base.ToProto();
+
+        proto.MapType = new TypeProto.Types.Map
+        {
+            KeyType = (int)OnnxHelper.GetDataType(KeyType),
+            ValueType = ValueType.ToProto(),
+        };
+
+        return proto;
+    }
+
+    /// <summary>
+    /// Returns a compact diagnostic representation of the key and value types.
+    /// </summary>
+    public override string ToString()
+    {
+        var denotation = string.IsNullOrWhiteSpace(Denotation)
+            ? string.Empty
+            : $" ({Denotation})";
+
+        return $"Map<{KeyType.Name}, {ValueType}>{denotation}";
+    }
+}
+
+/// <summary>
+/// Describes an ONNX optional value that wraps a nested ONNX value type.
+/// </summary>
+public sealed class OnnxOptionalType : OnnxValueType
+{
+    /// <summary>
+    /// Gets the nested ONNX value type wrapped by the optional.
+    /// </summary>
+    public OnnxValueType ElementType { get; }
+
+    /// <summary>
+    /// Creates an optional type descriptor from its wrapped element type.
+    /// </summary>
+    public OnnxOptionalType(OnnxValueType elementType, string denotation = "") : base(denotation)
+    {
+        ArgumentNullException.ThrowIfNull(elementType);
+        ElementType = elementType;
+    }
+
+    internal override TypeProto ToProto()
+    {
+        var proto = base.ToProto();
+
+        proto.OptionalType = new TypeProto.Types.Optional
+        {
+            ElemType = ElementType.ToProto(),
+        };
+
+        return proto;
+    }
+
+    /// <summary>
+    /// Returns a compact diagnostic representation of the wrapped element type.
+    /// </summary>
+    public override string ToString()
+    {
+        var denotation = string.IsNullOrWhiteSpace(Denotation)
+            ? string.Empty
+            : $" ({Denotation})";
+
+        return $"Optional<{ElementType}>{denotation}";
+    }
+}
+
+/// <summary>
+/// Describes an ONNX opaque value whose semantics are defined by a domain-specific type name.
+/// </summary>
+public sealed class OnnxOpaqueType : OnnxValueType
+{
+    /// <summary>
+    /// Gets the ONNX domain that owns the opaque type.
+    /// </summary>
+    public string Domain { get; }
+
+    /// <summary>
+    /// Gets the opaque type name within <see cref="Domain"/>.
+    /// </summary>
+    public string Name { get; }
+
+    /// <summary>
+    /// Creates an opaque type descriptor from its domain and type name.
+    /// </summary>
+    public OnnxOpaqueType(string domain, string name, string denotation = "") : base(denotation)
+    {
+        Domain = domain ?? string.Empty;
+        Name = name ?? string.Empty;
+    }
+
+    internal override TypeProto ToProto()
+    {
+        var proto = base.ToProto();
+
+        proto.OpaqueType = new TypeProto.Types.Opaque
+        {
+            Domain = Domain,
+            Name = Name,
+        };
+
+        return proto;
+    }
+
+    /// <summary>
+    /// Returns a compact diagnostic representation of the opaque type identity.
+    /// </summary>
+    public override string ToString()
+    {
+        var opaqueIdentity = string.IsNullOrWhiteSpace(Name)
+            ? Domain
+            : $"{Domain}:{Name}";
+
+        var denotation = string.IsNullOrWhiteSpace(Denotation)
+            ? string.Empty
+            : $" ({Denotation})";
+
+        return $"Opaque<{opaqueIdentity}>{denotation}";
     }
 }
 

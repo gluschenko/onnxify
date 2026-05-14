@@ -4,7 +4,8 @@ namespace Onnxify.ProjectGenerator;
 
 public sealed class ProjectGeneratorOptions
 {
-    public required string InputModelPath { get; init; }
+    public string? InputModelPath { get; init; }
+    public string? InputModelName { get; init; }
     public required string OutputDirectoryPath { get; init; }
     public string? ProjectName { get; init; }
     public string? Namespace { get; init; }
@@ -19,8 +20,7 @@ public sealed class ProjectGeneratorOptions
 
     internal string GetProjectName()
     {
-        var inputFileName = Path.GetFileNameWithoutExtension(InputModelPath);
-        var fallback = string.IsNullOrWhiteSpace(inputFileName) ? "GeneratedOnnxifyModel" : inputFileName;
+        var fallback = GetInputModelStem();
         return SanitizeIdentifier(ProjectName ?? fallback, "GeneratedOnnxifyModel");
     }
 
@@ -57,6 +57,28 @@ public sealed class ProjectGeneratorOptions
         }
 
         return typeof(ProjectGeneratorOptions).Assembly.GetName().Version?.ToString() ?? "1.0.0";
+    }
+
+    internal string GetGeneratedModelFileName()
+    {
+        return $"{GetInputModelStem()}.generated.onnx";
+    }
+
+    private string GetInputModelStem()
+    {
+        var inputFileName = Path.GetFileNameWithoutExtension(InputModelPath);
+        if (!string.IsNullOrWhiteSpace(inputFileName))
+        {
+            return inputFileName;
+        }
+
+        var inputModelName = Path.GetFileNameWithoutExtension(InputModelName);
+        if (!string.IsNullOrWhiteSpace(inputModelName))
+        {
+            return inputModelName;
+        }
+
+        return "GeneratedOnnxifyModel";
     }
 
     private static string SanitizeIdentifier(string value, string fallback)

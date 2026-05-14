@@ -103,8 +103,20 @@ public class OnnxModel
 
     internal OnnxModel(ModelProto model, OnnxModelBaseOptions options)
     {
+        var opsetImports = model.OpsetImport
+            .DistinctBy(x => x.Domain)
+            .ToDictionary(x => x.Domain, x => x.Version, StringComparer.Ordinal);
+
         _model = model;
-        _options = options;
+        _options = new OnnxModelBaseOptions
+        {
+            DataLocation = options.DataLocation,
+            DataReader = options.DataReader,
+            DataWriter = options.DataWriter,
+            NodeTypeResolutionStrategy = options.NodeTypeResolutionStrategy,
+            OpsetImports = opsetImports,
+        };
+
         _graph = new OnnxGraph(model.Graph, _options);
 
         foreach (var x in model.MetadataProps)
@@ -123,7 +135,7 @@ public class OnnxModel
 
         foreach (var x in model.TrainingInfo)
         {
-            _trainingInfo.Add(Onnxify.TrainingInfo.FromProto(x, options));
+            _trainingInfo.Add(Onnxify.TrainingInfo.FromProto(x, _options));
         }
     }
 
@@ -197,6 +209,8 @@ public class OnnxModel
 
     internal ModelProto ToProto()
     {
+        EnsureCurrentOperatorStructuresAreCompatible();
+
         var newModel = _model.Clone();
         newModel.Graph = _graph.ToProto();
 
@@ -205,6 +219,45 @@ public class OnnxModel
         newModel.TrainingInfo.Set(_trainingInfo.Select(x => x.ToProto()));
 
         return newModel;
+    }
+
+    private void EnsureCurrentOperatorStructuresAreCompatible()
+    {
+        var schemaRepository = OnnxOperatorSchemaResolver.Instance;
+
+        foreach (var node in Graph.Nodes)
+        {
+            if (node.GetType() == typeof(OnnxNode))
+            {
+                continue;
+            }
+
+            if (!_opsetImport.TryGetValue(node.Domain, out var opsetImport))
+            {
+                continue;
+            }
+
+            if (!schemaRepository.TryGetCurrentStructuralCompatibilityMinimumVersion(node.Domain, node.OpType, out var minimumCurrentStructureSinceVersion))
+            {
+                continue;
+            }
+
+            if (opsetImport.Version >= minimumCurrentStructureSinceVersion)
+            {
+                continue;
+            }
+
+            throw new InvalidOperationException(
+                $"Node '{node.Name}' uses the current '{FormatOperator(node.Domain, node.OpType)}' structure, " +
+                $"but target opset {opsetImport.Version} is older than the minimum structurally compatible opset {minimumCurrentStructureSinceVersion}. " +
+                "Use a newer target opset or construct this node as a generic OnnxNode that matches the legacy schema.");
+        }
+    }
+
+    private static string FormatOperator(string domain, string opType)
+    {
+        var formattedDomain = string.IsNullOrWhiteSpace(domain) ? "ai.onnx" : domain;
+        return $"{formattedDomain}::{opType}";
     }
 
     /// <summary>
@@ -262,6 +315,16 @@ public class OnnxModel
             Domain = domain,
             Version = version,
         };
+    }
+
+    /// <summary>
+    /// Validates the model against bundled ONNX operator metadata and, optionally, an external runtime profile.
+    /// </summary>
+    /// <param name="options">Validation options controlling structural and target-runtime checks.</param>
+    /// <returns>A result containing compatibility diagnostics.</returns>
+    public OnnxCompatibilityValidationResult ValidateCompatibility(OnnxCompatibilityValidationOptions? options = null)
+    {
+        return OnnxCompatibilityValidator.Validate(this, options);
     }
 }
 

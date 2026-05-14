@@ -1,537 +1,561 @@
 ﻿using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 using Onnxify.SourceGenerator.Models;
 
-namespace Onnxify.SourceGenerator
+namespace Onnxify.SourceGenerator;
+
+[Generator]
+public class OnnxNodeGenerator : IIncrementalGenerator
 {
-    [Generator]
-    public class OnnxNodeGenerator : IIncrementalGenerator
+    private readonly static Dictionary<string, string> _aliasFieldNames = new()
     {
-        private readonly static Dictionary<string, string> _aliasFieldNames = new()
-        {
-            ["Inputs"] = "In",
-            ["Outputs"] = "Out",
-        };
+        ["Inputs"] = "In",
+        ["Outputs"] = "Out",
+    };
 
-        public void Initialize(IncrementalGeneratorInitializationContext context)
-        {
-            var operatorSchemaFiles = context.AdditionalTextsProvider
-                .Where(static file => string.Equals(Path.GetFileName(file.Path), "onnx_operators.json", StringComparison.OrdinalIgnoreCase));
+    public void Initialize(IncrementalGeneratorInitializationContext context)
+    {
+        var relevantFiles = context.AdditionalTextsProvider
+            .Where(static file =>
+            {
+                var fileName = Path.GetFileName(file.Path);
+                return string.Equals(fileName, "onnx_operators.json", StringComparison.OrdinalIgnoreCase);
+            })
+            .Collect();
 
-            context.RegisterSourceOutput(
-                operatorSchemaFiles,
-                (productionContext, file) =>
-                {
-                    Generate(
-                        context: productionContext,
-                        file: file
-                    );
-                }
-            );
+        context.RegisterSourceOutput(
+            relevantFiles,
+            (productionContext, files) => Generate(productionContext, files)
+        );
+    }
+
+    private void Generate(
+        SourceProductionContext context,
+        IReadOnlyList<AdditionalText> files
+    )
+    {
+        var fileMap = files.ToDictionary(x => Path.GetFileName(x.Path), StringComparer.OrdinalIgnoreCase);
+
+        if (!fileMap.TryGetValue("onnx_operators.json", out var schemaFile))
+        {
+            return;
         }
 
-        public void Generate(
-            SourceProductionContext context,
-            AdditionalText file
-        )
+        var schemaJson = schemaFile.GetText(context.CancellationToken)?.ToString() ?? string.Empty;
+        var schemaRoot = JsonSerializer.Deserialize<OperatorSchemaRoot>(schemaJson);
+        if (schemaRoot is null)
         {
-            var json = file.GetText(context.CancellationToken)?.ToString() ?? string.Empty;
-            var root = JsonSerializer.Deserialize<OperatorSchemaRoot>(json) ?? throw new Exception();
+            return;
+        }
 
-            var typeResolver = new List<string>();
+        var latestOperators = GetLatestOperatorSchemas(schemaRoot.Operators);
 
-            var domains = root.Operators
-                .GroupBy(x => x.Domain)
-                .Select(x =>
-                {
-                    return new
-                    {
-                        Name = x.Key,
-                        Operators = x.OrderBy(x => x.Name).ToArray(),
-                    };
-                })
-                .ToArray();
+        var typeResolver = new List<string>();
 
-            var rootNamespace = $"{nameof(Onnxify)}";
-            var graphType = $"{rootNamespace}.OnnxGraph";
-
-            foreach (var domain in domains)
+        var domains = latestOperators
+            .GroupBy(x => x.Domain)
+            .Select(x =>
             {
-                var domainClasses = new StringBuilder();
-
-                var currentNamespace = domain.Name switch
+                return new
                 {
-                    "" => rootNamespace,
-                    "ai.onnx.ml" => $"{rootNamespace}.ML",
-                    "com.microsoft" => $"{rootNamespace}.Microsoft",
-                    "com.microsoft.nhwc" => $"{rootNamespace}.Microsoft.NHWC",
-                    "com.microsoft.nchwc" => $"{rootNamespace}.Microsoft.NCHWc",
-                    "com.ms.internal.nhwc" => $"{rootNamespace}.Microsoft.Internal.NHWC",
-                    _ => throw new NotImplementedException($"Not implemented for '{domain}'"),
+                    Name = x.Key,
+                    Operators = x.OrderBy(x => x.Name).ToArray(),
                 };
+            })
+            .ToArray();
 
-                var extensionAnchor = domain.Name switch
-                {
-                    "" => graphType,
-                    "ai.onnx.ml" => $"{rootNamespace}.MLDomain",
-                    "com.microsoft" => $"{rootNamespace}.MicrosoftDomain",
-                    "com.microsoft.nhwc" => $"{rootNamespace}.MicrosoftNHWCDomain",
-                    "com.microsoft.nchwc" => $"{rootNamespace}.MicrosoftNCHWcDomain",
-                    "com.ms.internal.nhwc" => $"{rootNamespace}.MicrosoftInternalNHWCDomain",
-                    _ => throw new NotImplementedException($"Not implemented for '{domain}'"),
-                };
+        var rootNamespace = $"{nameof(Onnxify)}";
+        var graphType = $"{rootNamespace}.OnnxGraph";
 
-                foreach (var op in domain.Operators)
-                {
-                    var operatorClasses = new StringBuilder();
-                    var extensionMethods = new StringBuilder();
+        foreach (var domain in domains)
+        {
+            var domainClasses = new StringBuilder();
 
-                    var className = $"{op.Name}";
-                    var reservedFieldNames = CreateReservedFieldNames(op, className);
+            var currentNamespace = domain.Name switch
+            {
+                "" => rootNamespace,
+                "ai.onnx.ml" => $"{rootNamespace}.ML",
+                "com.microsoft" => $"{rootNamespace}.Microsoft",
+                "com.microsoft.nhwc" => $"{rootNamespace}.Microsoft.NHWC",
+                "com.microsoft.nchwc" => $"{rootNamespace}.Microsoft.NCHWc",
+                "com.ms.internal.nhwc" => $"{rootNamespace}.Microsoft.Internal.NHWC",
+                _ => throw new NotImplementedException($"Not implemented for '{domain}'"),
+            };
 
-                    var hasVariadicOutput = op.Outputs.Any(IsVariadic);
-                    var optionsAttributes = op.Attributes
-                        .Select(x =>
-                        {
-                            var type = FromProto((AttributeType)x.Type);
-                            return $"() => options.{AttributeName(x.Name, reservedFieldNames)} is {type} x ? new OnnxAttribute<{type}>(\"{x.Name}\", x) : null";
-                        })
-                        .ToArray();
+            var extensionAnchor = domain.Name switch
+            {
+                "" => graphType,
+                "ai.onnx.ml" => $"{rootNamespace}.MLDomain",
+                "com.microsoft" => $"{rootNamespace}.MicrosoftDomain",
+                "com.microsoft.nhwc" => $"{rootNamespace}.MicrosoftNHWCDomain",
+                "com.microsoft.nchwc" => $"{rootNamespace}.MicrosoftNCHWcDomain",
+                "com.ms.internal.nhwc" => $"{rootNamespace}.MicrosoftInternalNHWCDomain",
+                _ => throw new NotImplementedException($"Not implemented for '{domain}'"),
+            };
 
-                    var optionsAttributesList = optionsAttributes.Length > 0
-                        ? $$"""
-                        TypeHelper.NotNull<OnnxAttribute>(
-                            new List<Func<OnnxAttribute?>>() 
-                            { 
-                                {{string.Join(",\n", optionsAttributes).Indent(2)}}
-                            }
-                            .Select(x => x())
-                            .ToArray()
-                        )
-                        """
-                        : "[]";
+            foreach (var op in domain.Operators)
+            {
+                var operatorClasses = new StringBuilder();
+                var extensionMethods = new StringBuilder();
 
-                    operatorClasses.AppendLine($$"""
-                    /// <summary>
-                    /// Collects the input wires and attributes used to construct a {{className}} node.
-                    /// </summary>
-                    /// <remarks>
-                    /// Use this options type when outputs are supplied by another construction path, such as loading an existing ONNX node.
-                    /// </remarks>
-                    public class {{className}}InputOptions
+                var className = $"{op.Name}";
+                var reservedFieldNames = CreateReservedFieldNames(op, className);
+
+                var hasVariadicOutput = op.Outputs.Any(IsVariadic);
+                var optionsAttributes = op.Attributes
+                    .Select(x =>
                     {
-                        {{GetFields(op.Inputs, x => InputName(x, reservedFieldNames)).Indent(1)}}
-                
-                        {{GetFields(op.Attributes, x => AttributeName(x, reservedFieldNames)).Indent(1)}}
-                    }
-                
-                    /// <summary>
-                    /// Collects the complete input, output, and attribute wiring for a {{className}} node.
-                    /// </summary>
-                    /// <remarks>
-                    /// Properties follow ONNX schema order so optional and variadic parameters remain aligned with serialized node inputs and outputs.
-                    /// </remarks>
-                    public class {{className}}InputOutputOptions : {{className}}InputOptions
-                    {
-                        {{GetFields(op.Outputs, x => OutputName(x, reservedFieldNames)).Indent(1)}}
-                    }
-                    """);
-
-                    var nodeFields = new StringBuilder();
-                    var createInputLines = new List<string>();
-                    var createOutputLines = new List<string>();
-
-                    for (var i = 0; i < op.Inputs.Count(); i++)
-                    {
-                        var x = op.Inputs[i];
-
-                        nodeFields.AppendLine(GetParameterComment(x));
-
-                        if (IsVariadic(x))
-                        {
-                            nodeFields.AppendLine($$"""
-                            public {{GetNodeParameterType(x)}} {{InputName(x.Name, reservedFieldNames)}}
-                            {
-                                get => GetVariadicInputs({{i}});
-                                set
-                                {
-                                    ArgumentNullException.ThrowIfNull(value);
-                                    if (value.Count < {{x.MinArity}})
-                                    {
-                                        throw new InvalidOperationException("Variadic input '{{InputName(x.Name, reservedFieldNames)}}' requires at least {{x.MinArity}} value(s).");
-                                    }
-
-                                    SetVariadicInputs({{i}}, value);
-                                }
-                            }
-                            """);
-
-                            createInputLines.Add($$"""
-                            if (options.{{InputName(x.Name, reservedFieldNames)}}.Length < {{x.MinArity}})
-                            {
-                                throw new InvalidOperationException("Variadic input '{{InputName(x.Name, reservedFieldNames)}}' requires at least {{x.MinArity}} value(s).");
-                            }
-
-                            inputs.AddRange(options.{{InputName(x.Name, reservedFieldNames)}});
-                            """);
-                        }
-                        else if (x.Option != FormalParameterOption.Optional)
-                        {
-                            nodeFields.AppendLine($$"""
-                            public {{MapType(x.Types)}} {{InputName(x.Name, reservedFieldNames)}}
-                            {
-                                get => ({{MapType(x.Types)}})Inputs[{{i}}];
-                                set => SetInput({{i}}, value);
-                            }
-                            """);
-
-                            createInputLines.Add($"inputs.Add(options.{InputName(x.Name, reservedFieldNames)});");
-                        }
-                        else
-                        {
-                            nodeFields.AppendLine($$"""
-                            public {{MapType(x.Types)}}? {{InputName(x.Name, reservedFieldNames)}}
-                            {
-                                get => Inputs.Count > {{i}} ? ({{MapType(x.Types)}})Inputs[{{i}}] : null;
-                                set => SetOptionalInput({{i}}, value);
-                            }
-                            """);
-
-                            createInputLines.Add($$"""
-                            if (options.{{InputName(x.Name, reservedFieldNames)}} is not null)
-                            {
-                                inputs.Add(options.{{InputName(x.Name, reservedFieldNames)}});
-                            }
-                            """);
-                        }
-                    }
-
-                    for (var i = 0; i < op.Outputs.Count(); i++)
-                    {
-                        var x = op.Outputs[i];
-
-                        nodeFields.AppendLine(GetParameterComment(x));
-
-                        if (IsVariadic(x))
-                        {
-                            nodeFields.AppendLine($$"""
-                            public {{GetNodeParameterType(x)}} {{OutputName(x.Name, reservedFieldNames)}}
-                            {
-                                get => GetVariadicOutputs({{i}});
-                                set
-                                {
-                                    ArgumentNullException.ThrowIfNull(value);
-                                    if (value.Count < {{x.MinArity}})
-                                    {
-                                        throw new InvalidOperationException("Variadic output '{{OutputName(x.Name, reservedFieldNames)}}' requires at least {{x.MinArity}} value(s).");
-                                    }
-
-                                    SetVariadicOutputs({{i}}, value);
-                                }
-                            }
-                            """);
-
-                            createOutputLines.Add($$"""
-                            if (options.{{OutputName(x.Name, reservedFieldNames)}}.Length < {{x.MinArity}})
-                            {
-                                throw new InvalidOperationException("Variadic output '{{OutputName(x.Name, reservedFieldNames)}}' requires at least {{x.MinArity}} value(s).");
-                            }
-
-                            outputs.AddRange(options.{{OutputName(x.Name, reservedFieldNames)}});
-                            """);
-                        }
-                        else if (x.Option != FormalParameterOption.Optional)
-                        {
-                            nodeFields.AppendLine($$"""
-                            public {{MapType(x.Types)}} {{OutputName(x.Name, reservedFieldNames)}}
-                            {
-                                get => ({{MapType(x.Types)}})Outputs[{{i}}];
-                                set => SetOutput({{i}}, value);
-                            }
-                            """);
-
-                            createOutputLines.Add($"outputs.Add(options.{OutputName(x.Name, reservedFieldNames)});");
-                        }
-                        else
-                        {
-                            nodeFields.AppendLine($$"""
-                            public {{MapType(x.Types)}}? {{OutputName(x.Name, reservedFieldNames)}}
-                            {
-                                get => Outputs.Count > {{i}} && Outputs[{{i}}] is {{MapType(x.Types)}} x ? x : null;
-                                set => SetOptionalOutput({{i}}, value);
-                            }
-                            """);
-
-                            createOutputLines.Add($$"""
-                            if (options.{{OutputName(x.Name, reservedFieldNames)}} is not null)
-                            {
-                                outputs.Add(options.{{OutputName(x.Name, reservedFieldNames)}});
-                            }
-                            """);
-                        }
-                    }
-
-                    for (var i = 0; i < op.Attributes.Count(); i++)
-                    {
-                        var x = op.Attributes[i];
-
                         var type = FromProto((AttributeType)x.Type);
+                        return $"() => options.{AttributeName(x.Name, reservedFieldNames)} is {type} x ? new OnnxAttribute<{type}>(\"{x.Name}\", x) : null";
+                    })
+                    .ToArray();
 
-                        nodeFields.AppendLine(GetAttributeComment(x));
+                var optionsAttributesList = optionsAttributes.Length > 0
+                    ? $$"""
+                    TypeHelper.NotNull<OnnxAttribute>(
+                        new List<Func<OnnxAttribute?>>() 
+                        { 
+                            {{string.Join(",\n", optionsAttributes).Indent(2)}}
+                        }
+                        .Select(x => x())
+                        .ToArray()
+                    )
+                    """
+                    : "[]";
+
+                operatorClasses.AppendLine($$"""
+                /// <summary>
+                /// Collects the input wires and attributes used to construct a {{className}} node.
+                /// </summary>
+                /// <remarks>
+                /// Use this options type when outputs are supplied by another construction path, such as loading an existing ONNX node.
+                /// </remarks>
+                public class {{className}}InputOptions
+                {
+                    {{GetFields(op.Inputs, x => InputName(x, reservedFieldNames)).Indent(1)}}
+                
+                    {{GetFields(op.Attributes, x => AttributeName(x, reservedFieldNames)).Indent(1)}}
+                }
+                
+                /// <summary>
+                /// Collects the complete input, output, and attribute wiring for a {{className}} node.
+                /// </summary>
+                /// <remarks>
+                /// Properties follow ONNX schema order so optional and variadic parameters remain aligned with serialized node inputs and outputs.
+                /// </remarks>
+                public class {{className}}InputOutputOptions : {{className}}InputOptions
+                {
+                    {{GetFields(op.Outputs, x => OutputName(x, reservedFieldNames)).Indent(1)}}
+                }
+                """);
+
+                var nodeFields = new StringBuilder();
+                var createInputLines = new List<string>();
+                var createOutputLines = new List<string>();
+
+                for (var i = 0; i < op.Inputs.Count(); i++)
+                {
+                    var x = op.Inputs[i];
+
+                    nodeFields.AppendLine(GetParameterComment(x));
+                    nodeFields.AppendLine(GetAcceptTypeAttributes(x));
+
+                    if (IsVariadic(x))
+                    {
+                        nodeFields.AppendLine($$"""
+                        public {{GetNodeParameterType(x)}} {{InputName(x.Name, reservedFieldNames)}}
+                        {
+                            get => GetVariadicInputs({{i}});
+                            set
+                            {
+                                ArgumentNullException.ThrowIfNull(value);
+                                if (value.Count < {{x.MinArity}})
+                                {
+                                    throw new InvalidOperationException("Variadic input '{{InputName(x.Name, reservedFieldNames)}}' requires at least {{x.MinArity}} value(s).");
+                                }
+
+                                SetVariadicInputs({{i}}, value);
+                            }
+                        }
+                        """);
+
+                        createInputLines.Add($$"""
+                        if (options.{{InputName(x.Name, reservedFieldNames)}}.Length < {{x.MinArity}})
+                        {
+                            throw new InvalidOperationException("Variadic input '{{InputName(x.Name, reservedFieldNames)}}' requires at least {{x.MinArity}} value(s).");
+                        }
+
+                        inputs.AddRange(options.{{InputName(x.Name, reservedFieldNames)}});
+                        """);
+                    }
+                    else if (x.Option != FormalParameterOption.Optional)
+                    {
+                        nodeFields.AppendLine($$"""
+                        public {{MapType(x.Types)}} {{InputName(x.Name, reservedFieldNames)}}
+                        {
+                            get => ({{MapType(x.Types)}})Inputs[{{i}}];
+                            set => SetInput({{i}}, value);
+                        }
+                        """);
+
+                        createInputLines.Add($"inputs.Add(options.{InputName(x.Name, reservedFieldNames)});");
+                    }
+                    else
+                    {
+                        nodeFields.AppendLine($$"""
+                        public {{MapType(x.Types)}}? {{InputName(x.Name, reservedFieldNames)}}
+                        {
+                            get => Inputs.Count > {{i}} ? ({{MapType(x.Types)}})Inputs[{{i}}] : null;
+                            set => SetOptionalInput({{i}}, value);
+                        }
+                        """);
+
+                        createInputLines.Add($$"""
+                        if (options.{{InputName(x.Name, reservedFieldNames)}} is not null)
+                        {
+                            inputs.Add(options.{{InputName(x.Name, reservedFieldNames)}});
+                        }
+                        """);
+                    }
+                }
+
+                for (var i = 0; i < op.Outputs.Count(); i++)
+                {
+                    var x = op.Outputs[i];
+
+                    nodeFields.AppendLine(GetParameterComment(x));
+                    nodeFields.AppendLine(GetAcceptTypeAttributes(x));
+
+                    if (IsVariadic(x))
+                    {
+                        nodeFields.AppendLine($$"""
+                        public {{GetNodeParameterType(x)}} {{OutputName(x.Name, reservedFieldNames)}}
+                        {
+                            get => GetVariadicOutputs({{i}});
+                            set
+                            {
+                                ArgumentNullException.ThrowIfNull(value);
+                                if (value.Count < {{x.MinArity}})
+                                {
+                                    throw new InvalidOperationException("Variadic output '{{OutputName(x.Name, reservedFieldNames)}}' requires at least {{x.MinArity}} value(s).");
+                                }
+
+                                SetVariadicOutputs({{i}}, value);
+                            }
+                        }
+                        """);
+
+                        createOutputLines.Add($$"""
+                        if (options.{{OutputName(x.Name, reservedFieldNames)}}.Length < {{x.MinArity}})
+                        {
+                            throw new InvalidOperationException("Variadic output '{{OutputName(x.Name, reservedFieldNames)}}' requires at least {{x.MinArity}} value(s).");
+                        }
+
+                        outputs.AddRange(options.{{OutputName(x.Name, reservedFieldNames)}});
+                        """);
+                    }
+                    else if (x.Option != FormalParameterOption.Optional)
+                    {
+                        nodeFields.AppendLine($$"""
+                        public {{MapType(x.Types)}} {{OutputName(x.Name, reservedFieldNames)}}
+                        {
+                            get => ({{MapType(x.Types)}})Outputs[{{i}}];
+                            set => SetOutput({{i}}, value);
+                        }
+                        """);
+
+                        createOutputLines.Add($"outputs.Add(options.{OutputName(x.Name, reservedFieldNames)});");
+                    }
+                    else
+                    {
+                        nodeFields.AppendLine($$"""
+                        public {{MapType(x.Types)}}? {{OutputName(x.Name, reservedFieldNames)}}
+                        {
+                            get => Outputs.Count > {{i}} && Outputs[{{i}}] is {{MapType(x.Types)}} x ? x : null;
+                            set => SetOptionalOutput({{i}}, value);
+                        }
+                        """);
+
+                        createOutputLines.Add($$"""
+                        if (options.{{OutputName(x.Name, reservedFieldNames)}} is not null)
+                        {
+                            outputs.Add(options.{{OutputName(x.Name, reservedFieldNames)}});
+                        }
+                        """);
+                    }
+                }
+
+                for (var i = 0; i < op.Attributes.Count(); i++)
+                {
+                    var x = op.Attributes[i];
+
+                    var type = FromProto((AttributeType)x.Type);
+
+                    nodeFields.AppendLine(GetAttributeComment(x));
+                    nodeFields.AppendLine(GetAcceptTypeAttributes(x));
+
+                    if (!x.IsNullable())
+                    {
+                        nodeFields.AppendLine($$"""
+                        public {{type}} {{AttributeName(x.Name, reservedFieldNames)}}
+                        {
+                            get => GetAttribute<{{type}}>("{{x.Name}}");
+                            set => SetAttribute<{{type}}>("{{x.Name}}", value);
+                        }
+                        """);
+                    }
+                    else
+                    {
+                        nodeFields.AppendLine($$"""
+                        public {{type}}? {{AttributeName(x.Name, reservedFieldNames)}}
+                        {
+                            get => HasAttribute("{{x.Name}}") ? GetAttribute<{{type}}>("{{x.Name}}") : null;
+                            set {
+                                if (value is not null)
+                                {
+                                    SetAttribute<{{type}}>("{{x.Name}}", ({{type}})value);
+                                }
+                                else
+                                {
+                                    RemoveAttribute("{{x.Name}}");
+                                }
+                            }
+                        }
+                        """);
+                    }
+                }
+
+                var factoryInputOutputOptions = new List<string>();
+
+                factoryInputOutputOptions.AddRange(op.Inputs.Select(x =>
+                {
+                    return $"{InputName(x.Name, reservedFieldNames)} = options.{InputName(x.Name, reservedFieldNames)}";
+                }));
+
+                factoryInputOutputOptions.AddRange(op.Attributes.Select(x =>
+                {
+                    return $"{AttributeName(x.Name, reservedFieldNames)} = options.{AttributeName(x.Name, reservedFieldNames)}";
+                }));
+
+                factoryInputOutputOptions.AddRange(op.Outputs.Where(x => !IsVariadic(x)).Select(x =>
+                {
+                    return $"{OutputName(x.Name, reservedFieldNames)} = edge{OutputName(x.Name, reservedFieldNames)}";
+                }));
+
+                var protoInputOutputOptions = new List<string>();
+
+                protoInputOutputOptions.AddRange(op.Inputs.Select((x, i) =>
+                {
+                    if (IsVariadic(x))
+                    {
+                        return $"{InputName(x.Name, reservedFieldNames)} = inputs.Skip({i}).OfType<IOnnxGraphEdge>().ToArray()";
+                    }
+
+                    if (x.Option != FormalParameterOption.Optional)
+                    {
+                        return $"{InputName(x.Name, reservedFieldNames)} = inputs[{i}] ?? throw new InvalidOperationException(\"Missing required input '{x.Name}'\")";
+                    }
+                    else
+                    {
+                        return $"{InputName(x.Name, reservedFieldNames)} = inputs.Count > {i} ? inputs[{i}] : null";
+                    }
+                }));
+
+                protoInputOutputOptions.AddRange(op.Attributes
+                    .Where(x => x.Required || x.Default is null)
+                    .Select(x =>
+                    {
+                        var type = FromProto((AttributeType)x.Type);
 
                         if (!x.IsNullable())
                         {
-                            nodeFields.AppendLine($$"""
-                            public {{type}} {{AttributeName(x.Name, reservedFieldNames)}}
-                            {
-                                get => GetAttribute<{{type}}>("{{x.Name}}");
-                                set => SetAttribute<{{type}}>("{{x.Name}}", value);
-                            }
-                            """);
+                            return $"{AttributeName(x.Name, reservedFieldNames)} = ({type})(attributes.GetValueOrDefault(\"{x.Name}\") ?? throw new InvalidOperationException($\"Missing value '{x.Name}'\"))";
                         }
                         else
                         {
-                            nodeFields.AppendLine($$"""
-                            public {{type}}? {{AttributeName(x.Name, reservedFieldNames)}}
-                            {
-                                get => HasAttribute("{{x.Name}}") ? GetAttribute<{{type}}>("{{x.Name}}") : null;
-                                set {
-                                    if (value is not null)
-                                    {
-                                        SetAttribute<{{type}}>("{{x.Name}}", ({{type}})value);
-                                    }
-                                    else
-                                    {
-                                        RemoveAttribute("{{x.Name}}");
-                                    }
-                                }
-                            }
-                            """);
-                        }
-                    }
-
-                    var list1 = new List<string>();
-
-                    list1.AddRange(op.Inputs.Select(x => $"{InputName(x.Name, reservedFieldNames)} = options.{InputName(x.Name, reservedFieldNames)}"));
-                    list1.AddRange(op.Attributes.Select(x => $"{AttributeName(x.Name, reservedFieldNames)} = options.{AttributeName(x.Name, reservedFieldNames)}"));
-                    list1.AddRange(op.Outputs.Where(x => !IsVariadic(x)).Select(x => $"{OutputName(x.Name, reservedFieldNames)} = edge{OutputName(x.Name, reservedFieldNames)}"));
-
-                    var list2 = new List<string>();
-
-                    list2.AddRange(op.Inputs.Select((x, i) =>
-                    {
-                        if (IsVariadic(x))
-                        {
-                            return $"{InputName(x.Name, reservedFieldNames)} = inputs.Skip({i}).OfType<IOnnxGraphEdge>().ToArray()";
-                        }
-
-                        if (x.Option != FormalParameterOption.Optional)
-                        {
-                            return $"{InputName(x.Name, reservedFieldNames)} = inputs[{i}] ?? throw new InvalidOperationException(\"Missing required input '{x.Name}'\")";
-                        }
-                        else
-                        {
-                            return $"{InputName(x.Name, reservedFieldNames)} = inputs.Length > {i} ? inputs[{i}] : null";
+                            return $"{AttributeName(x.Name, reservedFieldNames)} = ({type}?)attributes.GetValueOrDefault(\"{x.Name}\")";
                         }
                     }));
 
-                    list2.AddRange(op.Attributes
-                        .Where(x => x.Required || x.Default is null)
-                        .Select(x =>
-                        {
-                            var type = FromProto((AttributeType)x.Type);
+                protoInputOutputOptions.AddRange(op.Outputs.Select((x, i) =>
+                {
+                    if (IsVariadic(x))
+                    {
+                        return $"{OutputName(x.Name, reservedFieldNames)} = outputs.Skip({i}).OfType<IOnnxGraphEdge>().ToArray()";
+                    }
 
-                            if (!x.IsNullable())
+                    if (x.Option != FormalParameterOption.Optional)
+                    {
+                        return $"{OutputName(x.Name, reservedFieldNames)} = outputs[{i}] ?? throw new InvalidOperationException(\"Missing required output '{x.Name}'\")";
+                    }
+                    else
+                    {
+                        return $"{OutputName(x.Name, reservedFieldNames)} = outputs.Count > {i} ? outputs[{i}] : null";
+                    }
+                }));
+
+                operatorClasses.AppendLine($$"""
+                {{GetOperatorComment(op)}}
+                public class {{className}} : OnnxNode
+                {
+                    /// <summary>
+                    /// Creates a {{className}} node from explicit ONNX graph wiring.
+                    /// </summary>
+                    /// <param name="name">Graph-local node name.</param>
+                    /// <param name="options">Input, output, and attribute values arranged according to the ONNX {{op.Name}} schema.</param>
+                    public {{className}}(
+                        string name,
+                        {{className}}InputOutputOptions options
+                    ) : base(
+                        name: name,
+                        opType: "{{op.Name}}",
+                        domain: "{{op.Domain}}",
+                        docString: "",
+                        inputs: CreateInputs(options),
+                        outputs: CreateOutputs(options),
+                        attributes: CreateAttributes(options)
+                    ) { }
+
+                    {{nodeFields.ToString().Indent(1)}}
+
+                    internal static IOnnxGraphEdge[] CreateInputs({{className}}InputOutputOptions options)
+                    {
+                        var inputs = new List<IOnnxGraphEdge>();
+                        {{string.Join("\n\n", createInputLines).Indent(2)}}
+                        return [.. inputs];
+                    }
+
+                    internal static IOnnxGraphEdge[] CreateOutputs({{className}}InputOutputOptions options)
+                    {
+                        var outputs = new List<IOnnxGraphEdge>();
+                        {{string.Join("\n\n", createOutputLines).Indent(2)}}
+                        return [.. outputs];
+                    }
+
+                    internal static OnnxAttribute[] CreateAttributes({{className}}InputOutputOptions options)
+                    {
+                        return {{optionsAttributesList.Indent(2)}};
+                    }
+
+                    internal static {{className}} {{className}}FromProto(NodeProto node, OnnxGraph graph)
+                    {
+                        var options = graph.GetOptions();
+                        
+                        if (node.OpType != "{{op.Name}}")
+                        {
+                            throw new InvalidOperationException($"Node type is not valid '{node.OpType}' != '{{op.Name}}'");
+                        }
+
+                        var attributes = node.Attribute.ToDictionary(x => x.Name, x => x.GetValue(options));
+
+                        var inputs = new List<IOnnxGraphEdge?>(Math.Max(node.Input.Count, {{op.Inputs.Count}}));
+                        var outputs = new List<IOnnxGraphEdge?>(Math.Max(node.Output.Count, {{op.Outputs.Count}}));
+                        
+                        for (var i = 0; i < Math.Max(node.Input.Count, {{op.Inputs.Count}}); i++)
+                        {
+                            var edgeName = node.Input.ElementAtOrDefault(i);
+                            var edge = string.IsNullOrEmpty(edgeName) ? null : graph.GetValue(edgeName);
+
+                            if (edge is not null)
                             {
-                                return $"{AttributeName(x.Name, reservedFieldNames)} = ({type})(attributes.GetValueOrDefault(\"{x.Name}\") ?? throw new InvalidOperationException($\"Missing value '{x.Name}'\"))";
+                                inputs.Add(edge);
                             }
                             else
                             {
-                                return $"{AttributeName(x.Name, reservedFieldNames)} = ({type}?)attributes.GetValueOrDefault(\"{x.Name}\")";
+                                inputs.Add(null);
                             }
-                        }));
-
-                    list2.AddRange(op.Outputs.Select((x, i) =>
-                    {
-                        if (IsVariadic(x))
-                        {
-                            return $"{OutputName(x.Name, reservedFieldNames)} = outputs.Skip({i}).OfType<IOnnxGraphEdge>().ToArray()";
                         }
 
-                        if (x.Option != FormalParameterOption.Optional)
+                        for (var i = 0; i < Math.Max(node.Output.Count, {{op.Outputs.Count}}); i++)
                         {
-                            return $"{OutputName(x.Name, reservedFieldNames)} = outputs[{i}] ?? throw new InvalidOperationException(\"Missing required output '{x.Name}'\")";
-                        }
-                        else
-                        {
-                            return $"{OutputName(x.Name, reservedFieldNames)} = outputs.Length > {i} ? outputs[{i}] : null";
-                        }
-                    }));
+                            var edgeName = node.Output.ElementAtOrDefault(i);
+                            var edge = string.IsNullOrEmpty(edgeName) ? null : graph.GetValue(edgeName);
 
-                    operatorClasses.AppendLine($$"""
-                    {{GetOperatorComment(op)}}
-                    public class {{className}} : OnnxNode
-                    {
-                        /// <summary>
-                        /// Creates a {{className}} node from explicit ONNX graph wiring.
-                        /// </summary>
-                        /// <param name="name">Graph-local node name.</param>
-                        /// <param name="options">Input, output, and attribute values arranged according to the ONNX {{op.Name}} schema.</param>
-                        public {{className}}(
-                            string name,
-                            {{className}}InputOutputOptions options
-                        ) : base(
-                            name: name,
-                            opType: "{{op.Name}}",
-                            domain: "{{op.Domain}}",
-                            docString: "",
-                            inputs: CreateInputs(options),
-                            outputs: CreateOutputs(options),
-                            attributes: CreateAttributes(options)
-                        ) { }
-
-                        {{nodeFields.ToString().Indent(1)}}
-
-                        internal static IOnnxGraphEdge[] CreateInputs({{className}}InputOutputOptions options)
-                        {
-                            var inputs = new List<IOnnxGraphEdge>();
-                            {{string.Join("\n\n", createInputLines).Indent(2)}}
-                            return [.. inputs];
-                        }
-
-                        internal static IOnnxGraphEdge[] CreateOutputs({{className}}InputOutputOptions options)
-                        {
-                            var outputs = new List<IOnnxGraphEdge>();
-                            {{string.Join("\n\n", createOutputLines).Indent(2)}}
-                            return [.. outputs];
-                        }
-
-                        internal static OnnxAttribute[] CreateAttributes({{className}}InputOutputOptions options)
-                        {
-                            return {{optionsAttributesList.Indent(2)}};
-                        }
-
-                        internal static {{className}} {{className}}FromProto(NodeProto node, OnnxGraph graph)
-                        {
-                            var options = graph.GetOptions();
-                        
-                            if (node.OpType != "{{op.Name}}")
+                            if (edge is not null)
                             {
-                                throw new InvalidOperationException($"Node type is not valid '{node.OpType}' != '{{op.Name}}'");
+                                outputs.Add(edge);
                             }
-                            
-                            var inputs = node.Input
-                                .Select(x => string.IsNullOrEmpty(x) ? null : graph.GetValue(x) ?? throw new InvalidOperationException($"Missing value '{x}'"))
-                                .ToArray();
-
-                            var outputs = node.Output
-                                .Select(x => string.IsNullOrEmpty(x) ? null : graph.GetValue(x) ?? throw new InvalidOperationException($"Missing value '{x}'"))
-                                .ToArray();
-
-                            var attributes = node.Attribute.ToDictionary(x => x.Name, x => x.GetValue(options));
-
-                            var op = new {{className}}(
-                                name: node.Name,
-                                options: new {{className}}InputOutputOptions
-                                {
-                                    {{string.Join(",\n", list2).Indent(4)}},
-                                }
-                            );
-
-                            return op;
+                            else
+                            {
+                                outputs.Add(null);
+                            }
                         }
+
+                        var op = new {{className}}(
+                            name: node.Name,
+                            options: new {{className}}InputOutputOptions
+                            {
+                                {{string.Join(",\n", protoInputOutputOptions).Indent(4)}},
+                            }
+                        );
+
+                        return op;
+                    }
+                }
+                """);
+
+                if (op.Outputs.Count() > 1)
+                {
+                    operatorClasses.AppendLine($$"""
+                    /// <summary>
+                    /// Groups the multiple output wires produced by a {{className}} helper call.
+                    /// </summary>
+                    public class {{className}}Output
+                    {
+                        {{GetResultFields(op.Outputs, x => OutputName(x, reservedFieldNames)).Indent(1)}}
                     }
                     """);
+                }
 
-                    if (op.Outputs.Count() > 1)
-                    {
-                        operatorClasses.AppendLine($$"""
-                        /// <summary>
-                        /// Groups the multiple output wires produced by a {{className}} helper call.
-                        /// </summary>
-                        public class {{className}}Output
-                        {
-                            {{GetResultFields(op.Outputs, x => OutputName(x, reservedFieldNames)).Indent(1)}}
-                        }
-                        """);
+                var extensionMethodReturnType = op.Outputs.Count switch
+                {
+                    0 => $"{currentNamespace}.{className}",
+                    1 => GetNodeParameterType(op.Outputs[0]),
+                    _ => $"{currentNamespace}.{className}Output",
+                };
+
+                var extensionMethodReturnValue = op.Outputs.Count switch
+                {
+                    0 => "op",
+                    1 => string.Join(", ", op.Outputs.Select(x => $"op.{OutputName(x.Name, reservedFieldNames)}")),
+                    _ => $$"""
+                    new {{currentNamespace}}.{{className}}Output 
+                    { 
+                        {{string.Join(",\n", op.Outputs.Select(x => $"{OutputName(x.Name, reservedFieldNames)} = op.{OutputName(x.Name, reservedFieldNames)}")).Indent(1)}} 
                     }
+                    """,
+                };
 
-                    var extensionMethodReturnType = op.Outputs.Count switch
-                    {
-                        0 => $"{currentNamespace}.{className}",
-                        1 => GetNodeParameterType(op.Outputs[0]),
-                        _ => $"{currentNamespace}.{className}Output",
-                    };
-
-                    var extensionMethodReturnValue = op.Outputs.Count switch
-                    {
-                        0 => "op",
-                        1 => string.Join(", ", op.Outputs.Select(x => $"op.{OutputName(x.Name, reservedFieldNames)}")),
-                        _ => $$"""
-                        new {{currentNamespace}}.{{className}}Output 
-                        { 
-                            {{string.Join(",\n", op.Outputs.Select(x => $"{OutputName(x.Name, reservedFieldNames)} = op.{OutputName(x.Name, reservedFieldNames)}")).Indent(1)}} 
-                        }
-                        """,
-                    };
-
-                    if (!hasVariadicOutput)
-                    {
-                        var edgeCreators = op.Outputs
-                            .Select(x => $"var edge{OutputName(x.Name, reservedFieldNames)} = graph.AddEdge(name + \"_output_{x.Name.ToLower()}\");")
-                            .ToArray();
-
-                        extensionMethods.AppendLine($$"""
-                        {{GetOperatorComment(op)}}
-                        /// <param name="domain">Graph or domain accessor that determines where the node is added.</param>
-                        /// <param name="name">Graph-local node name and prefix for automatically created outputs.</param>
-                        /// <param name="options">Input and attribute values arranged according to the ONNX {{op.Name}} schema.</param>
-                        /// <returns>The created node when there are no outputs, the single output wire when there is one output, or an output grouping object when the operator has multiple outputs.</returns>
-                        public static {{extensionMethodReturnType}} {{className}}(
-                            this {{extensionAnchor}} domain,
-                            string name,
-                            {{currentNamespace}}.{{className}}InputOptions options
-                        )
-                        {
-                            var graph = {{(extensionAnchor == graphType ? "domain" : "domain.Graph")}};
-                            
-                            {{string.Join("\n", edgeCreators).Indent(1)}}
-                                
-                            var op = new {{currentNamespace}}.{{className}}(
-                                name: name,
-                                options: new {{currentNamespace}}.{{className}}InputOutputOptions
-                                {
-                                    {{string.Join(",\n", list1).Indent(3)}}
-                                }
-                            );
-                    
-                            graph.AddNode(op);
-                    
-                            return {{extensionMethodReturnValue.Indent(1)}};
-                        }
-                        """);
-                    }
+                if (!hasVariadicOutput)
+                {
+                    var edgeCreators = op.Outputs
+                        .Select(x => $"var edge{OutputName(x.Name, reservedFieldNames)} = graph.AddEdge(name + \"_output_{x.Name.ToLower()}\");")
+                        .ToArray();
 
                     extensionMethods.AppendLine($$"""
                     {{GetOperatorComment(op)}}
                     /// <param name="domain">Graph or domain accessor that determines where the node is added.</param>
-                    /// <param name="name">Graph-local node name.</param>
-                    /// <param name="options">Complete input, output, and attribute values arranged according to the ONNX {{op.Name}} schema.</param>
+                    /// <param name="name">Graph-local node name and prefix for automatically created outputs.</param>
+                    /// <param name="options">Input and attribute values arranged according to the ONNX {{op.Name}} schema.</param>
                     /// <returns>The created node when there are no outputs, the single output wire when there is one output, or an output grouping object when the operator has multiple outputs.</returns>
                     public static {{extensionMethodReturnType}} {{className}}(
                         this {{extensionAnchor}} domain,
                         string name,
-                        {{currentNamespace}}.{{className}}InputOutputOptions options
+                        {{currentNamespace}}.{{className}}InputOptions options
                     )
                     {
                         var graph = {{(extensionAnchor == graphType ? "domain" : "domain.Graph")}};
-
+                            
+                        {{string.Join("\n", edgeCreators).Indent(1)}}
+                                
                         var op = new {{currentNamespace}}.{{className}}(
                             name: name,
-                            options: options
+                            options: new {{currentNamespace}}.{{className}}InputOutputOptions
+                            {
+                                {{string.Join(",\n", factoryInputOutputOptions).Indent(3)}}
+                            }
                         );
                     
                         graph.AddNode(op);
@@ -539,449 +563,549 @@ namespace Onnxify.SourceGenerator
                         return {{extensionMethodReturnValue.Indent(1)}};
                     }
                     """);
-
-                    typeResolver.Add($$"""
-                    ("{{op.Name}}", "{{op.Domain}}") => {{currentNamespace}}.{{className}}.{{className}}FromProto(node, graph)
-                    """);
-
-                    domainClasses.AppendLine($$"""
-                    namespace {{currentNamespace}}
-                    {
-                        {{operatorClasses.ToString().Indent(1)}}
-                    }
-
-                    namespace {{rootNamespace}}
-                    {
-                        /// <summary>
-                        /// Provides generated convenience methods for adding ONNX operator nodes to graphs and domain accessors.
-                        /// </summary>
-                        public static partial class OnnxifyExtensions
-                        {
-                            {{extensionMethods.ToString().Indent(2)}}
-                        }
-                    }
-                    """);
                 }
 
-                var code = $$"""
-                // <auto-generated/>
-                #nullable enable
+                extensionMethods.AppendLine($$"""
+                {{GetOperatorComment(op)}}
+                /// <param name="domain">Graph or domain accessor that determines where the node is added.</param>
+                /// <param name="name">Graph-local node name.</param>
+                /// <param name="options">Complete input, output, and attribute values arranged according to the ONNX {{op.Name}} schema.</param>
+                /// <returns>The created node when there are no outputs, the single output wire when there is one output, or an output grouping object when the operator has multiple outputs.</returns>
+                public static {{extensionMethodReturnType}} {{className}}(
+                    this {{extensionAnchor}} domain,
+                    string name,
+                    {{currentNamespace}}.{{className}}InputOutputOptions options
+                )
+                {
+                    var graph = {{(extensionAnchor == graphType ? "domain" : "domain.Graph")}};
+
+                    var op = new {{currentNamespace}}.{{className}}(
+                        name: name,
+                        options: options
+                    );
+                    
+                    graph.AddNode(op);
+                    
+                    return {{extensionMethodReturnValue.Indent(1)}};
+                }
+                """);
+
+                typeResolver.Add($$"""
+                ("{{op.Name}}", "{{op.Domain}}") => {{currentNamespace}}.{{className}}.{{className}}FromProto(node, graph)
+                """);
+
+                domainClasses.AppendLine($$"""
+                namespace {{currentNamespace}}
+                {
+                    {{operatorClasses.ToString().Indent(1)}}
+                }
+
+                namespace {{rootNamespace}}
+                {
+                    /// <summary>
+                    /// Provides generated convenience methods for adding ONNX operator nodes to graphs and domain accessors.
+                    /// </summary>
+                    public static partial class OnnxifyExtensions
+                    {
+                        {{extensionMethods.ToString().Indent(2)}}
+                    }
+                }
+                """);
+            }
+
+            var code = $$"""
+            // <auto-generated/>
+            #nullable enable
             
-                using System;
-                using System.Collections.Generic;
-                using Onnx;
-                using {{nameof(Onnxify)}}.Helpers;
+            using System;
+            using System.Collections.Generic;
+            using Onnx;
+            using {{nameof(Onnxify)}}.Helpers;
+            using {{nameof(Onnxify)}}.Data;
+            using {{nameof(Onnxify)}}.Data.Numerics;
 
-                {{domainClasses}}
+            {{domainClasses}}
 
-                #nullable restore
-                """;
+            #nullable restore
+            """;
 
-                context.AddSource($"{currentNamespace}.g.cs", SourceText.From(code, Encoding.UTF8));
-            }
+            context.AddSource($"{currentNamespace}.g.cs", SourceText.From(code, Encoding.UTF8));
+        }
 
-            if (true)
+        if (true)
+        {
+            var namespaceName = $"{nameof(Onnxify)}.Helpers";
+            var classes = new StringBuilder();
+
+            if (typeResolver.Count() > 0)
             {
-                var namespaceName = $"{nameof(Onnxify)}.Helpers";
-                var classes = new StringBuilder();
-
-                if (typeResolver.Count() > 0)
+                classes.AppendLine($$"""
+                internal static class OnnxNodeHelper
                 {
-                    classes.AppendLine($$"""
-                    internal static class OnnxNodeHelper
+                    internal static OnnxNode? TryFromProto(NodeProto node, OnnxGraph graph)
                     {
-                        internal static OnnxNode? TryFromProto(NodeProto node, OnnxGraph graph)
+                        return (node.OpType, node.Domain) switch
                         {
-                            return (node.OpType, node.Domain) switch
-                            {
-                                {{string.Join(",\n", typeResolver.Select(x => x.Trim())).Indent(3)}},
-                                _ => null,
-                            };
-                        }
+                            {{string.Join(",\n", typeResolver.Select(x => x.Trim())).Indent(3)}},
+                            _ => null,
+                        };
                     }
-                    """);
                 }
+                """);
+            }
 
-                var code = $$"""
-                // <auto-generated/>
-                #nullable enable
+            var code = $$"""
+            // <auto-generated/>
+            #nullable enable
             
-                using System;
-                using System.Collections.Generic;
-                using Onnx;
-                using {{namespaceName}};
+            using System;
+            using System.Collections.Generic;
+            using Onnx;
+            using {{namespaceName}};
+            using {{nameof(Onnxify)}}.Data;
+            using {{nameof(Onnxify)}}.Data.Numerics;
 
-                namespace {{namespaceName}}
-                {
-                    {{classes.ToString().Indent(1)}}
-                }
-
-                #nullable restore
-                """;
-
-                context.AddSource($"{namespaceName}.g.cs", SourceText.From(code, Encoding.UTF8));
-            }
-        }
-
-        private string GetFields(IEnumerable<OperatorParameter> items, Func<string, string> onName)
-        {
-            var sb = new StringBuilder();
-
-            foreach (var x in items)
+            namespace {{namespaceName}}
             {
-                var required = x.Option == FormalParameterOption.Optional ? " " : " required ";
-                var type = GetOptionsParameterType(x);
-
-                sb.AppendLine($$"""
-                {{GetParameterComment(x)}}
-                public{{required}}{{type}} {{onName(x.Name)}} { get; init; }
-                """);
+                {{classes.ToString().Indent(1)}}
             }
 
-            return sb.ToString().Trim();
-        }
-
-        private string GetResultFields(IEnumerable<OperatorParameter> items, Func<string, string> onName)
-        {
-            var sb = new StringBuilder();
-
-            foreach (var x in items)
-            {
-                var type = GetNodeParameterType(x);
-
-                sb.AppendLine($$"""
-                {{GetParameterComment(x)}}
-                public required {{type}} {{onName(x.Name)}} { get; init; }
-                """);
-            }
-
-            return sb.ToString().Trim();
-        }
-
-        private string GetFields(IEnumerable<OperatorAttribute> items, Func<string, string> onName)
-        {
-            var sb = new StringBuilder();
-
-            foreach (var x in items)
-            {
-                var required = x.Required ? " required " : " ";
-                var nullable = x.IsNullable() ? "?" : "";
-                var typeEnum = (AttributeType)x.Type;
-                var type = FromProto(typeEnum);
-
-                var initializer = GetLiteral(typeEnum, x.Default);
-
-                sb.AppendLine($$"""
-                {{GetAttributeComment(x)}}
-                public{{required}}{{type}}{{nullable}} {{onName(x.Name)}} { get; init; }{{(initializer is not null ? $" = {initializer};" : "")}}
-                """);
-            }
-
-            return sb.ToString().Trim();
-        }
-
-        private static string? GetLiteral(AttributeType type, object? value)
-        {
-            if (value is null)
-            {
-                return null;
-            }
-
-            if (type == AttributeType.Float)
-            {
-                return $"{value}f";
-            }
-
-            if (type == AttributeType.Floats)
-            {
-                if (value is JsonElement element && element.ValueKind == JsonValueKind.Array)
-                {
-                    var values = element.EnumerateArray().Select(x => $"{x}f").ToArray();
-                    return $"[{string.Join(", ", values)}]";
-                }
-                else
-                {
-                    throw new NotImplementedException($"Not implemented for '{value.GetType().Name}'");
-                }
-            }
-
-            return JsonSerializer.Serialize(value);
-        }
-
-        public static string GetOperatorComment(OperatorSchema op)
-        {
-            return $$"""
-            /// <summary>
-            /// <b>{{op.Name}} (operator):</b>
-            /// 
-            /// <para>Domain: {{op.Domain ?? "ai.onnx"}}</para>
-            /// <para>Since version: {{op.SinceVersion}}</para>
-            /// 
-            /// {{(op.Doc ?? "").Comment()}}
-            /// </summary>
+            #nullable restore
             """;
-        }
 
-        public static string GetParameterComment(OperatorParameter x)
-        {
-            var allowedTypes = x.Types
-                .Select(x => FormatDocType(MapType(x)))
-                .ToArray();
-
-            var allowedTypeString = string.Join(", ", allowedTypes);
-
-            return $$"""
-            /// <summary>
-            /// <b>{{x.Name}} (parameter):</b>
-            /// 
-            /// {{(x.Description ?? "").Comment()}}
-            /// 
-            /// <para>Allowed types: {{allowedTypeString}}</para>
-            /// <para>Type: {{x.Option}}</para>
-            /// </summary>
-            """;
-        }
-
-        public static string GetAttributeComment(OperatorAttribute x)
-        {
-            var typeEnum = (AttributeType)x.Type;
-            string[] types = [FromProto(typeEnum)];
-
-            var allowedTypes = types
-                .Select(x => FormatDocType(MapType(x)))
-                .ToArray();
-
-            var allowedTypeString = string.Join(", ", allowedTypes);
-
-            return $$"""
-            /// <summary>
-            /// <b>{{x.Name}} (attribute):</b>
-            /// 
-            /// {{(x.Description ?? "").Comment()}}
-            /// 
-            /// <para>Allowed types: {{allowedTypeString}}</para>
-            /// <para>Default: {{GetLiteral(typeEnum, x.Default) ?? "[null]"}}</para>
-            /// </summary>
-            """;
-        }
-
-        private static string FormatDocType(string type)
-        {
-            var name = type.Replace("<", "&lt;").Replace(">", "&gt;");
-            return $"<c>{name}</c>";
-        }
-
-        private static HashSet<string> CreateReservedFieldNames(OperatorSchema op, string className)
-        {
-            var reservedFieldNames = new HashSet<string>(StringComparer.Ordinal)
-            {
-                className,
-                "Inputs",
-                "Outputs"
-            };
-
-            if (op.Inputs.Any(x => x.Name == "shape") && op.Attributes.Any(x => x.Name == "shape"))
-            {
-                reservedFieldNames.Add("Shape");
-            }
-
-            return reservedFieldNames;
-        }
-
-        public static string GetFieldName(string name, string prefix)
-        {
-            return GetFieldName(name, prefix, reservedFieldNames: null);
-        }
-
-        private static string GetFieldName(string name, string prefix, ISet<string>? reservedFieldNames)
-        {
-            var newName = name.PascalCase();
-
-            if (_aliasFieldNames.TryGetValue(newName, out var alias))
-            {
-                newName = alias;
-            }
-
-            if (reservedFieldNames?.Contains(newName) == true)
-            {
-                return prefix + newName;
-            }
-
-            if (!string.IsNullOrEmpty(prefix) && newName.Equals(prefix, StringComparison.OrdinalIgnoreCase))
-            {
-                return prefix;
-            }
-
-            return newName;
-        }
-
-        public static string InputName(string name)
-        {
-            return InputName(name, reservedFieldNames: null);
-        }
-
-        private static string InputName(string name, ISet<string>? reservedFieldNames)
-        {
-            return GetFieldName(name, "Input", reservedFieldNames);
-        }
-
-        public static string OutputName(string name)
-        {
-            return OutputName(name, reservedFieldNames: null);
-        }
-
-        private static string OutputName(string name, ISet<string>? reservedFieldNames)
-        {
-            return GetFieldName(name, "Output", reservedFieldNames);
-        }
-
-        public static string AttributeName(string name)
-        {
-            return AttributeName(name, reservedFieldNames: null);
-        }
-
-        private static string AttributeName(string name, ISet<string>? reservedFieldNames)
-        {
-            return GetFieldName(name, "Attribute", reservedFieldNames);
-        }
-
-        public static bool IsVariadic(OperatorParameter parameter)
-        {
-            return parameter.Option == FormalParameterOption.Variadic;
-        }
-
-        public static string GetOptionsParameterType(OperatorParameter parameter)
-        {
-            var type = MapType(parameter.Types);
-
-            return parameter.Option switch
-            {
-                FormalParameterOption.Optional => $"{type}?",
-                FormalParameterOption.Variadic => $"{type}[]",
-                _ => type,
-            };
-        }
-
-        public static string GetNodeParameterType(OperatorParameter parameter)
-        {
-            var type = MapType(parameter.Types);
-
-            return parameter.Option switch
-            {
-                FormalParameterOption.Optional => $"{type}?",
-                FormalParameterOption.Variadic => $"IReadOnlyList<{type}>",
-                _ => type,
-            };
-        }
-
-        public static string MapType(string[] types)
-        {
-            return "IOnnxGraphEdge";
-        }
-
-        public static string MapType(string type)
-        {
-            return type switch
-            {
-                "tensor(int8)" => "OnnxTensor<sbyte>",
-                "tensor(uint8)" => "OnnxTensor<byte>",
-                "tensor(int16)" => "OnnxTensor<short>",
-                "tensor(uint16)" => "OnnxTensor<ushort>",
-                "tensor(int32)" => "OnnxTensor<int>",
-                "tensor(uint32)" => "OnnxTensor<uint>",
-                "tensor(int64)" => "OnnxTensor<long>",
-                "tensor(uint64)" => "OnnxTensor<ulong>",
-
-                "tensor(float)" => "OnnxTensor<float>",
-                "tensor(double)" => "OnnxTensor<double>",
-                "tensor(float16)" => "OnnxTensor<Half>",
-                "tensor(bfloat16)" => "OnnxTensor<BFloat16>",
-
-                "tensor(float8e4m3fn)" => "OnnxTensor<Float8E4M3FN>",
-                "tensor(float8e4m3fnuz)" => "OnnxTensor<Float8E4M3FNUZ>",
-                "tensor(float8e5m2)" => "OnnxTensor<Float8E5M2>",
-                "tensor(float8e5m2fnuz)" => "OnnxTensor<Float8E5M2FNUZ>",
-                "tensor(float8e8m0)" => "OnnxTensor<Float8E8M0>",
-
-                "tensor(float4e2m1)" => "OnnxTensor<Float4E2M1>",
-
-                "tensor(uint4)" => "OnnxTensor<UInt4>",
-                "tensor(int4)" => "OnnxTensor<Int4>",
-                "tensor(uint2)" => "OnnxTensor<UInt2>",
-                "tensor(int2)" => "OnnxTensor<Int2>",
-
-                "tensor(bool)" => "OnnxTensor<bool>",
-                "tensor(string)" => "OnnxTensor<string>",
-
-                "tensor(complex64)" => "OnnxTensor<Complex64>",
-                "tensor(complex128)" => "OnnxTensor<Complex128>",
-
-                _ => type, // throw new NotSupportedException($"Unsupported ONNX type: {type}")
-            };
-        }
-
-        public static string FromProto(AttributeType attributeType)
-        {
-            return attributeType switch
-            {
-                AttributeType.Float => "float",
-                AttributeType.Int => "long",
-                AttributeType.String => "string",
-
-                AttributeType.Tensor => "OnnxTensor",
-                AttributeType.Graph => "OnnxGraph",
-                AttributeType.SparseTensor => "OnnxSparseTensor",
-
-                AttributeType.Floats => "float[]",
-                AttributeType.Ints => "long[]",
-                AttributeType.Strings => "string[]",
-
-                AttributeType.Tensors => "OnnxTensor[]",
-                AttributeType.Graphs => "OnnxGraph[]",
-                AttributeType.SparseTensors => "OnnxSparseTensor[]",
-
-                AttributeType.TypeProto => "OnnxValueType",
-                AttributeType.TypeProtos => "OnnxValueType[]",
-
-                _ => throw new NotImplementedException($"Not implemented for '{attributeType}'"),
-            };
+            context.AddSource($"{namespaceName}.g.cs", SourceText.From(code, Encoding.UTF8));
         }
     }
 
-    public static class TextHelper
+    internal static IReadOnlyList<OperatorSchema> GetLatestOperatorSchemas(IEnumerable<OperatorSchema> operators)
     {
-        public static string PascalCase(this string s)
+        return operators
+            .GroupBy(x => (Domain: x.Domain, Name: x.Name))
+            .Select(x => x.OrderByDescending(schema => schema.SinceVersion).First())
+            .OrderBy(x => x.Domain, StringComparer.Ordinal)
+            .ThenBy(x => x.Name, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private string GetFields(IEnumerable<OperatorParameter> items, Func<string, string> onName)
+    {
+        var sb = new StringBuilder();
+
+        foreach (var x in items)
         {
-            if (string.IsNullOrEmpty(s))
+            var required = x.Option == FormalParameterOption.Optional ? " " : " required ";
+            var type = GetOptionsParameterType(x);
+
+            sb.AppendLine($$"""
+            {{GetParameterComment(x)}}
+            {{GetAcceptTypeAttributes(x)}}
+            public{{required}}{{type}} {{onName(x.Name)}} { get; init; }
+            """);
+        }
+
+        return sb.ToString().Trim();
+    }
+
+    private string GetResultFields(IEnumerable<OperatorParameter> items, Func<string, string> onName)
+    {
+        var sb = new StringBuilder();
+
+        foreach (var x in items)
+        {
+            var type = GetNodeParameterType(x);
+
+            sb.AppendLine($$"""
+            {{GetParameterComment(x)}}
+            {{GetAcceptTypeAttributes(x)}}
+            public required {{type}} {{onName(x.Name)}} { get; init; }
+            """);
+        }
+
+        return sb.ToString().Trim();
+    }
+
+    private string GetFields(IEnumerable<OperatorAttribute> items, Func<string, string> onName)
+    {
+        var sb = new StringBuilder();
+
+        foreach (var x in items)
+        {
+            var required = x.Required ? " required " : " ";
+            var nullable = x.IsNullable() ? "?" : "";
+            var typeEnum = (AttributeType)x.Type;
+            var type = FromProto(typeEnum);
+
+            var initializer = GetLiteral(typeEnum, x.Default);
+
+            sb.AppendLine($$"""
+            {{GetAttributeComment(x)}}
+            {{GetAcceptTypeAttributes(x)}}
+            public{{required}}{{type}}{{nullable}} {{onName(x.Name)}} { get; init; }{{(initializer is not null ? $" = {initializer};" : "")}}
+            """);
+        }
+
+        return sb.ToString().Trim();
+    }
+
+    private static string? GetLiteral(AttributeType type, object? value)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        if (type == AttributeType.Float)
+        {
+            return $"{value}f";
+        }
+
+        if (type == AttributeType.Floats)
+        {
+            if (value is JsonElement element && element.ValueKind == JsonValueKind.Array)
             {
-                return s;
+                var values = element.EnumerateArray().Select(x => $"{x}f").ToArray();
+                return $"[{string.Join(", ", values)}]";
             }
-
-            var words = s.Split(['_'], StringSplitOptions.RemoveEmptyEntries);
-
-            var result = new StringBuilder();
-
-            foreach (var word in words)
+            else
             {
-                var newWord = char.ToUpperInvariant(word[0]) + word.Substring(1);
-                result.Append(newWord);
+                throw new NotImplementedException($"Not implemented for '{value.GetType().Name}'");
             }
-
-            return result.ToString();
         }
 
-        public static string Comment(this string text)
+        return JsonSerializer.Serialize(value);
+    }
+
+    public static string GetOperatorComment(OperatorSchema op)
+    {
+        return $$"""
+        /// <summary>
+        /// <b>{{op.Name}} (operator):</b>
+        /// 
+        /// <para>Domain: {{op.Domain ?? "ai.onnx"}}</para>
+        /// <para>Since version: {{op.SinceVersion}}</para>
+        /// 
+        /// {{(op.Doc ?? "").Comment()}}
+        /// </summary>
+        """;
+    }
+
+    public static string GetParameterComment(OperatorParameter x)
+    {
+        var allowedTypes = x.Types
+            .Select(x => FormatDocType(MapType(x)))
+            .ToArray();
+
+        var allowedTypeString = string.Join(", ", allowedTypes);
+
+        return $$"""
+        /// <summary>
+        /// <b>{{x.Name}} (parameter):</b>
+        /// 
+        /// {{(x.Description ?? "").Comment()}}
+        /// 
+        /// <para>Allowed types: {{allowedTypeString}}</para>
+        /// <para>Type: {{x.Option}}</para>
+        /// </summary>
+        """;
+    }
+
+    public static string GetAttributeComment(OperatorAttribute x)
+    {
+        var typeEnum = (AttributeType)x.Type;
+        string[] types = [FromProto(typeEnum)];
+
+        var allowedTypes = types
+            .Select(x => FormatDocType(MapType(x)))
+            .ToArray();
+
+        var allowedTypeString = string.Join(", ", allowedTypes);
+
+        return $$"""
+        /// <summary>
+        /// <b>{{x.Name}} (attribute):</b>
+        /// 
+        /// {{(x.Description ?? "").Comment()}}
+        /// 
+        /// <para>Allowed types: {{allowedTypeString}}</para>
+        /// <para>Default: {{GetLiteral(typeEnum, x.Default) ?? "[null]"}}</para>
+        /// </summary>
+        """;
+    }
+
+    public static string GetAcceptTypeAttributes(OperatorParameter x)
+    {
+        var allowedTypes = x.Types
+            .Select(x => MapType(x))
+            .Select(x => $"[AcceptType<{x}>]")
+            .ToArray();
+
+        return string.Join("\n", allowedTypes);
+    }
+
+    public static string GetAcceptTypeAttributes(OperatorAttribute x)
+    {
+        var typeEnum = (AttributeType)x.Type;
+        string[] types = [FromProto(typeEnum)];
+
+        var allowedTypes = types
+            .Select(x => MapType(x))
+            .Select(x => $"[AcceptType<{x}>]")
+            .ToArray();
+
+        return string.Join("\n", allowedTypes);
+    }
+
+    private static string FormatDocType(string type)
+    {
+        var name = type.Replace("<", "&lt;").Replace(">", "&gt;");
+        return $"<c>{name}</c>";
+    }
+
+    private static HashSet<string> CreateReservedFieldNames(OperatorSchema op, string className)
+    {
+        var reservedFieldNames = new HashSet<string>(StringComparer.Ordinal)
         {
-            return text.Trim().ToXmlDoc().Replace("\n", $"\n/// ").Trim();
+            className,
+            "Inputs",
+            "Outputs"
+        };
+
+        if (op.Inputs.Any(x => x.Name == "shape") && op.Attributes.Any(x => x.Name == "shape"))
+        {
+            reservedFieldNames.Add("Shape");
         }
 
-        public static string Indent(this string text, int tabs)
+        return reservedFieldNames;
+    }
+
+    public static string GetFieldName(string name, string prefix)
+    {
+        return GetFieldName(name, prefix, reservedFieldNames: null);
+    }
+
+    private static string GetFieldName(string name, string prefix, ISet<string>? reservedFieldNames)
+    {
+        var newName = name.PascalCase();
+
+        if (_aliasFieldNames.TryGetValue(newName, out var alias))
         {
-            var indent = new string(' ', tabs * 4);
-            return text.Trim().Replace("\n", $"\n{indent}").Trim();
+            newName = alias;
         }
+
+        if (reservedFieldNames?.Contains(newName) == true)
+        {
+            return prefix + newName;
+        }
+
+        if (!string.IsNullOrEmpty(prefix) && newName.Equals(prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return prefix;
+        }
+
+        return newName;
+    }
+
+    public static string InputName(string name)
+    {
+        return InputName(name, reservedFieldNames: null);
+    }
+
+    private static string InputName(string name, ISet<string>? reservedFieldNames)
+    {
+        return GetFieldName(name, "Input", reservedFieldNames);
+    }
+
+    public static string OutputName(string name)
+    {
+        return OutputName(name, reservedFieldNames: null);
+    }
+
+    private static string OutputName(string name, ISet<string>? reservedFieldNames)
+    {
+        return GetFieldName(name, "Output", reservedFieldNames);
+    }
+
+    public static string AttributeName(string name)
+    {
+        return AttributeName(name, reservedFieldNames: null);
+    }
+
+    private static string AttributeName(string name, ISet<string>? reservedFieldNames)
+    {
+        return GetFieldName(name, "Attribute", reservedFieldNames);
+    }
+
+    public static bool IsVariadic(OperatorParameter parameter)
+    {
+        return parameter.Option == FormalParameterOption.Variadic;
+    }
+
+    public static string GetOptionsParameterType(OperatorParameter parameter)
+    {
+        var type = MapType(parameter.Types);
+
+        return parameter.Option switch
+        {
+            FormalParameterOption.Optional => $"{type}?",
+            FormalParameterOption.Variadic => $"{type}[]",
+            _ => type,
+        };
+    }
+
+    public static string GetNodeParameterType(OperatorParameter parameter)
+    {
+        var type = MapType(parameter.Types);
+
+        return parameter.Option switch
+        {
+            FormalParameterOption.Optional => $"{type}?",
+            FormalParameterOption.Variadic => $"IReadOnlyList<{type}>",
+            _ => type,
+        };
+    }
+
+    public static string MapType(string[] types)
+    {
+        return "IOnnxGraphEdge";
+    }
+
+    public static string MapType(string type)
+    {
+        var normalizedType = type.Trim();
+
+        if (TryUnwrapType(normalizedType, "optional", out _))
+        {
+            return "OnnxValue<OnnxOptionalType>";
+        }
+
+        if (TryMapTypedEdge(normalizedType, "tensor", "OnnxTensor", out var tensorType))
+        {
+            return tensorType;
+        }
+
+        if (TryUnwrapType(normalizedType, "sparse_tensor", out _))
+        {
+            return "OnnxValue<OnnxSparseTensorType>";
+        }
+
+        if (TryUnwrapType(normalizedType, "seq", out _))
+        {
+            return "OnnxValue<OnnxSequenceType>";
+        }
+
+        if (TryUnwrapType(normalizedType, "map", out _))
+        {
+            return "OnnxValue<OnnxMapType>";
+        }
+
+        if (TryUnwrapType(normalizedType, "opaque", out _))
+        {
+            return "OnnxValue<OnnxOpaqueType>";
+        }
+
+        return normalizedType; // throw new NotSupportedException($"Unsupported ONNX type: {type}")
+    }
+
+    private static bool TryMapTypedEdge(string type, string containerName, string edgeTypeName, out string mappedType)
+    {
+        if (TryUnwrapType(type, containerName, out var innerType) &&
+            TryMapElementType(innerType, out var mappedElementType))
+        {
+            mappedType = $"{edgeTypeName}<{mappedElementType}>";
+            return true;
+        }
+
+        mappedType = string.Empty;
+        return false;
+    }
+
+    private static bool TryMapElementType(string type, out string mappedType)
+    {
+        mappedType = type switch
+        {
+            "int8" => "sbyte",
+            "uint8" => "byte",
+            "int16" => "short",
+            "uint16" => "ushort",
+            "int32" => "int",
+            "uint32" => "uint",
+            "int64" => "long",
+            "uint64" => "ulong",
+
+            "float" => "float",
+            "double" => "double",
+            "float16" => "Half",
+            "bfloat16" => "BFloat16",
+
+            "float8e4m3fn" => "Float8E4M3FN",
+            "float8e4m3fnuz" => "Float8E4M3FNUZ",
+            "float8e5m2" => "Float8E5M2",
+            "float8e5m2fnuz" => "Float8E5M2FNUZ",
+            "float8e8m0" => "Float8E8M0",
+
+            "float4e2m1" => "Float4E2M1",
+
+            "uint4" => "UInt4",
+            "int4" => "Int4",
+            "uint2" => "UInt2",
+            "int2" => "Int2",
+
+            "bool" => "bool",
+            "string" => "string",
+
+            "complex64" => "Complex64",
+            "complex128" => "Complex128",
+            "undefined" => "object",
+
+            _ => string.Empty,
+        };
+
+        return mappedType.Length > 0;
+    }
+
+    private static bool TryUnwrapType(string type, string containerName, out string innerType)
+    {
+        var prefix = $"{containerName}(";
+
+        if (type.StartsWith(prefix, StringComparison.Ordinal) &&
+            type.EndsWith(")", StringComparison.Ordinal))
+        {
+            innerType = type.Substring(prefix.Length, type.Length - prefix.Length - 1);
+            return true;
+        }
+
+        innerType = string.Empty;
+        return false;
+    }
+
+    public static string FromProto(AttributeType attributeType)
+    {
+        return attributeType switch
+        {
+            AttributeType.Float => "float",
+            AttributeType.Int => "long",
+            AttributeType.String => "string",
+
+            AttributeType.Tensor => "OnnxTensor",
+            AttributeType.Graph => "OnnxGraph",
+            AttributeType.SparseTensor => "OnnxSparseTensor",
+
+            AttributeType.Floats => "float[]",
+            AttributeType.Ints => "long[]",
+            AttributeType.Strings => "string[]",
+
+            AttributeType.Tensors => "OnnxTensor[]",
+            AttributeType.Graphs => "OnnxGraph[]",
+            AttributeType.SparseTensors => "OnnxSparseTensor[]",
+
+            AttributeType.TypeProto => "OnnxValueType",
+            AttributeType.TypeProtos => "OnnxValueType[]",
+
+            _ => throw new NotImplementedException($"Not implemented for '{attributeType}'"),
+        };
     }
 }
+
 
 public enum AttributeType
 {
@@ -1000,64 +1124,4 @@ public enum AttributeType
     SparseTensors = 12,
     TypeProto = 13,
     TypeProtos = 14,
-}
-
-public static class MarkdownHelper
-{
-    private static readonly Regex _codeBlockRegex = new(
-        @"```(?:\w+)?\s*([\s\S]*?)```",
-        RegexOptions.Compiled
-    );
-
-    private static readonly Regex _inlineCodeRegex = new(
-        @"`([^`\n]+?)`",
-        RegexOptions.Compiled
-    );
-
-    public static string ToXmlDoc(this string text)
-    {
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return string.Empty;
-        }
-
-        var blocks = new List<string>();
-
-        text = _codeBlockRegex.Replace(text, m =>
-        {
-            var content = Escape(m.Groups[1].Value.Trim())
-                .Replace("\r\n", "\n")
-                .Replace("\n", "&#xA;");
-            blocks.Add($"<code>{content}</code>");
-            return $"@@CODEBLOCK_{blocks.Count - 1}@@";
-        });
-
-        text = _inlineCodeRegex.Replace(text, m =>
-        {
-            var content = Escape(m.Groups[1].Value);
-            blocks.Add($"<c>{content}</c>");
-            return $"@@CODEBLOCK_{blocks.Count - 1}@@";
-        });
-
-        text = Escape(text);
-
-        for (var i = 0; i < blocks.Count; i++)
-        {
-            text = text.Replace($"@@CODEBLOCK_{i}@@", blocks[i]);
-        }
-
-        var paragraphs = text
-            .Split(["\r\n\r\n", "\n\n"], StringSplitOptions.RemoveEmptyEntries)
-            .ToArray();
-
-        return string.Join("\n", paragraphs.Length > 1 ? paragraphs.Select(x => $"<para>\n{x.Trim()}\n</para>") : paragraphs);
-    }
-
-    private static string Escape(string text)
-    {
-        return text
-            .Replace("&", "&amp;")
-            .Replace("<", "&lt;")
-            .Replace(">", "&gt;");
-    }
 }

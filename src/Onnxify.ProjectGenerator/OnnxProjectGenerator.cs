@@ -10,7 +10,7 @@ namespace Onnxify.ProjectGenerator;
 
 public sealed class OnnxProjectGenerator
 {
-    private const long InlineTensorElementThreshold = 20L;
+    private const long INLINE_TENSOR_ELEMENT_THRESHOLD = 20L;
 
     public ProjectGenerationResult Generate(ProjectGeneratorOptions options)
     {
@@ -21,6 +21,15 @@ public sealed class OnnxProjectGenerator
             throw new ArgumentException("Input model path is required.", nameof(options));
         }
 
+        var model = OnnxModel.FromFile(options.InputModelPath);
+        return Generate(model, options);
+    }
+
+    public ProjectGenerationResult Generate(OnnxModel model, ProjectGeneratorOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        ArgumentNullException.ThrowIfNull(options);
+
         if (string.IsNullOrWhiteSpace(options.OutputDirectoryPath))
         {
             throw new ArgumentException("Output directory path is required.", nameof(options));
@@ -30,7 +39,6 @@ public sealed class OnnxProjectGenerator
         Directory.CreateDirectory(outputDirectoryPath);
         Directory.CreateDirectory(Path.Combine(outputDirectoryPath, options.TensorDirectoryName));
 
-        var model = OnnxModel.FromFile(options.InputModelPath);
         var context = new GenerationContext(options, outputDirectoryPath);
 
         var programSource = RenderProgram(model, context);
@@ -101,7 +109,7 @@ public sealed class OnnxProjectGenerator
         var namespaceName = options.GetNamespace();
         var className = options.ProgramClassName.SanitizeIdentifier("Program");
         var factoryMethodName = options.FactoryMethodName.SanitizeIdentifier("CreateModel");
-        var outputFileName = $"{Path.GetFileNameWithoutExtension(options.InputModelPath)}.generated.onnx";
+        var outputFileName = options.GetGeneratedModelFileName();
         var modelCreationOptions = RenderModelCreationOptions(model);
         var flow = new StringBuilder();
         var graphVarNames = new Dictionary<IOnnxGraphEdge, string>(ReferenceEqualityComparer<IOnnxGraphEdge>.Instance);
@@ -335,7 +343,7 @@ public sealed class OnnxProjectGenerator
 
     private static string RenderTensorValueExpression(OnnxTensor tensor, GenerationContext context)
     {
-        if (GetTensorElementCount(tensor) < InlineTensorElementThreshold)
+        if (GetTensorElementCount(tensor) < INLINE_TENSOR_ELEMENT_THRESHOLD)
         {
             return RenderTensorInlineExpression(tensor);
         }

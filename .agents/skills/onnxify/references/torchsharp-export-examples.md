@@ -62,7 +62,12 @@ public override Tensor forward(Tensor input)
 
 public OnnxModel Export()
 {
-    var model = OnnxModel.Create(new OnnxModelCreationOptions { Opset = 22 });
+    var model = OnnxModel.Create(
+        new OnnxModelCreationOptions
+        {
+            Opset = 22
+        }
+    );
     var graph = model.Graph;
 
     var input = graph.AddInput(
@@ -197,7 +202,7 @@ The export stays close to that structure:
 ```csharp
 var x = _charEmbeddings.Export(graph, input);
 x = _lstm.Export(graph, x).Y ?? throw new Exception();
-x = _hidden2Lang.Export(graph, x);
+x = AddLinearProjection(graph, "hidden2lang", x, _hidden2Lang);
 
 x = graph.ReduceSum(
     name: "sum_logits",
@@ -215,6 +220,7 @@ Why this pattern matters:
 - `Embedding` maps cleanly to `Embedding.Export(...)`.
 - `LSTM` does not return a single edge. It returns `LSTMOutput` with `Y`, `YH`, and `YC`.
 - The model-level export explicitly chooses the output that matches the Torch forward path, here `Y`.
+- The final linear projection is currently expressed through a model-local helper rather than a shared `Linear.Export(...)` call, so the example should mirror that real exported shape.
 - The final sequence reduction remains model-specific, so it is written directly with `graph.ReduceSum(...)`.
 
 Useful detail from `TorchModuleExtensions.cs`:

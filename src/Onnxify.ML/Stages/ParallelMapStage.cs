@@ -31,7 +31,7 @@ public sealed class ParallelMapStage<TInput, TOutput> : PipelineStage<TInput, TO
         PipelineStageOptions? stageOptions = null)
         : base(stageOptions ?? new PipelineStageOptions
         {
-            Category = PipelineStageCategories.DataPreparation,
+            Category = PipelineStageCategories.DATA_PREPARATION,
             Name = "parallel-map"
         })
     {

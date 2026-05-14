@@ -1,6 +1,7 @@
 ﻿using System.Globalization;
 using System.Text;
 using Microsoft.ML.OnnxRuntime.Tensors;
+using Onnxify.Data;
 using Onnxify.ProjectGenerator;
 using Onnxify.Safetensors;
 
@@ -328,6 +329,20 @@ namespace Onnxify.ConsoleTest
                 .Take(k)
                 .ToArray();
         }
+    }
+
+    public class ReluInputOptionsX
+    {
+        /// <summary>
+        /// <b>X (parameter):</b>
+        /// 
+        /// Input tensor
+        /// 
+        /// <para>Allowed types: <c>OnnxTensor&lt;BFloat16&gt;</c>, <c>OnnxTensor&lt;double&gt;</c>, <c>OnnxTensor&lt;float&gt;</c>, <c>OnnxTensor&lt;Half&gt;</c>, <c>OnnxTensor&lt;short&gt;</c>, <c>OnnxTensor&lt;int&gt;</c>, <c>OnnxTensor&lt;long&gt;</c>, <c>OnnxTensor&lt;sbyte&gt;</c></para>
+        /// <para>Type: Single</para>
+        /// </summary>
+        [AcceptType<OnnxTensor<float>>]
+        public required IOnnxGraphEdge X { get; init; }
     }
 }
 

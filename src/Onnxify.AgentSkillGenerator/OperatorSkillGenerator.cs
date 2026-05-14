@@ -12,7 +12,7 @@ namespace Onnxify.AgentSkillGenerator;
 
 internal static class OperatorSkillGenerator
 {
-    private const string NewLine = "\n";
+    private const string NEW_LINE = "\n";
 
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -45,9 +45,7 @@ internal static class OperatorSkillGenerator
         var schemaRoot = JsonSerializer.Deserialize<OperatorSchemaRoot>(File.ReadAllText(schemaPath), _jsonOptions)
             ?? throw new InvalidOperationException($"Failed to parse operator schema file '{schemaPath}'.");
 
-        var schemaByKey = schemaRoot.Operators.ToDictionary(
-            x => new OperatorKey(x.Domain ?? string.Empty, x.Name),
-            x => x);
+        var schemaByKey = GetLatestSchemaByKey(schemaRoot.Operators);
 
         var onnxOperators = BuildOnnxOperators(schemaByKey);
         var converterCoverage = BuildTorchSharpCoverage(onnxOperators);
@@ -77,13 +75,23 @@ internal static class OperatorSkillGenerator
         var schemaRoot = JsonSerializer.Deserialize<OperatorSchemaRoot>(File.ReadAllText(schemaPath), _jsonOptions)
             ?? throw new InvalidOperationException($"Failed to parse operator schema file '{schemaPath}'.");
 
-        var schemaByKey = schemaRoot.Operators.ToDictionary(
-            x => new OperatorKey(x.Domain ?? string.Empty, x.Name),
-            x => x);
+        var schemaByKey = GetLatestSchemaByKey(schemaRoot.Operators);
 
         var onnxOperators = BuildOnnxOperators(schemaByKey);
         var converterCoverage = BuildTorchSharpCoverage(onnxOperators);
         return BuildGeneratedFiles(onnxOperators, converterCoverage);
+    }
+
+    internal static IReadOnlyDictionary<OperatorKey, OperatorSchema> GetLatestSchemaByKey(
+        IEnumerable<OperatorSchema> operators
+    )
+    {
+        return operators
+            .GroupBy(x => new OperatorKey(x.Domain ?? string.Empty, x.Name))
+            .ToDictionary(
+                x => x.Key,
+                x => x.OrderByDescending(schema => schema.SinceVersion).First()
+            );
     }
 
     private static string ResolveSchemaPath(string repoRoot)
@@ -121,7 +129,8 @@ internal static class OperatorSkillGenerator
         }
 
         throw new DirectoryNotFoundException(
-            "Onnxify skill root was not found. Expected either '.skills/agents/onnxify' or '.agents/skills/onnxify'.");
+            "Onnxify skill root was not found. Expected either '.skills/agents/onnxify' or '.agents/skills/onnxify'."
+        );
     }
 
     private static string? FindRepositoryRoot(string? currentDirectory)
@@ -160,7 +169,8 @@ internal static class OperatorSkillGenerator
                 type.IsPublic &&
                 !type.IsAbstract &&
                 type != typeof(OnnxNode) &&
-                typeof(OnnxNode).IsAssignableFrom(type))
+                typeof(OnnxNode).IsAssignableFrom(type)
+            )
             .Select(type => CreateOnnxOperatorDoc(type, extensionMethods, schemaByKey))
             .Where(x => x is not null)
             .Cast<OnnxOperatorDoc>()
@@ -192,7 +202,8 @@ internal static class OperatorSkillGenerator
                 string.Equals(method.Name, nodeType.Name, StringComparison.Ordinal) &&
                 method.GetParameters().Length == 3 &&
                 (method.GetParameters()[2].ParameterType == inputOptionsType ||
-                 method.GetParameters()[2].ParameterType == inputOutputOptionsType))
+                 method.GetParameters()[2].ParameterType == inputOutputOptionsType)
+            )
             .OrderBy(method => GetMethodDisplaySignature(method), StringComparer.Ordinal)
             .Select(method => new WrapperMethodDoc(method, GetWrapperDisplaySignature(method)))
             .ToArray();
@@ -224,7 +235,8 @@ internal static class OperatorSkillGenerator
             wrapperMethods,
             inputs,
             outputs,
-            attributes);
+            attributes
+        );
     }
 
     private static ParameterDoc CreateParameterDoc(
@@ -251,7 +263,8 @@ internal static class OperatorSkillGenerator
             parameter.Option,
             parameter.MinArity,
             CollapseWhitespace(parameter.Description),
-            property is not null && IsRequiredMember(property));
+            property is not null && IsRequiredMember(property)
+        );
     }
 
     private static AttributeDoc CreateAttributeDoc(
@@ -360,7 +373,7 @@ internal static class OperatorSkillGenerator
                 .Distinct()
                 .OrderBy(x => x.Signature, StringComparer.Ordinal)
                 .ThenBy(x => string.Join(",", x.TorchOps), StringComparer.Ordinal)
-                .ToArray());
+                .ToList());
     }
 
     private static MethodAnalysis AnalyzeMethod(
@@ -1196,7 +1209,7 @@ internal static class OperatorSkillGenerator
 
     private static string NormalizeLineEndings(string value)
     {
-        return value.Replace("\r\n", NewLine, StringComparison.Ordinal).Replace("\r", NewLine, StringComparison.Ordinal);
+        return value.Replace("\r\n", NEW_LINE, StringComparison.Ordinal).Replace("\r", NEW_LINE, StringComparison.Ordinal);
     }
 
     private static string EscapeMarkdownCell(string value)
@@ -1229,7 +1242,7 @@ internal static class OperatorSkillGenerator
         return Path.GetRelativePath(repoRoot, path).Replace('\\', '/');
     }
 
-    private sealed record OperatorKey(string Domain, string Name);
+    internal sealed record OperatorKey(string Domain, string Name);
 
     private sealed record WrapperMethodDoc(MethodInfo Method, string DisplaySignature);
 
@@ -1241,7 +1254,8 @@ internal static class OperatorSkillGenerator
         FormalParameterOption Option,
         int MinArity,
         string Description,
-        bool Required);
+        bool Required
+    );
 
     private sealed record AttributeDoc(
         string SchemaName,

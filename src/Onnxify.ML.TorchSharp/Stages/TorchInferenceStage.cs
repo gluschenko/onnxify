@@ -22,7 +22,7 @@ public sealed class TorchInferenceStage<TBatch, TModelOutput, TResult>
         PipelineStageOptions? options = null)
         : base(options ?? new PipelineStageOptions
         {
-            Category = PipelineStageCategories.Inference,
+            Category = PipelineStageCategories.INFERENCE,
             Name = "torch-inference"
         })
     {

@@ -1,6 +1,6 @@
 ---
 name: onnxify-internal
-description: "Use this skill when maintaining the Onnxify repository itself rather than implementing library API behavior: updating README or contributor docs, editing solution or project wiring under src/, changing .agents/skills content, keeping generated skill artifacts in sync, or modifying repository-facing generators such as Onnxify.AgentSkillGenerator, Onnxify.ProjectGenerator, Onnxify.SourceGenerator, and related test or example infrastructure."
+description: "Use this skill when maintaining the Onnxify repository, package docs, and generators rather than consuming the public APIs directly. It covers repository-facing work for the Onnxify package family, including Onnxify, Onnxify.TorchSharp, Onnxify.Safetensors, Onnxify.ProjectGenerator, Onnxify.ModelGenerator, Onnxify.ML, Onnxify.ML.TorchSharp, and Onnxify.CLI: updating README, NuGet docs, and skill content; editing solution or project wiring under src/; keeping generated skill artifacts in sync; and modifying repository generators such as Onnxify.AgentSkillGenerator, Onnxify.ProjectGenerator, and Onnxify.SourceGenerator."
 ---
 
 # Onnxify Internal
@@ -50,6 +50,65 @@ When handling an internal Onnxify maintenance task:
 - Keep one release-notes file per published package at `.docs/nuget/release-notes/<PackageName>.md`.
 - When changing package metadata conventions, update `src/Directory.Build.props` and `.docs` together so packaging behavior and repository docs do not drift apart.
 - If a `.docs` subfolder becomes obsolete after a metadata-layout change, remove it or document why it still exists.
+
+## Code Style
+
+- Prefer explicit multi-line wrapping for long or intentionally expanded method declarations and method calls.
+- In this repo, when a method declaration or invocation is split across multiple lines, put the closing parenthesis on its own line instead of attaching it to the last argument line.
+- Apply the same rule to constructors and other argument lists when the call or declaration is formatted vertically.
+- Name constants in C++-style uppercase snake case rather than PascalCase.
+
+Preferred declaration style:
+
+```csharp
+public void SomeMethod(
+    int a,
+    int b,
+    int c
+)
+{
+    // ...
+}
+```
+
+Preferred invocation style:
+
+```csharp
+SomeMethod(
+    a: 1,
+    b: 2,
+    c: 4
+);
+```
+
+Avoid this style when using vertical argument layout:
+
+```csharp
+public void SomeMethod(
+    int a,
+    int b,
+    int c)
+{
+    // ...
+}
+
+SomeMethod(
+    a,
+    b,
+    c);
+```
+
+Preferred constant naming:
+
+```csharp
+private const long INLINE_TENSOR_ELEMENT_THRESHOLD = 20L;
+```
+
+Avoid this constant naming style:
+
+```csharp
+private const long InlineTensorElementThreshold = 20L;
+```
 
 ## Common Task Mapping
 

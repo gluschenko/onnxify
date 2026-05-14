@@ -138,13 +138,57 @@ public class OnnxNode : IOnnxGraphNode
 
     internal static OnnxNode FromProto(NodeProto node, OnnxGraph graph)
     {
-        var typedNode = OnnxNodeHelper.TryFromProto(node, graph);
+        var options = graph.GetOptions();
 
-        if (typedNode is not null)
+        var needThrowException = false;
+        var needResolveTypedNode = true;
+
+        if (graph.TryGetImportedOpset(node.Domain, out var opsetVersion))
         {
-            return typedNode;
+            var isCompatible = OnnxOperatorSchemaResolver.Instance.IsCurrentStructureCompatible(
+                domain: node.Domain,
+                opType: node.OpType,
+                opset: opsetVersion
+            );
+
+            if (!isCompatible)
+            {
+                switch (options.NodeTypeResolutionStrategy)
+                {
+                    case NodeTypeResolutionStrategy.FailFast:
+                        needThrowException = true;
+                        needResolveTypedNode = false;
+                        break;
+                    case NodeTypeResolutionStrategy.IgnoreIncompatible:
+                        needThrowException = false;
+                        needResolveTypedNode = false;
+                        break;
+                    default:
+                        throw new NotImplementedException($"Not implemented for {options.NodeTypeResolutionStrategy}");
+                }
+            }
         }
 
+        if (needThrowException)
+        {
+            throw new NotSupportedException($"Model has one or more incompatible operators from Opset {opsetVersion}.");
+        }
+
+        if (needResolveTypedNode)
+        {
+            var typedNode = OnnxNodeHelper.TryFromProto(node, graph);
+
+            if (typedNode is not null)
+            {
+                return typedNode;
+            }
+        }
+
+        return FromProtoUntyped(node, graph);
+    }
+
+    internal static OnnxNode FromProtoUntyped(NodeProto node, OnnxGraph graph)
+    {
         var options = graph.GetOptions();
 
         var name = node.Name;

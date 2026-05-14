@@ -11,6 +11,7 @@ dotnet add package Onnxify.ProjectGenerator
 ## What It Provides
 
 - Generate C# project scaffolding from an `.onnx` file.
+- Generate C# project scaffolding directly from an already loaded `OnnxModel`.
 - Emit code that recreates model structure through the `Onnxify` API.
 - Provide a programmable alternative to the CLI generation workflow.
 

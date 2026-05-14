@@ -26,7 +26,7 @@ public sealed class FilterStage<TInput> : PipelineStage<TInput, TInput>
     public FilterStage(
         Func<TInput, PipelineContext, CancellationToken, ValueTask<bool>> predicate,
         PipelineStageOptions? options = null)
-        : base(options ?? new PipelineStageOptions { Category = PipelineStageCategories.DataPreparation })
+        : base(options ?? new PipelineStageOptions { Category = PipelineStageCategories.DATA_PREPARATION })
     {
         _predicate = predicate ?? throw new ArgumentNullException(nameof(predicate));
     }

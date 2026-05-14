@@ -39,7 +39,7 @@ public sealed class BranchStage<TInput, TOutput> : PipelineStage<TInput, TOutput
         : base(options ?? new PipelineStageOptions
         {
             Name = "branch",
-            Category = PipelineStageCategories.Orchestration
+            Category = PipelineStageCategories.ORCHESTRATION
         })
     {
         _predicate = predicate ?? throw new ArgumentNullException(nameof(predicate));

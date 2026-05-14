@@ -48,11 +48,18 @@ public class OnnxGraph
 
     /// <summary>
     /// Gets a domain accessor used by generated wrappers for ONNX ML-domain operators.
+    /// 
+    /// <para>ai.onnx.ml</para>
     /// </summary>
     public MLDomain ML => new(this);
 
     /// <summary>
     /// Gets a domain accessor used by generated wrappers for Microsoft ONNX Runtime extension operators.
+    /// 
+    /// <para>com.microsoft</para>
+    /// <para>com.microsoft.nhwc</para>
+    /// <para>com.microsoft.nchwc</para>
+    /// <para>com.ms.internal.nhwc</para>
     /// </summary>
     public MicrosoftDomain Microsoft => new(this);
 
@@ -115,6 +122,23 @@ public class OnnxGraph
         return _options;
     }
 
+    internal bool TryGetImportedOpset(string domain, out long version)
+    {
+        if (_options.OpsetImports is null)
+        {
+            version = default;
+            return false;
+        }
+
+        if (!_options.OpsetImports.TryGetValue(domain, out version))
+        {
+            version = default;
+            return false;
+        }
+
+        return true;
+    }
+
     /// <summary>
     /// Finds a node by its exact graph-local name.
     /// </summary>
@@ -122,6 +146,8 @@ public class OnnxGraph
     /// <returns>The matching node, or <see langword="null"/> when the graph does not contain one.</returns>
     public OnnxNode? GetNode(string name)
     {
+        ArgumentNullException.ThrowIfNull(name);
+
         if (_nodes.TryGetValue(name, out var result))
         {
             return result;
@@ -140,6 +166,8 @@ public class OnnxGraph
     /// </remarks>
     public IOnnxGraphEdge? GetValue(string name)
     {
+        ArgumentNullException.ThrowIfNull(name);
+
         if (_inputs.TryGetValue(name, out var input))
         {
             return input;
@@ -408,6 +436,8 @@ public class OnnxGraph
 
 /// <summary>
 /// Entry point for generated wrappers in the ONNX ML operator domain.
+/// 
+/// <para>ai.onnx.ml</para>
 /// </summary>
 public readonly struct MLDomain(OnnxGraph graph)
 {
@@ -419,6 +449,11 @@ public readonly struct MLDomain(OnnxGraph graph)
 
 /// <summary>
 /// Entry point for generated wrappers in Microsoft ONNX Runtime extension domains.
+/// 
+/// <para>com.microsoft</para>
+/// <para>com.microsoft.nhwc</para>
+/// <para>com.microsoft.nchwc</para>
+/// <para>com.ms.internal.nhwc</para>
 /// </summary>
 public readonly struct MicrosoftDomain(OnnxGraph graph)
 {
@@ -428,17 +463,17 @@ public readonly struct MicrosoftDomain(OnnxGraph graph)
     public readonly OnnxGraph Graph = graph;
 
     /// <summary>
-    /// Gets wrappers for the <c>com.microsoft.internal</c> domain.
+    /// com.ms.internal.nhwc
     /// </summary>
     public MicrosoftInternalDomain Internal => new(Graph);
 
     /// <summary>
-    /// Gets wrappers for Microsoft NHWC operators exposed from this domain accessor.
+    /// com.microsoft.nhwc
     /// </summary>
     public MicrosoftInternalNHWCDomain NHWC => new(Graph);
 
     /// <summary>
-    /// Gets wrappers for Microsoft NCHWc layout operators.
+    /// com.microsoft.nchwc
     /// </summary>
     public MicrosoftNCHWcDomain NCHWc => new(Graph);
 }
@@ -454,7 +489,7 @@ public readonly struct MicrosoftInternalDomain(OnnxGraph graph)
     public readonly OnnxGraph Graph = graph;
 
     /// <summary>
-    /// Gets wrappers for Microsoft internal NHWC operators.
+    /// com.ms.internal.nhwc
     /// </summary>
     public MicrosoftInternalNHWCDomain NHWC => new(Graph);
 }

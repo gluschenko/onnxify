@@ -1,5 +1,7 @@
 ﻿namespace Onnxify.Tests;
 
+using Onnx;
+
 public sealed class OnnxModelTests
 {
     [Fact]
@@ -126,7 +128,7 @@ public sealed class OnnxModelTests
         model.Graph.AddNode(
             name: "add_node",
             opType: "CustomAdd",
-            domain: "",
+            domain: "ai.onnxify.tests",
             docString: "Adds input and weights",
             inputs: [input, weights],
             outputs: [hidden],
@@ -135,7 +137,7 @@ public sealed class OnnxModelTests
         model.Graph.AddNode(
             name: "identity_node",
             opType: "CustomIdentity",
-            domain: "",
+            domain: "ai.onnxify.tests",
             docString: "Forwards hidden to output",
             inputs: [hidden],
             outputs: [output],
@@ -206,7 +208,7 @@ public sealed class OnnxModelTests
     {
         var model = OnnxModel.Create(new OnnxModelCreationOptions
         {
-            Opset = 13,
+            Opset = 18,
         });
 
         var left = model.Graph.AddInput("left", OnnxTensorType.Create<float>([1, 2]));
@@ -253,6 +255,502 @@ public sealed class OnnxModelTests
             var loadedSplit = Assert.IsType<Split>(loaded.Graph.Nodes[1]);
             Assert.Equal("split_input", loadedSplit.Input.Name);
             Assert.Equal(["split_left", "split_right"], loadedSplit.Out.Select(x => x.Name).ToArray());
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public void Save_AndLoad_RoundTripsNonTensorGraphValueTypes()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            ProducerName = "non-tensor-type-tests",
+            IrVersion = 9,
+            Opset = 13,
+        });
+
+        model.Graph.AddInput(
+            "sequence_input",
+            new OnnxSequenceType(
+                OnnxTensorType.Create<long>(new OnnxDimension[] { "tokens" }),
+                "sequence-items"));
+        model.Graph.AddInput(
+            "map_input",
+            new OnnxMapType(
+                typeof(string),
+                OnnxTensorType.Create<float>(new OnnxDimension[] { 1L }),
+                "lookup"));
+        model.Graph.AddInput(
+            "opaque_input",
+            new OnnxOpaqueType(
+                "ai.onnx.ml",
+                "Vocabulary",
+                "opaque-metadata"));
+        model.Graph.AddValue(
+            "sparse_hidden",
+            new OnnxSparseTensorType(
+                typeof(float),
+                OnnxTensorShape.Create(new OnnxDimension[] { 2L, "nnz" }),
+                "sparse-values"));
+        model.Graph.AddOutput(
+            "optional_output",
+            new OnnxOptionalType(
+                OnnxTensorType.Create<bool>(new OnnxDimension[] { 1L }),
+                "optional-flag"));
+
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+
+        try
+        {
+            model.Save(path);
+            var loaded = OnnxModel.FromFile(path);
+
+            Assert.Equal(3, loaded.Graph.Inputs.Count);
+
+            var loadedSequence = Assert.IsType<OnnxValue<OnnxSequenceType>>(loaded.Graph.Inputs[0]);
+            Assert.Equal("sequence_input", loadedSequence.Name);
+            Assert.Equal("sequence-items", loadedSequence.Type.Denotation);
+            var sequenceElementType = Assert.IsType<OnnxTensorType>(loadedSequence.Type.ElementType);
+            Assert.Equal(typeof(long), sequenceElementType.Type);
+            Assert.NotNull(sequenceElementType.Shape);
+            Assert.Equal("tokens", Assert.IsType<OnnxDimension<string>>(sequenceElementType.Shape!.Dimensions[0]).Value);
+
+            var loadedMap = Assert.IsType<OnnxValue<OnnxMapType>>(loaded.Graph.Inputs[1]);
+            Assert.Equal("lookup", loadedMap.Type.Denotation);
+            Assert.Equal(typeof(string), loadedMap.Type.KeyType);
+            var mapValueType = Assert.IsType<OnnxTensorType>(loadedMap.Type.ValueType);
+            Assert.Equal(typeof(float), mapValueType.Type);
+
+            var loadedOpaque = Assert.IsType<OnnxValue<OnnxOpaqueType>>(loaded.Graph.Inputs[2]);
+            Assert.Equal("opaque-metadata", loadedOpaque.Type.Denotation);
+            Assert.Equal("ai.onnx.ml", loadedOpaque.Type.Domain);
+            Assert.Equal("Vocabulary", loadedOpaque.Type.Name);
+
+            var loadedSparse = Assert.IsType<OnnxValue<OnnxSparseTensorType>>(Assert.Single(loaded.Graph.Placeholders));
+            Assert.Equal("sparse-values", loadedSparse.Type.Denotation);
+            Assert.Equal(typeof(float), loadedSparse.Type.Type);
+            Assert.NotNull(loadedSparse.Type.Shape);
+            Assert.Equal(2L, Assert.IsType<OnnxDimension<long>>(loadedSparse.Type.Shape!.Dimensions[0]).Value);
+            Assert.Equal("nnz", Assert.IsType<OnnxDimension<string>>(loadedSparse.Type.Shape!.Dimensions[1]).Value);
+
+            var loadedOptional = Assert.IsType<OnnxValue<OnnxOptionalType>>(Assert.Single(loaded.Graph.Outputs));
+            Assert.Equal("optional-flag", loadedOptional.Type.Denotation);
+            var optionalElementType = Assert.IsType<OnnxTensorType>(loadedOptional.Type.ElementType);
+            Assert.Equal(typeof(bool), optionalElementType.Type);
+            Assert.NotNull(optionalElementType.Shape);
+            Assert.Equal(1L, Assert.IsType<OnnxDimension<long>>(optionalElementType.Shape!.Dimensions[0]).Value);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public void ValidateCompatibility_AllowsOlderHistoricalOperatorVersions()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            Opset = 13,
+        });
+
+        var left = model.Graph.AddInput("left", OnnxTensorType.Create<float>([1]));
+        var right = model.Graph.AddInput("right", OnnxTensorType.Create<float>([1]));
+        var output = model.Graph.AddOutput("sum", OnnxTensorType.Create<float>([1]));
+
+        model.Graph.AddNode(
+            name: "add",
+            opType: "Add",
+            domain: "",
+            docString: "",
+            inputs: [left, right],
+            outputs: [output],
+            attributes: []);
+
+        var result = model.ValidateCompatibility();
+
+        Assert.True(result.IsValid);
+        Assert.Empty(result.Errors);
+    }
+
+    [Fact]
+    public void ValidateCompatibility_ReportsMissingOpsetImport()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            Opset = 13,
+        });
+
+        var left = model.Graph.AddInput("left", OnnxTensorType.Create<float>([1]));
+        var right = model.Graph.AddInput("right", OnnxTensorType.Create<float>([1]));
+        var output = model.Graph.AddOutput("sum", OnnxTensorType.Create<float>([1]));
+
+        model.ClearOpsetImports();
+        model.Graph.AddNode(
+            name: "add",
+            opType: "Add",
+            domain: "",
+            docString: "",
+            inputs: [left, right],
+            outputs: [output],
+            attributes: []);
+
+        var result = model.ValidateCompatibility();
+
+        var diagnostic = Assert.Single(result.Errors);
+        Assert.Equal("ONNXCOMP001", diagnostic.Code);
+    }
+
+    [Fact]
+    public void ValidateCompatibility_ReportsOperatorUnavailableInModelOpset()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            Opset = 13,
+        });
+
+        var left = model.Graph.AddInput("left", OnnxTensorType.Create<int>([1]));
+        var right = model.Graph.AddInput("right", OnnxTensorType.Create<int>([1]));
+        var output = model.Graph.AddOutput("bits", OnnxTensorType.Create<int>([1]));
+
+        model.Graph.AddNode(
+            name: "bitwise_and",
+            opType: "BitwiseAnd",
+            domain: "",
+            docString: "",
+            inputs: [left, right],
+            outputs: [output],
+            attributes: []);
+
+        var result = model.ValidateCompatibility();
+
+        var diagnostic = Assert.Single(result.Errors);
+        Assert.Equal("ONNXCOMP002", diagnostic.Code);
+        Assert.Contains("opset 13", diagnostic.Message);
+    }
+
+    [Fact]
+    public void ValidateCompatibility_ReportsMissingRequiredAttributes()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            Opset = 13,
+        });
+
+        var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([1]));
+        var output = model.Graph.AddOutput("output", OnnxTensorType.Create<float>([1]));
+
+        model.Graph.AddNode(
+            name: "cast",
+            opType: "Cast",
+            domain: "",
+            docString: "",
+            inputs: [input],
+            outputs: [output],
+            attributes: []);
+
+        var result = model.ValidateCompatibility();
+
+        var diagnostic = Assert.Single(result.Errors);
+        Assert.Equal("ONNXCOMP005", diagnostic.Code);
+        Assert.Contains("'to'", diagnostic.Message);
+    }
+
+    [Fact]
+    public void ValidateCompatibility_TargetRuntimeModeUsesExternalOpsetProfile()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            Opset = 18,
+        });
+
+        var left = model.Graph.AddInput("left", OnnxTensorType.Create<int>([1]));
+        var right = model.Graph.AddInput("right", OnnxTensorType.Create<int>([1]));
+        var output = model.Graph.AddOutput("bits", OnnxTensorType.Create<int>([1]));
+
+        model.Graph.AddNode(
+            name: "bitwise_and",
+            opType: "BitwiseAnd",
+            domain: "",
+            docString: "",
+            inputs: [left, right],
+            outputs: [output],
+            attributes: []);
+
+        var result = model.ValidateCompatibility(new OnnxCompatibilityValidationOptions
+        {
+            Mode = OnnxCompatibilityValidationMode.TargetRuntime,
+            TargetOpsetImport =
+            [
+                new OperationSet
+                {
+                    Domain = "",
+                    Version = 17,
+                },
+            ],
+        });
+
+        var diagnostic = Assert.Single(result.Errors);
+        Assert.Equal("ONNXCOMP002", diagnostic.Code);
+        Assert.Contains("target runtime opset 17", diagnostic.Message);
+    }
+
+    [Fact]
+    public void ValidateCompatibility_ReportsUnknownAttributes()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            Opset = 13,
+        });
+
+        var left = model.Graph.AddInput("left", OnnxTensorType.Create<float>([1]));
+        var right = model.Graph.AddInput("right", OnnxTensorType.Create<float>([1]));
+        var output = model.Graph.AddOutput("sum", OnnxTensorType.Create<float>([1]));
+
+        model.Graph.AddNode(
+            name: "add",
+            opType: "Add",
+            domain: "",
+            docString: "",
+            inputs: [left, right],
+            outputs: [output],
+            attributes: [new OnnxAttribute<float>("alpha", 0.5f)]);
+
+        var result = model.ValidateCompatibility();
+
+        var diagnostic = Assert.Single(result.Errors);
+        Assert.Equal("ONNXCOMP006", diagnostic.Code);
+        Assert.Contains("'alpha'", diagnostic.Message);
+    }
+
+    [Fact]
+    public void Save_ThrowsWhenCurrentOperatorTargetsStructurallyOlderOpset()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            Opset = 6,
+        });
+
+        var left = model.Graph.AddInput("left", OnnxTensorType.Create<float>([1]));
+        var right = model.Graph.AddInput("right", OnnxTensorType.Create<float>([1]));
+        var output = model.Graph.AddOutput("sum", OnnxTensorType.Create<float>([1]));
+
+        model.Graph.AddNode(new Add("add", new AddInputOutputOptions
+        {
+            A = left,
+            B = right,
+            C = output,
+        }));
+
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+
+        try
+        {
+            var exception = Assert.Throws<InvalidOperationException>(() => model.Save(path));
+
+            Assert.Contains("ai.onnx::Add", exception.Message);
+            Assert.Contains("target opset 6", exception.Message);
+            Assert.Contains("minimum structurally compatible opset 7", exception.Message);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public void Save_AllowsCurrentOperatorAtStructuralCompatibilityBoundary()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            Opset = 7,
+        });
+
+        var left = model.Graph.AddInput("left", OnnxTensorType.Create<float>([1]));
+        var right = model.Graph.AddInput("right", OnnxTensorType.Create<float>([1]));
+        var output = model.Graph.AddOutput("sum", OnnxTensorType.Create<float>([1]));
+
+        model.Graph.AddNode(new Add("add", new AddInputOutputOptions
+        {
+            A = left,
+            B = right,
+            C = output,
+        }));
+
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+
+        try
+        {
+            model.Save(path);
+            var loaded = OnnxModel.FromFile(path);
+
+            var loadedNode = Assert.Single(loaded.Graph.Nodes);
+            Assert.IsType<Add>(loadedNode);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public void FromFile_FailFastRejectsStructurallyLegacyOperators()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            Opset = 6,
+        });
+
+        var left = model.Graph.AddInput("left", OnnxTensorType.Create<float>([1]));
+        var right = model.Graph.AddInput("right", OnnxTensorType.Create<float>([1]));
+        var output = model.Graph.AddOutput("sum", OnnxTensorType.Create<float>([1]));
+
+        model.Graph.AddNode(
+            name: "legacy_add",
+            opType: "Add",
+            domain: "",
+            docString: "",
+            inputs: [left, right],
+            outputs: [output],
+            attributes:
+            [
+                new OnnxAttribute<long>("broadcast", 1),
+                new OnnxAttribute<long>("axis", 0),
+            ]);
+
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+
+        try
+        {
+            model.Save(path);
+            var exception = Assert.Throws<NotSupportedException>(() => OnnxModel.FromFile(path));
+
+            Assert.Contains("Opset 6", exception.Message);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public void InternalLoad_IgnoreIncompatiblePreservesLegacyOperatorsAsGenericNodesAndAllowsResave()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            Opset = 6,
+        });
+
+        var left = model.Graph.AddInput("left", OnnxTensorType.Create<float>([1]));
+        var right = model.Graph.AddInput("right", OnnxTensorType.Create<float>([1]));
+        var output = model.Graph.AddOutput("sum", OnnxTensorType.Create<float>([1]));
+
+        model.Graph.AddNode(
+            name: "legacy_add",
+            opType: "Add",
+            domain: "",
+            docString: "",
+            inputs: [left, right],
+            outputs: [output],
+            attributes:
+            [
+                new OnnxAttribute<long>("broadcast", 1),
+                new OnnxAttribute<long>("axis", 0),
+            ]);
+
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+        var roundTripPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+
+        try
+        {
+            model.Save(path);
+
+            var proto = ModelProto.Parser.ParseFrom(File.ReadAllBytes(path));
+            var loaded = new OnnxModel(proto, new OnnxModelBaseOptions
+            {
+                DataLocation = Path.GetDirectoryName(path),
+                NodeTypeResolutionStrategy = NodeTypeResolutionStrategy.IgnoreIncompatible,
+            });
+
+            var loadedNode = Assert.Single(loaded.Graph.Nodes);
+            Assert.Equal(typeof(OnnxNode), loadedNode.GetType());
+            Assert.Equal(["axis", "broadcast"], loadedNode.Attributes.Select(x => x.Name).OrderBy(x => x, StringComparer.Ordinal).ToArray());
+
+            loaded.Save(roundTripPath);
+
+            var roundTripProto = ModelProto.Parser.ParseFrom(File.ReadAllBytes(roundTripPath));
+            var reloaded = new OnnxModel(roundTripProto, new OnnxModelBaseOptions
+            {
+                DataLocation = Path.GetDirectoryName(roundTripPath),
+                NodeTypeResolutionStrategy = NodeTypeResolutionStrategy.IgnoreIncompatible,
+            });
+
+            var reloadedNode = Assert.Single(reloaded.Graph.Nodes);
+            Assert.Equal(typeof(OnnxNode), reloadedNode.GetType());
+            Assert.Equal(["axis", "broadcast"], reloadedNode.Attributes.Select(x => x.Name).OrderBy(x => x, StringComparer.Ordinal).ToArray());
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+
+            if (File.Exists(roundTripPath))
+            {
+                File.Delete(roundTripPath);
+            }
+        }
+    }
+
+    [Fact]
+    public void FromFile_LoadsCurrentCompatibleOperatorsAsGeneratedNodes()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            Opset = 7,
+        });
+
+        var left = model.Graph.AddInput("left", OnnxTensorType.Create<float>([1]));
+        var right = model.Graph.AddInput("right", OnnxTensorType.Create<float>([1]));
+        var output = model.Graph.AddOutput("sum", OnnxTensorType.Create<float>([1]));
+
+        model.Graph.AddNode(
+            name: "current_add",
+            opType: "Add",
+            domain: "",
+            docString: "",
+            inputs: [left, right],
+            outputs: [output],
+            attributes: []);
+
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+
+        try
+        {
+            model.Save(path);
+            var loaded = OnnxModel.FromFile(path);
+
+            var loadedNode = Assert.Single(loaded.Graph.Nodes);
+            Assert.IsType<Add>(loadedNode);
         }
         finally
         {

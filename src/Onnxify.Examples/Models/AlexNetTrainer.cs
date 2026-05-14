@@ -74,7 +74,7 @@ internal sealed class AlexNetTrainer
                 new PipelineStageOptions
                 {
                     Name = "alexnet-epochs",
-                    Category = PipelineStageCategories.Orchestration
+                    Category = PipelineStageCategories.ORCHESTRATION
                 }
             ))
             .Then(new AlexNetBatchSourceStage())
@@ -97,7 +97,7 @@ internal sealed class AlexNetTrainer
                 options: new PipelineStageOptions
                 {
                     Name = "alexnet-train-step",
-                    Category = PipelineStageCategories.Optimization
+                    Category = PipelineStageCategories.OPTIMIZATION
                 }))
             .Then(new AlexNetBatchProgressStage())
             .Build();
@@ -141,7 +141,7 @@ internal sealed class AlexNetTrainer
             : base(new PipelineStageOptions
             {
                 Name = "alexnet-batch-source",
-                Category = PipelineStageCategories.Orchestration
+                Category = PipelineStageCategories.ORCHESTRATION
             })
         {
         }
@@ -195,7 +195,7 @@ internal sealed class AlexNetTrainer
             : base(new PipelineStageOptions
             {
                 Name = "alexnet-materialize-tensors",
-                Category = PipelineStageCategories.DevicePlacement
+                Category = PipelineStageCategories.DEVICE_PLACEMENT
             })
         {
         }
@@ -218,7 +218,7 @@ internal sealed class AlexNetTrainer
             : base(new PipelineStageOptions
             {
                 Name = "alexnet-batch-progress",
-                Category = PipelineStageCategories.Metrics
+                Category = PipelineStageCategories.METRICS
             })
         {
         }

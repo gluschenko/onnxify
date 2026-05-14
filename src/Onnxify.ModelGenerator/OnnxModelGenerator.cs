@@ -8,15 +8,18 @@ using Onnx;
 
 namespace Onnxify.ModelGenerator;
 
+/// <summary>
+/// Generates strongly typed <c>Microsoft.ML.OnnxRuntime</c> wrappers for ONNX models included in a consuming project.
+/// </summary>
 [Generator]
 public sealed class OnnxModelGenerator : IIncrementalGenerator
 {
-    private const string GlobalProjectDirectoryKey = "build_property.MSBuildProjectDirectory";
-    private const string GlobalProjectDirKey = "build_property.ProjectDir";
-    private const string GlobalRootNamespaceKey = "build_property.RootNamespace";
-    private const string GlobalAssemblyNameKey = "build_property.AssemblyName";
-    private const string AdditionalFileClassNameKey = "build_metadata.AdditionalFiles.OnnxifyModelClassName";
-    private const string AdditionalFileNamespaceKey = "build_metadata.AdditionalFiles.OnnxifyModelNamespace";
+    private const string GLOBAL_PROJECT_DIRECTORY_KEY = "build_property.MSBuildProjectDirectory";
+    private const string GLOBAL_PROJECT_DIR_KEY = "build_property.ProjectDir";
+    private const string GLOBAL_ROOT_NAMESPACE_KEY = "build_property.RootNamespace";
+    private const string GLOBAL_ASSEMBLY_NAME_KEY = "build_property.AssemblyName";
+    private const string ADDITIONAL_FILE_CLASS_NAME_KEY = "build_metadata.AdditionalFiles.OnnxifyModelClassName";
+    private const string ADDITIONAL_FILE_NAMESPACE_KEY = "build_metadata.AdditionalFiles.OnnxifyModelNamespace";
 
     private static readonly DiagnosticDescriptor _invalidModelDescriptor = new(
         id: "OMG001",
@@ -54,6 +57,10 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         isEnabledByDefault: true
     );
 
+    /// <summary>
+    /// Registers incremental pipeline steps that analyze ONNX model files and emit typed inference wrappers.
+    /// </summary>
+    /// <param name="context">The Roslyn incremental generator initialization context.</param>
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var analyzedModels = context.AdditionalTextsProvider
@@ -452,7 +459,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         public sealed class {{specification.ClassName}} : IDisposable
         {
             {{Indent(XmlSummary("Gets the model path relative to the consuming project directory."), 1)}}
-            public const string ModelProjectRelativePath = {{ToVerbatimStringLiteral(specification.ProjectRelativePath)}};
+            public const string MODEL_PROJECT_RELATIVE_PATH = {{ToVerbatimStringLiteral(specification.ProjectRelativePath)}};
 
             {{Indent(XmlSummary("Gets the default runtime path used to locate the ONNX model beside the application output."), 1)}}
             public static string DefaultModelPath => GetDefaultModelPath();
@@ -486,7 +493,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             {
                 return Path.Combine(
                     AppContext.BaseDirectory,
-                    ModelProjectRelativePath
+                    MODEL_PROJECT_RELATIVE_PATH
                         .Replace('\\', Path.DirectorySeparatorChar)
                         .Replace('/', Path.DirectorySeparatorChar)
                 );
@@ -873,17 +880,17 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
     )
     {
         var fileOptions = optionsProvider.GetOptions(file);
-        if (fileOptions.TryGetValue(AdditionalFileNamespaceKey, out var overrideNamespace) && !string.IsNullOrWhiteSpace(overrideNamespace))
+        if (fileOptions.TryGetValue(ADDITIONAL_FILE_NAMESPACE_KEY, out var overrideNamespace) && !string.IsNullOrWhiteSpace(overrideNamespace))
         {
             return NormalizeNamespace(overrideNamespace);
         }
 
-        if (optionsProvider.GlobalOptions.TryGetValue(GlobalRootNamespaceKey, out var rootNamespace) && !string.IsNullOrWhiteSpace(rootNamespace))
+        if (optionsProvider.GlobalOptions.TryGetValue(GLOBAL_ROOT_NAMESPACE_KEY, out var rootNamespace) && !string.IsNullOrWhiteSpace(rootNamespace))
         {
             return NormalizeNamespace(rootNamespace);
         }
 
-        if (optionsProvider.GlobalOptions.TryGetValue(GlobalAssemblyNameKey, out var assemblyName) && !string.IsNullOrWhiteSpace(assemblyName))
+        if (optionsProvider.GlobalOptions.TryGetValue(GLOBAL_ASSEMBLY_NAME_KEY, out var assemblyName) && !string.IsNullOrWhiteSpace(assemblyName))
         {
             return NormalizeNamespace(assemblyName);
         }
@@ -897,7 +904,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
     )
     {
         var fileOptions = optionsProvider.GetOptions(file);
-        if (fileOptions.TryGetValue(AdditionalFileClassNameKey, out var overrideClassName) && !string.IsNullOrWhiteSpace(overrideClassName))
+        if (fileOptions.TryGetValue(ADDITIONAL_FILE_CLASS_NAME_KEY, out var overrideClassName) && !string.IsNullOrWhiteSpace(overrideClassName))
         {
             var sanitizedOverride = ToPascalIdentifier(overrideClassName, "Model");
             return sanitizedOverride.EndsWith("Model", StringComparison.Ordinal) ? sanitizedOverride : $"{sanitizedOverride}Model";
@@ -935,13 +942,13 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         out string projectDirectory
     )
     {
-        if (optionsProvider.GlobalOptions.TryGetValue(GlobalProjectDirectoryKey, out var msbuildProjectDirectory) && !string.IsNullOrWhiteSpace(msbuildProjectDirectory))
+        if (optionsProvider.GlobalOptions.TryGetValue(GLOBAL_PROJECT_DIRECTORY_KEY, out var msbuildProjectDirectory) && !string.IsNullOrWhiteSpace(msbuildProjectDirectory))
         {
             projectDirectory = msbuildProjectDirectory;
             return true;
         }
 
-        if (optionsProvider.GlobalOptions.TryGetValue(GlobalProjectDirKey, out var projectDir) && !string.IsNullOrWhiteSpace(projectDir))
+        if (optionsProvider.GlobalOptions.TryGetValue(GLOBAL_PROJECT_DIR_KEY, out var projectDir) && !string.IsNullOrWhiteSpace(projectDir))
         {
             projectDirectory = projectDir;
             return true;

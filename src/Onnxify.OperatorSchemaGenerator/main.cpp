@@ -2,13 +2,13 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
-#include <nlohmann/json.hpp>
-#include <nlohmann/json_fwd.hpp>
 #include <filesystem>
 #include <algorithm>
-#include <onnx/defs/schema.h>
 #include <core/session/onnxruntime_c_api.h>
 #include <utility>
+#include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
+#include <onnx/defs/schema.h>
 
 using namespace std;
 using json = nlohmann::json;
@@ -30,7 +30,26 @@ int main()
     json root;
     root["operators"] = json::array();
 
-    auto schemas = ONNX_NAMESPACE::OpSchemaRegistry::get_all_schemas();
+    auto schemas = ONNX_NAMESPACE::OpSchemaRegistry::get_all_schemas_with_history();
+
+    std::sort(
+        schemas.begin(),
+        schemas.end(),
+        [](const ONNX_NAMESPACE::OpSchema& left, const ONNX_NAMESPACE::OpSchema& right)
+        {
+            if (left.domain() != right.domain())
+            {
+                return left.domain() < right.domain();
+            }
+
+            if (left.Name() != right.Name())
+            {
+                return left.Name() < right.Name();
+            }
+
+            return left.SinceVersion() < right.SinceVersion();
+        }
+    );
 
     for (const auto& schema : schemas)
     {
@@ -215,7 +234,7 @@ int main()
         root["operators"].push_back(op);
     }
 
-    std::cout << "Total operators: " << schemas.size() << "\n\n";
+    std::cout << "Total operator schemas: " << schemas.size() << "\n\n";
     std::cout << root.dump(4) << std::endl;
 
     std::filesystem::path path = "../../../../Onnxify/Assets/onnx_operators.json";

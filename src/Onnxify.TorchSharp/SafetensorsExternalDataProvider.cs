@@ -14,7 +14,7 @@ namespace Onnxify.TorchSharp;
 /// </remarks>
 public sealed class SafetensorsExternalDataProvider : ExternalDataProvider
 {
-    private const string DefaultTensorName = "tensor";
+    private const string DEFAULT_TENSOR_NAME = "tensor";
 
     /// <summary>
     /// Gets the default singleton provider for safetensors-backed external tensor data.
@@ -197,7 +197,7 @@ public sealed class SafetensorsExternalDataProvider : ExternalDataProvider
     }
 
     private static string GetTensorName(OnnxTensor tensor)
-        => string.IsNullOrWhiteSpace(tensor.Name) ? DefaultTensorName : tensor.Name;
+        => string.IsNullOrWhiteSpace(tensor.Name) ? DEFAULT_TENSOR_NAME : tensor.Name;
 
     private static DataType MapDataType(Type type)
     {

@@ -30,4 +30,17 @@ public class OnnxModelBaseOptions
     /// Current serialization embeds tensor data by default; this option exists for callers that need to keep read/write configuration together as external-data writing support grows.
     /// </remarks>
     public ExternalDataProvider DataWriter { get; init; } = OnnxExternalDataProvider.Instance;
+
+    public NodeTypeResolutionStrategy NodeTypeResolutionStrategy { get; init; } = NodeTypeResolutionStrategy.FailFast;
+
+    /// <summary>
+    /// Gets the imported opset versions available while materializing graph nodes from protobuf.
+    /// </summary>
+    internal IReadOnlyDictionary<string, long>? OpsetImports { get; init; }
+}
+
+public enum NodeTypeResolutionStrategy
+{
+    FailFast = 1,
+    IgnoreIncompatible = 2,
 }

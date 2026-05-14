@@ -35,12 +35,14 @@ public static class MobileNetLikeAuthoring
 {
     public static OnnxModel CreateMobileNetLike(int numClasses = 10)
     {
-        var model = OnnxModel.Create(new OnnxModelCreationOptions
-        {
-            ProducerName = "onnxify-skill",
-            IrVersion = 10,
-            Opset = 22,
-        });
+        var model = OnnxModel.Create(
+            new OnnxModelCreationOptions
+            {
+                ProducerName = "onnxify-skill",
+                IrVersion = 10,
+                Opset = 22,
+            }
+        );
 
         var graph = model.Graph;
         graph.Name = "mobilenet_v1_like_direct";

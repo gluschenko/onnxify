@@ -13,7 +13,7 @@ public sealed class PipelineStageOptions
     /// <summary>
     /// Gets the logical category used to group similar stages.
     /// </summary>
-    public string Category { get; init; } = PipelineStageCategories.Custom;
+    public string Category { get; init; } = PipelineStageCategories.CUSTOM;
 
     /// <summary>
     /// Gets the relative weight used when aggregating stage progress into pipeline progress.

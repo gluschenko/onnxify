@@ -33,7 +33,7 @@ public sealed class OnnxProjectGeneratorTests
             model.Graph.AddNode(
                 name: "custom_node",
                 opType: "CustomOp",
-                domain: "",
+                domain: "ai.onnxify.generator.tests",
                 docString: "Moves data around",
                 inputs: [input, weights],
                 outputs: [hidden],
@@ -295,7 +295,10 @@ public sealed class OnnxProjectGeneratorTests
 
         try
         {
-            var model = OnnxModel.Create();
+            var model = OnnxModel.Create(new OnnxModelCreationOptions
+            {
+                Opset = 23,
+            });
 
             var input = model.Graph.AddInput("OC2_DUMMY_0", OnnxTensorType.Create<float>([1]));
             var output = model.Graph.AddOutput("OC2_DUMMY_0_quantized", OnnxTensorType.Create<float>([1]));
@@ -345,7 +348,10 @@ public sealed class OnnxProjectGeneratorTests
 
         try
         {
-            var model = OnnxModel.Create();
+            var model = OnnxModel.Create(new OnnxModelCreationOptions
+            {
+                Opset = 23,
+            });
 
             var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([1, 1, 3, 3]));
             var output = model.Graph.AddOutput("output", OnnxTensorType.Create<float>([1, 1, 3, 3]));
@@ -427,6 +433,49 @@ public sealed class OnnxProjectGeneratorTests
                 File.Delete(modelPath);
             }
 
+            if (Directory.Exists(outputDirectoryPath))
+            {
+                Directory.Delete(outputDirectoryPath, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Generate_FromInMemoryModel_UsesInputModelNameForFallbackNames()
+    {
+        var outputDirectoryPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}");
+
+        try
+        {
+            var model = OnnxModel.Create(new OnnxModelCreationOptions
+            {
+                ProducerName = "in-memory-generator-tests",
+                Opset = 23,
+            });
+
+            model.Graph.AddTensor("weights", [2], [1.0f, 2.0f]);
+
+            var generator = new OnnxProjectGenerator();
+            var result = generator.Generate(
+                model,
+                new ProjectGeneratorOptions
+                {
+                    InputModelName = "in-memory-model.onnx",
+                    OutputDirectoryPath = outputDirectoryPath,
+                    Overwrite = true,
+                }
+            );
+
+            Assert.Equal(Path.Combine(outputDirectoryPath, "Program.cs"), result.ProgramFilePath);
+            Assert.Equal(Path.Combine(outputDirectoryPath, "in_memory_model.csproj"), result.ProjectFilePath);
+
+            var programText = File.ReadAllText(result.ProgramFilePath);
+            Assert.Contains("namespace in_memory_model;", programText);
+            Assert.Contains("Path.Combine(AppContext.BaseDirectory, \"in-memory-model.generated.onnx\")", programText);
+            Assert.Contains("value: [1F, 2F]", programText);
+        }
+        finally
+        {
             if (Directory.Exists(outputDirectoryPath))
             {
                 Directory.Delete(outputDirectoryPath, recursive: true);

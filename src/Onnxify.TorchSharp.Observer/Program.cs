@@ -129,8 +129,8 @@ internal static partial class Program
 
     private static IReadOnlyList<TorchSharpCandidate> LoadTorchSharpCandidates()
     {
-        const BindingFlags PublicStatic = BindingFlags.Public | BindingFlags.Static;
-        const BindingFlags PublicInstance = BindingFlags.Public | BindingFlags.Instance;
+        const BindingFlags PUBLIC_STATIC = BindingFlags.Public | BindingFlags.Static;
+        const BindingFlags PUBLIC_INSTANCE = BindingFlags.Public | BindingFlags.Instance;
 
         var assembly = typeof(global::TorchSharp.torch).Assembly;
         var candidates = new Dictionary<string, TorchSharpCandidate>(StringComparer.OrdinalIgnoreCase);
@@ -142,7 +142,7 @@ internal static partial class Program
                 continue;
             }
 
-            foreach (var method in type.GetMethods(PublicStatic))
+            foreach (var method in type.GetMethods(PUBLIC_STATIC))
             {
                 if (method.IsSpecialName)
                 {
@@ -160,7 +160,7 @@ internal static partial class Program
                 }
             }
 
-            foreach (var property in type.GetProperties(PublicStatic))
+            foreach (var property in type.GetProperties(PUBLIC_STATIC))
             {
                 if (property.GetMethod is null || property.GetMethod.IsSpecialName)
                 {
@@ -177,7 +177,7 @@ internal static partial class Program
                     AddCandidate(candidates, NormalizeTorchSharpName(nested.Name), $"{type.FullName}.{nested.Name}");
                 }
 
-                foreach (var method in nested.GetMethods(PublicStatic | PublicInstance))
+                foreach (var method in nested.GetMethods(PUBLIC_STATIC | PUBLIC_INSTANCE))
                 {
                     if (method.IsSpecialName)
                     {
@@ -197,7 +197,7 @@ internal static partial class Program
 
     private static IReadOnlySet<string> LoadCoveredOperators()
     {
-        const BindingFlags AllMembers =
+        const BindingFlags ALL_MEMBERS =
             BindingFlags.Public |
             BindingFlags.NonPublic |
             BindingFlags.Static |
@@ -217,7 +217,7 @@ internal static partial class Program
                 }
             }
 
-            foreach (var method in type.GetMethods(AllMembers))
+            foreach (var method in type.GetMethods(ALL_MEMBERS))
             {
                 foreach (global::Onnxify.TorchSharp.TorchOpAttribute attribute in
                     method.GetCustomAttributes<global::Onnxify.TorchSharp.TorchOpAttribute>(inherit: false))
