@@ -12,7 +12,7 @@ namespace Onnxify.AgentSkillGenerator;
 
 internal static class OperatorSkillGenerator
 {
-    private const string NewLine = "\n";
+    private const string NEW_LINE = "\n";
 
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -1209,7 +1209,7 @@ internal static class OperatorSkillGenerator
 
     private static string NormalizeLineEndings(string value)
     {
-        return value.Replace("\r\n", NewLine, StringComparison.Ordinal).Replace("\r", NewLine, StringComparison.Ordinal);
+        return value.Replace("\r\n", NEW_LINE, StringComparison.Ordinal).Replace("\r", NEW_LINE, StringComparison.Ordinal);
     }
 
     private static string EscapeMarkdownCell(string value)

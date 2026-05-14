@@ -8,7 +8,7 @@ namespace Onnxify.AgentSkillGenerator;
 
 internal static class TorchSharpConverterSkillGenerator
 {
-    private const string NewLine = "\n";
+    private const string NEW_LINE = "\n";
     private static readonly IReadOnlyDictionary<Type, string> SourceFilePaths =
         new Dictionary<Type, string>
         {
@@ -445,7 +445,7 @@ internal static class TorchSharpConverterSkillGenerator
 
     private static string NormalizeLineEndings(string value)
     {
-        return value.Replace("\r\n", NewLine, StringComparison.Ordinal).Replace("\r", NewLine, StringComparison.Ordinal);
+        return value.Replace("\r\n", NEW_LINE, StringComparison.Ordinal).Replace("\r", NEW_LINE, StringComparison.Ordinal);
     }
 
     private static void RewriteGeneratedDirectory(string outputRoot, IReadOnlyDictionary<string, string> files)
