@@ -161,7 +161,7 @@ public sealed class OnnxProjectGenerator
                 """);
         }
 
-        foreach (var value in model.Graph.Placeholders)
+        foreach (var value in model.Graph.IntermediateValues)
         {
             flow.AppendLine(
                 $$"""

@@ -179,8 +179,8 @@ public sealed class OnnxModelTests
             Assert.Equal([1L, 3L], typedTensor.Shape);
             Assert.Equal([1.0f, 2.0f, 3.0f], typedTensor.Value.ToArray());
 
-            Assert.Single(loaded.Graph.Placeholders);
-            Assert.Equal("hidden", loaded.Graph.Placeholders[0].Name);
+            Assert.Single(loaded.Graph.IntermediateValues);
+            Assert.Equal("hidden", loaded.Graph.IntermediateValues[0].Name);
 
             Assert.Equal(2, loaded.Graph.Nodes.Count);
             Assert.Equal("add_node", loaded.Graph.Nodes[0].Name);
@@ -332,7 +332,7 @@ public sealed class OnnxModelTests
             Assert.Equal("ai.onnx.ml", loadedOpaque.Type.Domain);
             Assert.Equal("Vocabulary", loadedOpaque.Type.Name);
 
-            var loadedSparse = Assert.IsType<OnnxValue<OnnxSparseTensorType>>(Assert.Single(loaded.Graph.Placeholders));
+            var loadedSparse = Assert.IsType<OnnxValue<OnnxSparseTensorType>>(Assert.Single(loaded.Graph.IntermediateValues));
             Assert.Equal("sparse-values", loadedSparse.Type.Denotation);
             Assert.Equal(typeof(float), loadedSparse.Type.Type);
             Assert.NotNull(loadedSparse.Type.Shape);

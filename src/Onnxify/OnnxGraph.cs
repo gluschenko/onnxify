@@ -8,7 +8,7 @@ namespace Onnxify;
 /// Provides the editable graph surface for ONNX values, initializers, loose edges, and operator nodes.
 /// </summary>
 /// <remarks>
-/// The graph keeps ONNX namespaces explicit. Inputs, outputs, value-info placeholders, initializers, loose edges, and nodes are stored separately but are resolved by the same graph-local names when wiring node inputs and outputs.
+/// The graph keeps ONNX namespaces explicit. Inputs, outputs, intermediate values, initializers, loose edges, and nodes are stored separately but are resolved by the same graph-local names when wiring node inputs and outputs.
 /// </remarks>
 public class OnnxGraph
 {
@@ -24,12 +24,12 @@ public class OnnxGraph
     /// <summary>
     /// Gets graph inputs that callers are expected to feed at inference time.
     /// </summary>
-    public IReadOnlyList<OnnxValue> Inputs => _inputs;
+    public IReadOnlyList<OnnxValue> Inputs => _values.Where(x => _inputs.Contains(x.Name)).ToList();
 
     /// <summary>
     /// Gets graph outputs that runtimes expose to callers after execution.
     /// </summary>
-    public IReadOnlyList<OnnxValue> Outputs => _outputs;
+    public IReadOnlyList<OnnxValue> Outputs => _values.Where(x => _outputs.Contains(x.Name)).ToList();
 
     /// <summary>
     /// Gets constant tensors stored in the model graph, commonly used for weights, biases, and literal constants.
@@ -39,7 +39,7 @@ public class OnnxGraph
     /// <summary>
     /// Gets ONNX value-info entries that describe intermediate tensors without making them model inputs or outputs.
     /// </summary>
-    public IReadOnlyList<OnnxValue> Placeholders => _placeholders;
+    public IReadOnlyList<OnnxValue> IntermediateValues => _values.Where(x => !_inputs.Contains(x.Name) && !_outputs.Contains(x.Name)).ToList();
 
     /// <summary>
     /// Gets operator nodes in graph order.
@@ -56,20 +56,20 @@ public class OnnxGraph
     /// <summary>
     /// Gets a domain accessor used by generated wrappers for Microsoft ONNX Runtime extension operators.
     /// 
-    /// <para>com.microsoft</para>
-    /// <para>com.microsoft.nhwc</para>
-    /// <para>com.microsoft.nchwc</para>
-    /// <para>com.ms.internal.nhwc</para>
+    /// <para>com.microsoft.*</para>
     /// </summary>
     public MicrosoftDomain Microsoft => new(this);
 
     private readonly GraphProto _graph;
     private readonly OnnxModelBaseOptions _options;
     private string _name = string.Empty;
-    private readonly LazyDictionary<string, OnnxValue> _inputs = new(x => x.Name, StringComparer.Ordinal);
-    private readonly LazyDictionary<string, OnnxValue> _outputs = new(x => x.Name, StringComparer.Ordinal);
+
+    private readonly HashSet<string> _inputs = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _outputs = new(StringComparer.Ordinal);
+    // private readonly LazyDictionary<string, OnnxValue> _inputs = new(x => x.Name, StringComparer.Ordinal);
+    // private readonly LazyDictionary<string, OnnxValue> _outputs = new(x => x.Name, StringComparer.Ordinal);
     private readonly LazyDictionary<string, OnnxTensor> _initializers = new(x => x.Name, StringComparer.Ordinal);
-    private readonly LazyDictionary<string, OnnxValue> _placeholders = new(x => x.Name, StringComparer.Ordinal);
+    private readonly LazyDictionary<string, OnnxValue> _values = new(x => x.Name, StringComparer.Ordinal);
     private readonly LazyDictionary<string, OnnxNode> _nodes = new(x => x.Name, StringComparer.Ordinal);
     private readonly LazyDictionary<string, OnnxEdge> _edges = new(x => x.Name, StringComparer.Ordinal);
 
@@ -85,17 +85,21 @@ public class OnnxGraph
 
         foreach (var value in graph.ValueInfo)
         {
-            _placeholders.Add(OnnxValue.FromProto(value));
+            _values.Add(OnnxValue.FromProto(value));
         }
 
         foreach (var input in graph.Input)
         {
-            _inputs.Add(OnnxValue.FromProto(input));
+            var x = OnnxValue.FromProto(input);
+            _values.Add(x);
+            _inputs.Add(x.Name);
         }
 
         foreach (var output in graph.Output)
         {
-            _outputs.Add(OnnxValue.FromProto(output));
+            var x = OnnxValue.FromProto(output);
+            _values.Add(x);
+            _outputs.Add(x.Name);
         }
 
         foreach (var node in graph.Node)
@@ -168,17 +172,7 @@ public class OnnxGraph
     {
         ArgumentNullException.ThrowIfNull(name);
 
-        if (_inputs.TryGetValue(name, out var input))
-        {
-            return input;
-        }
-
-        if (_outputs.TryGetValue(name, out var output))
-        {
-            return output;
-        }
-
-        if (_placeholders.TryGetValue(name, out var value))
+        if (_values.TryGetValue(name, out var value))
         {
             return value;
         }
@@ -276,9 +270,10 @@ public class OnnxGraph
             throw new InvalidOperationException($"Value '{name}' is already added into graph");
         }
 
-        var placeholder = new OnnxValue<T>(name, type, null);
-        _inputs.Add(placeholder);
-        return placeholder;
+        var value = new OnnxValue<T>(name, type, null);
+        _values.Add(value);
+        _inputs.Add(value.Name);
+        return value;
     }
 
     /// <summary>
@@ -296,9 +291,10 @@ public class OnnxGraph
             throw new InvalidOperationException($"Value '{name}' is already added into graph");
         }
 
-        var placeholder = new OnnxValue<T>(name, type, null);
-        _outputs.Add(placeholder);
-        return placeholder;
+        var value = new OnnxValue<T>(name, type, null);
+        _values.Add(value);
+        _outputs.Add(value.Name);
+        return value;
     }
 
     /// <summary>
@@ -307,18 +303,18 @@ public class OnnxGraph
     /// <typeparam name="T">Concrete value-type descriptor, typically <see cref="OnnxTensorType"/>.</typeparam>
     /// <param name="name">Intermediate wire name.</param>
     /// <param name="type">ONNX type descriptor for the intermediate value.</param>
-    /// <returns>The placeholder value that can be connected to nodes.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when another placeholder already uses <paramref name="name"/>.</exception>
+    /// <returns>The intermediate value that can be connected to nodes.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when another intermediate value already uses <paramref name="name"/>.</exception>
     public OnnxValue AddValue<T>(string name, T type) where T : OnnxValueType
     {
-        if (_placeholders.Contains(name))
+        if (_values.Contains(name))
         {
             throw new InvalidOperationException($"Value '{name}' is already added into graph");
         }
 
-        var placeholder = new OnnxValue<T>(name, type, null);
-        _placeholders.Add(placeholder);
-        return placeholder;
+        var intermediateValue = new OnnxValue<T>(name, type, null);
+        _values.Add(intermediateValue);
+        return intermediateValue;
     }
 
     /// <summary>
@@ -397,9 +393,9 @@ public class OnnxGraph
         newGraph.Name = Name;
 
         newGraph.Initializer.Set(_initializers.Select(x => x.ToProto()));
-        newGraph.ValueInfo.Set(_placeholders.Select(x => x.ToProto()));
-        newGraph.Input.Set(_inputs.Select(x => x.ToProto()));
-        newGraph.Output.Set(_outputs.Select(x => x.ToProto()));
+        newGraph.ValueInfo.Set(IntermediateValues.Select(x => x.ToProto()));
+        newGraph.Input.Set(Inputs.Select(x => x.ToProto()));
+        newGraph.Output.Set(Outputs.Select(x => x.ToProto()));
         newGraph.Node.Set(_nodes.Select(x => x.ToProto()));
 
         return newGraph;
@@ -418,7 +414,7 @@ public class OnnxGraph
                 Inputs={FormatCollection(Inputs).Indent(1)},
                 Outputs={FormatCollection(Outputs).Indent(1)},
                 Initializers={FormatCollection(Initializers).Indent(1)},
-                Values={FormatCollection(Placeholders).Indent(1)},
+                Values={FormatCollection(IntermediateValues).Indent(1)},
                 Nodes={FormatCollection(Nodes).Indent(1)}
             )
             """;
@@ -450,10 +446,7 @@ public readonly struct MLDomain(OnnxGraph graph)
 /// <summary>
 /// Entry point for generated wrappers in Microsoft ONNX Runtime extension domains.
 /// 
-/// <para>com.microsoft</para>
-/// <para>com.microsoft.nhwc</para>
-/// <para>com.microsoft.nchwc</para>
-/// <para>com.ms.internal.nhwc</para>
+/// <para>com.microsoft.*</para>
 /// </summary>
 public readonly struct MicrosoftDomain(OnnxGraph graph)
 {
