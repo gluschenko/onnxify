@@ -164,6 +164,7 @@ public class OnnxModel
         return new OnnxModel(model, new OnnxModelBaseOptions
         {
             DataLocation = options.DataLocation,
+            NodeTypeResolutionStrategy = options.NodeTypeResolutionStrategy,
         });
     }
 
@@ -173,19 +174,19 @@ public class OnnxModel
     /// <param name="path">Path to a serialized <c>.onnx</c> file.</param>
     /// <returns>A mutable wrapper around the loaded model.</returns>
     /// <exception cref="FileNotFoundException">Thrown when <paramref name="path"/> does not exist.</exception>
-    public static OnnxModel FromFile(string path)
+    public static OnnxModel FromFile(string path, OnnxModelBaseOptions? options = null)
     {
         if (!File.Exists(path))
         {
             throw new FileNotFoundException("File not found", path);
         }
 
+        options ??= new OnnxModelBaseOptions();
+        options.DataLocation ??= Path.GetDirectoryName(path);
+
         var data = File.ReadAllBytes(path);
         var model = ModelProto.Parser.ParseFrom(data);
-        return new OnnxModel(model, new OnnxModelBaseOptions
-        {
-            DataLocation = Path.GetDirectoryName(path),
-        });
+        return new OnnxModel(model, options);
     }
 
     /// <summary>

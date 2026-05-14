@@ -13,7 +13,7 @@ public class OnnxModelBaseOptions
     /// <remarks>
     /// <see cref="OnnxModel.FromFile"/> sets this to the directory containing the loaded model. Set it manually when deserializing tensors or building models that reference external files.
     /// </remarks>
-    public string? DataLocation { get; init; } = null;
+    public string? DataLocation { get; set; } = null;
 
     /// <summary>
     /// Gets the provider used to read external tensor payloads.

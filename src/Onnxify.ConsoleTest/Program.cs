@@ -66,7 +66,10 @@ namespace Onnxify.ConsoleTest
         {
             var inputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "bvlcalexnet-12-qdq.onnx");
             var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "bvlcalexnet-12-qdq__test.onnx");
-            var model = OnnxModel.FromFile(inputPath);
+            var model = OnnxModel.FromFile(inputPath, new OnnxModelBaseOptions
+            {
+                NodeTypeResolutionStrategy = NodeTypeResolutionStrategy.IgnoreIncompatible,
+            });
 
             var text = model.ToString();
             Console.WriteLine(text);
@@ -170,11 +173,14 @@ namespace Onnxify.ConsoleTest
         {
             var inputModelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "bvlcalexnet-12-qdq.onnx");
             var outputDirectoryPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Generated", "AlexNetProject");
+            var model = OnnxModel.FromFile(inputModelPath, new OnnxModelBaseOptions
+            {
+                NodeTypeResolutionStrategy = NodeTypeResolutionStrategy.IgnoreIncompatible,
+            });
 
             var generator = new OnnxProjectGenerator();
-            var result = generator.Generate(new ProjectGeneratorOptions
+            var result = generator.Generate(model, new ProjectGeneratorOptions
             {
-                InputModelPath = inputModelPath,
                 OutputDirectoryPath = outputDirectoryPath,
                 ProjectName = "AlexNetGeneratedSample",
                 Namespace = "Onnxify.Generated.AlexNet",
@@ -201,11 +207,14 @@ namespace Onnxify.ConsoleTest
         {
             var inputModelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "mobilenetv2-12.onnx");
             var outputDirectoryPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Generated", "MobileNetProject");
+            var model = OnnxModel.FromFile(inputModelPath, new OnnxModelBaseOptions
+            {
+                NodeTypeResolutionStrategy = NodeTypeResolutionStrategy.IgnoreIncompatible,
+            });
 
             var generator = new OnnxProjectGenerator();
-            var result = generator.Generate(new ProjectGeneratorOptions
+            var result = generator.Generate(model, new ProjectGeneratorOptions
             {
-                InputModelPath = inputModelPath,
                 OutputDirectoryPath = outputDirectoryPath,
                 ProjectName = "MobileNetGeneratedSample",
                 Namespace = "Onnxify.Generated.MobileNet",
