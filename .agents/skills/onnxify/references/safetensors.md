@@ -57,7 +57,8 @@ var data = values
 var tensor = new TensorView(
     dtype: DataType.F32,
     shape: [2, 2],
-    data: data);
+    data: data
+);
 
 SafeTensors.SerializeToFile(
     data: [new KeyValuePair<string, TensorView>("weights", tensor)],
@@ -66,7 +67,8 @@ SafeTensors.SerializeToFile(
         ["framework"] = "onnxify-console-test",
         ["purpose"] = "roundtrip-demo",
     },
-    path: outputPath);
+    path: outputPath
+);
 
 var raw = File.ReadAllBytes(outputPath);
 var safetensors = SafeTensors.Deserialize(raw);

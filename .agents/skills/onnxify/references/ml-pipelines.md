@@ -64,22 +64,31 @@ using static TorchSharp.torch;
 using Tensor = TorchSharp.torch.Tensor;
 
 var pipeline = Pipeline.Begin<float[]>()
-    .Then(new TorchTensorBatchStage<float[]>(
-        batchSize: 2,
-        collate: (samples, token) =>
-        {
-            var flat = tensor(
-                samples.SelectMany(static sample => sample).ToArray(),
-                dtype: ScalarType.Float32);
+    .Then(
+        new TorchTensorBatchStage<float[]>(
+            batchSize: 2,
+            collate: (samples, token) =>
+            {
+                var flat = tensor(
+                    samples.SelectMany(static sample => sample).ToArray(),
+                    dtype: ScalarType.Float32
+                );
 
-            return ValueTask.FromResult(
-                new TorchBatchTensors(
-                    flat.reshape(samples.Count, samples[0].Length)));
-        }))
-    .Then(new TorchInferenceStage<TorchMiniBatch<float[]>, Tensor, long[]>(
-        forward: (batch, _, _) => ValueTask.FromResult(batch.Inputs.argmax(1)),
-        resultSelector: (batch, output, _, _) =>
-            ValueTask.FromResult(output.cpu().data<long>().ToArray())))
+                return ValueTask.FromResult(
+                    new TorchBatchTensors(
+                        flat.reshape(samples.Count, samples[0].Length)
+                    )
+                );
+            }
+        )
+    )
+    .Then(
+        new TorchInferenceStage<TorchMiniBatch<float[]>, Tensor, long[]>(
+            forward: (batch, _, _) => ValueTask.FromResult(batch.Inputs.argmax(1)),
+            resultSelector: (batch, output, _, _) =>
+                ValueTask.FromResult(output.cpu().data<long>().ToArray())
+        )
+    )
     .Build();
 
 var results = await pipeline.RunToListAsync(
@@ -87,7 +96,20 @@ var results = await pipeline.RunToListAsync(
         [1f, 3f],
         [5f, 1f],
         [2f, 9f]
-    ]);
+    ]
+);
+
+try
+{
+    var labels = results.Select(static x => x.Result).ToArray();
+}
+finally
+{
+    foreach (var item in results)
+    {
+        item.Dispose();
+    }
+}
 ```
 
 What this gives the user:
@@ -96,6 +118,7 @@ What this gives the user:
 - the collate function is the one place where raw samples become tensors
 - model execution stays isolated in one stage
 - the result projection stage can return labels, probabilities, DTOs, or richer inference payloads
+- `TorchInferenceStage` returns disposable `TorchInferenceResult<...>` objects, so callers that materialize results should dispose them after use
 
 ## Training Pipeline In Practice
 
@@ -105,24 +128,31 @@ The high-level composition looks like this:
 
 ```csharp
 var pipeline = Pipeline.Begin<AlexNetTrainingRun>()
-    .Then(new EpochStage<AlexNetTrainingRun>(epochs))
+    .Then(
+        new EpochStage<AlexNetTrainingRun>(epochs)
+    )
     .Then(new AlexNetBatchSourceStage())
     .Then(new AlexNetBatchTensorStage())
-    .Then(new TorchTrainingStage<AlexNetTorchBatch, Tensor, AlexNetBatchMetrics>(
-        optimizer,
-        forward: (batch, _, _) => ValueTask.FromResult(batch.Run.Model.forward(batch.Inputs)),
-        lossSelector: (batch, output, _, _) => ValueTask.FromResult(batch.Run.Criterion.call(output, batch.Targets)),
-        resultSelector: (batch, output, loss, _, _) =>
-        {
-            using var predicted = output.argmax(1);
-            using var correct = predicted.eq(batch.Targets);
-
-            return ValueTask.FromResult(new AlexNetBatchMetrics
+    .Then(
+        new TorchTrainingStage<AlexNetTorchBatch, Tensor, AlexNetBatchMetrics>(
+            optimizer,
+            forward: (batch, _, _) => ValueTask.FromResult(batch.Run.Model.forward(batch.Inputs)),
+            lossSelector: (batch, output, _, _) => ValueTask.FromResult(batch.Run.Criterion.call(output, batch.Targets)),
+            resultSelector: (batch, output, loss, _, _) =>
             {
-                BatchSize = batch.Source.Size,
-                CorrectPredictions = correct.sum().ToInt32()
-            });
-        }))
+                using var predicted = output.argmax(1);
+                using var correct = predicted.eq(batch.Targets);
+
+                return ValueTask.FromResult(
+                    new AlexNetBatchMetrics
+                    {
+                        BatchSize = batch.Source.Size,
+                        CorrectPredictions = correct.sum().ToInt32()
+                    }
+                );
+            }
+        )
+    )
     .Then(new AlexNetBatchProgressStage())
     .Build();
 ```
