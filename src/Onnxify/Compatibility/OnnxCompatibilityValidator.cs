@@ -4,15 +4,15 @@ namespace Onnxify;
 
 internal static class OnnxCompatibilityValidator
 {
-    private const string MissingOpsetImportCode = "ONNXCOMP001";
-    private const string UnsupportedOperatorCode = "ONNXCOMP002";
-    private const string InputArityMismatchCode = "ONNXCOMP003";
-    private const string OutputArityMismatchCode = "ONNXCOMP004";
-    private const string MissingRequiredAttributeCode = "ONNXCOMP005";
-    private const string UnknownAttributeCode = "ONNXCOMP006";
-    private const string MaximumIrVersionCode = "ONNXCOMP007";
-    private const string UnsupportedRuntimeOperatorCode = "ONNXCOMP008";
-    private const string IncompleteSchemaHistoryCode = "ONNXCOMP009";
+    private const string MISSING_OPSET_IMPORT_CODE = "ONNXCOMP001";
+    private const string UNSUPPORTED_OPERATOR_CODE = "ONNXCOMP002";
+    private const string INPUT_ARITY_MISMATCH_CODE = "ONNXCOMP003";
+    private const string OUTPUT_ARITY_MISMATCH_CODE = "ONNXCOMP004";
+    private const string MISSING_REQUIRED_ATTRIBUTE_CODE = "ONNXCOMP005";
+    private const string UNKNOWN_ATTRIBUTE_CODE = "ONNXCOMP006";
+    private const string MAXIMUM_IR_VERSION_CODE = "ONNXCOMP007";
+    private const string UNSUPPORTED_RUNTIME_OPERATOR_CODE = "ONNXCOMP008";
+    private const string INCOMPLETE_SCHEMA_HISTORY_CODE = "ONNXCOMP009";
 
     public static OnnxCompatibilityValidationResult Validate(
         OnnxModel model,
@@ -40,7 +40,7 @@ internal static class OnnxCompatibilityValidator
         {
             diagnostics.Add(new OnnxCompatibilityDiagnostic
             {
-                Code = MaximumIrVersionCode,
+                Code = MAXIMUM_IR_VERSION_CODE,
                 Severity = OnnxCompatibilityDiagnosticSeverity.Error,
                 Message = $"Model IR version {model.IrVersion} exceeds target runtime maximum {maximumTargetIrVersion}.",
             });
@@ -83,7 +83,7 @@ internal static class OnnxCompatibilityValidator
             {
                 diagnostics.Add(new OnnxCompatibilityDiagnostic
                 {
-                    Code = UnsupportedRuntimeOperatorCode,
+                    Code = UNSUPPORTED_RUNTIME_OPERATOR_CODE,
                     Severity = OnnxCompatibilityDiagnosticSeverity.Error,
                     Message = $"Target runtime profile does not list operator '{FormatOperator(node.Domain, node.OpType)}' as supported.",
                     NodeName = node.Name,
@@ -108,7 +108,7 @@ internal static class OnnxCompatibilityValidator
         {
             diagnostics.Add(new OnnxCompatibilityDiagnostic
             {
-                Code = MissingOpsetImportCode,
+                Code = MISSING_OPSET_IMPORT_CODE,
                 Severity = OnnxCompatibilityDiagnosticSeverity.Error,
                 Message = $"Node '{node.Name}' uses operator '{FormatOperator(node.Domain, node.OpType)}' but the {contextLabel} has no imported opset for domain '{FormatDomain(node.Domain)}'.",
                 NodeName = node.Name,
@@ -125,7 +125,7 @@ internal static class OnnxCompatibilityValidator
             var earliestKnownVersion = resolution.EarliestKnownVersion?.ToString() ?? "?";
             diagnostics.Add(new OnnxCompatibilityDiagnostic
             {
-                Code = UnsupportedOperatorCode,
+                Code = UNSUPPORTED_OPERATOR_CODE,
                 Severity = OnnxCompatibilityDiagnosticSeverity.Error,
                 Message = $"Operator '{FormatOperator(node.Domain, node.OpType)}' is not available in {contextLabel} opset {opset}. Earliest bundled version is {earliestKnownVersion}.",
                 NodeName = node.Name,
@@ -139,7 +139,7 @@ internal static class OnnxCompatibilityValidator
         {
             diagnostics.Add(new OnnxCompatibilityDiagnostic
             {
-                Code = UnsupportedOperatorCode,
+                Code = UNSUPPORTED_OPERATOR_CODE,
                 Severity = OnnxCompatibilityDiagnosticSeverity.Error,
                 Message = $"No bundled schema metadata was found for operator '{FormatOperator(node.Domain, node.OpType)}'.",
                 NodeName = node.Name,
@@ -153,7 +153,7 @@ internal static class OnnxCompatibilityValidator
         {
             diagnostics.Add(new OnnxCompatibilityDiagnostic
             {
-                Code = IncompleteSchemaHistoryCode,
+                Code = INCOMPLETE_SCHEMA_HISTORY_CODE,
                 Severity = OnnxCompatibilityDiagnosticSeverity.Warning,
                 Message = $"Bundled schema history for operator '{FormatOperator(node.Domain, node.OpType)}' in domain '{FormatDomain(node.Domain)}' starts at version {resolution.EarliestKnownVersion}. Compatibility with {contextLabel} opset {opset} could not be verified exactly.",
                 NodeName = node.Name,
@@ -172,7 +172,7 @@ internal static class OnnxCompatibilityValidator
             resolution.Schema.MinimumInputs,
             resolution.Schema.MaximumInputs,
             actualCount: node.Inputs.Count,
-            code: InputArityMismatchCode,
+            code: INPUT_ARITY_MISMATCH_CODE,
             kind: "input",
             diagnostics
         );
@@ -182,7 +182,7 @@ internal static class OnnxCompatibilityValidator
             resolution.Schema.MinimumOutputs,
             resolution.Schema.MaximumOutputs,
             actualCount: node.Outputs.Count,
-            code: OutputArityMismatchCode,
+            code: OUTPUT_ARITY_MISMATCH_CODE,
             kind: "output",
             diagnostics
         );
@@ -198,7 +198,7 @@ internal static class OnnxCompatibilityValidator
 
             diagnostics.Add(new OnnxCompatibilityDiagnostic
             {
-                Code = MissingRequiredAttributeCode,
+                Code = MISSING_REQUIRED_ATTRIBUTE_CODE,
                 Severity = OnnxCompatibilityDiagnosticSeverity.Error,
                 Message = $"Node '{node.Name}' is missing required attribute '{requiredAttribute}' for operator '{FormatOperator(node.Domain, node.OpType)}'.",
                 NodeName = node.Name,
@@ -216,7 +216,7 @@ internal static class OnnxCompatibilityValidator
 
             diagnostics.Add(new OnnxCompatibilityDiagnostic
             {
-                Code = UnknownAttributeCode,
+                Code = UNKNOWN_ATTRIBUTE_CODE,
                 Severity = OnnxCompatibilityDiagnosticSeverity.Error,
                 Message = $"Node '{node.Name}' carries attribute '{attribute}', which is not declared by bundled schema metadata for operator '{FormatOperator(node.Domain, node.OpType)}'.",
                 NodeName = node.Name,

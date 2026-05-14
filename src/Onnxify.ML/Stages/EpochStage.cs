@@ -13,7 +13,7 @@ public sealed class EpochStage<TInput> : BatchPipelineStage<TInput, EpochItem<TI
     public EpochStage(
         int epochs,
         PipelineStageOptions? options = null)
-        : base(options ?? new PipelineStageOptions { Category = PipelineStageCategories.Orchestration })
+        : base(options ?? new PipelineStageOptions { Category = PipelineStageCategories.ORCHESTRATION })
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(epochs);
         Epochs = epochs;

@@ -28,7 +28,7 @@ public sealed class TapStage<TInput> : ItemPipelineStage<TInput, TInput>
     public TapStage(
         Func<TInput, PipelineContext, CancellationToken, ValueTask> action,
         PipelineStageOptions? options = null)
-        : base(options ?? new PipelineStageOptions { Category = PipelineStageCategories.Metrics })
+        : base(options ?? new PipelineStageOptions { Category = PipelineStageCategories.METRICS })
     {
         _action = action ?? throw new ArgumentNullException(nameof(action));
     }

@@ -24,7 +24,7 @@ public sealed class MapStage<TInput, TOutput> : ItemPipelineStage<TInput, TOutpu
     public MapStage(
         Func<TInput, PipelineContext, CancellationToken, ValueTask<TOutput>> transform,
         PipelineStageOptions? options = null)
-        : base(options ?? new PipelineStageOptions { Category = PipelineStageCategories.DataPreparation })
+        : base(options ?? new PipelineStageOptions { Category = PipelineStageCategories.DATA_PREPARATION })
     {
         _transform = transform ?? throw new ArgumentNullException(nameof(transform));
     }

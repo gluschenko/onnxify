@@ -274,18 +274,18 @@ public sealed class TorchModuleExtensionsTests
 
     private static void SetMember(object instance, object value, params string[] candidateNames)
     {
-        const BindingFlags Flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+        const BindingFlags FLAGS = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
         foreach (var name in candidateNames)
         {
-            var property = instance.GetType().GetProperty(name, Flags);
+            var property = instance.GetType().GetProperty(name, FLAGS);
             if (property is not null && property.SetMethod is not null)
             {
                 property.SetValue(instance, value);
                 return;
             }
 
-            var field = instance.GetType().GetField(name, Flags);
+            var field = instance.GetType().GetField(name, FLAGS);
             if (field is not null)
             {
                 field.SetValue(instance, value);

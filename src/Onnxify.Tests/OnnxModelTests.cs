@@ -1,5 +1,7 @@
 ﻿namespace Onnxify.Tests;
 
+using Onnx;
+
 public sealed class OnnxModelTests
 {
     [Fact]
@@ -126,7 +128,7 @@ public sealed class OnnxModelTests
         model.Graph.AddNode(
             name: "add_node",
             opType: "CustomAdd",
-            domain: "",
+            domain: "ai.onnxify.tests",
             docString: "Adds input and weights",
             inputs: [input, weights],
             outputs: [hidden],
@@ -135,7 +137,7 @@ public sealed class OnnxModelTests
         model.Graph.AddNode(
             name: "identity_node",
             opType: "CustomIdentity",
-            domain: "",
+            domain: "ai.onnxify.tests",
             docString: "Forwards hidden to output",
             inputs: [hidden],
             outputs: [output],
@@ -569,7 +571,45 @@ public sealed class OnnxModelTests
     }
 
     [Fact]
-    public void FromFile_LoadsStructurallyLegacyOperatorsAsGenericNodes()
+    public void Save_AllowsCurrentOperatorAtStructuralCompatibilityBoundary()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            Opset = 7,
+        });
+
+        var left = model.Graph.AddInput("left", OnnxTensorType.Create<float>([1]));
+        var right = model.Graph.AddInput("right", OnnxTensorType.Create<float>([1]));
+        var output = model.Graph.AddOutput("sum", OnnxTensorType.Create<float>([1]));
+
+        model.Graph.AddNode(new Add("add", new AddInputOutputOptions
+        {
+            A = left,
+            B = right,
+            C = output,
+        }));
+
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+
+        try
+        {
+            model.Save(path);
+            var loaded = OnnxModel.FromFile(path);
+
+            var loadedNode = Assert.Single(loaded.Graph.Nodes);
+            Assert.IsType<Add>(loadedNode);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public void FromFile_FailFastRejectsStructurallyLegacyOperators()
     {
         var model = OnnxModel.Create(new OnnxModelCreationOptions
         {
@@ -598,12 +638,119 @@ public sealed class OnnxModelTests
         try
         {
             model.Save(path);
+            var exception = Assert.Throws<NotSupportedException>(() => OnnxModel.FromFile(path));
+
+            Assert.Contains("Opset 6", exception.Message);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public void InternalLoad_IgnoreIncompatiblePreservesLegacyOperatorsAsGenericNodesAndAllowsResave()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            Opset = 6,
+        });
+
+        var left = model.Graph.AddInput("left", OnnxTensorType.Create<float>([1]));
+        var right = model.Graph.AddInput("right", OnnxTensorType.Create<float>([1]));
+        var output = model.Graph.AddOutput("sum", OnnxTensorType.Create<float>([1]));
+
+        model.Graph.AddNode(
+            name: "legacy_add",
+            opType: "Add",
+            domain: "",
+            docString: "",
+            inputs: [left, right],
+            outputs: [output],
+            attributes:
+            [
+                new OnnxAttribute<long>("broadcast", 1),
+                new OnnxAttribute<long>("axis", 0),
+            ]);
+
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+        var roundTripPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+
+        try
+        {
+            model.Save(path);
+
+            var proto = ModelProto.Parser.ParseFrom(File.ReadAllBytes(path));
+            var loaded = new OnnxModel(proto, new OnnxModelBaseOptions
+            {
+                DataLocation = Path.GetDirectoryName(path),
+                NodeTypeResolutionStrategy = NodeTypeResolutionStrategy.IgnoreIncompatible,
+            });
+
+            var loadedNode = Assert.Single(loaded.Graph.Nodes);
+            Assert.Equal(typeof(OnnxNode), loadedNode.GetType());
+            Assert.Equal(["axis", "broadcast"], loadedNode.Attributes.Select(x => x.Name).OrderBy(x => x, StringComparer.Ordinal).ToArray());
+
+            loaded.Save(roundTripPath);
+
+            var roundTripProto = ModelProto.Parser.ParseFrom(File.ReadAllBytes(roundTripPath));
+            var reloaded = new OnnxModel(roundTripProto, new OnnxModelBaseOptions
+            {
+                DataLocation = Path.GetDirectoryName(roundTripPath),
+                NodeTypeResolutionStrategy = NodeTypeResolutionStrategy.IgnoreIncompatible,
+            });
+
+            var reloadedNode = Assert.Single(reloaded.Graph.Nodes);
+            Assert.Equal(typeof(OnnxNode), reloadedNode.GetType());
+            Assert.Equal(["axis", "broadcast"], reloadedNode.Attributes.Select(x => x.Name).OrderBy(x => x, StringComparer.Ordinal).ToArray());
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+
+            if (File.Exists(roundTripPath))
+            {
+                File.Delete(roundTripPath);
+            }
+        }
+    }
+
+    [Fact]
+    public void FromFile_LoadsCurrentCompatibleOperatorsAsGeneratedNodes()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            Opset = 7,
+        });
+
+        var left = model.Graph.AddInput("left", OnnxTensorType.Create<float>([1]));
+        var right = model.Graph.AddInput("right", OnnxTensorType.Create<float>([1]));
+        var output = model.Graph.AddOutput("sum", OnnxTensorType.Create<float>([1]));
+
+        model.Graph.AddNode(
+            name: "current_add",
+            opType: "Add",
+            domain: "",
+            docString: "",
+            inputs: [left, right],
+            outputs: [output],
+            attributes: []);
+
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+
+        try
+        {
+            model.Save(path);
             var loaded = OnnxModel.FromFile(path);
 
             var loadedNode = Assert.Single(loaded.Graph.Nodes);
-            Assert.IsType<OnnxNode>(loadedNode);
-            Assert.Equal(typeof(OnnxNode), loadedNode.GetType());
-            Assert.Equal(["axis", "broadcast"], loadedNode.Attributes.Select(x => x.Name).OrderBy(x => x, StringComparer.Ordinal).ToArray());
+            Assert.IsType<Add>(loadedNode);
         }
         finally
         {

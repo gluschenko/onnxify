@@ -19,7 +19,7 @@ public class TorchTensorBatchStage<TSample> : BatchingStage<TSample, TorchMiniBa
         PipelineStageOptions? options = null)
         : base(batchSize, includeIncompleteBatch, options ?? new PipelineStageOptions
         {
-            Category = PipelineStageCategories.Batching,
+            Category = PipelineStageCategories.BATCHING,
             Name = "torch-collate"
         })
     {

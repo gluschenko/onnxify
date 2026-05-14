@@ -20,7 +20,7 @@ public sealed class ForkStage<TInput, TLeft, TRight> : PipelineStage<TInput, For
         : base(options ?? new PipelineStageOptions
         {
             Name = "fork",
-            Category = PipelineStageCategories.Orchestration
+            Category = PipelineStageCategories.ORCHESTRATION
         })
     {
         _left = left ?? throw new ArgumentNullException(nameof(left));

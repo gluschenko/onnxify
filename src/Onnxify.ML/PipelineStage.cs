@@ -26,7 +26,7 @@ public abstract class PipelineStage
             ? GetType().Name
             : options.Name;
         Category = string.IsNullOrWhiteSpace(options.Category)
-            ? PipelineStageCategories.Custom
+            ? PipelineStageCategories.CUSTOM
             : options.Category;
         ProgressWeight = options.ProgressWeight;
     }

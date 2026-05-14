@@ -1,5 +1,6 @@
 extern alias SourceGen;
 
+using System.Reflection;
 using System.Text.Json;
 using SourceGen::Onnxify.SourceGenerator;
 using SourceGen::Onnxify.SourceGenerator.Models;
@@ -187,145 +188,80 @@ public class OnnxNodeGeneratorTests
     }
 
     [Fact]
-    public void CompatibilityMetadataGenerator_ComputesMinimumVersionForCurrentOperatorStructure()
+    public void CompatibilityMetadataGenerator_ComputesStructuralCompatibilityBoundariesFromBundledSchemaHistory()
     {
-        var structuralCompatibility = OnnxCompatibilityMetadataGenerator.GetCurrentStructuralCompatibility(
-        [
-            new OperatorSchema
-            {
-                Name = "Add",
-                Domain = "",
-                SinceVersion = 1,
-                Doc = null,
-                Attributes =
-                [
-                    new OperatorAttribute
-                    {
-                        Name = "broadcast",
-                        Description = null,
-                        Required = false,
-                        Type = (int)AttributeType.Int,
-                        Default = null,
-                    },
-                ],
-                Inputs =
-                [
-                    new OperatorParameter
-                    {
-                        Name = "A",
-                        Description = null,
-                        Option = FormalParameterOption.Single,
-                        MinArity = 1,
-                        Type = "T",
-                        Types = ["tensor(float)"],
-                    },
-                    new OperatorParameter
-                    {
-                        Name = "B",
-                        Description = null,
-                        Option = FormalParameterOption.Single,
-                        MinArity = 1,
-                        Type = "T",
-                        Types = ["tensor(float)"],
-                    },
-                ],
-                Outputs =
-                [
-                    new OperatorParameter
-                    {
-                        Name = "C",
-                        Description = null,
-                        Option = FormalParameterOption.Single,
-                        MinArity = 1,
-                        Type = "T",
-                        Types = ["tensor(float)"],
-                    },
-                ],
-            },
-            new OperatorSchema
-            {
-                Name = "Add",
-                Domain = "",
-                SinceVersion = 7,
-                Doc = null,
-                Attributes = [],
-                Inputs =
-                [
-                    new OperatorParameter
-                    {
-                        Name = "A",
-                        Description = null,
-                        Option = FormalParameterOption.Single,
-                        MinArity = 1,
-                        Type = "T",
-                        Types = ["tensor(float)"],
-                    },
-                    new OperatorParameter
-                    {
-                        Name = "B",
-                        Description = null,
-                        Option = FormalParameterOption.Single,
-                        MinArity = 1,
-                        Type = "TNewer",
-                        Types = ["tensor(int32)"],
-                    },
-                ],
-                Outputs =
-                [
-                    new OperatorParameter
-                    {
-                        Name = "C",
-                        Description = null,
-                        Option = FormalParameterOption.Single,
-                        MinArity = 1,
-                        Type = "TNewer",
-                        Types = ["tensor(int32)"],
-                    },
-                ],
-            },
-            new OperatorSchema
-            {
-                Name = "Add",
-                Domain = "",
-                SinceVersion = 14,
-                Doc = null,
-                Attributes = [],
-                Inputs =
-                [
-                    new OperatorParameter
-                    {
-                        Name = "A",
-                        Description = null,
-                        Option = FormalParameterOption.Single,
-                        MinArity = 1,
-                        Type = "TLatest",
-                        Types = ["tensor(double)"],
-                    },
-                    new OperatorParameter
-                    {
-                        Name = "B",
-                        Description = null,
-                        Option = FormalParameterOption.Single,
-                        MinArity = 1,
-                        Type = "TLatest",
-                        Types = ["tensor(double)"],
-                    },
-                ],
-                Outputs =
-                [
-                    new OperatorParameter
-                    {
-                        Name = "C",
-                        Description = null,
-                        Option = FormalParameterOption.Single,
-                        MinArity = 1,
-                        Type = "TLatest",
-                        Types = ["tensor(double)"],
-                    },
-                ],
-            },
-        ]);
+        var assetPath = Path.Combine(AppContext.BaseDirectory, "Assets", "onnx_operators.json");
+        Assert.True(File.Exists(assetPath), $"Expected schema asset at '{assetPath}'.");
+
+        var root = JsonSerializer.Deserialize<OperatorSchemaRoot>(File.ReadAllText(assetPath))
+            ?? throw new InvalidOperationException("Failed to load bundled operator schema.");
+
+        var structuralCompatibility = OnnxCompatibilityMetadataGenerator.GetCurrentStructuralCompatibility(root.Operators);
 
         Assert.Equal(7, structuralCompatibility[("", "Add")]);
+        Assert.Equal(4, structuralCompatibility[("", "Concat")]);
+        Assert.Equal(18, structuralCompatibility[("", "Split")]);
+        Assert.Equal(23, structuralCompatibility[("", "QuantizeLinear")]);
+    }
+
+    [Fact]
+    public void CompatibilityMetadataGenerator_ToGeneratedSchema_DerivesInputAndOutputAritySeparately()
+    {
+        var schema = new OperatorSchema
+        {
+            Name = "ArityCheck",
+            Domain = "",
+            SinceVersion = 1,
+            Doc = null,
+            Attributes = [],
+            Inputs =
+            [
+                new OperatorParameter
+                {
+                    Name = "X",
+                    Description = null,
+                    Option = FormalParameterOption.Single,
+                    MinArity = 1,
+                    Type = "T",
+                    Types = ["tensor(float)"],
+                },
+                new OperatorParameter
+                {
+                    Name = "Y",
+                    Description = null,
+                    Option = FormalParameterOption.Optional,
+                    MinArity = 0,
+                    Type = "T",
+                    Types = ["tensor(float)"],
+                },
+            ],
+            Outputs =
+            [
+                new OperatorParameter
+                {
+                    Name = "Z",
+                    Description = null,
+                    Option = FormalParameterOption.Single,
+                    MinArity = 1,
+                    Type = "T",
+                    Types = ["tensor(float)"],
+                },
+            ],
+        };
+
+        var toGeneratedSchema = typeof(OnnxCompatibilityMetadataGenerator).GetMethod(
+            "ToGeneratedSchema",
+            BindingFlags.NonPublic | BindingFlags.Static);
+        Assert.NotNull(toGeneratedSchema);
+
+        var generatedSchema = toGeneratedSchema!.Invoke(null, [schema]);
+        Assert.NotNull(generatedSchema);
+
+        var generatedSchemaType = generatedSchema!.GetType();
+
+        Assert.Equal(1, generatedSchemaType.GetProperty("MinimumInputs")!.GetValue(generatedSchema));
+        Assert.Equal(2, generatedSchemaType.GetProperty("MaximumInputs")!.GetValue(generatedSchema));
+        Assert.Equal(1, generatedSchemaType.GetProperty("MinimumOutputs")!.GetValue(generatedSchema));
+        Assert.Equal(1, generatedSchemaType.GetProperty("MaximumOutputs")!.GetValue(generatedSchema));
     }
 }

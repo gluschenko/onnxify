@@ -14,7 +14,7 @@ public abstract class BatchingStage<TInput, TBatch> : PipelineStage<TInput, TBat
         int batchSize,
         bool includeIncompleteBatch = true,
         PipelineStageOptions? options = null)
-        : base(options ?? new PipelineStageOptions { Category = PipelineStageCategories.Batching })
+        : base(options ?? new PipelineStageOptions { Category = PipelineStageCategories.BATCHING })
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(batchSize);
 

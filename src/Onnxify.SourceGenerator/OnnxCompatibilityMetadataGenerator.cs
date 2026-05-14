@@ -235,7 +235,7 @@ public sealed class OnnxCompatibilityMetadataGenerator : IIncrementalGenerator
             Name = schema.Name,
             SinceVersion = schema.SinceVersion,
             MinimumInputs = CountMinimumParameters(schema.Inputs),
-            MaximumInputs = CountMaximumParameters(schema.Outputs),
+            MaximumInputs = CountMaximumParameters(schema.Inputs),
             MinimumOutputs = CountMinimumParameters(schema.Outputs),
             MaximumOutputs = CountMaximumParameters(schema.Outputs),
             KnownAttributes = schema.Attributes

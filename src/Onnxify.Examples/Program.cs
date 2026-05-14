@@ -258,7 +258,7 @@ internal class MiniGpt2LikeSample : Sample
 
 internal class LSTMSample : Sample
 {
-    private const string DatasetPath = @"D:\Backups\ML\language-detector\dataset\export_lstm_46\languages";
+    private const string DATASET_PATH = @"D:\Backups\ML\language-detector\dataset\export_lstm_46\languages";
 
     public override string Name => "lstm";
     public override string Description => "Language LSTM training and export";
@@ -274,7 +274,7 @@ internal class LSTMSample : Sample
         var torchModelPath = Path.Combine(outputDirectory, "lang-lstm.pt");
 
         var pipeline = new LanguageLstmTrainingPipeline(
-            DatasetPath,
+            DATASET_PATH,
             maxSequenceLength: 32,
             trainSamplesPerLanguage: 1000000,
             validationSamplesPerLanguage: 64

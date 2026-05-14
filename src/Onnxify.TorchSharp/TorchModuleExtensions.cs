@@ -2894,18 +2894,18 @@ public static class TorchModuleExtensions
 
     private static bool TryGetMemberValue(object instance, string name, out object value)
     {
-        const BindingFlags Flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+        const BindingFlags FLAGS = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
         var type = instance.GetType();
 
-        var prop = type.GetProperty(name, Flags);
+        var prop = type.GetProperty(name, FLAGS);
         if (prop is not null)
         {
             value = prop.GetValue(instance)!;
             return true;
         }
 
-        var field = type.GetField(name, Flags);
+        var field = type.GetField(name, FLAGS);
         if (field is not null)
         {
             value = field.GetValue(instance)!;

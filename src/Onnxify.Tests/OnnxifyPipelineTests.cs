@@ -24,7 +24,7 @@ public sealed class OnnxifyPipelineTests
                 new PipelineStageOptions
                 {
                     Name = "scale",
-                    Category = PipelineStageCategories.DataPreparation,
+                    Category = PipelineStageCategories.DATA_PREPARATION,
                     ProgressWeight = 1
                 })
             .Then(new FilterStage<int>(
@@ -32,7 +32,7 @@ public sealed class OnnxifyPipelineTests
                 new PipelineStageOptions
                 {
                     Name = "keep-even",
-                    Category = PipelineStageCategories.DataPreparation,
+                    Category = PipelineStageCategories.DATA_PREPARATION,
                     ProgressWeight = 1
                 })
             )
@@ -45,7 +45,7 @@ public sealed class OnnxifyPipelineTests
                 new PipelineStageOptions
                 {
                     Name = "tap",
-                    Category = PipelineStageCategories.Metrics,
+                    Category = PipelineStageCategories.METRICS,
                     ProgressWeight = 1
                 })
             )
@@ -54,7 +54,7 @@ public sealed class OnnxifyPipelineTests
                 options: new PipelineStageOptions
                 {
                     Name = "mini-batch",
-                    Category = PipelineStageCategories.Batching,
+                    Category = PipelineStageCategories.BATCHING,
                     ProgressWeight = 3
                 })
             )
@@ -63,7 +63,7 @@ public sealed class OnnxifyPipelineTests
                 new PipelineStageOptions
                 {
                     Name = "materialize",
-                    Category = PipelineStageCategories.PostProcessing,
+                    Category = PipelineStageCategories.POST_PROCESSING,
                     ProgressWeight = 1
                 })
             );
@@ -288,7 +288,7 @@ public sealed class OnnxifyPipelineTests
                 options: new PipelineStageOptions
                 {
                     Name = "token-budget",
-                    Category = PipelineStageCategories.Batching
+                    Category = PipelineStageCategories.BATCHING
                 })
         {
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(tokenBudget);

@@ -66,7 +66,7 @@ public sealed class OnnxModelGeneratorTests
             Assert.Contains("Shape: <c>[1, sequence_length, 128]</c>", generatedSource);
             Assert.Contains("Denotation: <c>class_scores</c>", generatedSource);
             Assert.Contains("NamedOnnxValue.CreateFromTensor(\"input_ids\"", generatedSource);
-            Assert.Contains("ModelProjectRelativePath = @\"Models\\sample-classifier.onnx\"", generatedSource);
+            Assert.Contains("MODEL_PROJECT_RELATIVE_PATH = @\"Models\\sample-classifier.onnx\"", generatedSource);
             Assert.Contains("public static IReadOnlyList<Onnxify.OnnxValue> Inputs { get; } = CreateInputs();", generatedSource);
             Assert.Contains("public static IReadOnlyList<Onnxify.OnnxValue> Outputs { get; } = CreateOutputs();", generatedSource);
             Assert.Contains("<c>input_ids</c>: <c>Tensor&lt;long&gt;</c>, shape <c>[1, sequence_length]</c>, denotation <c>token_ids</c>", generatedSource);
@@ -426,7 +426,7 @@ public sealed class OnnxModelGeneratorTests
 
         var modelSource = generatedSources
             .Select(static x => x.SourceText.ToString())
-            .First(static x => x.Contains("ModelProjectRelativePath", StringComparison.Ordinal));
+            .First(static x => x.Contains("MODEL_PROJECT_RELATIVE_PATH", StringComparison.Ordinal));
 
         return modelSource;
     }

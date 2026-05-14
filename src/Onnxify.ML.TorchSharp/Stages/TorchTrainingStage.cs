@@ -31,7 +31,7 @@ public sealed class TorchTrainingStage<TBatch, TModelOutput, TResult>
         PipelineStageOptions? options = null)
         : base(options ?? new PipelineStageOptions
         {
-            Category = PipelineStageCategories.Optimization,
+            Category = PipelineStageCategories.OPTIMIZATION,
             Name = "torch-train-step"
         })
     {

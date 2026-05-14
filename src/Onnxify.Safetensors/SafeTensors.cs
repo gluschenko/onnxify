@@ -16,8 +16,8 @@ namespace Onnxify.Safetensors;
 /// </remarks>
 public sealed class SafeTensors
 {
-    private const int MaxHeaderSize = 100_000_000;
-    private const int LengthPrefixSize = sizeof(ulong);
+    private const int MAX_HEADER_SIZE = 100_000_000;
+    private const int LENGTH_PREFIX_SIZE = sizeof(ulong);
     private static readonly UTF8Encoding _strictUtf8 = new(false, true);
 
     private readonly Metadata _metadata;
@@ -49,13 +49,13 @@ public sealed class SafeTensors
     /// </remarks>
     public static MetadataReadResult ReadMetadata(ReadOnlyMemory<byte> buffer)
     {
-        if (buffer.Length < LengthPrefixSize)
+        if (buffer.Length < LENGTH_PREFIX_SIZE)
         {
             throw SafeTensorException.HeaderTooSmall();
         }
 
-        var headerLengthRaw = BinaryPrimitives.ReadUInt64LittleEndian(buffer.Span[..LengthPrefixSize]);
-        if (headerLengthRaw > MaxHeaderSize)
+        var headerLengthRaw = BinaryPrimitives.ReadUInt64LittleEndian(buffer.Span[..LENGTH_PREFIX_SIZE]);
+        if (headerLengthRaw > MAX_HEADER_SIZE)
         {
             throw SafeTensorException.HeaderTooLarge();
         }
@@ -73,7 +73,7 @@ public sealed class SafeTensors
         int stop;
         try
         {
-            stop = checked(headerLength + LengthPrefixSize);
+            stop = checked(headerLength + LENGTH_PREFIX_SIZE);
         }
         catch (OverflowException)
         {
@@ -85,7 +85,7 @@ public sealed class SafeTensors
             throw SafeTensorException.InvalidHeaderLength();
         }
 
-        var headerBytes = buffer.Span.Slice(LengthPrefixSize, headerLength);
+        var headerBytes = buffer.Span.Slice(LENGTH_PREFIX_SIZE, headerLength);
 
         string headerText;
         try
@@ -128,7 +128,7 @@ public sealed class SafeTensors
             }
 
             var bufferEnd = metadata.DataLength();
-            if (bufferEnd + (ulong)LengthPrefixSize + (ulong)headerLength != (ulong)buffer.Length)
+            if (bufferEnd + (ulong)LENGTH_PREFIX_SIZE + (ulong)headerLength != (ulong)buffer.Length)
             {
                 throw SafeTensorException.MetadataIncompleteBuffer();
             }
@@ -149,7 +149,7 @@ public sealed class SafeTensors
     public static SafeTensors Deserialize(ReadOnlyMemory<byte> buffer)
     {
         var readResult = ReadMetadata(buffer);
-        var data = buffer.Slice(LengthPrefixSize + readResult.HeaderLength);
+        var data = buffer.Slice(LENGTH_PREFIX_SIZE + readResult.HeaderLength);
         return new SafeTensors(readResult.Metadata, data);
     }
 
@@ -171,7 +171,7 @@ public sealed class SafeTensors
         ArgumentNullException.ThrowIfNull(data);
 
         var prepared = Prepare(data, metadata);
-        if (prepared.HeaderBytes.Length > MaxHeaderSize)
+        if (prepared.HeaderBytes.Length > MAX_HEADER_SIZE)
         {
             throw SafeTensorException.HeaderTooLarge();
         }
@@ -182,12 +182,12 @@ public sealed class SafeTensors
             totalTensorBytes = checked(totalTensorBytes + (ulong)tensor.Value.Data.Length);
         }
 
-        var totalLength = checked(LengthPrefixSize + prepared.HeaderBytes.Length + CheckedInt(totalTensorBytes));
+        var totalLength = checked(LENGTH_PREFIX_SIZE + prepared.HeaderBytes.Length + CheckedInt(totalTensorBytes));
         var buffer = new byte[totalLength];
-        BinaryPrimitives.WriteUInt64LittleEndian(buffer.AsSpan(0, LengthPrefixSize), (ulong)prepared.HeaderBytes.Length);
-        prepared.HeaderBytes.CopyTo(buffer.AsSpan(LengthPrefixSize));
+        BinaryPrimitives.WriteUInt64LittleEndian(buffer.AsSpan(0, LENGTH_PREFIX_SIZE), (ulong)prepared.HeaderBytes.Length);
+        prepared.HeaderBytes.CopyTo(buffer.AsSpan(LENGTH_PREFIX_SIZE));
 
-        var offset = LengthPrefixSize + prepared.HeaderBytes.Length;
+        var offset = LENGTH_PREFIX_SIZE + prepared.HeaderBytes.Length;
         foreach (var tensor in prepared.Tensors)
         {
             tensor.Value.Data.Span.CopyTo(buffer.AsSpan(offset));
@@ -217,7 +217,7 @@ public sealed class SafeTensors
         ArgumentNullException.ThrowIfNull(path);
 
         var prepared = Prepare(data, metadata);
-        if (prepared.HeaderBytes.Length > MaxHeaderSize)
+        if (prepared.HeaderBytes.Length > MAX_HEADER_SIZE)
         {
             throw SafeTensorException.HeaderTooLarge();
         }
@@ -225,7 +225,7 @@ public sealed class SafeTensors
         try
         {
             using var file = File.Create(path);
-            Span<byte> headerLength = stackalloc byte[LengthPrefixSize];
+            Span<byte> headerLength = stackalloc byte[LENGTH_PREFIX_SIZE];
             BinaryPrimitives.WriteUInt64LittleEndian(headerLength, (ulong)prepared.HeaderBytes.Length);
             file.Write(headerLength);
             file.Write(prepared.HeaderBytes);
@@ -569,8 +569,8 @@ public sealed class SafeTensors
     /// </remarks>
     private static int AlignToEightBytes(int value)
     {
-        var remainder = value % LengthPrefixSize;
-        return remainder == 0 ? value : checked(value + (LengthPrefixSize - remainder));
+        var remainder = value % LENGTH_PREFIX_SIZE;
+        return remainder == 0 ? value : checked(value + (LENGTH_PREFIX_SIZE - remainder));
     }
 
     /// <summary>
@@ -669,20 +669,20 @@ public sealed class SafeTensors
 
     private static string FormatPreview<T>(IReadOnlyList<T> values, Func<T, string> formatter)
     {
-        const int PreviewEdgeCount = 3;
+        const int PREVIEW_EDGE_COUNT = 3;
 
         if (values.Count == 0)
         {
             return "[]";
         }
 
-        if (values.Count <= PreviewEdgeCount * 2)
+        if (values.Count <= PREVIEW_EDGE_COUNT * 2)
         {
             return $"[{string.Join(", ", values.Select(formatter))}]";
         }
 
-        var head = values.Take(PreviewEdgeCount).Select(formatter);
-        var tail = values.Skip(values.Count - PreviewEdgeCount).Select(formatter);
+        var head = values.Take(PREVIEW_EDGE_COUNT).Select(formatter);
+        var tail = values.Skip(values.Count - PREVIEW_EDGE_COUNT).Select(formatter);
         return $"[{string.Join(", ", head)}, ... {string.Join(", ", tail)}]";
     }
 
