@@ -1,7 +1,7 @@
 # TorchSharp operator coverage
 
 Found: 83.73% (417/498)
-Coverage: 37.35% (186/498)
+Coverage: 53.61% (267/498)
 
 | ONNXScript operator | TorchSharp module | Found | Coverage |
 | --- | --- | --- | --- |
@@ -19,7 +19,7 @@ Coverage: 37.35% (186/498)
 | _operator::lt | TorchSharp.torch+Tensor.lt | &#10003; | &#10003; |
 | _operator::mod |  |  |  |
 | _operator::mul | TorchSharp.torch+Tensor.mul | &#10003; | &#10003; |
-| _operator::ne | TorchSharp.torch+Tensor.ne | &#10003; |  |
+| _operator::ne | TorchSharp.torch+Tensor.ne | &#10003; | &#10003; |
 | _operator::neg | TorchSharp.torch+Tensor.neg | &#10003; | &#10003; |
 | _operator::or_ |  |  |  |
 | _operator::pow | TorchSharp.torch+Tensor.pow | &#10003; |  |
@@ -54,8 +54,8 @@ Coverage: 37.35% (186/498)
 | aten::_upsample_bicubic2d_aa |  |  |  |
 | aten::_upsample_bilinear2d_aa |  |  |  |
 | aten::abs | TorchSharp.torch+Tensor.abs | &#10003; | &#10003; |
-| aten::acos | TorchSharp.torch+Tensor.acos | &#10003; |  |
-| aten::acosh | TorchSharp.torch+Tensor.acosh | &#10003; |  |
+| aten::acos | TorchSharp.torch+Tensor.acos | &#10003; | &#10003; |
+| aten::acosh | TorchSharp.torch+Tensor.acosh | &#10003; | &#10003; |
 | aten::add.Scalar | TorchSharp.torch+Tensor.add | &#10003; | &#10003; |
 | aten::add.Tensor | TorchSharp.torch+Tensor.add | &#10003; | &#10003; |
 | aten::addbmm | TorchSharp.torch+Tensor.addbmm | &#10003; |  |
@@ -64,28 +64,28 @@ Coverage: 37.35% (186/498)
 | aten::addmm | TorchSharp.torch+Tensor.addmm | &#10003; |  |
 | aten::addmv | TorchSharp.torch+Tensor.addmv | &#10003; |  |
 | aten::addr | TorchSharp.torch+Tensor.addr | &#10003; |  |
-| aten::alias | TorchSharp.torch+Tensor.alias | &#10003; |  |
-| aten::all | TorchSharp.torch+Tensor.all | &#10003; |  |
-| aten::all.dim | TorchSharp.torch+Tensor.all | &#10003; |  |
-| aten::all.dims | TorchSharp.torch+Tensor.all | &#10003; |  |
+| aten::alias | TorchSharp.torch+Tensor.alias | &#10003; | &#10003; |
+| aten::all | TorchSharp.torch+Tensor.all | &#10003; | &#10003; |
+| aten::all.dim | TorchSharp.torch+Tensor.all | &#10003; | &#10003; |
+| aten::all.dims | TorchSharp.torch+Tensor.all | &#10003; | &#10003; |
 | aten::allclose | TorchSharp.torch+Tensor.allclose | &#10003; |  |
 | aten::amax | TorchSharp.torch+Tensor.amax | &#10003; | &#10003; |
 | aten::amin | TorchSharp.torch+Tensor.amin | &#10003; |  |
 | aten::angle | TorchSharp.torch+Tensor.angle | &#10003; |  |
-| aten::any | TorchSharp.torch+Tensor.any | &#10003; |  |
-| aten::any.dim | TorchSharp.torch+Tensor.any | &#10003; |  |
-| aten::any.dims | TorchSharp.torch+Tensor.any | &#10003; |  |
+| aten::any | TorchSharp.torch+Tensor.any | &#10003; | &#10003; |
+| aten::any.dim | TorchSharp.torch+Tensor.any | &#10003; | &#10003; |
+| aten::any.dims | TorchSharp.torch+Tensor.any | &#10003; | &#10003; |
 | aten::arange | TorchSharp.torch.arange | &#10003; |  |
 | aten::arange.start | TorchSharp.torch.arange | &#10003; |  |
 | aten::arange.start_step | TorchSharp.torch.arange | &#10003; |  |
 | aten::argmax | TorchSharp.torch+Tensor.argmax | &#10003; | &#10003; |
 | aten::argmin | TorchSharp.torch+Tensor.argmin | &#10003; | &#10003; |
 | aten::as_strided | TorchSharp.torch+Tensor.as_strided | &#10003; |  |
-| aten::asin | TorchSharp.torch+Tensor.asin | &#10003; |  |
-| aten::asinh | TorchSharp.torch+Tensor.asinh | &#10003; |  |
-| aten::atan | TorchSharp.torch+Tensor.atan | &#10003; |  |
+| aten::asin | TorchSharp.torch+Tensor.asin | &#10003; | &#10003; |
+| aten::asinh | TorchSharp.torch+Tensor.asinh | &#10003; | &#10003; |
+| aten::atan | TorchSharp.torch+Tensor.atan | &#10003; | &#10003; |
 | aten::atan2 | TorchSharp.torch+Tensor.atan2 | &#10003; |  |
-| aten::atanh | TorchSharp.torch+Tensor.atanh | &#10003; |  |
+| aten::atanh | TorchSharp.torch+Tensor.atanh | &#10003; | &#10003; |
 | aten::atleast_1d | TorchSharp.torch+Tensor.atleast_1d | &#10003; |  |
 | aten::atleast_1d.Sequence | TorchSharp.torch+Tensor.atleast_1d | &#10003; |  |
 | aten::atleast_2d | TorchSharp.torch+Tensor.atleast_2d | &#10003; |  |
@@ -117,38 +117,38 @@ Coverage: 37.35% (186/498)
 | aten::bitwise_xor.Tensor | TorchSharp.torch+Tensor.bitwise_xor | &#10003; |  |
 | aten::blackman_window | TorchSharp.torch.blackman_window | &#10003; |  |
 | aten::bmm | TorchSharp.torch+Tensor.bmm | &#10003; | &#10003; |
-| aten::broadcast_to | TorchSharp.torch+Tensor.broadcast_to | &#10003; |  |
+| aten::broadcast_to | TorchSharp.torch+Tensor.broadcast_to | &#10003; | &#10003; |
 | aten::cat | TorchSharp.torch+distributions+constraints.cat | &#10003; | &#10003; |
 | aten::ceil | TorchSharp.torch+Tensor.ceil | &#10003; | &#10003; |
 | aten::celu | TorchSharp.Modules.CELU | &#10003; | &#10003; |
 | aten::chunk | TorchSharp.torch+Tensor.chunk | &#10003; | &#10003; |
-| aten::clamp | TorchSharp.torch+Tensor.clamp | &#10003; |  |
-| aten::clamp.Tensor | TorchSharp.torch+Tensor.clamp | &#10003; |  |
-| aten::clamp_max | TorchSharp.torch+Tensor.clamp_max | &#10003; |  |
-| aten::clamp_max.Tensor | TorchSharp.torch+Tensor.clamp_max | &#10003; |  |
-| aten::clamp_min | TorchSharp.torch+Tensor.clamp_min | &#10003; |  |
-| aten::clamp_min.Tensor | TorchSharp.torch+Tensor.clamp_min | &#10003; |  |
-| aten::clone | TorchSharp.torch+Tensor.clone | &#10003; |  |
+| aten::clamp | TorchSharp.torch+Tensor.clamp | &#10003; | &#10003; |
+| aten::clamp.Tensor | TorchSharp.torch+Tensor.clamp | &#10003; | &#10003; |
+| aten::clamp_max | TorchSharp.torch+Tensor.clamp_max | &#10003; | &#10003; |
+| aten::clamp_max.Tensor | TorchSharp.torch+Tensor.clamp_max | &#10003; | &#10003; |
+| aten::clamp_min | TorchSharp.torch+Tensor.clamp_min | &#10003; | &#10003; |
+| aten::clamp_min.Tensor | TorchSharp.torch+Tensor.clamp_min | &#10003; | &#10003; |
+| aten::clone | TorchSharp.torch+Tensor.clone | &#10003; | &#10003; |
 | aten::col2im |  |  |  |
 | aten::complex | TorchSharp.torch.complex | &#10003; |  |
 | aten::concat | TorchSharp.torch.concat | &#10003; | &#10003; |
 | aten::concatenate | TorchSharp.torch.concatenate | &#10003; | &#10003; |
 | aten::conj | TorchSharp.torch+Tensor.conj | &#10003; |  |
 | aten::constant_pad_nd |  |  |  |
-| aten::contiguous | TorchSharp.torch+Tensor.contiguous | &#10003; |  |
+| aten::contiguous | TorchSharp.torch+Tensor.contiguous | &#10003; | &#10003; |
 | aten::conv1d | TorchSharp.Modules.Conv1d | &#10003; | &#10003; |
 | aten::conv2d | TorchSharp.Modules.Conv2d | &#10003; | &#10003; |
 | aten::conv3d | TorchSharp.Modules.Conv3d | &#10003; | &#10003; |
 | aten::convolution | TorchSharp.Modules.Convolution | &#10003; | &#10003; |
 | aten::copy | TorchSharp.torch+Storage`1.copy_ | &#10003; |  |
 | aten::cos | TorchSharp.torch+Tensor.cos | &#10003; | &#10003; |
-| aten::cosh | TorchSharp.torch+Tensor.cosh | &#10003; |  |
+| aten::cosh | TorchSharp.torch+Tensor.cosh | &#10003; | &#10003; |
 | aten::cross | TorchSharp.torch+Tensor.cross | &#10003; |  |
 | aten::cross_entropy_loss | TorchSharp.Modules.CrossEntropyLoss | &#10003; |  |
-| aten::cumsum | TorchSharp.torch+Tensor.cumsum | &#10003; |  |
-| aten::deg2rad | TorchSharp.torch+Tensor.deg2rad | &#10003; |  |
+| aten::cumsum | TorchSharp.torch+Tensor.cumsum | &#10003; | &#10003; |
+| aten::deg2rad | TorchSharp.torch+Tensor.deg2rad | &#10003; | &#10003; |
 | aten::det | TorchSharp.torch+Tensor.det | &#10003; |  |
-| aten::detach | TorchSharp.torch+Tensor.detach | &#10003; |  |
+| aten::detach | TorchSharp.torch+Tensor.detach | &#10003; | &#10003; |
 | aten::diagonal | TorchSharp.torch+Tensor.diagonal | &#10003; |  |
 | aten::diagonal_copy |  |  |  |
 | aten::div.Scalar | TorchSharp.torch+Tensor.div | &#10003; | &#10003; |
@@ -172,13 +172,13 @@ Coverage: 37.35% (186/498)
 | aten::eq.Scalar | TorchSharp.torch+Tensor.eq | &#10003; | &#10003; |
 | aten::eq.Tensor | TorchSharp.torch+Tensor.eq | &#10003; | &#10003; |
 | aten::equal | TorchSharp.torch+Tensor.equal | &#10003; |  |
-| aten::erf | TorchSharp.torch+Tensor.erf | &#10003; |  |
-| aten::erfc | TorchSharp.torch+Tensor.erfc | &#10003; |  |
+| aten::erf | TorchSharp.torch+Tensor.erf | &#10003; | &#10003; |
+| aten::erfc | TorchSharp.torch+Tensor.erfc | &#10003; | &#10003; |
 | aten::exp | TorchSharp.torch+Tensor.exp | &#10003; | &#10003; |
-| aten::exp2 | TorchSharp.torch+Tensor.exp2 | &#10003; |  |
+| aten::exp2 | TorchSharp.torch+Tensor.exp2 | &#10003; | &#10003; |
 | aten::expand | TorchSharp.torch+Tensor.expand | &#10003; | &#10003; |
 | aten::expand_as | TorchSharp.torch+Tensor.expand_as | &#10003; | &#10003; |
-| aten::expm1 | TorchSharp.torch+Tensor.expm1 | &#10003; |  |
+| aten::expm1 | TorchSharp.torch+Tensor.expm1 | &#10003; | &#10003; |
 | aten::fake_quantize_per_channel_affine | TorchSharp.torch.fake_quantize_per_channel_affine | &#10003; |  |
 | aten::fake_quantize_per_tensor_affine | TorchSharp.torch.fake_quantize_per_tensor_affine | &#10003; |  |
 | aten::fake_quantize_per_tensor_affine.tensor_qparams | TorchSharp.torch.fake_quantize_per_tensor_affine | &#10003; |  |
@@ -188,9 +188,9 @@ Coverage: 37.35% (186/498)
 | aten::flip | TorchSharp.torch+Tensor.flip | &#10003; |  |
 | aten::floor | TorchSharp.torch+Tensor.floor | &#10003; | &#10003; |
 | aten::floor_divide | TorchSharp.torch+Tensor.floor_divide | &#10003; |  |
-| aten::fmod.Scalar | TorchSharp.torch+Tensor.fmod | &#10003; |  |
-| aten::fmod.Tensor | TorchSharp.torch+Tensor.fmod | &#10003; |  |
-| aten::frac | TorchSharp.torch+Tensor.frac | &#10003; |  |
+| aten::fmod.Scalar | TorchSharp.torch+Tensor.fmod | &#10003; | &#10003; |
+| aten::fmod.Tensor | TorchSharp.torch+Tensor.fmod | &#10003; | &#10003; |
+| aten::frac | TorchSharp.torch+Tensor.frac | &#10003; | &#10003; |
 | aten::full | TorchSharp.torch+Tensor.full | &#10003; |  |
 | aten::full_like | TorchSharp.torch+Tensor.full_like | &#10003; |  |
 | aten::gather | TorchSharp.torch+Tensor.gather | &#10003; | &#10003; |
@@ -218,7 +218,7 @@ Coverage: 37.35% (186/498)
 | aten::im2col |  |  |  |
 | aten::index.Tensor | TorchSharp.torch+Tensor.index | &#10003; |  |
 | aten::index_put | TorchSharp.torch+Tensor.index_put_ | &#10003; |  |
-| aten::index_select | TorchSharp.torch+Tensor.index_select | &#10003; |  |
+| aten::index_select | TorchSharp.torch+Tensor.index_select | &#10003; | &#10003; |
 | aten::instance_norm | TorchSharp.Modules.InstanceNorm | &#10003; | &#10003; |
 | aten::is_nonzero | TorchSharp.torch+Tensor.is_nonzero | &#10003; |  |
 | aten::isclose | TorchSharp.torch+Tensor.isclose | &#10003; |  |
@@ -242,9 +242,9 @@ Coverage: 37.35% (186/498)
 | aten::linear | TorchSharp.Modules.Linear | &#10003; | &#10003; |
 | aten::linspace | TorchSharp.torch.linspace | &#10003; |  |
 | aten::log | TorchSharp.torch+Tensor.log | &#10003; | &#10003; |
-| aten::log10 | TorchSharp.torch+Tensor.log10 | &#10003; |  |
-| aten::log1p | TorchSharp.torch+Tensor.log1p | &#10003; |  |
-| aten::log2 | TorchSharp.torch+Tensor.log2 | &#10003; |  |
+| aten::log10 | TorchSharp.torch+Tensor.log10 | &#10003; | &#10003; |
+| aten::log1p | TorchSharp.torch+Tensor.log1p | &#10003; | &#10003; |
+| aten::log2 | TorchSharp.torch+Tensor.log2 | &#10003; | &#10003; |
 | aten::log_sigmoid | TorchSharp.Modules.LogSigmoid | &#10003; | &#10003; |
 | aten::log_softmax.int | TorchSharp.Modules.LogSoftmax | &#10003; | &#10003; |
 | aten::logaddexp | TorchSharp.torch+Tensor.logaddexp | &#10003; |  |
@@ -288,14 +288,14 @@ Coverage: 37.35% (186/498)
 | aten::multinomial | TorchSharp.torch+Tensor.multinomial | &#10003; |  |
 | aten::multiply.Tensor | TorchSharp.torch+Tensor.multiply | &#10003; | &#10003; |
 | aten::mv | TorchSharp.torch+Tensor.mv | &#10003; |  |
-| aten::narrow | TorchSharp.torch+Tensor.narrow | &#10003; |  |
+| aten::narrow | TorchSharp.torch+Tensor.narrow | &#10003; | &#10003; |
 | aten::native_batch_norm |  |  | &#10003; |
 | aten::native_dropout |  |  | &#10003; |
 | aten::native_group_norm |  |  | &#10003; |
 | aten::native_layer_norm |  |  | &#10003; |
-| aten::ne | TorchSharp.torch+Tensor.ne | &#10003; |  |
-| aten::ne.Scalar | TorchSharp.torch+Tensor.ne | &#10003; |  |
-| aten::ne.Tensor | TorchSharp.torch+Tensor.ne | &#10003; |  |
+| aten::ne | TorchSharp.torch+Tensor.ne | &#10003; | &#10003; |
+| aten::ne.Scalar | TorchSharp.torch+Tensor.ne | &#10003; | &#10003; |
+| aten::ne.Tensor | TorchSharp.torch+Tensor.ne | &#10003; | &#10003; |
 | aten::neg | TorchSharp.torch+Tensor.neg | &#10003; | &#10003; |
 | aten::new_empty | TorchSharp.torch+Tensor.new_empty | &#10003; |  |
 | aten::new_empty_strided |  |  |  |
@@ -304,7 +304,7 @@ Coverage: 37.35% (186/498)
 | aten::new_zeros | TorchSharp.torch+Tensor.new_zeros | &#10003; |  |
 | aten::nll_loss | TorchSharp.Modules.NLLLoss | &#10003; |  |
 | aten::nll_loss_forward |  |  |  |
-| aten::nonzero | TorchSharp.torch+Tensor.nonzero | &#10003; |  |
+| aten::nonzero | TorchSharp.torch+Tensor.nonzero | &#10003; | &#10003; |
 | aten::normal.Tensor_Tensor | TorchSharp.torch+Tensor.normal_ | &#10003; |  |
 | aten::normal.Tensor_float | TorchSharp.torch+Tensor.normal_ | &#10003; |  |
 | aten::normal.float_Tensor | TorchSharp.torch+Tensor.normal_ | &#10003; |  |
@@ -323,7 +323,7 @@ Coverage: 37.35% (186/498)
 | aten::prelu | TorchSharp.Modules.PReLU | &#10003; | &#10003; |
 | aten::prod | TorchSharp.torch+Tensor.prod | &#10003; | &#10003; |
 | aten::prod.dim_int | TorchSharp.torch+Tensor.prod | &#10003; | &#10003; |
-| aten::rad2deg | TorchSharp.torch+Tensor.rad2deg | &#10003; |  |
+| aten::rad2deg | TorchSharp.torch+Tensor.rad2deg | &#10003; | &#10003; |
 | aten::rand | TorchSharp.torch.rand | &#10003; |  |
 | aten::rand_like | TorchSharp.torch+Tensor.rand_like | &#10003; |  |
 | aten::randint | TorchSharp.torch.randint | &#10003; |  |
@@ -338,9 +338,9 @@ Coverage: 37.35% (186/498)
 | aten::reflection_pad3d | TorchSharp.Modules.ReflectionPad3d | &#10003; | &#10003; |
 | aten::relu | TorchSharp.Modules.ReLU | &#10003; | &#10003; |
 | aten::relu6 | TorchSharp.Modules.ReLU6 | &#10003; | &#10003; |
-| aten::remainder.Scalar | TorchSharp.torch+Tensor.remainder | &#10003; |  |
-| aten::remainder.Scalar_Tensor | TorchSharp.torch+Tensor.remainder | &#10003; |  |
-| aten::remainder.Tensor | TorchSharp.torch+Tensor.remainder | &#10003; |  |
+| aten::remainder.Scalar | TorchSharp.torch+Tensor.remainder | &#10003; | &#10003; |
+| aten::remainder.Scalar_Tensor | TorchSharp.torch+Tensor.remainder | &#10003; | &#10003; |
+| aten::remainder.Tensor | TorchSharp.torch+Tensor.remainder | &#10003; | &#10003; |
 | aten::repeat | TorchSharp.torch+Tensor.repeat | &#10003; | &#10003; |
 | aten::repeat_interleave.Tensor | TorchSharp.torch+Tensor.repeat_interleave | &#10003; |  |
 | aten::repeat_interleave.self_int | TorchSharp.torch+Tensor.repeat_interleave | &#10003; |  |
@@ -349,7 +349,7 @@ Coverage: 37.35% (186/498)
 | aten::replication_pad3d | TorchSharp.Modules.ReplicationPad3d | &#10003; | &#10003; |
 | aten::reshape | TorchSharp.torch+Tensor.reshape | &#10003; | &#10003; |
 | aten::resolve_conj | TorchSharp.torch+Tensor.resolve_conj | &#10003; |  |
-| aten::resolve_neg | TorchSharp.torch+Tensor.resolve_neg | &#10003; |  |
+| aten::resolve_neg | TorchSharp.torch+Tensor.resolve_neg | &#10003; | &#10003; |
 | aten::roll | TorchSharp.torch+Tensor.roll | &#10003; |  |
 | aten::round | TorchSharp.torch+Tensor.round | &#10003; | &#10003; |
 | aten::round.decimals | TorchSharp.torch+Tensor.round | &#10003; |  |
@@ -365,20 +365,20 @@ Coverage: 37.35% (186/498)
 | aten::selu | TorchSharp.Modules.SELU | &#10003; | &#10003; |
 | aten::sigmoid | TorchSharp.Modules.Sigmoid | &#10003; | &#10003; |
 | aten::sign | TorchSharp.torch+Tensor.sign | &#10003; | &#10003; |
-| aten::signbit | TorchSharp.torch+Tensor.signbit | &#10003; |  |
+| aten::signbit | TorchSharp.torch+Tensor.signbit | &#10003; | &#10003; |
 | aten::silu | TorchSharp.Modules.SiLU | &#10003; | &#10003; |
 | aten::sin | TorchSharp.torch+Tensor.sin | &#10003; | &#10003; |
 | aten::sinc | TorchSharp.torch+Tensor.sinc | &#10003; |  |
-| aten::sinh | TorchSharp.torch+Tensor.sinh | &#10003; |  |
+| aten::sinh | TorchSharp.torch+Tensor.sinh | &#10003; | &#10003; |
 | aten::slice.Tensor | TorchSharp.torch+Size.Slice | &#10003; | &#10003; |
 | aten::slice_scatter | TorchSharp.torch+Tensor.slice_scatter | &#10003; |  |
 | aten::softmax.int | TorchSharp.Modules.Softmax | &#10003; | &#10003; |
 | aten::softplus | TorchSharp.Modules.Softplus | &#10003; | &#10003; |
 | aten::sort | TorchSharp.torch+Tensor.sort | &#10003; | &#10003; |
-| aten::special_erf | TorchSharp.torch+Tensor.erf | &#10003; |  |
-| aten::special_erfc | TorchSharp.torch+Tensor.erfc | &#10003; |  |
+| aten::special_erf | TorchSharp.torch+Tensor.erf | &#10003; | &#10003; |
+| aten::special_erfc | TorchSharp.torch+Tensor.erfc | &#10003; | &#10003; |
 | aten::special_erfcx | TorchSharp.torch+special.erfcx | &#10003; |  |
-| aten::special_expm1 | TorchSharp.torch+Tensor.expm1 | &#10003; |  |
+| aten::special_expm1 | TorchSharp.torch+Tensor.expm1 | &#10003; | &#10003; |
 | aten::special_log_softmax | TorchSharp.Modules.LogSoftmax | &#10003; | &#10003; |
 | aten::special_sinc | TorchSharp.torch+Tensor.sinc | &#10003; |  |
 | aten::special_softmax |  |  | &#10003; |
@@ -404,7 +404,7 @@ Coverage: 37.35% (186/498)
 | aten::tensor.bool | TorchSharp.torch+TensorIndex.Tensor | &#10003; |  |
 | aten::tensor.float | TorchSharp.torch+TensorIndex.Tensor | &#10003; |  |
 | aten::tensor.int | TorchSharp.torch+TensorIndex.Tensor | &#10003; |  |
-| aten::tile | TorchSharp.torch+Tensor.tile | &#10003; |  |
+| aten::tile | TorchSharp.torch+Tensor.tile | &#10003; | &#10003; |
 | aten::topk | TorchSharp.torch+Tensor.topk | &#10003; | &#10003; |
 | aten::transpose.int | TorchSharp.torch+Tensor.transpose | &#10003; | &#10003; |
 | aten::tril | TorchSharp.torch+Tensor.tril | &#10003; | &#10003; |
@@ -412,7 +412,7 @@ Coverage: 37.35% (186/498)
 | aten::true_divide.Scalar | TorchSharp.torch+Tensor.true_divide | &#10003; | &#10003; |
 | aten::true_divide.Tensor | TorchSharp.torch+Tensor.true_divide | &#10003; | &#10003; |
 | aten::trunc | TorchSharp.torch+Tensor.trunc | &#10003; | &#10003; |
-| aten::type_as | TorchSharp.torch+Tensor.type_as | &#10003; |  |
+| aten::type_as | TorchSharp.torch+Tensor.type_as | &#10003; | &#10003; |
 | aten::unbind.int | TorchSharp.torch+Tensor.unbind | &#10003; |  |
 | aten::unflatten.int | TorchSharp.Modules.Unflatten | &#10003; | &#10003; |
 | aten::unfold | TorchSharp.Modules.Unfold | &#10003; |  |
@@ -434,7 +434,7 @@ Coverage: 37.35% (186/498)
 | aten::upsample_trilinear3d |  |  | &#10003; |
 | aten::upsample_trilinear3d.vec |  |  | &#10003; |
 | aten::view | TorchSharp.torch+Tensor.view | &#10003; | &#10003; |
-| aten::view_as | TorchSharp.torch+Tensor.view_as | &#10003; |  |
+| aten::view_as | TorchSharp.torch+Tensor.view_as | &#10003; | &#10003; |
 | aten::view_as_complex | TorchSharp.torch+Tensor.view_as_complex | &#10003; |  |
 | aten::view_as_complex_copy |  |  |  |
 | aten::view_as_real | TorchSharp.torch+Tensor.view_as_real | &#10003; |  |
@@ -453,47 +453,47 @@ Coverage: 37.35% (186/498)
 | math::floor | TorchSharp.torch+Tensor.floor | &#10003; | &#10003; |
 | math::trunc | TorchSharp.torch+Tensor.trunc | &#10003; | &#10003; |
 | prims::abs | TorchSharp.torch+Tensor.abs | &#10003; | &#10003; |
-| prims::acos | TorchSharp.torch+Tensor.acos | &#10003; |  |
-| prims::acosh | TorchSharp.torch+Tensor.acosh | &#10003; |  |
+| prims::acos | TorchSharp.torch+Tensor.acos | &#10003; | &#10003; |
+| prims::acosh | TorchSharp.torch+Tensor.acosh | &#10003; | &#10003; |
 | prims::add | TorchSharp.torch+Tensor.add | &#10003; | &#10003; |
-| prims::asin | TorchSharp.torch+Tensor.asin | &#10003; |  |
-| prims::asinh | TorchSharp.torch+Tensor.asinh | &#10003; |  |
-| prims::atan | TorchSharp.torch+Tensor.atan | &#10003; |  |
-| prims::atanh | TorchSharp.torch+Tensor.atanh | &#10003; |  |
+| prims::asin | TorchSharp.torch+Tensor.asin | &#10003; | &#10003; |
+| prims::asinh | TorchSharp.torch+Tensor.asinh | &#10003; | &#10003; |
+| prims::atan | TorchSharp.torch+Tensor.atan | &#10003; | &#10003; |
+| prims::atanh | TorchSharp.torch+Tensor.atanh | &#10003; | &#10003; |
 | prims::broadcast_in_dim |  |  |  |
-| prims::ceil | TorchSharp.torch+Tensor.ceil | &#10003; |  |
+| prims::ceil | TorchSharp.torch+Tensor.ceil | &#10003; | &#10003; |
 | prims::convert_element_type |  |  |  |
 | prims::cos | TorchSharp.torch+Tensor.cos | &#10003; |  |
-| prims::cosh | TorchSharp.torch+Tensor.cosh | &#10003; |  |
+| prims::cosh | TorchSharp.torch+Tensor.cosh | &#10003; | &#10003; |
 | prims::device_put |  |  |  |
 | prims::div | TorchSharp.torch+Tensor.div | &#10003; | &#10003; |
 | prims::eq | TorchSharp.torch+Tensor.eq | &#10003; | &#10003; |
-| prims::erf | TorchSharp.torch+Tensor.erf | &#10003; |  |
+| prims::erf | TorchSharp.torch+Tensor.erf | &#10003; | &#10003; |
 | prims::exp | TorchSharp.torch+Tensor.exp | &#10003; | &#10003; |
-| prims::floor | TorchSharp.torch+Tensor.floor | &#10003; |  |
+| prims::floor | TorchSharp.torch+Tensor.floor | &#10003; | &#10003; |
 | prims::ge | TorchSharp.torch+Tensor.ge | &#10003; |  |
 | prims::gt | TorchSharp.torch+Tensor.gt | &#10003; |  |
 | prims::le | TorchSharp.torch+Tensor.le | &#10003; |  |
-| prims::log | TorchSharp.torch+Tensor.log | &#10003; |  |
+| prims::log | TorchSharp.torch+Tensor.log | &#10003; | &#10003; |
 | prims::lt | TorchSharp.torch+Tensor.lt | &#10003; |  |
-| prims::mul | TorchSharp.torch+Tensor.mul | &#10003; |  |
-| prims::ne | TorchSharp.torch+Tensor.ne | &#10003; |  |
+| prims::mul | TorchSharp.torch+Tensor.mul | &#10003; | &#10003; |
+| prims::ne | TorchSharp.torch+Tensor.ne | &#10003; | &#10003; |
 | prims::neg | TorchSharp.torch+Tensor.neg | &#10003; |  |
-| prims::pow | TorchSharp.torch+Tensor.pow | &#10003; |  |
-| prims::reshape | TorchSharp.torch+Tensor.reshape | &#10003; |  |
+| prims::pow | TorchSharp.torch+Tensor.pow | &#10003; | &#10003; |
+| prims::reshape | TorchSharp.torch+Tensor.reshape | &#10003; | &#10003; |
 | prims::resize |  |  |  |
-| prims::round | TorchSharp.torch+Tensor.round | &#10003; |  |
-| prims::sin | TorchSharp.torch+Tensor.sin | &#10003; |  |
-| prims::sinh | TorchSharp.torch+Tensor.sinh | &#10003; |  |
-| prims::sqrt | TorchSharp.torch+Tensor.sqrt | &#10003; |  |
-| prims::squeeze | TorchSharp.torch+Tensor.squeeze | &#10003; |  |
-| prims::sub | TorchSharp.torch+Tensor.sub | &#10003; |  |
-| prims::sum | TorchSharp.torch+Tensor.sum | &#10003; |  |
-| prims::tan | TorchSharp.torch+Tensor.tan | &#10003; |  |
+| prims::round | TorchSharp.torch+Tensor.round | &#10003; | &#10003; |
+| prims::sin | TorchSharp.torch+Tensor.sin | &#10003; | &#10003; |
+| prims::sinh | TorchSharp.torch+Tensor.sinh | &#10003; | &#10003; |
+| prims::sqrt | TorchSharp.torch+Tensor.sqrt | &#10003; | &#10003; |
+| prims::squeeze | TorchSharp.torch+Tensor.squeeze | &#10003; | &#10003; |
+| prims::sub | TorchSharp.torch+Tensor.sub | &#10003; | &#10003; |
+| prims::sum | TorchSharp.torch+Tensor.sum | &#10003; | &#10003; |
+| prims::tan | TorchSharp.torch+Tensor.tan | &#10003; | &#10003; |
 | prims::tanh | TorchSharp.Modules.Tanh | &#10003; |  |
-| prims::transpose | TorchSharp.torch+Tensor.transpose | &#10003; |  |
+| prims::transpose | TorchSharp.torch+Tensor.transpose | &#10003; | &#10003; |
 | prims::var | TorchSharp.torch+Tensor.var | &#10003; |  |
-| prims::where | TorchSharp.torch+Tensor.where | &#10003; |  |
+| prims::where | TorchSharp.torch+Tensor.where | &#10003; | &#10003; |
 | quantized_decomposed::dequantize_per_tensor |  |  |  |
 | quantized_decomposed::dequantize_per_tensor.tensor |  |  |  |
 | quantized_decomposed::dequantize_per_tensor.tensor2 |  |  |  |
