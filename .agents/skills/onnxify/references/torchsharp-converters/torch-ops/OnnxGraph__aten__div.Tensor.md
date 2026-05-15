@@ -8,7 +8,7 @@ Do not hand-edit this file; rerun the generator instead.
 - Source: src/Onnxify.TorchSharp/TorchTensorOperatorExtensions.cs
 - Receiver: OnnxGraph
 - Return type: IOnnxGraphEdge
-- Torch ops: aten::div.Tensor, aten::divide.Tensor, aten::true_divide.Tensor
+- Torch ops: aten::div.Tensor, aten::divide.Tensor, aten::true_divide.Tensor, prims::div
 
 ## Parameters
 
