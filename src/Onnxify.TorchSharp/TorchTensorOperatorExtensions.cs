@@ -1730,14 +1730,14 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(other);
 
-        return ExportBinaryNode(
-            graph,
-            "remainder",
-            "Mod",
-            input,
-            other,
-            [new OnnxAttribute<long>("fmod", 0)]
-        );
+        if (IsFloatingPointTensorType(input))
+        {
+            var quotient = graph.ExportDiv(input, other);
+            var floored = graph.ExportFloor(quotient);
+            return graph.ExportSub(input, graph.ExportMul(floored, other));
+        }
+
+        return ExportBinaryNode(graph, "remainder", "Mod", input, other, [new OnnxAttribute<long>("fmod", 0)]);
     }
 
     [TorchOp("aten::remainder.Scalar")]
@@ -2169,7 +2169,10 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(graph);
         ArgumentNullException.ThrowIfNull(input);
 
-        return graph.ExportSub(input, graph.ExportFloor(input));
+        var absolute = graph.ExportAbs(input);
+        var floored = graph.ExportFloor(absolute);
+        var fractional = graph.ExportSub(absolute, floored);
+        return graph.ExportMul(fractional, graph.ExportSign(input));
     }
 
     [TorchOp("aten::log10")]
@@ -2196,14 +2199,10 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(other);
 
-        return graph.CastLike(
-            name: graph.NextName("type_as"),
-            options: new CastLikeInputOptions
-            {
-                Input = input,
-                TargetType = other,
-            }
-        );
+        var otherType = GetTensorDataType(other)
+            ?? throw new NotSupportedException("type_as export requires the target tensor element type to be known.");
+
+        return ExportCastTo(graph, "type_as", input, GetOnnxTensorDataType(otherType));
     }
 
     [TorchOp("aten::pow.Tensor_Scalar")]
@@ -2370,19 +2369,7 @@ public static class TorchTensorOperatorExtensions
     )
     {
         var truth = graph.ExportNotEqual(input, AddScalarLike(graph, input, $"{prefix}_truth", 0d));
-        var castTarget = graph.AddTensor<long>(
-            name: $"{prefix}_{graph.Initializers.Count}_cast_target",
-            shape: [],
-            value: [0L]
-        );
-        var truthInt = graph.CastLike(
-            name: graph.NextName($"{prefix}_cast"),
-            options: new CastLikeInputOptions
-            {
-                Input = truth,
-                TargetType = castTarget,
-            }
-        );
+        var truthInt = ExportCastTo(graph, $"{prefix}_cast", truth, 7L);
 
         var reduced = useMin
             ? graph.ReduceMin(
@@ -2411,6 +2398,93 @@ public static class TorchTensorOperatorExtensions
         );
 
         return graph.ExportGreater(reduced, zero);
+    }
+
+    private static bool IsFloatingPointTensorType(IOnnxGraphEdge edge)
+    {
+        var dataType = GetTensorDataType(edge);
+        return dataType == typeof(float) || dataType == typeof(double) || dataType == typeof(Half);
+    }
+
+    private static IOnnxGraphEdge ExportCastTo(
+        OnnxGraph graph,
+        string prefix,
+        IOnnxGraphEdge input,
+        long to
+    )
+    {
+        return ExportUnaryNode(
+            graph,
+            prefix,
+            "Cast",
+            input,
+            [new OnnxAttribute<long>("to", to)]
+        );
+    }
+
+    private static long GetOnnxTensorDataType(Type type)
+    {
+        if (type == typeof(float))
+        {
+            return 1L;
+        }
+
+        if (type == typeof(double))
+        {
+            return 11L;
+        }
+
+        if (type == typeof(long))
+        {
+            return 7L;
+        }
+
+        if (type == typeof(int))
+        {
+            return 6L;
+        }
+
+        if (type == typeof(short))
+        {
+            return 5L;
+        }
+
+        if (type == typeof(byte))
+        {
+            return 2L;
+        }
+
+        if (type == typeof(sbyte))
+        {
+            return 3L;
+        }
+
+        if (type == typeof(uint))
+        {
+            return 12L;
+        }
+
+        if (type == typeof(ulong))
+        {
+            return 13L;
+        }
+
+        if (type == typeof(ushort))
+        {
+            return 4L;
+        }
+
+        if (type == typeof(bool))
+        {
+            return 9L;
+        }
+
+        if (type == typeof(Half))
+        {
+            return 10L;
+        }
+
+        throw new NotSupportedException($"ONNX cast export does not support tensor element type '{type.Name}'.");
     }
 
     private static IOnnxGraphEdge ScaleIfNeeded(

@@ -1,4 +1,6 @@
 using System.Reflection;
+using Microsoft.ML.OnnxRuntime;
+using Microsoft.ML.OnnxRuntime.Tensors;
 using Onnxify.TorchSharp;
 
 namespace Onnxify.Tests;
@@ -435,13 +437,19 @@ public sealed class TorchTensorOperatorExtensionsTests
         graph.ExportRemainder(7d, other);
 
         Assert.Equal(
-            ["Max", "Min", "Max", "Min", "Max", "Min", "Mod", "Mod", "Mod", "Mod", "Mod"],
+            [
+                "Max", "Min", "Max", "Min", "Max", "Min",
+                "Mod", "Mod",
+                "Div", "Floor", "Mul", "Sub",
+                "Div", "Floor", "Mul", "Sub",
+                "Div", "Floor", "Mul", "Sub",
+            ],
             graph.Nodes.Select(x => x.OpType).ToArray()
         );
 
         var modNodes = graph.Nodes.Where(x => x.OpType == "Mod").ToArray();
-        Assert.Equal(5, modNodes.Length);
-        Assert.Equal([1L, 1L, 0L, 0L, 0L], modNodes
+        Assert.Equal(2, modNodes.Length);
+        Assert.Equal([1L, 1L], modNodes
             .Select(node => Assert.IsType<long>(node.Attributes.Single(x => x.Name == "fmod").GetValue()))
             .ToArray());
     }
@@ -465,7 +473,7 @@ public sealed class TorchTensorOperatorExtensionsTests
         graph.ExportTypeAs(input, otherType);
 
         Assert.Equal(
-            ["Identity", "Identity", "Identity", "Identity", "Identity", "Expand", "Tile", "Shape", "Reshape", "CastLike"],
+            ["Identity", "Identity", "Identity", "Identity", "Identity", "Expand", "Tile", "Shape", "Reshape", "Cast"],
             graph.Nodes.Select(x => x.OpType).ToArray()
         );
     }
@@ -486,7 +494,7 @@ public sealed class TorchTensorOperatorExtensionsTests
         graph.ExportLog10(input);
 
         Assert.Equal(
-            ["Equal", "Not", "Equal", "Not", "Mul", "Mul", "Mul", "Exp", "Floor", "Sub", "Log", "Div"],
+            ["Equal", "Not", "Equal", "Not", "Mul", "Mul", "Mul", "Exp", "Abs", "Floor", "Sub", "Sign", "Mul", "Log", "Div"],
             graph.Nodes.Select(x => x.OpType).ToArray()
         );
     }
@@ -506,15 +514,201 @@ public sealed class TorchTensorOperatorExtensionsTests
 
         Assert.Equal(
             [
-                "Equal", "Not", "CastLike", "ReduceMin", "Greater",
-                "Equal", "Not", "CastLike", "ReduceMin", "Greater",
-                "Equal", "Not", "CastLike", "ReduceMin", "Greater",
-                "Equal", "Not", "CastLike", "ReduceMax", "Greater",
-                "Equal", "Not", "CastLike", "ReduceMax", "Greater",
-                "Equal", "Not", "CastLike", "ReduceMax", "Greater",
+                "Equal", "Not", "Cast", "ReduceMin", "Greater",
+                "Equal", "Not", "Cast", "ReduceMin", "Greater",
+                "Equal", "Not", "Cast", "ReduceMin", "Greater",
+                "Equal", "Not", "Cast", "ReduceMax", "Greater",
+                "Equal", "Not", "Cast", "ReduceMax", "Greater",
+                "Equal", "Not", "Cast", "ReduceMax", "Greater",
             ],
             graph.Nodes.Select(x => x.OpType).ToArray()
         );
+    }
+
+    [Fact]
+    public void Smoke_RuntimeExecutesCompositeFloatOperators()
+    {
+        var model = CreateRuntimeModel();
+        var unit = model.Graph.AddInput("unit", OnnxTensorType.Create<float>([2L]));
+        var positive = model.Graph.AddInput("positive", OnnxTensorType.Create<float>([2L]));
+        var acosh = model.Graph.AddInput("acosh", OnnxTensorType.Create<float>([2L]));
+        var frac = model.Graph.AddInput("frac", OnnxTensorType.Create<float>([2L]));
+        var degrees = model.Graph.AddInput("degrees", OnnxTensorType.Create<float>([2L]));
+        var radians = model.Graph.AddInput("radians", OnnxTensorType.Create<float>([2L]));
+
+        var acos = model.Graph.ExportAcos(unit);
+        var asin = model.Graph.ExportAsin(unit);
+        var atan = model.Graph.ExportAtan(unit);
+        var atanh = model.Graph.ExportAtanh(unit);
+        var cosh = model.Graph.ExportCosh(unit);
+        var sinh = model.Graph.ExportSinh(unit);
+        var erf = model.Graph.ExportErf(unit);
+        var erfc = model.Graph.ExportErfc(unit);
+        var expm1 = model.Graph.ExportExpm1(unit);
+        var log1p = model.Graph.ExportLog1P(unit);
+        var log2 = model.Graph.ExportLog2(positive);
+        var log10 = model.Graph.ExportLog10(positive);
+        var exp2 = model.Graph.ExportExp2(unit);
+        var acoshOutput = model.Graph.ExportAcosh(acosh);
+        var fracOutput = model.Graph.ExportFrac(frac);
+        var deg2rad = model.Graph.ExportDeg2Rad(degrees);
+        var rad2deg = model.Graph.ExportRad2Deg(radians);
+
+        AddFloatOutput(model, "acos", acos, 2);
+        AddFloatOutput(model, "asin", asin, 2);
+        AddFloatOutput(model, "atan", atan, 2);
+        AddFloatOutput(model, "atanh", atanh, 2);
+        AddFloatOutput(model, "cosh", cosh, 2);
+        AddFloatOutput(model, "sinh", sinh, 2);
+        AddFloatOutput(model, "erf", erf, 2);
+        AddFloatOutput(model, "erfc", erfc, 2);
+        AddFloatOutput(model, "expm1", expm1, 2);
+        AddFloatOutput(model, "log1p", log1p, 2);
+        AddFloatOutput(model, "log2", log2, 2);
+        AddFloatOutput(model, "log10", log10, 2);
+        AddFloatOutput(model, "exp2", exp2, 2);
+        AddFloatOutput(model, "acosh_out", acoshOutput, 2);
+        AddFloatOutput(model, "frac_out", fracOutput, 2);
+        AddFloatOutput(model, "deg2rad", deg2rad, 2);
+        AddFloatOutput(model, "rad2deg", rad2deg, 2);
+
+        var outputs = RunModel<float>(
+            model,
+            new NamedOnnxValue[]
+            {
+                NamedOnnxValue.CreateFromTensor("unit", new DenseTensor<float>(new[] { -0.5f, 0.5f }, new[] { 2 })),
+                NamedOnnxValue.CreateFromTensor("positive", new DenseTensor<float>(new[] { 0.25f, 10f }, new[] { 2 })),
+                NamedOnnxValue.CreateFromTensor("acosh", new DenseTensor<float>(new[] { 1f, 2f }, new[] { 2 })),
+                NamedOnnxValue.CreateFromTensor("frac", new DenseTensor<float>(new[] { -1.75f, 2.25f }, new[] { 2 })),
+                NamedOnnxValue.CreateFromTensor("degrees", new DenseTensor<float>(new[] { 180f, 90f }, new[] { 2 })),
+                NamedOnnxValue.CreateFromTensor("radians", new DenseTensor<float>(new[] { (float)Math.PI, (float)(Math.PI / 2d) }, new[] { 2 })),
+            });
+
+        AssertTensorValues(outputs["acos"], [MathF.Acos(-0.5f), MathF.Acos(0.5f)]);
+        AssertTensorValues(outputs["asin"], [MathF.Asin(-0.5f), MathF.Asin(0.5f)]);
+        AssertTensorValues(outputs["atan"], [MathF.Atan(-0.5f), MathF.Atan(0.5f)]);
+        AssertTensorValues(outputs["atanh"], [MathF.Atanh(-0.5f), MathF.Atanh(0.5f)]);
+        AssertTensorValues(outputs["cosh"], [MathF.Cosh(-0.5f), MathF.Cosh(0.5f)]);
+        AssertTensorValues(outputs["sinh"], [MathF.Sinh(-0.5f), MathF.Sinh(0.5f)]);
+        AssertTensorValues(outputs["erf"], [-0.5204999f, 0.5204999f]);
+        AssertTensorValues(outputs["erfc"], [1.5204999f, 0.4795001f]);
+        AssertTensorValues(outputs["expm1"], [MathF.Exp(-0.5f) - 1f, MathF.Exp(0.5f) - 1f]);
+        AssertTensorValues(outputs["log1p"], [MathF.Log(0.5f), MathF.Log(1.5f)]);
+        AssertTensorValues(outputs["log2"], [MathF.Log2(0.25f), MathF.Log2(10f)]);
+        AssertTensorValues(outputs["log10"], [MathF.Log10(0.25f), MathF.Log10(10f)]);
+        AssertTensorValues(outputs["exp2"], [MathF.Pow(2f, -0.5f), MathF.Pow(2f, 0.5f)]);
+        AssertTensorValues(outputs["acosh_out"], [0f, MathF.Acosh(2f)]);
+        AssertTensorValues(outputs["frac_out"], [-0.75f, 0.25f]);
+        AssertTensorValues(outputs["deg2rad"], [MathF.PI, MathF.PI / 2f]);
+        AssertTensorValues(outputs["rad2deg"], [180f, 90f]);
+    }
+
+    [Fact]
+    public void Smoke_RuntimeExecutesIndexClampAndTileOperators()
+    {
+        var model = CreateRuntimeModel();
+        var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([4L]));
+        var index = model.Graph.AddInput("index", OnnxTensorType.Create<long>([2L]));
+        var scalar = model.Graph.AddInput("scalar", OnnxTensorType.Create<float>([1L]));
+        var broadcastInput = model.Graph.AddInput("broadcast_input", OnnxTensorType.Create<float>([1L, 2L]));
+        var viewSource = model.Graph.AddInput("view_source", OnnxTensorType.Create<float>([4L]));
+        var viewTarget = model.Graph.AddInput("view_target", OnnxTensorType.Create<float>([2L, 2L]));
+
+        var identity = model.Graph.ExportIdentity(input);
+        var indexSelect = model.Graph.ExportIndexSelect(input, dim: 0, index);
+        var narrow = model.Graph.ExportNarrow(input, dim: 0, start: 1, length: 2);
+        var cumsum = model.Graph.ExportCumSum(input, dim: 0);
+        var clamp = model.Graph.ExportClamp(input, min: 2d, max: 3.5d);
+        var fmod = model.Graph.ExportFMod(input, 2.5d);
+        var remainder = model.Graph.ExportRemainder(input, 2d);
+        var tile = model.Graph.ExportRepeat(scalar, 4L);
+        var broadcast = model.Graph.ExportExpand(broadcastInput, 3L, 2L);
+        var viewAs = model.Graph.ExportViewAs(viewSource, viewTarget);
+
+        AddFloatOutput(model, "identity", identity, 4);
+        AddFloatOutput(model, "index_select", indexSelect, 2);
+        AddFloatOutput(model, "narrow", narrow, 2);
+        AddFloatOutput(model, "cumsum", cumsum, 4);
+        AddFloatOutput(model, "clamp", clamp, 4);
+        AddFloatOutput(model, "fmod", fmod, 4);
+        AddFloatOutput(model, "remainder", remainder, 4);
+        AddFloatOutput(model, "tile", tile, 4);
+        AddFloatOutput(model, "broadcast", broadcast, 3, 2);
+        AddFloatOutput(model, "view_as", viewAs, 2, 2);
+
+        var outputs = RunModel<float>(
+            model,
+            new NamedOnnxValue[]
+            {
+                NamedOnnxValue.CreateFromTensor("input", new DenseTensor<float>(new[] { 1f, 2f, 3f, 4f }, new[] { 4 })),
+                NamedOnnxValue.CreateFromTensor("index", new DenseTensor<long>(new long[] { 3L, 1L }, new[] { 2 })),
+                NamedOnnxValue.CreateFromTensor("scalar", new DenseTensor<float>(new[] { 2f }, new[] { 1 })),
+                NamedOnnxValue.CreateFromTensor("broadcast_input", new DenseTensor<float>(new[] { 5f, 6f }, new[] { 1, 2 })),
+                NamedOnnxValue.CreateFromTensor("view_source", new DenseTensor<float>(new[] { 9f, 8f, 7f, 6f }, new[] { 4 })),
+                NamedOnnxValue.CreateFromTensor("view_target", new DenseTensor<float>(new[] { 0f, 0f, 0f, 0f }, new[] { 2, 2 })),
+            });
+
+        AssertTensorValues(outputs["identity"], [1f, 2f, 3f, 4f]);
+        AssertTensorValues(outputs["index_select"], [4f, 2f]);
+        AssertTensorValues(outputs["narrow"], [2f, 3f]);
+        AssertTensorValues(outputs["cumsum"], [1f, 3f, 6f, 10f]);
+        AssertTensorValues(outputs["clamp"], [2f, 2f, 3f, 3.5f]);
+        AssertTensorValues(outputs["fmod"], [1f, 2f, 0.5f, 1.5f]);
+        AssertTensorValues(outputs["remainder"], [1f, 0f, 1f, 0f]);
+        AssertTensorValues(outputs["tile"], [2f, 2f, 2f, 2f]);
+        AssertTensorValues(outputs["broadcast"], [5f, 6f, 5f, 6f, 5f, 6f], 3, 2);
+        AssertTensorValues(outputs["view_as"], [9f, 8f, 7f, 6f], 2, 2);
+    }
+
+    [Fact]
+    public void Smoke_RuntimeExecutesBooleanAndCastingOperators()
+    {
+        var boolModel = CreateRuntimeModel();
+        var lhs = boolModel.Graph.AddInput("lhs", OnnxTensorType.Create<float>([2L, 2L]));
+        var rhs = boolModel.Graph.AddInput("rhs", OnnxTensorType.Create<float>([2L, 2L]));
+
+        var ne = boolModel.Graph.ExportNotEqual(lhs, rhs);
+        var signbit = boolModel.Graph.ExportSignBit(lhs);
+        var all = boolModel.Graph.ExportAll(lhs, new long[] { 1L }, keepdim: false);
+        var any = boolModel.Graph.ExportAny(lhs, new long[] { 1L }, keepdim: false);
+
+        AddBoolOutput(boolModel, "ne", ne, 2, 2);
+        AddBoolOutput(boolModel, "signbit", signbit, 2, 2);
+        AddBoolOutput(boolModel, "all", all, 2);
+        AddBoolOutput(boolModel, "any", any, 2);
+
+        var boolOutputs = RunModel<bool>(
+            boolModel,
+            new NamedOnnxValue[]
+            {
+                NamedOnnxValue.CreateFromTensor("lhs", new DenseTensor<float>(new[] { -1f, 0f, 2f, 3f }, new[] { 2, 2 })),
+                NamedOnnxValue.CreateFromTensor("rhs", new DenseTensor<float>(new[] { -1f, 5f, 2f, -3f }, new[] { 2, 2 })),
+            });
+
+        AssertTensorValues(boolOutputs["ne"], [false, true, false, true], 2, 2);
+        AssertTensorValues(boolOutputs["signbit"], [true, false, false, false], 2, 2);
+        AssertTensorValues(boolOutputs["all"], [false, true]);
+        AssertTensorValues(boolOutputs["any"], [true, true]);
+
+        var castModel = CreateRuntimeModel();
+        var castInput = castModel.Graph.AddInput("input", OnnxTensorType.Create<float>([3L]));
+        var castOther = castModel.Graph.AddInput("other", OnnxTensorType.Create<long>([3L]));
+        var casted = castModel.Graph.ExportTypeAs(castInput, castOther);
+        var nonzero = castModel.Graph.ExportNonZero(castInput);
+
+        AddLongOutput(castModel, "type_as", casted, 3);
+        AddLongOutput(castModel, "nonzero", nonzero, 1, 2);
+
+        var longOutputs = RunModel<long>(
+            castModel,
+            new NamedOnnxValue[]
+            {
+                NamedOnnxValue.CreateFromTensor("input", new DenseTensor<float>(new[] { 0f, 2f, -3f }, new[] { 3 })),
+                NamedOnnxValue.CreateFromTensor("other", new DenseTensor<long>(new long[] { 1L, 1L, 1L }, new[] { 3 })),
+            });
+
+        AssertTensorValues(longOutputs["type_as"], [0L, 2L, -3L]);
+        AssertTensorValues(longOutputs["nonzero"], [1L, 2L], 1, 2);
     }
 
     [Fact]
@@ -744,12 +938,133 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("prims::where", coveredOperators);
     }
 
-    private static OnnxGraph CreateGraph()
+    private static OnnxModel CreateModel()
     {
         return OnnxModel.Create(new OnnxModelCreationOptions
         {
             Opset = 21,
             ProducerName = "torch-tensor-tests",
-        }).Graph;
+        });
+    }
+
+    private static OnnxModel CreateRuntimeModel()
+    {
+        return OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            Opset = 23,
+            ProducerName = "torch-tensor-runtime-tests",
+        });
+    }
+
+    private static OnnxGraph CreateGraph()
+    {
+        return CreateModel().Graph;
+    }
+
+    private static void AddFloatOutput(OnnxModel model, string name, IOnnxGraphEdge edge, params long[] shape)
+    {
+        model.Graph.AddOutput(name, OnnxTensorType.Create<float>(shape.Select(static x => (OnnxDimension)x)));
+        model.Graph.AddNode(
+            name: $"{name}_identity",
+            opType: "Identity",
+            domain: string.Empty,
+            docString: string.Empty,
+            inputs: [edge],
+            outputs: [model.Graph.GetValue(name)!],
+            attributes: []);
+    }
+
+    private static void AddBoolOutput(OnnxModel model, string name, IOnnxGraphEdge edge, params long[] shape)
+    {
+        model.Graph.AddOutput(name, OnnxTensorType.Create<bool>(shape.Select(static x => (OnnxDimension)x)));
+        model.Graph.AddNode(
+            name: $"{name}_identity",
+            opType: "Identity",
+            domain: string.Empty,
+            docString: string.Empty,
+            inputs: [edge],
+            outputs: [model.Graph.GetValue(name)!],
+            attributes: []);
+    }
+
+    private static void AddLongOutput(OnnxModel model, string name, IOnnxGraphEdge edge, params long[] shape)
+    {
+        model.Graph.AddOutput(name, OnnxTensorType.Create<long>(shape.Select(static x => (OnnxDimension)x)));
+        model.Graph.AddNode(
+            name: $"{name}_identity",
+            opType: "Identity",
+            domain: string.Empty,
+            docString: string.Empty,
+            inputs: [edge],
+            outputs: [model.Graph.GetValue(name)!],
+            attributes: []);
+    }
+
+    private static IReadOnlyDictionary<string, DenseTensor<T>> RunModel<T>(
+        OnnxModel model,
+        IReadOnlyCollection<NamedOnnxValue> inputs
+    )
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+
+        try
+        {
+            model.Save(path);
+
+            using var session = new InferenceSession(path);
+            using var results = session.Run(inputs);
+
+            return results.ToDictionary(
+                result => result.Name,
+                result =>
+                {
+                    var tensor = result.AsTensor<T>();
+                    return new DenseTensor<T>(tensor.ToArray(), tensor.Dimensions.ToArray());
+                },
+                StringComparer.Ordinal);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    private static void AssertTensorValues(DenseTensor<float> actual, IReadOnlyList<float> expected, params int[] shape)
+    {
+        if (shape.Length > 0)
+        {
+            Assert.Equal(shape, actual.Dimensions.ToArray());
+        }
+
+        Assert.Equal(expected.Count, actual.Length);
+        var actualValues = actual.Buffer.ToArray();
+
+        for (var i = 0; i < expected.Count; i++)
+        {
+            Assert.InRange(actualValues[i], expected[i] - 1e-4f, expected[i] + 1e-4f);
+        }
+    }
+
+    private static void AssertTensorValues(DenseTensor<bool> actual, IReadOnlyList<bool> expected, params int[] shape)
+    {
+        if (shape.Length > 0)
+        {
+            Assert.Equal(shape, actual.Dimensions.ToArray());
+        }
+
+        Assert.Equal(expected, actual.Buffer.ToArray());
+    }
+
+    private static void AssertTensorValues(DenseTensor<long> actual, IReadOnlyList<long> expected, params int[] shape)
+    {
+        if (shape.Length > 0)
+        {
+            Assert.Equal(shape, actual.Dimensions.ToArray());
+        }
+
+        Assert.Equal(expected, actual.Buffer.ToArray());
     }
 }
