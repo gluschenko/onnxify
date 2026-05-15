@@ -21,36 +21,11 @@ The repository currently implements the following NuGet packages. Package-specif
 | `Onnxify.Safetensors` | [`.docs/nuget/Onnxify.Safetensors.md`](.docs/nuget/Onnxify.Safetensors.md) |
 | `Onnxify.CLI` | [`.docs/nuget/Onnxify.CLI.md`](.docs/nuget/Onnxify.CLI.md) |
 
-## TODO
+## TorchSharp Operator Porting
 
-- [ ] OnnxGraph rework
-- [x] SourceGenerator: operator type annotations
-- [ ] SourceGenerator: fully-typed operator Input/Output fields (OneOf?)
-- [ ] Async I/O ops
-- [ ] Graph edges in a single collection (or in two for placeholders)
-- [ ] Graph manipulations: add nodes, remove nodes, replace nodes
-- [ ] Graph cyclicity validation
-- [x] CLI for agents and humans (to explore ONNX files)
-- [x] Project generator generates operator nodes
-- [x] Parse pytorch\torch\onnx\_internal\torchscript_exporter (create MD with support status)
-- [x] Generate agent skills from operator-schema.json
-- [x] ToString for OnnxModel, OnnxNode, OnnxxTensor, etc (recursive?)
-- [x] OnnxDataProvider, SafetensorsDataProvider, BaseDataProvider...
-- [x] Agent skills for Export implementation on Torch modules
-- [x] Allow to add or remove OnnxModel meta (training info, imports, producer, version)
+`Onnxify.TorchSharp` ports TorchSharp operators by translating Torch modules and tensor-style ops into explicit ONNX graph construction with `Onnxify`, including nodes, attributes, weights, and constants, instead of relying on runtime tracing.
 
-## Status
-
-This project is in an early stage.
-
-The core library already supports:
-
-- loading ONNX models from disk
-- creating new ONNX models in code
-- inspecting graphs, nodes, values, tensors, and attributes
-- saving models back to `.onnx`
-
-Some parts of the repository are still incomplete or experimental, especially the legacy exporter path and the placeholder projects.
+To inspect the current coverage and the highest-value gaps, see [`src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md`](src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md).
 
 ## Requirements
 
@@ -173,6 +148,24 @@ python3 "$codex_home/skills/.system/skill-installer/scripts/install-skill-from-g
 If you already cloned this repository and want to install both bundled skills from the local checkout, use the `install-onnxify-skills.ps1` or `install-onnxify-skills.sh` scripts shown in [Getting Started](#getting-started).
 
 Restart Codex after installation so it picks up the new or refreshed skill files.
+
+## TODO
+
+- [x] OnnxGraph rework
+- [x] SourceGenerator: operator type annotations
+- [ ] SourceGenerator: fully-typed operator Input/Output fields (OneOf?)
+- [ ] Async I/O ops
+- [ ] Graph edges in a single collection (or in two for placeholders)
+- [ ] Graph manipulations: add nodes, remove nodes, replace nodes
+- [ ] Graph cyclicity validation
+- [x] CLI for agents and humans (to explore ONNX files)
+- [x] Project generator generates operator nodes
+- [x] Parse pytorch\torch\onnx\_internal\torchscript_exporter (create MD with support status)
+- [x] Generate agent skills from operator-schema.json
+- [x] ToString for OnnxModel, OnnxNode, OnnxxTensor, etc (recursive?)
+- [x] OnnxDataProvider, SafetensorsDataProvider, BaseDataProvider...
+- [x] Agent skills for Export implementation on Torch modules
+- [x] Allow to add or remove OnnxModel meta (training info, imports, producer, version)
 
 ## License
 

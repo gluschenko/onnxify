@@ -65,6 +65,60 @@ public sealed class TorchTensorOperatorExtensionsTests
     }
 
     [Fact]
+    public void ExportNewUnaryOperators_EmitExpectedNodes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 3L]));
+
+        graph.ExportAbs(input);
+        graph.ExportNeg(input);
+        graph.ExportExp(input);
+        graph.ExportLog(input);
+        graph.ExportSin(input);
+        graph.ExportCos(input);
+        graph.ExportTan(input);
+        graph.ExportFloor(input);
+        graph.ExportCeil(input);
+        graph.ExportRound(input);
+        graph.ExportTrunc(input);
+        graph.ExportReciprocal(input);
+        graph.ExportSign(input);
+
+        Assert.Equal(
+            ["Abs", "Neg", "Exp", "Log", "Sin", "Cos", "Tan", "Floor", "Ceil", "Round", "Trunc", "Reciprocal", "Sign"],
+            graph.Nodes.Select(x => x.OpType).ToArray()
+        );
+    }
+
+    [Fact]
+    public void ExportNewComparisonAndLogicalOperators_EmitExpectedNodes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 3L]));
+        var other = graph.AddInput("other", OnnxTensorType.Create<float>([2L, 3L]));
+        var boolLeft = graph.AddInput("bool_left", OnnxTensorType.Create<bool>([2L, 3L]));
+        var boolRight = graph.AddInput("bool_right", OnnxTensorType.Create<bool>([2L, 3L]));
+
+        graph.ExportEqual(input, other);
+        graph.ExportEqual(input, 0.0);
+        graph.ExportLess(input, other);
+        graph.ExportLessOrEqual(input, other);
+        graph.ExportGreater(input, other);
+        graph.ExportGreaterOrEqual(input, other);
+        graph.ExportLogicalNot(boolLeft);
+        graph.ExportLogicalAnd(boolLeft, boolRight);
+        graph.ExportLogicalOr(boolLeft, boolRight);
+        graph.ExportLogicalXor(boolLeft, boolRight);
+        graph.ExportMaximum(input, other);
+        graph.ExportMinimum(input, other);
+
+        Assert.Equal(
+            ["Equal", "Equal", "Less", "LessOrEqual", "Greater", "GreaterOrEqual", "Not", "And", "Or", "Xor", "Max", "Min"],
+            graph.Nodes.Select(x => x.OpType).ToArray()
+        );
+    }
+
+    [Fact]
     public void ExportMatMul_EmitsMatMulNode()
     {
         var graph = CreateGraph();
@@ -284,6 +338,115 @@ public sealed class TorchTensorOperatorExtensionsTests
     }
 
     [Fact]
+    public void ExportNewReductionOperators_EmitExpectedNodes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 3L, 4L]));
+
+        var tril = graph.ExportTril(input, diagonal: -1);
+        var prod = graph.ExportProd(input);
+        var prodDim = graph.ExportProd(input, dim: 1, keepdim: true);
+        var argmin = graph.ExportArgMin(input, dim: 2, keepdim: false);
+
+        Assert.NotNull(tril);
+        Assert.NotNull(prod);
+        Assert.NotNull(prodDim);
+        Assert.NotNull(argmin);
+        Assert.Equal(
+            ["Trilu", "ReduceProd", "ReduceProd", "ArgMin"],
+            graph.Nodes.Select(x => x.OpType).ToArray()
+        );
+    }
+
+    [Fact]
+    public void ExportModeratelyTrivialUnaryOperators_EmitExpectedNodes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 3L]));
+
+        graph.ExportAcos(input);
+        graph.ExportAcosh(input);
+        graph.ExportAsin(input);
+        graph.ExportAsinh(input);
+        graph.ExportAtan(input);
+        graph.ExportAtanh(input);
+        graph.ExportCosh(input);
+        graph.ExportSinh(input);
+        graph.ExportErf(input);
+        graph.ExportErfc(input);
+        graph.ExportExpm1(input);
+        graph.ExportLog1P(input);
+        graph.ExportLog2(input);
+        graph.ExportSignBit(input);
+
+        Assert.Equal(
+            ["Acos", "Acosh", "Asin", "Asinh", "Atan", "Atanh", "Cosh", "Sinh", "Erf", "Erf", "Sub", "Exp", "Sub", "Add", "Log", "Log", "Div", "Less"],
+            graph.Nodes.Select(x => x.OpType).ToArray()
+        );
+    }
+
+    [Fact]
+    public void ExportModeratelyTrivialIndexAndSearchOperators_EmitExpectedNodes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 8L, 4L]));
+        var index = graph.AddInput("index", OnnxTensorType.Create<long>([3L]));
+
+        var selected = graph.ExportIndexSelect(input, dim: 1, index: index);
+        var narrowed = graph.ExportNarrow(input, dim: 1, start: 2, length: 3);
+        var nonZero = graph.ExportNonZero(input);
+        var cumsum = graph.ExportCumSum(input, dim: 2);
+
+        Assert.NotNull(selected);
+        Assert.NotNull(narrowed);
+        Assert.NotNull(nonZero);
+        Assert.NotNull(cumsum);
+        Assert.Equal(
+            ["Gather", "Slice", "NonZero", "CumSum"],
+            graph.Nodes.Select(x => x.OpType).ToArray()
+        );
+
+        var gather = graph.Nodes[0];
+        Assert.Equal(1L, Assert.IsType<long>(gather.Attributes.Single(x => x.Name == "axis").GetValue()));
+
+        var axisTensor = graph.Initializers
+            .OfType<OnnxTensor<long>>()
+            .Single(tensor => tensor.Name.EndsWith("_axis", StringComparison.Ordinal));
+        Assert.Equal([2L], axisTensor.Value.ToArray());
+    }
+
+    [Fact]
+    public void ExportClampAndModOperators_EmitExpectedNodesAndAttributes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 3L]));
+        var other = graph.AddInput("other", OnnxTensorType.Create<float>([2L, 3L]));
+        var min = graph.AddInput("min", OnnxTensorType.Create<float>([2L, 3L]));
+        var max = graph.AddInput("max", OnnxTensorType.Create<float>([2L, 3L]));
+
+        graph.ExportClamp(input, min: -1d, max: 1d);
+        graph.ExportClamp(input, min, max);
+        graph.ExportClampMin(input, -2d);
+        graph.ExportClampMax(input, max);
+        graph.ExportFMod(input, other);
+        graph.ExportFMod(input, 2d);
+        graph.ExportRemainder(input, other);
+        graph.ExportRemainder(input, 3d);
+        graph.ExportRemainder(7d, other);
+
+        Assert.Equal(
+            ["Max", "Min", "Max", "Min", "Max", "Min", "Mod", "Mod", "Mod", "Mod", "Mod"],
+            graph.Nodes.Select(x => x.OpType).ToArray()
+        );
+
+        var modNodes = graph.Nodes.Where(x => x.OpType == "Mod").ToArray();
+        Assert.Equal(5, modNodes.Length);
+        Assert.Equal([1L, 1L, 0L, 0L, 0L], modNodes
+            .Select(node => Assert.IsType<long>(node.Attributes.Single(x => x.Name == "fmod").GetValue()))
+            .ToArray());
+    }
+
+    [Fact]
     public void ExportRepeatTopKArgMaxAndSort_EmitExpectedNodes()
     {
         var graph = CreateGraph();
@@ -374,6 +537,91 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("aten::sort", coveredOperators);
         Assert.Contains("aten::pow.Tensor_Scalar", coveredOperators);
         Assert.Contains("aten::rsqrt", coveredOperators);
+        Assert.Contains("aten::abs", coveredOperators);
+        Assert.Contains("aten::neg", coveredOperators);
+        Assert.Contains("aten::exp", coveredOperators);
+        Assert.Contains("aten::log", coveredOperators);
+        Assert.Contains("aten::sin", coveredOperators);
+        Assert.Contains("aten::cos", coveredOperators);
+        Assert.Contains("aten::tan", coveredOperators);
+        Assert.Contains("aten::floor", coveredOperators);
+        Assert.Contains("aten::ceil", coveredOperators);
+        Assert.Contains("aten::round", coveredOperators);
+        Assert.Contains("aten::reciprocal", coveredOperators);
+        Assert.Contains("aten::sign", coveredOperators);
+        Assert.Contains("aten::acos", coveredOperators);
+        Assert.Contains("aten::acosh", coveredOperators);
+        Assert.Contains("aten::asin", coveredOperators);
+        Assert.Contains("aten::asinh", coveredOperators);
+        Assert.Contains("aten::atan", coveredOperators);
+        Assert.Contains("aten::atanh", coveredOperators);
+        Assert.Contains("aten::cosh", coveredOperators);
+        Assert.Contains("aten::sinh", coveredOperators);
+        Assert.Contains("aten::erf", coveredOperators);
+        Assert.Contains("aten::erfc", coveredOperators);
+        Assert.Contains("aten::special_erf", coveredOperators);
+        Assert.Contains("aten::special_erfc", coveredOperators);
+        Assert.Contains("aten::expm1", coveredOperators);
+        Assert.Contains("aten::special_expm1", coveredOperators);
+        Assert.Contains("aten::log1p", coveredOperators);
+        Assert.Contains("aten::log2", coveredOperators);
+        Assert.Contains("aten::signbit", coveredOperators);
+        Assert.Contains("aten::eq.Tensor", coveredOperators);
+        Assert.Contains("aten::eq.Scalar", coveredOperators);
+        Assert.Contains("aten::lt.Tensor", coveredOperators);
+        Assert.Contains("aten::le.Tensor", coveredOperators);
+        Assert.Contains("aten::gt.Tensor", coveredOperators);
+        Assert.Contains("aten::ge.Tensor", coveredOperators);
+        Assert.Contains("aten::logical_not", coveredOperators);
+        Assert.Contains("aten::logical_and", coveredOperators);
+        Assert.Contains("aten::logical_or", coveredOperators);
+        Assert.Contains("aten::logical_xor", coveredOperators);
+        Assert.Contains("aten::maximum", coveredOperators);
+        Assert.Contains("aten::minimum", coveredOperators);
+        Assert.Contains("aten::index_select", coveredOperators);
+        Assert.Contains("aten::narrow", coveredOperators);
+        Assert.Contains("aten::nonzero", coveredOperators);
+        Assert.Contains("aten::cumsum", coveredOperators);
+        Assert.Contains("aten::clamp", coveredOperators);
+        Assert.Contains("aten::clamp.Tensor", coveredOperators);
+        Assert.Contains("aten::clamp_min", coveredOperators);
+        Assert.Contains("aten::clamp_min.Tensor", coveredOperators);
+        Assert.Contains("aten::clamp_max", coveredOperators);
+        Assert.Contains("aten::clamp_max.Tensor", coveredOperators);
+        Assert.Contains("aten::fmod.Tensor", coveredOperators);
+        Assert.Contains("aten::fmod.Scalar", coveredOperators);
+        Assert.Contains("aten::remainder.Tensor", coveredOperators);
+        Assert.Contains("aten::remainder.Scalar", coveredOperators);
+        Assert.Contains("aten::remainder.Scalar_Tensor", coveredOperators);
+        Assert.Contains("aten::prod", coveredOperators);
+        Assert.Contains("aten::prod.dim_int", coveredOperators);
+        Assert.Contains("aten::argmin", coveredOperators);
+        Assert.Contains("aten::tril", coveredOperators);
+        Assert.Contains("_operator::abs", coveredOperators);
+        Assert.Contains("_operator::add", coveredOperators);
+        Assert.Contains("_operator::eq", coveredOperators);
+        Assert.Contains("_operator::ge", coveredOperators);
+        Assert.Contains("_operator::gt", coveredOperators);
+        Assert.Contains("_operator::le", coveredOperators);
+        Assert.Contains("_operator::lt", coveredOperators);
+        Assert.Contains("_operator::mul", coveredOperators);
+        Assert.Contains("_operator::neg", coveredOperators);
+        Assert.Contains("_operator::sub", coveredOperators);
+        Assert.Contains("aten::multiply.Tensor", coveredOperators);
+        Assert.Contains("aten::subtract.Tensor", coveredOperators);
+        Assert.Contains("aten::subtract.Scalar", coveredOperators);
+        Assert.Contains("aten::greater.Tensor", coveredOperators);
+        Assert.Contains("aten::greater_equal.Tensor", coveredOperators);
+        Assert.Contains("aten::less.Tensor", coveredOperators);
+        Assert.Contains("aten::less_equal.Tensor", coveredOperators);
+        Assert.Contains("math::ceil", coveredOperators);
+        Assert.Contains("math::floor", coveredOperators);
+        Assert.Contains("math::trunc", coveredOperators);
+        Assert.Contains("prims::abs", coveredOperators);
+        Assert.Contains("prims::add", coveredOperators);
+        Assert.Contains("prims::div", coveredOperators);
+        Assert.Contains("prims::eq", coveredOperators);
+        Assert.Contains("prims::exp", coveredOperators);
     }
 
     private static OnnxGraph CreateGraph()
