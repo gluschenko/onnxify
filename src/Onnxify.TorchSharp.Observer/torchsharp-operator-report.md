@@ -1,7 +1,7 @@
 # TorchSharp operator coverage
 
 Found: 83.73% (417/498)
-Coverage: 59.04% (294/498)
+Coverage: 61.04% (304/498)
 
 | ONNXScript operator | TorchSharp module | Found | Coverage |
 | --- | --- | --- | --- |
@@ -27,7 +27,7 @@ Coverage: 59.04% (294/498)
 | _operator::truediv |  |  |  |
 | aten::__lshift__.Scalar |  |  |  |
 | aten::__rshift__.Scalar |  |  |  |
-| aten::_conj | TorchSharp.torch+Tensor.conj | &#10003; |  |
+| aten::_conj | TorchSharp.torch+Tensor.conj | &#10003; | &#10003; |
 | aten::_embedding_bag | TorchSharp.Modules.EmbeddingBag | &#10003; |  |
 | aten::_embedding_bag_forward_only |  |  |  |
 | aten::_fft_c2c |  |  |  |
@@ -75,9 +75,9 @@ Coverage: 59.04% (294/498)
 | aten::any | TorchSharp.torch+Tensor.any | &#10003; | &#10003; |
 | aten::any.dim | TorchSharp.torch+Tensor.any | &#10003; | &#10003; |
 | aten::any.dims | TorchSharp.torch+Tensor.any | &#10003; | &#10003; |
-| aten::arange | TorchSharp.torch.arange | &#10003; |  |
-| aten::arange.start | TorchSharp.torch.arange | &#10003; |  |
-| aten::arange.start_step | TorchSharp.torch.arange | &#10003; |  |
+| aten::arange | TorchSharp.torch.arange | &#10003; | &#10003; |
+| aten::arange.start | TorchSharp.torch.arange | &#10003; | &#10003; |
+| aten::arange.start_step | TorchSharp.torch.arange | &#10003; | &#10003; |
 | aten::argmax | TorchSharp.torch+Tensor.argmax | &#10003; | &#10003; |
 | aten::argmin | TorchSharp.torch+Tensor.argmin | &#10003; | &#10003; |
 | aten::as_strided | TorchSharp.torch+Tensor.as_strided | &#10003; |  |
@@ -133,7 +133,7 @@ Coverage: 59.04% (294/498)
 | aten::complex | TorchSharp.torch.complex | &#10003; |  |
 | aten::concat | TorchSharp.torch.concat | &#10003; | &#10003; |
 | aten::concatenate | TorchSharp.torch.concatenate | &#10003; | &#10003; |
-| aten::conj | TorchSharp.torch+Tensor.conj | &#10003; |  |
+| aten::conj | TorchSharp.torch+Tensor.conj | &#10003; | &#10003; |
 | aten::constant_pad_nd |  |  |  |
 | aten::contiguous | TorchSharp.torch+Tensor.contiguous | &#10003; | &#10003; |
 | aten::conv1d | TorchSharp.Modules.Conv1d | &#10003; | &#10003; |
@@ -240,7 +240,7 @@ Coverage: 59.04% (294/498)
 | aten::linalg_det | TorchSharp.torch+Tensor.det | &#10003; |  |
 | aten::linalg_vector_norm | TorchSharp.torch+linalg.vector_norm | &#10003; |  |
 | aten::linear | TorchSharp.Modules.Linear | &#10003; | &#10003; |
-| aten::linspace | TorchSharp.torch.linspace | &#10003; |  |
+| aten::linspace | TorchSharp.torch.linspace | &#10003; | &#10003; |
 | aten::log | TorchSharp.torch+Tensor.log | &#10003; | &#10003; |
 | aten::log10 | TorchSharp.torch+Tensor.log10 | &#10003; | &#10003; |
 | aten::log1p | TorchSharp.torch+Tensor.log1p | &#10003; | &#10003; |
@@ -266,8 +266,8 @@ Coverage: 59.04% (294/498)
 | aten::masked_fill.Tensor | TorchSharp.torch+Tensor.masked_fill | &#10003; | &#10003; |
 | aten::masked_scatter | TorchSharp.torch+Tensor.masked_scatter | &#10003; |  |
 | aten::matmul | TorchSharp.torch+Tensor.matmul | &#10003; | &#10003; |
-| aten::max | TorchSharp.torch+Tensor.max | &#10003; |  |
-| aten::max.dim | TorchSharp.torch+Tensor.max | &#10003; |  |
+| aten::max | TorchSharp.torch+Tensor.max | &#10003; | &#10003; |
+| aten::max.dim | TorchSharp.torch+Tensor.max | &#10003; | &#10003; |
 | aten::max_pool1d | TorchSharp.Modules.MaxPool1d | &#10003; | &#10003; |
 | aten::max_pool1d_with_indices | TorchSharp.torch+nn+functional.max_pool1d_with_indices | &#10003; |  |
 | aten::max_pool2d | TorchSharp.Modules.MaxPool2d | &#10003; | &#10003; |
@@ -277,8 +277,8 @@ Coverage: 59.04% (294/498)
 | aten::maximum | TorchSharp.torch+Tensor.maximum | &#10003; | &#10003; |
 | aten::mean | TorchSharp.torch+Tensor.mean | &#10003; | &#10003; |
 | aten::mean.dim | TorchSharp.torch+Tensor.mean | &#10003; | &#10003; |
-| aten::min | TorchSharp.torch+Tensor.min | &#10003; |  |
-| aten::min.dim | TorchSharp.torch+Tensor.min | &#10003; |  |
+| aten::min | TorchSharp.torch+Tensor.min | &#10003; | &#10003; |
+| aten::min.dim | TorchSharp.torch+Tensor.min | &#10003; | &#10003; |
 | aten::minimum | TorchSharp.torch+Tensor.minimum | &#10003; | &#10003; |
 | aten::mish | TorchSharp.Modules.Mish | &#10003; | &#10003; |
 | aten::mm | TorchSharp.torch+Tensor.mm | &#10003; | &#10003; |

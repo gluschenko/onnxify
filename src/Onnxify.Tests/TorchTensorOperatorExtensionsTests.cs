@@ -825,6 +825,103 @@ public sealed class TorchTensorOperatorExtensionsTests
     }
 
     [Fact]
+    public void ExportArangeLinspaceAndExtrema_EmitExpectedNodes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 2L]));
+
+        var max = graph.ExportMax(input);
+        var maxDim = graph.ExportMax(input, dim: 1, keepdim: false);
+        var min = graph.ExportMin(input);
+        var minDim = graph.ExportMin(input, dim: 1, keepdim: true);
+        var arange = graph.ExportArange(5L);
+        var arangeStart = graph.ExportArange(2L, 7L);
+        var arangeStep = graph.ExportArange(10L, 2L, -3L);
+        var linspace = graph.ExportLinspace(-1f, 1f, 5L);
+
+        Assert.NotNull(max);
+        Assert.NotNull(maxDim.Values);
+        Assert.NotNull(maxDim.Indices);
+        Assert.NotNull(min);
+        Assert.NotNull(minDim.Values);
+        Assert.NotNull(minDim.Indices);
+        Assert.NotNull(arange);
+        Assert.NotNull(arangeStart);
+        Assert.NotNull(arangeStep);
+        Assert.NotNull(linspace);
+
+        Assert.Equal(
+            ["ReduceMax", "TopK", "Squeeze", "Squeeze", "ReduceMin", "TopK", "Range", "Range", "Range", "Range", "Sub", "Div", "Div", "Mul", "Add", "Sub", "Mul", "Sub", "Less", "Where"],
+            graph.Nodes.Select(x => x.OpType).ToArray()
+        );
+    }
+
+    [Fact]
+    public void Smoke_RuntimeExecutesArangeLinspaceAndExtrema()
+    {
+        var reduceValueModel = CreateRuntimeModel();
+        var reduceValueInput = reduceValueModel.Graph.AddInput("input", OnnxTensorType.Create<float>([2L, 2L]));
+
+        var max = reduceValueModel.Graph.ExportMax(reduceValueInput);
+        var maxDim = reduceValueModel.Graph.ExportMax(reduceValueInput, dim: 1, keepdim: false);
+        var min = reduceValueModel.Graph.ExportMin(reduceValueInput);
+        var minDim = reduceValueModel.Graph.ExportMin(reduceValueInput, dim: 1, keepdim: false);
+
+        AddFloatOutput(reduceValueModel, "max", max);
+        AddFloatOutput(reduceValueModel, "max_values", maxDim.Values!, 2);
+        AddFloatOutput(reduceValueModel, "min", min);
+        AddFloatOutput(reduceValueModel, "min_values", minDim.Values!, 2);
+
+        var reduceValueResults = RunModel<float>(
+            reduceValueModel,
+            new NamedOnnxValue[]
+            {
+                NamedOnnxValue.CreateFromTensor("input", new DenseTensor<float>(new[] { 1f, 4f, 3f, 2f }, new[] { 2, 2 })),
+            });
+
+        AssertTensorValues(reduceValueResults["max"], [4f]);
+        AssertTensorValues(reduceValueResults["max_values"], [4f, 3f], 2);
+        AssertTensorValues(reduceValueResults["min"], [1f]);
+        AssertTensorValues(reduceValueResults["min_values"], [1f, 2f], 2);
+
+        var reduceIndexModel = CreateRuntimeModel();
+        var reduceIndexInput = reduceIndexModel.Graph.AddInput("input", OnnxTensorType.Create<float>([2L, 2L]));
+        var maxIndexDim = reduceIndexModel.Graph.ExportMax(reduceIndexInput, dim: 1, keepdim: false);
+        var minIndexDim = reduceIndexModel.Graph.ExportMin(reduceIndexInput, dim: 1, keepdim: false);
+
+        AddLongOutput(reduceIndexModel, "max_indices", maxIndexDim.Indices!, 2);
+        AddLongOutput(reduceIndexModel, "min_indices", minIndexDim.Indices!, 2);
+
+        var reduceIndexResults = RunModel<long>(
+            reduceIndexModel,
+            new NamedOnnxValue[]
+            {
+                NamedOnnxValue.CreateFromTensor("input", new DenseTensor<float>(new[] { 1f, 4f, 3f, 2f }, new[] { 2, 2 })),
+            });
+
+        AssertTensorValues(reduceIndexResults["max_indices"], [1L, 0L], 2);
+        AssertTensorValues(reduceIndexResults["min_indices"], [0L, 1L], 2);
+
+        var arangeModel = CreateRuntimeModel();
+        AddLongOutput(arangeModel, "arange", arangeModel.Graph.ExportArange(5L), 5);
+        AddLongOutput(arangeModel, "arange_start", arangeModel.Graph.ExportArange(2L, 7L), 5);
+        AddLongOutput(arangeModel, "arange_step", arangeModel.Graph.ExportArange(10L, 2L, -3L), 3);
+
+        var arangeResults = RunModel<long>(arangeModel, Array.Empty<NamedOnnxValue>());
+
+        AssertTensorValues(arangeResults["arange"], [0L, 1L, 2L, 3L, 4L], 5);
+        AssertTensorValues(arangeResults["arange_start"], [2L, 3L, 4L, 5L, 6L], 5);
+        AssertTensorValues(arangeResults["arange_step"], [10L, 7L, 4L], 3);
+
+        var linspaceModel = CreateRuntimeModel();
+        AddFloatOutput(linspaceModel, "linspace", linspaceModel.Graph.ExportLinspace(-1f, 1f, 5L), 5);
+
+        var linspaceResults = RunModel<float>(linspaceModel, Array.Empty<NamedOnnxValue>());
+
+        AssertTensorValues(linspaceResults["linspace"], [-1f, -0.5f, 0f, 0.5f, 1f], 5);
+    }
+
+    [Fact]
     public void ExportRepeatTopKArgMaxAndSort_EmitExpectedNodes()
     {
         var graph = CreateGraph();
@@ -1026,8 +1123,13 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("aten::clone", coveredOperators);
         Assert.Contains("aten::contiguous", coveredOperators);
         Assert.Contains("aten::detach", coveredOperators);
+        Assert.Contains("aten::_conj", coveredOperators);
+        Assert.Contains("aten::conj", coveredOperators);
         Assert.Contains("aten::resolve_conj", coveredOperators);
         Assert.Contains("aten::resolve_neg", coveredOperators);
+        Assert.Contains("aten::arange", coveredOperators);
+        Assert.Contains("aten::arange.start", coveredOperators);
+        Assert.Contains("aten::arange.start_step", coveredOperators);
         Assert.Contains("aten::broadcast_to", coveredOperators);
         Assert.Contains("aten::view_as", coveredOperators);
         Assert.Contains("aten::type_as", coveredOperators);
@@ -1051,7 +1153,12 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("aten::tile", coveredOperators);
         Assert.Contains("aten::prod", coveredOperators);
         Assert.Contains("aten::prod.dim_int", coveredOperators);
+        Assert.Contains("aten::max", coveredOperators);
+        Assert.Contains("aten::max.dim", coveredOperators);
+        Assert.Contains("aten::min", coveredOperators);
+        Assert.Contains("aten::min.dim", coveredOperators);
         Assert.Contains("aten::argmin", coveredOperators);
+        Assert.Contains("aten::linspace", coveredOperators);
         Assert.Contains("aten::tril", coveredOperators);
         Assert.Contains("aten::zeros", coveredOperators);
         Assert.Contains("aten::zeros_like", coveredOperators);

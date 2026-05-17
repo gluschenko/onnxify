@@ -1180,7 +1180,9 @@ public static class TorchTensorOperatorExtensions
     }
 
     [TorchOp("aten::alias")]
+    [TorchOp("aten::_conj")]
     [TorchOp("aten::clone")]
+    [TorchOp("aten::conj")]
     [TorchOp("aten::contiguous")]
     [TorchOp("aten::detach")]
     [TorchOp("aten::resolve_conj")]
@@ -1254,6 +1256,62 @@ public static class TorchTensorOperatorExtensions
             start: start,
             end: checked(start + length),
             step: 1
+        );
+    }
+
+    [TorchOp("aten::arange")]
+    public static IOnnxGraphEdge ExportArange(
+        this OnnxGraph graph,
+        long end
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+
+        return graph.ExportArange(
+            start: 0L,
+            end: end,
+            step: 1L
+        );
+    }
+
+    [TorchOp("aten::arange.start")]
+    public static IOnnxGraphEdge ExportArange(
+        this OnnxGraph graph,
+        long start,
+        long end
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+
+        return graph.ExportArange(
+            start: start,
+            end: end,
+            step: 1L
+        );
+    }
+
+    [TorchOp("aten::arange.start_step")]
+    public static IOnnxGraphEdge ExportArange(
+        this OnnxGraph graph,
+        long start,
+        long end,
+        long step
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+
+        if (step == 0)
+        {
+            throw new NotSupportedException("arange export requires a non-zero step.");
+        }
+
+        var name = graph.NextName("arange");
+        return ExportRange(
+            graph,
+            name,
+            AddScalarTensor<long>(graph, $"{name}_start_scalar", start),
+            AddScalarTensor<long>(graph, $"{name}_end_scalar", end),
+            AddScalarTensor<long>(graph, $"{name}_step_scalar", step)
         );
     }
 
@@ -2168,6 +2226,155 @@ public static class TorchTensorOperatorExtensions
         );
     }
 
+    [TorchOp("aten::max")]
+    public static IOnnxGraphEdge ExportMax(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+
+        return graph.ReduceMax(
+            name: graph.NextName("max"),
+            options: new ReduceMaxInputOptions
+            {
+                Data = input,
+                Keepdims = 0,
+            }
+        );
+    }
+
+    [TorchOp("aten::max.dim")]
+    public static TopKOutput ExportMax(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        long dim,
+        bool keepdim = false
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+
+        return ExportExtremumByDim(
+            graph,
+            input,
+            dim,
+            keepdim,
+            largest: true,
+            prefix: "max"
+        );
+    }
+
+    [TorchOp("aten::min")]
+    public static IOnnxGraphEdge ExportMin(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+
+        return graph.ReduceMin(
+            name: graph.NextName("min"),
+            options: new ReduceMinInputOptions
+            {
+                Data = input,
+                Keepdims = 0,
+            }
+        );
+    }
+
+    [TorchOp("aten::min.dim")]
+    public static TopKOutput ExportMin(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        long dim,
+        bool keepdim = false
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+
+        return ExportExtremumByDim(
+            graph,
+            input,
+            dim,
+            keepdim,
+            largest: false,
+            prefix: "min"
+        );
+    }
+
+    [TorchOp("aten::linspace")]
+    public static IOnnxGraphEdge ExportLinspace(
+        this OnnxGraph graph,
+        float start,
+        float end,
+        long steps
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+
+        if (steps < 0)
+        {
+            throw new NotSupportedException("linspace export requires steps >= 0.");
+        }
+
+        var name = graph.NextName("linspace");
+        if (steps == 0)
+        {
+            return ExportRange(
+                graph,
+                $"{name}_empty",
+                AddScalarTensor<float>(graph, $"{name}_empty_start_scalar", 0f),
+                AddScalarTensor<float>(graph, $"{name}_empty_end_scalar", 0f),
+                AddScalarTensor<float>(graph, $"{name}_empty_step_scalar", 1f)
+            );
+        }
+
+        if (steps == 1)
+        {
+            return graph.AddTensor<float>(
+                name: $"{name}_single",
+                shape: [1],
+                value: [start]
+            );
+        }
+
+        var startTensor = AddScalarTensor<float>(graph, $"{name}_start_scalar", start);
+        var endTensor = AddScalarTensor<float>(graph, $"{name}_end_scalar", end);
+        var one = AddScalarTensor<float>(graph, $"{name}_one_scalar", 1f);
+        var two = AddScalarTensor<float>(graph, $"{name}_two_scalar", 2f);
+        var stepsTensor = AddScalarTensor<float>(graph, $"{name}_steps_scalar", steps);
+        var stepsMinusOne = AddScalarTensor<float>(graph, $"{name}_steps_minus_one_scalar", steps - 1);
+
+        var range = ExportRange(
+            graph,
+            $"{name}_range",
+            AddScalarTensor<float>(graph, $"{name}_range_start_scalar", 0f),
+            stepsTensor,
+            one
+        );
+
+        var stepSize = graph.ExportDiv(
+            graph.ExportSub(endTensor, startTensor),
+            stepsMinusOne
+        );
+        var midpoint = graph.ExportDiv(stepsTensor, two);
+        var forward = graph.ExportAdd(startTensor, graph.ExportMul(stepSize, range));
+        var backward = graph.ExportSub(
+            endTensor,
+            graph.ExportMul(stepSize, graph.ExportSub(stepsMinusOne, range))
+        );
+
+        return graph.ExportWhere(
+            graph.ExportLess(range, midpoint),
+            forward,
+            backward
+        );
+    }
+
     [TorchOp("aten::repeat")]
     [TorchOp("aten::tile")]
     public static IOnnxGraphEdge ExportRepeat(
@@ -2706,6 +2913,73 @@ public static class TorchTensorOperatorExtensions
         return current;
     }
 
+    private static TopKOutput ExportExtremumByDim(
+        OnnxGraph graph,
+        IOnnxGraphEdge input,
+        long dim,
+        bool keepdim,
+        bool largest,
+        string prefix
+    )
+    {
+        if (TryGetRank(input) == 0)
+        {
+            return new TopKOutput
+            {
+                Values = graph.ExportIdentity(input),
+                Indices = AddScalarTensor<long>(graph, $"{graph.NextName(prefix)}_index", 0L),
+            };
+        }
+
+        var topk = graph.ExportTopK(
+            input,
+            k: 1,
+            dim: dim,
+            largest: largest,
+            sorted: true
+        );
+
+        if (keepdim)
+        {
+            return topk;
+        }
+
+        return new TopKOutput
+        {
+            Values = graph.ExportSqueeze(
+                topk.Values ?? throw new InvalidOperationException($"{prefix}.dim export did not produce values."),
+                dim
+            ),
+            Indices = graph.ExportSqueeze(
+                topk.Indices ?? throw new InvalidOperationException($"{prefix}.dim export did not produce indices."),
+                dim
+            ),
+        };
+    }
+
+    private static IOnnxGraphEdge ExportRange(
+        OnnxGraph graph,
+        string prefix,
+        IOnnxGraphEdge start,
+        IOnnxGraphEdge end,
+        IOnnxGraphEdge step
+    )
+    {
+        var name = graph.NextName(prefix);
+        var output = graph.AddEdge($"{name}_output");
+        graph.AddNode(
+            name: name,
+            opType: "Range",
+            domain: string.Empty,
+            docString: string.Empty,
+            inputs: [start, end, step],
+            outputs: [output],
+            attributes: []
+        );
+
+        return output;
+    }
+
     private static IOnnxGraphEdge ExportTruthReduction(
         OnnxGraph graph,
         string prefix,
@@ -2863,6 +3137,16 @@ public static class TorchTensorOperatorExtensions
             shape: [],
             value: [value]
         );
+    }
+
+    private static IOnnxGraphEdge AddScalarTensor<T>(
+        OnnxGraph graph,
+        string name,
+        T value
+    )
+        where T : unmanaged
+    {
+        return graph.AddTensor<T>(name, [], [value]);
     }
 
     private static IOnnxGraphEdge AddScalarLike(
