@@ -1093,7 +1093,8 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             TensorProto.Types.DataType.Uint8 => "byte",
             TensorProto.Types.DataType.Bool => "bool",
             TensorProto.Types.DataType.String => "string",
-            TensorProto.Types.DataType.Float16 => "Half",
+            TensorProto.Types.DataType.Float16 => "Float16",
+            TensorProto.Types.DataType.Bfloat16 => "BFloat16",
             _ => null,
         };
 
