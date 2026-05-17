@@ -15,6 +15,10 @@ Read [references/finding-torchsharp-porting-candidates.md](references/finding-to
 Read [references/porting-onnxscript-converters.md](references/porting-onnxscript-converters.md) when you need to port a Python-side ONNXScript Torch conversion into `Onnxify.TorchSharp`.
 Read [references/porting-safetensors.md](references/porting-safetensors.md) when you need to port `third_party/safetensors` into `Onnxify.Safetensors`.
 
+For requests like "port more operators", "add 25 unsupported operators", or "what should we port next", do not jump straight into implementation from the observer table alone.
+First read [references/finding-torchsharp-porting-candidates.md](references/finding-torchsharp-porting-candidates.md) to rank candidates by model impact, example pain, and available ONNX primitives.
+Only after that shortlist exists should you read [references/porting-onnxscript-converters.md](references/porting-onnxscript-converters.md) and implement the selected operators.
+
 ## Quick Start
 
 When handling an internal Onnxify maintenance task:
@@ -24,6 +28,14 @@ When handling an internal Onnxify maintenance task:
 3. Prefer `src/Onnxify.Tests` for automated validation, `src/Onnxify.Examples` for curated usage samples, and `src/Onnxify.ConsoleTest` only for manual repros.
 4. Keep repository docs and skill instructions aligned when you change user-facing workflows.
 5. If a change affects generated artifacts, update the generator, update or add tests, and then refresh generated outputs.
+
+When the task is specifically about TorchSharp operator porting:
+
+1. Start with `references/finding-torchsharp-porting-candidates.md` to choose candidates.
+2. Build a shortlist from `Found = yes` and `Coverage = no` rows in `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md`.
+3. Prefer candidates that remove manual ONNX graph work in `src/Onnxify.Examples` or unblock existing model families in the repo.
+4. Then use `references/porting-onnxscript-converters.md` to mirror the chosen ONNXScript converters into `Onnxify.TorchSharp`.
+5. Add focused smoke tests in `src/Onnxify.Tests` before moving to the next batch.
 
 ## Core Principles
 
@@ -115,8 +127,9 @@ private const long InlineTensorElementThreshold = 20L;
 - Update the public repo description or install instructions: start with `README.md`.
 - Add or refine Codex guidance for library users: start with `.agents/skills/onnxify`.
 - Add or refine Codex guidance for repo maintainers: start with `.agents/skills/onnxify-internal`.
-- Find the next best TorchSharp operator to port: start with `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md`, then use `references/finding-torchsharp-porting-candidates.md`.
-- Port an ONNXScript Torch conversion into `Onnxify.TorchSharp`: start with `src/Onnxify.TorchSharp.Observer`, then use `references/porting-onnxscript-converters.md`.
+- Find the next best TorchSharp operator to port: start with `references/finding-torchsharp-porting-candidates.md`, then inspect `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md`.
+- Port an ONNXScript Torch conversion into `Onnxify.TorchSharp`: if the user did not name the operator explicitly, first use `references/finding-torchsharp-porting-candidates.md`; then use `references/porting-onnxscript-converters.md`.
+- For requests like "port 10/25/50 more operators", treat candidate selection as a required first phase, not an optional nicety.
 - Port `third_party/safetensors` into `Onnxify.Safetensors`: start with `third_party/safetensors/safetensors/src`, then use `references/porting-safetensors.md`.
 - Fix generated operator or TorchSharp converter docs: start with `src/Onnxify.AgentSkillGenerator`, then refresh `.agents/skills/onnxify/references`.
 - Adjust the generated-project output or C# scaffolding shape: start with `src/Onnxify.ProjectGenerator` and `src/Onnxify.Tests/OnnxProjectGeneratorTests.cs`.

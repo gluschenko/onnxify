@@ -176,6 +176,39 @@ public static class TorchTensorOperatorExtensions
         );
     }
 
+    [TorchOp("aten::floor_divide")]
+    [TorchOp("_operator::floordiv")]
+    public static IOnnxGraphEdge ExportFloorDivide(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IOnnxGraphEdge other
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(other);
+
+        var inputType = GetTensorDataType(input)
+            ?? throw new NotSupportedException("floor_divide export requires the input tensor element type to be known.");
+
+        if (inputType == typeof(float) || inputType == typeof(double) || inputType == typeof(Half))
+        {
+            return graph.ExportFloor(graph.ExportDiv(input, other));
+        }
+
+        if (inputType == typeof(byte) || inputType == typeof(ushort) || inputType == typeof(uint) || inputType == typeof(ulong))
+        {
+            return graph.ExportDiv(input, other);
+        }
+
+        var signsDiffer = graph.ExportLogicalNot(graph.ExportEqual(graph.ExportSign(input), graph.ExportSign(other)));
+        var remainder = ExportBinaryNode(graph, "floor_divide_mod", "Mod", input, other);
+        var remainderIsNonZero = ExportCastTo(graph, "floor_divide_bool", remainder, 9L);
+        var offsetBool = graph.ExportLogicalAnd(signsDiffer, remainderIsNonZero);
+        var offset = ExportCastTo(graph, "floor_divide_offset", offsetBool, GetOnnxTensorDataType(inputType));
+        return graph.ExportSub(graph.ExportDiv(input, other), offset);
+    }
+
     [TorchOp("aten::abs")]
     [TorchOp("_operator::abs")]
     [TorchOp("prims::abs")]
@@ -192,6 +225,7 @@ public static class TorchTensorOperatorExtensions
 
     [TorchOp("aten::neg")]
     [TorchOp("_operator::neg")]
+    [TorchOp("prims::neg")]
     public static IOnnxGraphEdge ExportNeg(
         this OnnxGraph graph,
         IOnnxGraphEdge input
@@ -243,6 +277,7 @@ public static class TorchTensorOperatorExtensions
     }
 
     [TorchOp("aten::cos")]
+    [TorchOp("prims::cos")]
     public static IOnnxGraphEdge ExportCos(
         this OnnxGraph graph,
         IOnnxGraphEdge input
@@ -306,6 +341,23 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(input);
 
         return ExportUnaryNode(graph, "round", "Round", input);
+    }
+
+    [TorchOp("aten::round.decimals")]
+    public static IOnnxGraphEdge ExportRound(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        long decimals
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+
+        var ten = AddScalarLike(graph, input, "round", 10d);
+        var scale = graph.ExportPow(ten, AddScalarLike(graph, input, "round", decimals));
+        var scaled = graph.ExportMul(input, scale);
+        var rounded = graph.ExportRound(scaled);
+        return graph.ExportDiv(rounded, scale);
     }
 
     [TorchOp("aten::trunc")]
@@ -526,10 +578,16 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(graph);
         ArgumentNullException.ThrowIfNull(input);
 
+        if (GetTensorDataType(input) == typeof(bool))
+        {
+            return graph.ExportEqual(input, graph.ExportLogicalNot(input));
+        }
+
         return graph.ExportLess(input, AddScalarLike(graph, input, "signbit", 0d));
     }
 
     [TorchOp("aten::eq.Tensor")]
+    [TorchOp("aten::eq")]
     [TorchOp("_operator::eq")]
     [TorchOp("prims::eq")]
     public static IOnnxGraphEdge ExportEqual(
@@ -591,6 +649,7 @@ public static class TorchTensorOperatorExtensions
     [TorchOp("aten::lt.Tensor")]
     [TorchOp("_operator::lt")]
     [TorchOp("aten::less.Tensor")]
+    [TorchOp("prims::lt")]
     public static IOnnxGraphEdge ExportLess(
         this OnnxGraph graph,
         IOnnxGraphEdge input,
@@ -620,6 +679,7 @@ public static class TorchTensorOperatorExtensions
     [TorchOp("aten::le.Tensor")]
     [TorchOp("_operator::le")]
     [TorchOp("aten::less_equal.Tensor")]
+    [TorchOp("prims::le")]
     public static IOnnxGraphEdge ExportLessOrEqual(
         this OnnxGraph graph,
         IOnnxGraphEdge input,
@@ -649,6 +709,7 @@ public static class TorchTensorOperatorExtensions
     [TorchOp("aten::gt.Tensor")]
     [TorchOp("_operator::gt")]
     [TorchOp("aten::greater.Tensor")]
+    [TorchOp("prims::gt")]
     public static IOnnxGraphEdge ExportGreater(
         this OnnxGraph graph,
         IOnnxGraphEdge input,
@@ -678,6 +739,7 @@ public static class TorchTensorOperatorExtensions
     [TorchOp("aten::ge.Tensor")]
     [TorchOp("_operator::ge")]
     [TorchOp("aten::greater_equal.Tensor")]
+    [TorchOp("prims::ge")]
     public static IOnnxGraphEdge ExportGreaterOrEqual(
         this OnnxGraph graph,
         IOnnxGraphEdge input,
@@ -756,6 +818,39 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(other);
 
         return ExportBinaryNode(graph, "logical_xor", "Xor", input, other);
+    }
+
+    [TorchOp("aten::atan2")]
+    public static IOnnxGraphEdge ExportAtan2(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IOnnxGraphEdge other
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(other);
+
+        var slope = graph.ExportDiv(input, other);
+        var atan = graph.ExportAtan(slope);
+        var zero = AddScalarLike(graph, input, "atan2", 0d);
+        var pi = AddScalarLike(graph, input, "atan2", Math.PI);
+        var secondThirdQuadrant = graph.ExportWhere(
+            graph.ExportGreater(input, zero),
+            graph.ExportAdd(atan, pi),
+            graph.ExportSub(atan, pi)
+        );
+        var result = graph.ExportWhere(
+            graph.ExportLess(other, zero),
+            secondThirdQuadrant,
+            atan
+        );
+
+        return graph.ExportWhere(
+            ExportUnaryNode(graph, "atan2_isnan", "IsNaN", result),
+            zero,
+            result
+        );
     }
 
     [TorchOp("aten::maximum")]
@@ -1074,13 +1169,13 @@ public static class TorchTensorOperatorExtensions
             }
         );
 
-        return graph.Reshape(
-            name: name,
-            options: new ReshapeInputOptions
-            {
-                Data = input,
-                Shape = shape,
-            }
+        return ExportBinaryNode(
+            graph,
+            "view_as",
+            "Reshape",
+            input,
+            shape,
+            [new OnnxAttribute<long>("allowzero", 1L)]
         );
     }
 
@@ -1088,6 +1183,7 @@ public static class TorchTensorOperatorExtensions
     [TorchOp("aten::clone")]
     [TorchOp("aten::contiguous")]
     [TorchOp("aten::detach")]
+    [TorchOp("aten::resolve_conj")]
     [TorchOp("aten::resolve_neg")]
     public static IOnnxGraphEdge ExportIdentity(
         this OnnxGraph graph,
@@ -1112,15 +1208,27 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(index);
 
-        return graph.Gather(
+        var selfIsScalar = TryGetRank(input) == 0;
+        var gatherInput = selfIsScalar
+            ? graph.ExportView(input, -1L)
+            : input;
+        var normalizedIndex = graph.ExportView(index, -1L);
+        var castIndex = GetTensorDataType(normalizedIndex) == typeof(long)
+            ? normalizedIndex
+            : ExportCastTo(graph, "index_select_cast", normalizedIndex, 7L);
+        var gathered = graph.Gather(
             name: graph.NextName("index_select"),
             options: new GatherInputOptions
             {
-                Data = input,
-                Indices = index,
+                Data = gatherInput,
+                Indices = castIndex,
                 Axis = dim,
             }
         );
+
+        return selfIsScalar
+            ? graph.ExportSqueeze(gathered)
+            : gathered;
     }
 
     [TorchOp("aten::narrow")]
@@ -1572,7 +1680,15 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(graph);
         ArgumentNullException.ThrowIfNull(input);
 
-        return ExportUnaryNode(graph, "nonzero", "NonZero", input);
+        var nonZero = ExportUnaryNode(graph, "nonzero", "NonZero", input);
+        return graph.Transpose(
+            name: graph.NextName("nonzero_transpose"),
+            options: new TransposeInputOptions
+            {
+                Data = nonZero,
+                Perm = [1L, 0L],
+            }
+        );
     }
 
     [TorchOp("aten::cumsum")]
@@ -1584,6 +1700,11 @@ public static class TorchTensorOperatorExtensions
     {
         ArgumentNullException.ThrowIfNull(graph);
         ArgumentNullException.ThrowIfNull(input);
+
+        if (TryGetRank(input) == 0)
+        {
+            return graph.ExportIdentity(input);
+        }
 
         var name = graph.NextName("cumsum");
         var axis = graph.AddTensor<long>($"{name}_axis", [1], [dim]);
@@ -1615,6 +1736,109 @@ public static class TorchTensorOperatorExtensions
             min is null ? null : AddScalarLike(graph, input, "clamp_min", min.Value),
             max is null ? null : AddScalarLike(graph, input, "clamp_max", max.Value)
         );
+    }
+
+    [TorchOp("aten::full")]
+    public static IOnnxGraphEdge ExportFull(
+        this OnnxGraph graph,
+        IReadOnlyList<long> size,
+        double fillValue
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(size);
+
+        var fill = graph.AddTensor<float>(
+            name: $"full_{graph.Initializers.Count}_scalar",
+            shape: [],
+            value: [checked((float)fillValue)]
+        );
+        var shape = AddAxesTensor(graph, "full", size);
+        return graph.Expand(
+            name: graph.NextName("full"),
+            options: new ExpandInputOptions
+            {
+                Input = fill,
+                Shape = shape,
+            }
+        );
+    }
+
+    [TorchOp("aten::full_like")]
+    public static IOnnxGraphEdge ExportFullLike(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        double fillValue
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+
+        var fill = AddScalarLike(graph, input, "full_like", fillValue);
+        var shape = graph.Shape(
+            name: $"{graph.NextName("full_like")}_shape",
+            options: new ShapeInputOptions
+            {
+                Data = input,
+            }
+        );
+
+        return graph.Expand(
+            name: graph.NextName("full_like"),
+            options: new ExpandInputOptions
+            {
+                Input = fill,
+                Shape = shape,
+            }
+        );
+    }
+
+    [TorchOp("aten::ones")]
+    public static IOnnxGraphEdge ExportOnes(
+        this OnnxGraph graph,
+        IReadOnlyList<long> size
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(size);
+
+        return graph.ExportFull(size, 1d);
+    }
+
+    [TorchOp("aten::ones_like")]
+    public static IOnnxGraphEdge ExportOnesLike(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+
+        return graph.ExportFullLike(input, 1d);
+    }
+
+    [TorchOp("aten::zeros")]
+    public static IOnnxGraphEdge ExportZeros(
+        this OnnxGraph graph,
+        IReadOnlyList<long> size
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(size);
+
+        return graph.ExportFull(size, 0d);
+    }
+
+    [TorchOp("aten::zeros_like")]
+    public static IOnnxGraphEdge ExportZerosLike(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+
+        return graph.ExportFullLike(input, 0d);
     }
 
     [TorchOp("aten::clamp.Tensor")]
@@ -2102,6 +2326,29 @@ public static class TorchTensorOperatorExtensions
         );
     }
 
+    [TorchOp("aten::amin")]
+    public static IOnnxGraphEdge ExportAMin(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IReadOnlyList<long> dims,
+        bool keepdim = false
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(dims);
+
+        return graph.ReduceMin(
+            name: graph.NextName("amin"),
+            options: new ReduceMinInputOptions
+            {
+                Data = input,
+                Axes = AddAxesTensor(graph, "amin", dims),
+                Keepdims = keepdim ? 1 : 0,
+            }
+        );
+    }
+
     [TorchOp("aten::sort")]
     public static TopKOutput ExportSort(
         this OnnxGraph graph,
@@ -2188,6 +2435,76 @@ public static class TorchTensorOperatorExtensions
         return graph.ExportDiv(log, AddScalarLike(graph, input, "log10", Math.Log(10d)));
     }
 
+    [TorchOp("aten::special_erfcx")]
+    public static IOnnxGraphEdge ExportErfcx(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+
+        return graph.ExportMul(
+            graph.ExportExp(graph.ExportPow(input, 2d)),
+            graph.ExportErfc(input)
+        );
+    }
+
+    [TorchOp("aten::sinc")]
+    [TorchOp("aten::special_sinc")]
+    public static IOnnxGraphEdge ExportSinc(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+
+        var zero = AddScalarLike(graph, input, "sinc", 0d);
+        var one = AddScalarLike(graph, input, "sinc", 1d);
+        var piSelf = graph.ExportMul(input, AddScalarLike(graph, input, "sinc", Math.PI));
+        var sinc = graph.ExportDiv(graph.ExportSin(piSelf), piSelf);
+        return graph.ExportWhere(graph.ExportEqual(input, zero), one, sinc);
+    }
+
+    [TorchOp("aten::isneginf")]
+    public static IOnnxGraphEdge ExportIsNegInf(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+
+        var cast = ExportCastTo(graph, "isneginf_cast", input, 1L);
+        var isInf = ExportUnaryNode(graph, "isneginf", "IsInf", cast);
+        var zero = graph.AddTensor<float>(
+            name: $"isneginf_{graph.Initializers.Count}_scalar",
+            shape: [],
+            value: [0f]
+        );
+        return graph.ExportLogicalAnd(graph.ExportLess(cast, zero), isInf);
+    }
+
+    [TorchOp("aten::isposinf")]
+    public static IOnnxGraphEdge ExportIsPosInf(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+
+        var cast = ExportCastTo(graph, "isposinf_cast", input, 1L);
+        var isInf = ExportUnaryNode(graph, "isposinf", "IsInf", cast);
+        var zero = graph.AddTensor<float>(
+            name: $"isposinf_{graph.Initializers.Count}_scalar",
+            shape: [],
+            value: [0f]
+        );
+        return graph.ExportLogicalAnd(graph.ExportGreater(cast, zero), isInf);
+    }
+
     [TorchOp("aten::type_as")]
     public static IOnnxGraphEdge ExportTypeAs(
         this OnnxGraph graph,
@@ -2199,10 +2516,7 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(other);
 
-        var otherType = GetTensorDataType(other)
-            ?? throw new NotSupportedException("type_as export requires the target tensor element type to be known.");
-
-        return ExportCastTo(graph, "type_as", input, GetOnnxTensorDataType(otherType));
+        return ExportBinaryNode(graph, "type_as", "CastLike", input, other);
     }
 
     [TorchOp("aten::pow.Tensor_Scalar")]
@@ -2227,6 +2541,7 @@ public static class TorchTensorOperatorExtensions
 
     [TorchOp("aten::pow.Tensor_Tensor")]
     [TorchOp("prims::pow")]
+    [TorchOp("_operator::pow")]
     public static IOnnxGraphEdge ExportPow(
         this OnnxGraph graph,
         IOnnxGraphEdge input,
@@ -2242,6 +2557,26 @@ public static class TorchTensorOperatorExtensions
             options: new PowInputOptions
             {
                 X = input,
+                Y = exponent,
+            }
+        );
+    }
+
+    [TorchOp("aten::pow.Scalar")]
+    public static IOnnxGraphEdge ExportPow(
+        this OnnxGraph graph,
+        double input,
+        IOnnxGraphEdge exponent
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(exponent);
+
+        return graph.Pow(
+            name: graph.NextName("pow"),
+            options: new PowInputOptions
+            {
+                X = AddScalarLike(graph, exponent, "pow", input),
                 Y = exponent,
             }
         );
@@ -2264,6 +2599,18 @@ public static class TorchTensorOperatorExtensions
                 X = input,
             }
         );
+    }
+
+    [TorchOp("prims::tanh")]
+    public static IOnnxGraphEdge ExportTanh(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+
+        return ExportUnaryNode(graph, "tanh", "Tanh", input);
     }
 
     [TorchOp("aten::rsqrt")]
@@ -2368,8 +2715,13 @@ public static class TorchTensorOperatorExtensions
         bool useMin
     )
     {
-        var truth = graph.ExportNotEqual(input, AddScalarLike(graph, input, $"{prefix}_truth", 0d));
-        var truthInt = ExportCastTo(graph, $"{prefix}_cast", truth, 7L);
+        var truth = ExportCastTo(graph, $"{prefix}_bool", input, 9L);
+        if (dims is null && TryGetRank(input) == 0)
+        {
+            return truth;
+        }
+
+        var truthInt = ExportCastTo(graph, $"{prefix}_int", truth, 7L);
 
         var reduced = useMin
             ? graph.ReduceMin(
@@ -2391,13 +2743,7 @@ public static class TorchTensorOperatorExtensions
                 }
             );
 
-        var zero = graph.AddTensor<long>(
-            name: $"{prefix}_{graph.Initializers.Count}_zero",
-            shape: [],
-            value: [0L]
-        );
-
-        return graph.ExportGreater(reduced, zero);
+        return ExportCastTo(graph, $"{prefix}_result", reduced, 9L);
     }
 
     private static bool IsFloatingPointTensorType(IOnnxGraphEdge edge)

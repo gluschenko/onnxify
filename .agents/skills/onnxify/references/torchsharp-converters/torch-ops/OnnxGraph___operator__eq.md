@@ -8,7 +8,7 @@ Do not hand-edit this file; rerun the generator instead.
 - Source: src/Onnxify.TorchSharp/TorchTensorOperatorExtensions.cs
 - Receiver: OnnxGraph
 - Return type: IOnnxGraphEdge
-- Torch ops: _operator::eq, aten::eq.Tensor, prims::eq
+- Torch ops: _operator::eq, aten::eq, aten::eq.Tensor, prims::eq
 
 ## Parameters
 

@@ -8,7 +8,7 @@ Do not hand-edit this file; rerun the generator instead.
 - Source: src/Onnxify.TorchSharp/TorchTensorOperatorExtensions.cs
 - Receiver: OnnxGraph
 - Return type: IOnnxGraphEdge
-- Torch ops: aten::alias, aten::clone, aten::contiguous, aten::detach, aten::resolve_neg
+- Torch ops: aten::alias, aten::clone, aten::contiguous, aten::detach, aten::resolve_conj, aten::resolve_neg
 
 ## Parameters
 

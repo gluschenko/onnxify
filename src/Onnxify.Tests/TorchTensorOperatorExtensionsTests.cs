@@ -392,7 +392,7 @@ public sealed class TorchTensorOperatorExtensionsTests
     {
         var graph = CreateGraph();
         var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 8L, 4L]));
-        var index = graph.AddInput("index", OnnxTensorType.Create<long>([3L]));
+        var index = graph.AddInput("index", OnnxTensorType.Create<int>([3L]));
 
         var selected = graph.ExportIndexSelect(input, dim: 1, index: index);
         var narrowed = graph.ExportNarrow(input, dim: 1, start: 2, length: 3);
@@ -404,17 +404,29 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.NotNull(nonZero);
         Assert.NotNull(cumsum);
         Assert.Equal(
-            ["Gather", "Slice", "NonZero", "CumSum"],
+            ["Reshape", "Cast", "Gather", "Slice", "NonZero", "Transpose", "CumSum"],
             graph.Nodes.Select(x => x.OpType).ToArray()
         );
 
-        var gather = graph.Nodes[0];
+        var gather = graph.Nodes[2];
         Assert.Equal(1L, Assert.IsType<long>(gather.Attributes.Single(x => x.Name == "axis").GetValue()));
 
         var axisTensor = graph.Initializers
             .OfType<OnnxTensor<long>>()
             .Single(tensor => tensor.Name.EndsWith("_axis", StringComparison.Ordinal));
         Assert.Equal([2L], axisTensor.Value.ToArray());
+    }
+
+    [Fact]
+    public void ExportCumSum_WithScalarInput_EmitsIdentity()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([]));
+
+        var output = graph.ExportCumSum(input, dim: 0);
+
+        Assert.NotNull(output);
+        Assert.Equal("Identity", Assert.Single(graph.Nodes).OpType);
     }
 
     [Fact]
@@ -473,9 +485,12 @@ public sealed class TorchTensorOperatorExtensionsTests
         graph.ExportTypeAs(input, otherType);
 
         Assert.Equal(
-            ["Identity", "Identity", "Identity", "Identity", "Identity", "Expand", "Tile", "Shape", "Reshape", "Cast"],
+            ["Identity", "Identity", "Identity", "Identity", "Identity", "Expand", "Tile", "Shape", "Reshape", "CastLike"],
             graph.Nodes.Select(x => x.OpType).ToArray()
         );
+
+        var reshape = graph.Nodes.Single(x => x.OpType == "Reshape");
+        Assert.Equal(1L, Assert.IsType<long>(reshape.Attributes.Single(x => x.Name == "allowzero").GetValue()));
     }
 
     [Fact]
@@ -514,12 +529,12 @@ public sealed class TorchTensorOperatorExtensionsTests
 
         Assert.Equal(
             [
-                "Equal", "Not", "Cast", "ReduceMin", "Greater",
-                "Equal", "Not", "Cast", "ReduceMin", "Greater",
-                "Equal", "Not", "Cast", "ReduceMin", "Greater",
-                "Equal", "Not", "Cast", "ReduceMax", "Greater",
-                "Equal", "Not", "Cast", "ReduceMax", "Greater",
-                "Equal", "Not", "Cast", "ReduceMax", "Greater",
+                "Cast", "Cast", "ReduceMin", "Cast",
+                "Cast", "Cast", "ReduceMin", "Cast",
+                "Cast", "Cast", "ReduceMin", "Cast",
+                "Cast", "Cast", "ReduceMax", "Cast",
+                "Cast", "Cast", "ReduceMax", "Cast",
+                "Cast", "Cast", "ReduceMax", "Cast",
             ],
             graph.Nodes.Select(x => x.OpType).ToArray()
         );
@@ -608,7 +623,7 @@ public sealed class TorchTensorOperatorExtensionsTests
     {
         var model = CreateRuntimeModel();
         var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([4L]));
-        var index = model.Graph.AddInput("index", OnnxTensorType.Create<long>([2L]));
+        var index = model.Graph.AddInput("index", OnnxTensorType.Create<int>([2L]));
         var scalar = model.Graph.AddInput("scalar", OnnxTensorType.Create<float>([1L]));
         var broadcastInput = model.Graph.AddInput("broadcast_input", OnnxTensorType.Create<float>([1L, 2L]));
         var viewSource = model.Graph.AddInput("view_source", OnnxTensorType.Create<float>([4L]));
@@ -641,7 +656,7 @@ public sealed class TorchTensorOperatorExtensionsTests
             new NamedOnnxValue[]
             {
                 NamedOnnxValue.CreateFromTensor("input", new DenseTensor<float>(new[] { 1f, 2f, 3f, 4f }, new[] { 4 })),
-                NamedOnnxValue.CreateFromTensor("index", new DenseTensor<long>(new long[] { 3L, 1L }, new[] { 2 })),
+                NamedOnnxValue.CreateFromTensor("index", new DenseTensor<int>(new[] { 3, 1 }, new[] { 2 })),
                 NamedOnnxValue.CreateFromTensor("scalar", new DenseTensor<float>(new[] { 2f }, new[] { 1 })),
                 NamedOnnxValue.CreateFromTensor("broadcast_input", new DenseTensor<float>(new[] { 5f, 6f }, new[] { 1, 2 })),
                 NamedOnnxValue.CreateFromTensor("view_source", new DenseTensor<float>(new[] { 9f, 8f, 7f, 6f }, new[] { 4 })),
@@ -666,14 +681,17 @@ public sealed class TorchTensorOperatorExtensionsTests
         var boolModel = CreateRuntimeModel();
         var lhs = boolModel.Graph.AddInput("lhs", OnnxTensorType.Create<float>([2L, 2L]));
         var rhs = boolModel.Graph.AddInput("rhs", OnnxTensorType.Create<float>([2L, 2L]));
+        var boolInput = boolModel.Graph.AddInput("bool_input", OnnxTensorType.Create<bool>([2L, 2L]));
 
         var ne = boolModel.Graph.ExportNotEqual(lhs, rhs);
         var signbit = boolModel.Graph.ExportSignBit(lhs);
+        var signbitBool = boolModel.Graph.ExportSignBit(boolInput);
         var all = boolModel.Graph.ExportAll(lhs, new long[] { 1L }, keepdim: false);
         var any = boolModel.Graph.ExportAny(lhs, new long[] { 1L }, keepdim: false);
 
         AddBoolOutput(boolModel, "ne", ne, 2, 2);
         AddBoolOutput(boolModel, "signbit", signbit, 2, 2);
+        AddBoolOutput(boolModel, "signbit_bool", signbitBool, 2, 2);
         AddBoolOutput(boolModel, "all", all, 2);
         AddBoolOutput(boolModel, "any", any, 2);
 
@@ -683,10 +701,12 @@ public sealed class TorchTensorOperatorExtensionsTests
             {
                 NamedOnnxValue.CreateFromTensor("lhs", new DenseTensor<float>(new[] { -1f, 0f, 2f, 3f }, new[] { 2, 2 })),
                 NamedOnnxValue.CreateFromTensor("rhs", new DenseTensor<float>(new[] { -1f, 5f, 2f, -3f }, new[] { 2, 2 })),
+                NamedOnnxValue.CreateFromTensor("bool_input", new DenseTensor<bool>(new[] { true, false, true, false }, new[] { 2, 2 })),
             });
 
         AssertTensorValues(boolOutputs["ne"], [false, true, false, true], 2, 2);
         AssertTensorValues(boolOutputs["signbit"], [true, false, false, false], 2, 2);
+        AssertTensorValues(boolOutputs["signbit_bool"], [false, false, false, false], 2, 2);
         AssertTensorValues(boolOutputs["all"], [false, true]);
         AssertTensorValues(boolOutputs["any"], [true, true]);
 
@@ -697,7 +717,7 @@ public sealed class TorchTensorOperatorExtensionsTests
         var nonzero = castModel.Graph.ExportNonZero(castInput);
 
         AddLongOutput(castModel, "type_as", casted, 3);
-        AddLongOutput(castModel, "nonzero", nonzero, 1, 2);
+        AddLongOutput(castModel, "nonzero", nonzero, 2, 1);
 
         var longOutputs = RunModel<long>(
             castModel,
@@ -708,7 +728,100 @@ public sealed class TorchTensorOperatorExtensionsTests
             });
 
         AssertTensorValues(longOutputs["type_as"], [0L, 2L, -3L]);
-        AssertTensorValues(longOutputs["nonzero"], [1L, 2L], 1, 2);
+        AssertTensorValues(longOutputs["nonzero"], [1L, 2L], 2, 1);
+    }
+
+    [Fact]
+    public void Smoke_RuntimeExecutesNewCoverageOperators()
+    {
+        var floatModel = CreateRuntimeModel();
+        var input = floatModel.Graph.AddInput("input", OnnxTensorType.Create<float>([2L, 2L]));
+        var other = floatModel.Graph.AddInput("other", OnnxTensorType.Create<float>([2L, 2L]));
+        var special = floatModel.Graph.AddInput("special", OnnxTensorType.Create<float>([2L]));
+
+        var amin = floatModel.Graph.ExportAMin(input, new long[] { 1L }, keepdim: false);
+        var atan2 = floatModel.Graph.ExportAtan2(input, other);
+        var full = floatModel.Graph.ExportFull(new long[] { 2L, 2L }, 3d);
+        var fullLike = floatModel.Graph.ExportFullLike(input, 4d);
+        var ones = floatModel.Graph.ExportOnes(new long[] { 2L, 2L });
+        var onesLike = floatModel.Graph.ExportOnesLike(input);
+        var zeros = floatModel.Graph.ExportZeros(new long[] { 2L, 2L });
+        var zerosLike = floatModel.Graph.ExportZerosLike(input);
+        var scalarPow = floatModel.Graph.ExportPow(2d, special);
+        var rounded = floatModel.Graph.ExportRound(special, decimals: 1);
+        var sinc = floatModel.Graph.ExportSinc(special);
+        var erfcx = floatModel.Graph.ExportErfcx(special);
+        var tanh = floatModel.Graph.ExportTanh(special);
+
+        AddFloatOutput(floatModel, "amin", amin, 2);
+        AddFloatOutput(floatModel, "atan2", atan2, 2, 2);
+        AddFloatOutput(floatModel, "full", full, 2, 2);
+        AddFloatOutput(floatModel, "full_like", fullLike, 2, 2);
+        AddFloatOutput(floatModel, "ones", ones, 2, 2);
+        AddFloatOutput(floatModel, "ones_like", onesLike, 2, 2);
+        AddFloatOutput(floatModel, "zeros", zeros, 2, 2);
+        AddFloatOutput(floatModel, "zeros_like", zerosLike, 2, 2);
+        AddFloatOutput(floatModel, "scalar_pow", scalarPow, 2);
+        AddFloatOutput(floatModel, "rounded", rounded, 2);
+        AddFloatOutput(floatModel, "sinc", sinc, 2);
+        AddFloatOutput(floatModel, "erfcx", erfcx, 2);
+        AddFloatOutput(floatModel, "tanh", tanh, 2);
+
+        var floatResults = RunModel<float>(
+            floatModel,
+            new NamedOnnxValue[]
+            {
+                NamedOnnxValue.CreateFromTensor("input", new DenseTensor<float>(new[] { 1f, 2f, 3f, 4f }, new[] { 2, 2 })),
+                NamedOnnxValue.CreateFromTensor("other", new DenseTensor<float>(new[] { 1f, -1f, -2f, 2f }, new[] { 2, 2 })),
+                NamedOnnxValue.CreateFromTensor("special", new DenseTensor<float>(new[] { 0f, 0.5f }, new[] { 2 })),
+            });
+
+        AssertTensorValues(floatResults["amin"], [1f, 3f]);
+        AssertTensorValues(floatResults["atan2"], [MathF.Atan2(1f, 1f), MathF.Atan2(2f, -1f), MathF.Atan2(3f, -2f), MathF.Atan2(4f, 2f)], 2, 2);
+        AssertTensorValues(floatResults["full"], [3f, 3f, 3f, 3f], 2, 2);
+        AssertTensorValues(floatResults["full_like"], [4f, 4f, 4f, 4f], 2, 2);
+        AssertTensorValues(floatResults["ones"], [1f, 1f, 1f, 1f], 2, 2);
+        AssertTensorValues(floatResults["ones_like"], [1f, 1f, 1f, 1f], 2, 2);
+        AssertTensorValues(floatResults["zeros"], [0f, 0f, 0f, 0f], 2, 2);
+        AssertTensorValues(floatResults["zeros_like"], [0f, 0f, 0f, 0f], 2, 2);
+        AssertTensorValues(floatResults["scalar_pow"], [1f, MathF.Sqrt(2f)]);
+        AssertTensorValues(floatResults["rounded"], [0f, 0.5f]);
+        AssertTensorValues(floatResults["sinc"], [1f, 2f / MathF.PI]);
+        AssertTensorValues(floatResults["erfcx"], [1f, MathF.Exp(0.25f) * 0.4795001f]);
+        AssertTensorValues(floatResults["tanh"], [0f, MathF.Tanh(0.5f)]);
+
+        var boolModel = CreateRuntimeModel();
+        var infInput = boolModel.Graph.AddInput("inf_input", OnnxTensorType.Create<float>([3L]));
+        var isNegInf = boolModel.Graph.ExportIsNegInf(infInput);
+        var isPosInf = boolModel.Graph.ExportIsPosInf(infInput);
+        AddBoolOutput(boolModel, "isneginf", isNegInf, 3);
+        AddBoolOutput(boolModel, "isposinf", isPosInf, 3);
+
+        var boolResults = RunModel<bool>(
+            boolModel,
+            new NamedOnnxValue[]
+            {
+                NamedOnnxValue.CreateFromTensor("inf_input", new DenseTensor<float>(new[] { float.NegativeInfinity, 0f, float.PositiveInfinity }, new[] { 3 })),
+            });
+
+        AssertTensorValues(boolResults["isneginf"], [true, false, false]);
+        AssertTensorValues(boolResults["isposinf"], [false, false, true]);
+
+        var intModel = CreateRuntimeModel();
+        var left = intModel.Graph.AddInput("left", OnnxTensorType.Create<long>([4L]));
+        var right = intModel.Graph.AddInput("right", OnnxTensorType.Create<long>([4L]));
+        var floorDivInt = intModel.Graph.ExportFloorDivide(left, right);
+        AddLongOutput(intModel, "floor_divide", floorDivInt, 4);
+
+        var intOutputs = RunModel<long>(
+            intModel,
+            new NamedOnnxValue[]
+            {
+                NamedOnnxValue.CreateFromTensor("left", new DenseTensor<long>(new long[] { -5L, 5L, 5L, -5L }, new[] { 4 })),
+                NamedOnnxValue.CreateFromTensor("right", new DenseTensor<long>(new long[] { 2L, -2L, 2L, -2L }, new[] { 4 })),
+            });
+
+        AssertTensorValues(intOutputs["floor_divide"], [-3L, -3L, 2L, 2L]);
     }
 
     [Fact]
@@ -757,6 +870,45 @@ public sealed class TorchTensorOperatorExtensionsTests
     }
 
     [Fact]
+    public void ExportNewCreatorAndSpecialOperators_EmitExpectedNodes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 2L]));
+        var other = graph.AddInput("other", OnnxTensorType.Create<float>([2L, 2L]));
+        var longInput = graph.AddInput("long_input", OnnxTensorType.Create<long>([2L, 2L]));
+        var longOther = graph.AddInput("long_other", OnnxTensorType.Create<long>([2L, 2L]));
+
+        graph.ExportAMin(input, new long[] { 1L }, keepdim: false);
+        graph.ExportAtan2(input, other);
+        graph.ExportFloorDivide(input, other);
+        graph.ExportFloorDivide(longInput, longOther);
+        graph.ExportFull(new long[] { 2L, 2L }, 3d);
+        graph.ExportFullLike(input, 4d);
+        graph.ExportOnes(new long[] { 2L, 2L });
+        graph.ExportOnesLike(input);
+        graph.ExportZeros(new long[] { 2L, 2L });
+        graph.ExportZerosLike(input);
+        graph.ExportPow(2d, input);
+        graph.ExportRound(input, decimals: 2);
+        graph.ExportSinc(input);
+        graph.ExportErfcx(input);
+        graph.ExportIsNegInf(input);
+        graph.ExportIsPosInf(input);
+        graph.ExportTanh(input);
+
+        var opTypes = graph.Nodes.Select(x => x.OpType).ToArray();
+        Assert.Contains("ReduceMin", opTypes);
+        Assert.Contains("Atan", opTypes);
+        Assert.Contains("Floor", opTypes);
+        Assert.Contains("Expand", opTypes);
+        Assert.Contains("Pow", opTypes);
+        Assert.Contains("Round", opTypes);
+        Assert.Contains("IsInf", opTypes);
+        Assert.Contains("Tanh", opTypes);
+        Assert.Contains("Where", opTypes);
+    }
+
+    [Fact]
     public void TorchModuleExtensions_ExposeRequestedAliasOperators()
     {
         var coveredOperators = typeof(TorchModuleExtensions)
@@ -799,8 +951,17 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("aten::topk", coveredOperators);
         Assert.Contains("aten::argmax", coveredOperators);
         Assert.Contains("aten::amax", coveredOperators);
+        Assert.Contains("aten::amin", coveredOperators);
         Assert.Contains("aten::sort", coveredOperators);
+        Assert.Contains("aten::atan2", coveredOperators);
+        Assert.Contains("aten::eq", coveredOperators);
+        Assert.Contains("aten::floor_divide", coveredOperators);
+        Assert.Contains("aten::full", coveredOperators);
+        Assert.Contains("aten::full_like", coveredOperators);
+        Assert.Contains("aten::ones", coveredOperators);
+        Assert.Contains("aten::ones_like", coveredOperators);
         Assert.Contains("aten::pow.Tensor_Scalar", coveredOperators);
+        Assert.Contains("aten::pow.Scalar", coveredOperators);
         Assert.Contains("aten::rsqrt", coveredOperators);
         Assert.Contains("aten::abs", coveredOperators);
         Assert.Contains("aten::neg", coveredOperators);
@@ -865,6 +1026,7 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("aten::clone", coveredOperators);
         Assert.Contains("aten::contiguous", coveredOperators);
         Assert.Contains("aten::detach", coveredOperators);
+        Assert.Contains("aten::resolve_conj", coveredOperators);
         Assert.Contains("aten::resolve_neg", coveredOperators);
         Assert.Contains("aten::broadcast_to", coveredOperators);
         Assert.Contains("aten::view_as", coveredOperators);
@@ -874,6 +1036,12 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("aten::exp2", coveredOperators);
         Assert.Contains("aten::frac", coveredOperators);
         Assert.Contains("aten::log10", coveredOperators);
+        Assert.Contains("aten::round.decimals", coveredOperators);
+        Assert.Contains("aten::sinc", coveredOperators);
+        Assert.Contains("aten::special_sinc", coveredOperators);
+        Assert.Contains("aten::special_erfcx", coveredOperators);
+        Assert.Contains("aten::isneginf", coveredOperators);
+        Assert.Contains("aten::isposinf", coveredOperators);
         Assert.Contains("aten::all", coveredOperators);
         Assert.Contains("aten::all.dim", coveredOperators);
         Assert.Contains("aten::all.dims", coveredOperators);
@@ -885,9 +1053,12 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("aten::prod.dim_int", coveredOperators);
         Assert.Contains("aten::argmin", coveredOperators);
         Assert.Contains("aten::tril", coveredOperators);
+        Assert.Contains("aten::zeros", coveredOperators);
+        Assert.Contains("aten::zeros_like", coveredOperators);
         Assert.Contains("_operator::abs", coveredOperators);
         Assert.Contains("_operator::add", coveredOperators);
         Assert.Contains("_operator::eq", coveredOperators);
+        Assert.Contains("_operator::floordiv", coveredOperators);
         Assert.Contains("_operator::ge", coveredOperators);
         Assert.Contains("_operator::gt", coveredOperators);
         Assert.Contains("_operator::le", coveredOperators);
@@ -895,6 +1066,7 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("_operator::mul", coveredOperators);
         Assert.Contains("_operator::ne", coveredOperators);
         Assert.Contains("_operator::neg", coveredOperators);
+        Assert.Contains("_operator::pow", coveredOperators);
         Assert.Contains("_operator::sub", coveredOperators);
         Assert.Contains("aten::multiply.Tensor", coveredOperators);
         Assert.Contains("aten::subtract.Tensor", coveredOperators);
@@ -915,15 +1087,21 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("prims::atan", coveredOperators);
         Assert.Contains("prims::atanh", coveredOperators);
         Assert.Contains("prims::ceil", coveredOperators);
+        Assert.Contains("prims::cos", coveredOperators);
         Assert.Contains("prims::cosh", coveredOperators);
         Assert.Contains("prims::div", coveredOperators);
         Assert.Contains("prims::eq", coveredOperators);
         Assert.Contains("prims::erf", coveredOperators);
         Assert.Contains("prims::exp", coveredOperators);
         Assert.Contains("prims::floor", coveredOperators);
+        Assert.Contains("prims::ge", coveredOperators);
+        Assert.Contains("prims::gt", coveredOperators);
+        Assert.Contains("prims::le", coveredOperators);
+        Assert.Contains("prims::lt", coveredOperators);
         Assert.Contains("prims::log", coveredOperators);
         Assert.Contains("prims::mul", coveredOperators);
         Assert.Contains("prims::ne", coveredOperators);
+        Assert.Contains("prims::neg", coveredOperators);
         Assert.Contains("prims::pow", coveredOperators);
         Assert.Contains("prims::reshape", coveredOperators);
         Assert.Contains("prims::round", coveredOperators);
@@ -934,6 +1112,7 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("prims::sub", coveredOperators);
         Assert.Contains("prims::sum", coveredOperators);
         Assert.Contains("prims::tan", coveredOperators);
+        Assert.Contains("prims::tanh", coveredOperators);
         Assert.Contains("prims::transpose", coveredOperators);
         Assert.Contains("prims::where", coveredOperators);
     }
