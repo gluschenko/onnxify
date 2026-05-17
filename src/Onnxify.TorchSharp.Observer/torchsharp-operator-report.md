@@ -1,7 +1,7 @@
 # TorchSharp operator coverage
 
 Found: 83.73% (417/498)
-Coverage: 63.05% (314/498)
+Coverage: 65.06% (324/498)
 
 | ONNXScript operator | TorchSharp module | Found | Coverage |
 | --- | --- | --- | --- |
@@ -58,12 +58,12 @@ Coverage: 63.05% (314/498)
 | aten::acosh | TorchSharp.torch+Tensor.acosh | &#10003; | &#10003; |
 | aten::add.Scalar | TorchSharp.torch+Tensor.add | &#10003; | &#10003; |
 | aten::add.Tensor | TorchSharp.torch+Tensor.add | &#10003; | &#10003; |
-| aten::addbmm | TorchSharp.torch+Tensor.addbmm | &#10003; |  |
-| aten::addcdiv | TorchSharp.torch+Tensor.addcdiv | &#10003; |  |
-| aten::addcmul | TorchSharp.torch+Tensor.addcmul | &#10003; |  |
-| aten::addmm | TorchSharp.torch+Tensor.addmm | &#10003; |  |
-| aten::addmv | TorchSharp.torch+Tensor.addmv | &#10003; |  |
-| aten::addr | TorchSharp.torch+Tensor.addr | &#10003; |  |
+| aten::addbmm | TorchSharp.torch+Tensor.addbmm | &#10003; | &#10003; |
+| aten::addcdiv | TorchSharp.torch+Tensor.addcdiv | &#10003; | &#10003; |
+| aten::addcmul | TorchSharp.torch+Tensor.addcmul | &#10003; | &#10003; |
+| aten::addmm | TorchSharp.torch+Tensor.addmm | &#10003; | &#10003; |
+| aten::addmv | TorchSharp.torch+Tensor.addmv | &#10003; | &#10003; |
+| aten::addr | TorchSharp.torch+Tensor.addr | &#10003; | &#10003; |
 | aten::alias | TorchSharp.torch+Tensor.alias | &#10003; | &#10003; |
 | aten::all | TorchSharp.torch+Tensor.all | &#10003; | &#10003; |
 | aten::all.dim | TorchSharp.torch+Tensor.all | &#10003; | &#10003; |
@@ -95,7 +95,7 @@ Coverage: 63.05% (314/498)
 | aten::avg_pool1d | TorchSharp.Modules.AvgPool1d | &#10003; | &#10003; |
 | aten::avg_pool2d | TorchSharp.Modules.AvgPool2d | &#10003; | &#10003; |
 | aten::avg_pool3d | TorchSharp.Modules.AvgPool3d | &#10003; | &#10003; |
-| aten::baddbmm | TorchSharp.torch+Tensor.baddbmm | &#10003; |  |
+| aten::baddbmm | TorchSharp.torch+Tensor.baddbmm | &#10003; | &#10003; |
 | aten::bernoulli | TorchSharp.torch+Tensor.bernoulli | &#10003; |  |
 | aten::bernoulli.p | TorchSharp.torch+Tensor.bernoulli | &#10003; |  |
 | aten::bilinear | TorchSharp.Modules.Bilinear | &#10003; |  |
@@ -231,8 +231,8 @@ Coverage: 63.05% (314/498)
 | aten::le.Scalar | TorchSharp.torch+Tensor.le | &#10003; | &#10003; |
 | aten::le.Tensor | TorchSharp.torch+Tensor.le | &#10003; | &#10003; |
 | aten::leaky_relu | TorchSharp.Modules.LeakyReLU | &#10003; | &#10003; |
-| aten::lerp.Scalar | TorchSharp.torch+Tensor.lerp | &#10003; |  |
-| aten::lerp.Tensor | TorchSharp.torch+Tensor.lerp | &#10003; |  |
+| aten::lerp.Scalar | TorchSharp.torch+Tensor.lerp | &#10003; | &#10003; |
+| aten::lerp.Tensor | TorchSharp.torch+Tensor.lerp | &#10003; | &#10003; |
 | aten::less.Tensor | TorchSharp.torch+Tensor.less | &#10003; | &#10003; |
 | aten::less_equal.Tensor | TorchSharp.torch+Tensor.less_equal | &#10003; | &#10003; |
 | aten::lift_fresh_copy |  |  |  |
@@ -287,7 +287,7 @@ Coverage: 63.05% (314/498)
 | aten::mul.Tensor | TorchSharp.torch+Tensor.mul | &#10003; | &#10003; |
 | aten::multinomial | TorchSharp.torch+Tensor.multinomial | &#10003; |  |
 | aten::multiply.Tensor | TorchSharp.torch+Tensor.multiply | &#10003; | &#10003; |
-| aten::mv | TorchSharp.torch+Tensor.mv | &#10003; |  |
+| aten::mv | TorchSharp.torch+Tensor.mv | &#10003; | &#10003; |
 | aten::narrow | TorchSharp.torch+Tensor.narrow | &#10003; | &#10003; |
 | aten::native_batch_norm |  |  | &#10003; |
 | aten::native_dropout |  |  | &#10003; |

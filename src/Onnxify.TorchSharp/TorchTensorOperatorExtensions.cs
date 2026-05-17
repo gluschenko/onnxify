@@ -1142,6 +1142,236 @@ public static class TorchTensorOperatorExtensions
         );
     }
 
+    [TorchOp("aten::addbmm")]
+    public static IOnnxGraphEdge ExportAddBmm(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IOnnxGraphEdge batch1,
+        IOnnxGraphEdge batch2,
+        float beta = 1f,
+        float alpha = 1f
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(batch1);
+        ArgumentNullException.ThrowIfNull(batch2);
+
+        var batchProduct = graph.ExportMatMul(batch1, batch2);
+        var reduced = graph.ReduceSum(
+            name: graph.NextName("addbmm"),
+            options: new ReduceSumInputOptions
+            {
+                Data = batchProduct,
+                Axes = AddAxesTensor(graph, "addbmm", [0L]),
+                Keepdims = 0,
+            }
+        );
+
+        return graph.ExportAdd(
+            ScaleLikeIfNeeded(graph, input, beta, "addbmm"),
+            ScaleLikeIfNeeded(graph, reduced, alpha, "addbmm")
+        );
+    }
+
+    [TorchOp("aten::addcdiv")]
+    public static IOnnxGraphEdge ExportAddCDiv(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IOnnxGraphEdge tensor1,
+        IOnnxGraphEdge tensor2,
+        float value = 1f
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(tensor1);
+        ArgumentNullException.ThrowIfNull(tensor2);
+
+        var divided = graph.ExportDiv(tensor1, tensor2);
+        return graph.ExportAdd(
+            input,
+            ScaleLikeIfNeeded(graph, divided, value, "addcdiv")
+        );
+    }
+
+    [TorchOp("aten::addcmul")]
+    public static IOnnxGraphEdge ExportAddCMul(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IOnnxGraphEdge tensor1,
+        IOnnxGraphEdge tensor2,
+        float value = 1f
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(tensor1);
+        ArgumentNullException.ThrowIfNull(tensor2);
+
+        var scaledTensor1 = ScaleLikeIfNeeded(graph, tensor1, value, "addcmul");
+        var multiplied = graph.ExportMul(scaledTensor1, tensor2);
+        return graph.ExportAdd(input, multiplied);
+    }
+
+    [TorchOp("aten::addmm")]
+    public static IOnnxGraphEdge ExportAddMM(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IOnnxGraphEdge mat1,
+        IOnnxGraphEdge mat2,
+        float beta = 1f,
+        float alpha = 1f
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(mat1);
+        ArgumentNullException.ThrowIfNull(mat2);
+
+        return graph.Gemm(
+            name: graph.NextName("addmm"),
+            options: new GemmInputOptions
+            {
+                A = mat1,
+                B = mat2,
+                C = input,
+                Alpha = alpha,
+                Beta = beta,
+            }
+        );
+    }
+
+    [TorchOp("aten::addmv")]
+    public static IOnnxGraphEdge ExportAddMV(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IOnnxGraphEdge mat,
+        IOnnxGraphEdge vec,
+        float beta = 1f,
+        float alpha = 1f
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(mat);
+        ArgumentNullException.ThrowIfNull(vec);
+
+        var matMul = graph.ExportMatMul(mat, vec);
+        return graph.ExportAdd(
+            ScaleLikeIfNeeded(graph, input, beta, "addmv"),
+            ScaleLikeIfNeeded(graph, matMul, alpha, "addmv")
+        );
+    }
+
+    [TorchOp("aten::addr")]
+    public static IOnnxGraphEdge ExportAddr(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IOnnxGraphEdge vec1,
+        IOnnxGraphEdge vec2,
+        float beta = 1f,
+        float alpha = 1f
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(vec1);
+        ArgumentNullException.ThrowIfNull(vec2);
+
+        var vec1Reshaped = graph.ExportView(vec1, -1L, 1L);
+        var vec2Reshaped = graph.ExportView(vec2, 1L, -1L);
+        var outer = graph.ExportMatMul(vec1Reshaped, vec2Reshaped);
+        var scaledOuter = ScaleLikeIfNeeded(graph, outer, alpha, "addr");
+
+        if (beta == 0f)
+        {
+            return scaledOuter;
+        }
+
+        return graph.ExportAdd(
+            ScaleLikeIfNeeded(graph, input, beta, "addr"),
+            scaledOuter
+        );
+    }
+
+    [TorchOp("aten::baddbmm")]
+    public static IOnnxGraphEdge ExportBAddBmm(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IOnnxGraphEdge batch1,
+        IOnnxGraphEdge batch2,
+        float? beta = null,
+        float? alpha = null
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(batch1);
+        ArgumentNullException.ThrowIfNull(batch2);
+
+        var batchProduct = graph.ExportMatMul(batch1, batch2);
+        return graph.ExportAdd(
+            ScaleLikeIfNeeded(graph, batchProduct, alpha ?? 1f, "baddbmm"),
+            ScaleLikeIfNeeded(graph, input, beta ?? 1f, "baddbmm")
+        );
+    }
+
+    [TorchOp("aten::lerp.Tensor")]
+    public static IOnnxGraphEdge ExportLerp(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IOnnxGraphEdge end,
+        IOnnxGraphEdge weight
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(end);
+        ArgumentNullException.ThrowIfNull(weight);
+
+        return ExportLerpCore(
+            graph,
+            input,
+            end,
+            CastLikeIfNeeded(graph, weight, input, "lerp")
+        );
+    }
+
+    [TorchOp("aten::lerp.Scalar")]
+    public static IOnnxGraphEdge ExportLerp(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IOnnxGraphEdge end,
+        float weight
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(end);
+
+        return ExportLerpCore(
+            graph,
+            input,
+            end,
+            AddScalarLike(graph, input, "lerp", weight)
+        );
+    }
+
+    [TorchOp("aten::mv")]
+    public static IOnnxGraphEdge ExportMV(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IOnnxGraphEdge vec
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(vec);
+
+        return graph.ExportMatMul(input, vec);
+    }
+
     [TorchOp("aten::reshape")]
     [TorchOp("aten::view")]
     [TorchOp("prims::reshape")]
@@ -3151,6 +3381,32 @@ public static class TorchTensorOperatorExtensions
         return current;
     }
 
+    private static IOnnxGraphEdge ExportLerpCore(
+        OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IOnnxGraphEdge end,
+        IOnnxGraphEdge weight
+    )
+    {
+        var diff = graph.ExportSub(end, input);
+        var one = AddScalarLike(graph, input, "lerp", 1d);
+        var half = AddScalarLike(graph, input, "lerp", 0.5d);
+        var lowerBranch = graph.ExportAdd(input, graph.ExportMul(weight, diff));
+        var upperBranch = graph.ExportSub(
+            end,
+            graph.ExportMul(
+                diff,
+                graph.ExportSub(one, weight)
+            )
+        );
+
+        return graph.ExportWhere(
+            graph.ExportLess(weight, half),
+            lowerBranch,
+            upperBranch
+        );
+    }
+
     private static IOnnxGraphEdge ExportReduceNode(
         OnnxGraph graph,
         string prefix,
@@ -3396,6 +3652,28 @@ public static class TorchTensorOperatorExtensions
         );
     }
 
+    private static IOnnxGraphEdge ScaleLikeIfNeeded(
+        OnnxGraph graph,
+        IOnnxGraphEdge input,
+        float scale,
+        string prefix
+    )
+    {
+        if (scale == 1f)
+        {
+            return input;
+        }
+
+        var scalar = GetTensorDataType(input) is null
+            ? AddScalar(graph, prefix, scale)
+            : AddScalarLike(graph, input, prefix, scale);
+
+        return graph.ExportMul(
+            input,
+            scalar
+        );
+    }
+
     private static IOnnxGraphEdge AddScalar(OnnxGraph graph, string prefix, float value)
     {
         return graph.AddTensor(
@@ -3484,8 +3762,34 @@ public static class TorchTensorOperatorExtensions
             return graph.AddTensor<bool>(name, [], [value != 0d]);
         }
 
+        if (dataType == typeof(Half))
+        {
+            return graph.AddTensor<Half>(name, [], [checked((Half)value)]);
+        }
+
         throw new NotSupportedException(
             $"{prefix} export does not support scalar literals for element type '{dataType.Name}'."
+        );
+    }
+
+    private static IOnnxGraphEdge CastLikeIfNeeded(
+        OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IOnnxGraphEdge reference,
+        string prefix
+    )
+    {
+        var targetType = GetTensorDataType(reference);
+        if (targetType is null || GetTensorDataType(input) == targetType)
+        {
+            return input;
+        }
+
+        return ExportCastTo(
+            graph,
+            $"{prefix}_cast",
+            input,
+            GetOnnxTensorDataType(targetType)
         );
     }
 

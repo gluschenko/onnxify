@@ -1023,6 +1023,99 @@ public sealed class TorchTensorOperatorExtensionsTests
     }
 
     [Fact]
+    public void ExportLinearAlgebraBlendOperators_EmitExpectedNodes()
+    {
+        var graph = CreateGraph();
+        var matrixInput = graph.AddInput("matrix_input", OnnxTensorType.Create<float>([2L, 2L]));
+        var matrixLeft = graph.AddInput("matrix_left", OnnxTensorType.Create<float>([2L, 2L]));
+        var matrixRight = graph.AddInput("matrix_right", OnnxTensorType.Create<float>([2L, 2L]));
+        var batchInput = graph.AddInput("batch_input", OnnxTensorType.Create<float>([2L, 2L]));
+        var batchLeft = graph.AddInput("batch_left", OnnxTensorType.Create<float>([2L, 2L, 2L]));
+        var batchRight = graph.AddInput("batch_right", OnnxTensorType.Create<float>([2L, 2L, 2L]));
+        var batchAccumulator = graph.AddInput("batch_accumulator", OnnxTensorType.Create<float>([2L, 2L, 2L]));
+        var vectorInput = graph.AddInput("vector_input", OnnxTensorType.Create<float>([2L]));
+        var vectorLeft = graph.AddInput("vector_left", OnnxTensorType.Create<float>([2L]));
+        var vectorRight = graph.AddInput("vector_right", OnnxTensorType.Create<float>([2L]));
+        var interpolationWeight = graph.AddInput("interpolation_weight", OnnxTensorType.Create<float>([2L, 2L]));
+
+        graph.ExportAddBmm(batchInput, batchLeft, batchRight, beta: 0.5f, alpha: 2f);
+        graph.ExportAddCDiv(matrixInput, matrixLeft, matrixRight, value: 0.5f);
+        graph.ExportAddCMul(matrixInput, matrixLeft, matrixRight, value: 0.5f);
+        graph.ExportAddMM(matrixInput, matrixLeft, matrixRight, beta: 2f, alpha: 0.5f);
+        graph.ExportAddMV(vectorInput, matrixLeft, vectorLeft, beta: 2f, alpha: 0.5f);
+        graph.ExportAddr(matrixInput, vectorLeft, vectorRight, beta: 0f, alpha: 0.5f);
+        graph.ExportBAddBmm(batchAccumulator, batchLeft, batchRight, beta: 2f, alpha: 0.5f);
+        graph.ExportLerp(matrixInput, matrixRight, interpolationWeight);
+        graph.ExportLerp(matrixInput, matrixRight, 0.25f);
+        graph.ExportMV(matrixLeft, vectorLeft);
+
+        var opTypes = graph.Nodes.Select(x => x.OpType).ToArray();
+        Assert.Equal(1, opTypes.Count(x => x == "Gemm"));
+        Assert.Equal(1, opTypes.Count(x => x == "ReduceSum"));
+        Assert.Equal(5, opTypes.Count(x => x == "MatMul"));
+        Assert.Equal(2, opTypes.Count(x => x == "Reshape"));
+        Assert.Equal(2, opTypes.Count(x => x == "Where"));
+        Assert.Contains("Div", opTypes);
+        Assert.Contains("Less", opTypes);
+    }
+
+    [Fact]
+    public void Smoke_RuntimeExecutesLinearAlgebraBlendOperators()
+    {
+        var model = CreateRuntimeModel();
+        var matrixInput = model.Graph.AddInput("matrix_input", OnnxTensorType.Create<float>([2L, 2L]));
+        var matrixLeft = model.Graph.AddInput("matrix_left", OnnxTensorType.Create<float>([2L, 2L]));
+        var matrixRight = model.Graph.AddInput("matrix_right", OnnxTensorType.Create<float>([2L, 2L]));
+        var batchInput = model.Graph.AddInput("batch_input", OnnxTensorType.Create<float>([2L, 2L]));
+        var batchLeft = model.Graph.AddInput("batch_left", OnnxTensorType.Create<float>([2L, 2L, 2L]));
+        var batchRight = model.Graph.AddInput("batch_right", OnnxTensorType.Create<float>([2L, 2L, 2L]));
+        var batchAccumulator = model.Graph.AddInput("batch_accumulator", OnnxTensorType.Create<float>([2L, 2L, 2L]));
+        var vectorInput = model.Graph.AddInput("vector_input", OnnxTensorType.Create<float>([2L]));
+        var vectorLeft = model.Graph.AddInput("vector_left", OnnxTensorType.Create<float>([2L]));
+        var vectorRight = model.Graph.AddInput("vector_right", OnnxTensorType.Create<float>([2L]));
+        var interpolationWeight = model.Graph.AddInput("interpolation_weight", OnnxTensorType.Create<float>([2L, 2L]));
+
+        AddFloatOutput(model, "addbmm", model.Graph.ExportAddBmm(batchInput, batchLeft, batchRight, beta: 0.5f, alpha: 2f), 2, 2);
+        AddFloatOutput(model, "addcdiv", model.Graph.ExportAddCDiv(matrixInput, matrixLeft, matrixRight, value: 0.5f), 2, 2);
+        AddFloatOutput(model, "addcmul", model.Graph.ExportAddCMul(matrixInput, matrixLeft, matrixRight, value: 0.5f), 2, 2);
+        AddFloatOutput(model, "addmm", model.Graph.ExportAddMM(matrixInput, matrixLeft, matrixRight, beta: 2f, alpha: 0.5f), 2, 2);
+        AddFloatOutput(model, "addmv", model.Graph.ExportAddMV(vectorInput, matrixLeft, vectorLeft, beta: 2f, alpha: 0.5f), 2);
+        AddFloatOutput(model, "addr", model.Graph.ExportAddr(matrixInput, vectorLeft, vectorRight, beta: 0f, alpha: 0.5f), 2, 2);
+        AddFloatOutput(model, "baddbmm", model.Graph.ExportBAddBmm(batchAccumulator, batchLeft, batchRight, beta: 2f, alpha: 0.5f), 2, 2, 2);
+        AddFloatOutput(model, "lerp_tensor", model.Graph.ExportLerp(matrixInput, matrixRight, interpolationWeight), 2, 2);
+        AddFloatOutput(model, "lerp_scalar", model.Graph.ExportLerp(matrixInput, matrixRight, 0.25f), 2, 2);
+        AddFloatOutput(model, "mv", model.Graph.ExportMV(matrixLeft, vectorLeft), 2);
+
+        var results = RunModel<float>(
+            model,
+            new NamedOnnxValue[]
+            {
+                NamedOnnxValue.CreateFromTensor("matrix_input", new DenseTensor<float>(new[] { 1f, 2f, 3f, 4f }, new[] { 2, 2 })),
+                NamedOnnxValue.CreateFromTensor("matrix_left", new DenseTensor<float>(new[] { 2f, 4f, 6f, 8f }, new[] { 2, 2 })),
+                NamedOnnxValue.CreateFromTensor("matrix_right", new DenseTensor<float>(new[] { 1f, 0.5f, 0.5f, 0.25f }, new[] { 2, 2 })),
+                NamedOnnxValue.CreateFromTensor("batch_input", new DenseTensor<float>(new[] { 1f, 2f, 3f, 4f }, new[] { 2, 2 })),
+                NamedOnnxValue.CreateFromTensor("batch_left", new DenseTensor<float>(new[] { 1f, 0f, 0f, 1f, 2f, 1f, 1f, 0f }, new[] { 2, 2, 2 })),
+                NamedOnnxValue.CreateFromTensor("batch_right", new DenseTensor<float>(new[] { 1f, 2f, 3f, 4f, 0f, 1f, 2f, 3f }, new[] { 2, 2, 2 })),
+                NamedOnnxValue.CreateFromTensor("batch_accumulator", new DenseTensor<float>(new[] { 1f, 1f, 1f, 1f, 2f, 2f, 2f, 2f }, new[] { 2, 2, 2 })),
+                NamedOnnxValue.CreateFromTensor("vector_input", new DenseTensor<float>(new[] { 1f, 2f }, new[] { 2 })),
+                NamedOnnxValue.CreateFromTensor("vector_left", new DenseTensor<float>(new[] { 1f, 2f }, new[] { 2 })),
+                NamedOnnxValue.CreateFromTensor("vector_right", new DenseTensor<float>(new[] { 3f, 4f }, new[] { 2 })),
+                NamedOnnxValue.CreateFromTensor("interpolation_weight", new DenseTensor<float>(new[] { 0.25f, 0.75f, 0.4f, 0.6f }, new[] { 2, 2 })),
+            });
+
+        AssertTensorValues(results["addbmm"], [6.5f, 15f, 7.5f, 12f], 2, 2);
+        AssertTensorValues(results["addcdiv"], [2f, 6f, 9f, 20f], 2, 2);
+        AssertTensorValues(results["addcmul"], [2f, 3f, 4.5f, 5f], 2, 2);
+        AssertTensorValues(results["addmm"], [4f, 5f, 11f, 10.5f], 2, 2);
+        AssertTensorValues(results["addmv"], [7f, 15f], 2);
+        AssertTensorValues(results["addr"], [1.5f, 2f, 3f, 4f], 2, 2);
+        AssertTensorValues(results["baddbmm"], [2.5f, 3f, 3.5f, 4f, 5f, 6.5f, 4f, 4.5f], 2, 2, 2);
+        AssertTensorValues(results["lerp_tensor"], [1f, 0.875f, 2f, 1.75f], 2, 2);
+        AssertTensorValues(results["lerp_scalar"], [1f, 1.625f, 2.375f, 3.0625f], 2, 2);
+        AssertTensorValues(results["mv"], [10f, 22f], 2);
+    }
+
+    [Fact]
     public void ExportRepeatTopKArgMaxAndSort_EmitExpectedNodes()
     {
         var graph = CreateGraph();
@@ -1249,6 +1342,16 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("aten::logaddexp2", coveredOperators);
         Assert.Contains("aten::logit", coveredOperators);
         Assert.Contains("aten::logsumexp", coveredOperators);
+        Assert.Contains("aten::addbmm", coveredOperators);
+        Assert.Contains("aten::addcdiv", coveredOperators);
+        Assert.Contains("aten::addcmul", coveredOperators);
+        Assert.Contains("aten::addmm", coveredOperators);
+        Assert.Contains("aten::addmv", coveredOperators);
+        Assert.Contains("aten::addr", coveredOperators);
+        Assert.Contains("aten::baddbmm", coveredOperators);
+        Assert.Contains("aten::lerp.Tensor", coveredOperators);
+        Assert.Contains("aten::lerp.Scalar", coveredOperators);
+        Assert.Contains("aten::mv", coveredOperators);
         Assert.Contains("aten::round.decimals", coveredOperators);
         Assert.Contains("aten::sinc", coveredOperators);
         Assert.Contains("aten::special_sinc", coveredOperators);
