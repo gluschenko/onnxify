@@ -1992,15 +1992,67 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(index);
 
-        return graph.GatherElements(
+        var inputIsScalar = TryGetRank(input) == 0;
+        var indexIsScalar = TryGetRank(index) == 0;
+
+        if (inputIsScalar)
+        {
+            if (indexIsScalar)
+            {
+                return graph.ExportIdentity(input);
+            }
+
+            var shape = graph.Shape(
+                name: $"{graph.NextName("gather")}_shape",
+                options: new ShapeInputOptions
+                {
+                    Data = index,
+                }
+            );
+
+            return graph.Expand(
+                name: graph.NextName("gather"),
+                options: new ExpandInputOptions
+                {
+                    Input = input,
+                    Shape = shape,
+                }
+            );
+        }
+
+        var normalizedIndex = GetTensorDataType(index) == typeof(long)
+            ? index
+            : ExportCastTo(graph, "gather_cast", index, 7L);
+        if (indexIsScalar)
+        {
+            var axes = graph.AddTensor<long>(
+                name: $"{graph.NextName("gather")}_axes",
+                shape: [1],
+                value: [0L]
+            );
+            normalizedIndex = graph.Unsqueeze(
+                name: graph.NextName("gather_unsqueeze"),
+                options: new UnsqueezeInputOptions
+                {
+                    Data = normalizedIndex,
+                    Axes = axes,
+                }
+            );
+        }
+
+        var gathered = graph.GatherElements(
             name: graph.NextName("gather"),
             options: new GatherElementsInputOptions
             {
                 Data = input,
-                Indices = index,
+                Indices = normalizedIndex,
                 Axis = dim,
             }
         );
+
+        return indexIsScalar
+            ? graph.ExportSqueeze(gathered, 0)
+            : gathered;
     }
 
     [TorchOp("aten::where.self")]
@@ -2909,6 +2961,11 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(graph);
         ArgumentNullException.ThrowIfNull(input);
 
+        if (TryGetRank(input) == 0)
+        {
+            throw new NotSupportedException("topk export does not support scalar inputs.");
+        }
+
         if (k <= 0)
         {
             throw new NotSupportedException("topk export requires k > 0.");
@@ -3034,6 +3091,15 @@ public static class TorchTensorOperatorExtensions
     {
         ArgumentNullException.ThrowIfNull(graph);
         ArgumentNullException.ThrowIfNull(input);
+
+        if (TryGetRank(input) == 0)
+        {
+            return new TopKOutput
+            {
+                Values = graph.ExportIdentity(input),
+                Indices = AddScalarTensor<long>(graph, $"{graph.NextName("sort")}_index", 0L),
+            };
+        }
 
         var axisSize = GetRequiredStaticDimensionSize(input, dim, "sort");
         return graph.ExportTopK(

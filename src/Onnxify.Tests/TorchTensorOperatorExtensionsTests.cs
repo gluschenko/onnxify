@@ -626,6 +626,7 @@ public sealed class TorchTensorOperatorExtensionsTests
         var index = model.Graph.AddInput("index", OnnxTensorType.Create<int>([2L]));
         var scalar = model.Graph.AddInput("scalar", OnnxTensorType.Create<float>([1L]));
         var broadcastInput = model.Graph.AddInput("broadcast_input", OnnxTensorType.Create<float>([1L, 2L]));
+        var remainderDivisor = model.Graph.AddInput("remainder_divisor", OnnxTensorType.Create<float>([4L]));
         var viewSource = model.Graph.AddInput("view_source", OnnxTensorType.Create<float>([4L]));
         var viewTarget = model.Graph.AddInput("view_target", OnnxTensorType.Create<float>([2L, 2L]));
 
@@ -636,6 +637,7 @@ public sealed class TorchTensorOperatorExtensionsTests
         var clamp = model.Graph.ExportClamp(input, min: 2d, max: 3.5d);
         var fmod = model.Graph.ExportFMod(input, 2.5d);
         var remainder = model.Graph.ExportRemainder(input, 2d);
+        var remainderScalarTensor = model.Graph.ExportRemainder(7d, remainderDivisor);
         var tile = model.Graph.ExportRepeat(scalar, 4L);
         var broadcast = model.Graph.ExportExpand(broadcastInput, 3L, 2L);
         var viewAs = model.Graph.ExportViewAs(viewSource, viewTarget);
@@ -647,6 +649,7 @@ public sealed class TorchTensorOperatorExtensionsTests
         AddFloatOutput(model, "clamp", clamp, 4);
         AddFloatOutput(model, "fmod", fmod, 4);
         AddFloatOutput(model, "remainder", remainder, 4);
+        AddFloatOutput(model, "remainder_scalar_tensor", remainderScalarTensor, 4);
         AddFloatOutput(model, "tile", tile, 4);
         AddFloatOutput(model, "broadcast", broadcast, 3, 2);
         AddFloatOutput(model, "view_as", viewAs, 2, 2);
@@ -659,6 +662,7 @@ public sealed class TorchTensorOperatorExtensionsTests
                 NamedOnnxValue.CreateFromTensor("index", new DenseTensor<int>(new[] { 3, 1 }, new[] { 2 })),
                 NamedOnnxValue.CreateFromTensor("scalar", new DenseTensor<float>(new[] { 2f }, new[] { 1 })),
                 NamedOnnxValue.CreateFromTensor("broadcast_input", new DenseTensor<float>(new[] { 5f, 6f }, new[] { 1, 2 })),
+                NamedOnnxValue.CreateFromTensor("remainder_divisor", new DenseTensor<float>(new[] { 2f, 3f, 4f, 5f }, new[] { 4 })),
                 NamedOnnxValue.CreateFromTensor("view_source", new DenseTensor<float>(new[] { 9f, 8f, 7f, 6f }, new[] { 4 })),
                 NamedOnnxValue.CreateFromTensor("view_target", new DenseTensor<float>(new[] { 0f, 0f, 0f, 0f }, new[] { 2, 2 })),
             });
@@ -670,6 +674,7 @@ public sealed class TorchTensorOperatorExtensionsTests
         AssertTensorValues(outputs["clamp"], [2f, 2f, 3f, 3.5f]);
         AssertTensorValues(outputs["fmod"], [1f, 2f, 0.5f, 1.5f]);
         AssertTensorValues(outputs["remainder"], [1f, 0f, 1f, 0f]);
+        AssertTensorValues(outputs["remainder_scalar_tensor"], [1f, 1f, 3f, 2f]);
         AssertTensorValues(outputs["tile"], [2f, 2f, 2f, 2f]);
         AssertTensorValues(outputs["broadcast"], [5f, 6f, 5f, 6f, 5f, 6f], 3, 2);
         AssertTensorValues(outputs["view_as"], [9f, 8f, 7f, 6f], 2, 2);
@@ -922,6 +927,52 @@ public sealed class TorchTensorOperatorExtensionsTests
     }
 
     [Fact]
+    public void Smoke_RuntimeExecutesScalarExtremaBranches()
+    {
+        var valueModel = CreateRuntimeModel();
+        var scalar = valueModel.Graph.AddInput("scalar", OnnxTensorType.Create<float>([]));
+
+        var max = valueModel.Graph.ExportMax(scalar, dim: 0, keepdim: false);
+        var min = valueModel.Graph.ExportMin(scalar, dim: 0, keepdim: false);
+
+        AddFloatOutput(valueModel, "max_value", max.Values!);
+        AddFloatOutput(valueModel, "min_value", min.Values!);
+
+        var valueResults = RunModel<float>(
+            valueModel,
+            new NamedOnnxValue[]
+            {
+                NamedOnnxValue.CreateFromTensor("scalar", new DenseTensor<float>(new[] { 4.25f }, Array.Empty<int>())),
+            });
+
+        AssertTensorValues(valueResults["max_value"], [4.25f]);
+        AssertTensorValues(valueResults["min_value"], [4.25f]);
+        Assert.Equal(Array.Empty<int>(), valueResults["max_value"].Dimensions.ToArray());
+        Assert.Equal(Array.Empty<int>(), valueResults["min_value"].Dimensions.ToArray());
+
+        var indexModel = CreateRuntimeModel();
+        var scalarIndexInput = indexModel.Graph.AddInput("scalar", OnnxTensorType.Create<float>([]));
+
+        var maxIndex = indexModel.Graph.ExportMax(scalarIndexInput, dim: 0, keepdim: false);
+        var minIndex = indexModel.Graph.ExportMin(scalarIndexInput, dim: 0, keepdim: false);
+
+        AddLongOutput(indexModel, "max_index_output", maxIndex.Indices!);
+        AddLongOutput(indexModel, "min_index_output", minIndex.Indices!);
+
+        var indexResults = RunModel<long>(
+            indexModel,
+            new NamedOnnxValue[]
+            {
+                NamedOnnxValue.CreateFromTensor("scalar", new DenseTensor<float>(new[] { 4.25f }, Array.Empty<int>())),
+            });
+
+        AssertTensorValues(indexResults["max_index_output"], [0L]);
+        AssertTensorValues(indexResults["min_index_output"], [0L]);
+        Assert.Equal(Array.Empty<int>(), indexResults["max_index_output"].Dimensions.ToArray());
+        Assert.Equal(Array.Empty<int>(), indexResults["min_index_output"].Dimensions.ToArray());
+    }
+
+    [Fact]
     public void ExportCloseAndLogOperators_EmitExpectedNodes()
     {
         var graph = CreateGraph();
@@ -1001,11 +1052,14 @@ public sealed class TorchTensorOperatorExtensionsTests
         var left = floatModel.Graph.AddInput("left", OnnxTensorType.Create<float>([2L, 2L]));
         var right = floatModel.Graph.AddInput("right", OnnxTensorType.Create<float>([2L, 2L]));
         var probability = floatModel.Graph.AddInput("probability", OnnxTensorType.Create<float>([3L]));
+        var scalarLogInput = floatModel.Graph.AddInput("scalar_log_input", OnnxTensorType.Create<float>([]));
 
         AddFloatOutput(floatModel, "logaddexp", floatModel.Graph.ExportLogAddExp(left, right), 2, 2);
         AddFloatOutput(floatModel, "logaddexp2", floatModel.Graph.ExportLogAddExp2(left, right), 2, 2);
         AddFloatOutput(floatModel, "logit", floatModel.Graph.ExportLogit(probability, eps: 1e-3), 3);
+        AddFloatOutput(floatModel, "logit_no_eps", floatModel.Graph.ExportLogit(probability), 3);
         AddFloatOutput(floatModel, "logsumexp", floatModel.Graph.ExportLogSumExp(left, new long[] { 1L }, keepdim: false), 2);
+        AddFloatOutput(floatModel, "logsumexp_scalar", floatModel.Graph.ExportLogSumExp(scalarLogInput, new long[] { 0L }, keepdim: false));
 
         var floatResults = RunModel<float>(
             floatModel,
@@ -1014,12 +1068,16 @@ public sealed class TorchTensorOperatorExtensionsTests
                 NamedOnnxValue.CreateFromTensor("left", new DenseTensor<float>(new[] { 0f, 1f, 2f, 3f }, new[] { 2, 2 })),
                 NamedOnnxValue.CreateFromTensor("right", new DenseTensor<float>(new[] { 1f, 0f, -1f, 2f }, new[] { 2, 2 })),
                 NamedOnnxValue.CreateFromTensor("probability", new DenseTensor<float>(new[] { 0f, 0.25f, 1f }, new[] { 3 })),
+                NamedOnnxValue.CreateFromTensor("scalar_log_input", new DenseTensor<float>(new[] { 3.5f }, Array.Empty<int>())),
             });
 
         AssertTensorValues(floatResults["logaddexp"], [MathF.Log(MathF.Exp(0f) + MathF.Exp(1f)), MathF.Log(MathF.Exp(1f) + MathF.Exp(0f)), MathF.Log(MathF.Exp(2f) + MathF.Exp(-1f)), MathF.Log(MathF.Exp(3f) + MathF.Exp(2f))], 2, 2);
         AssertTensorValues(floatResults["logaddexp2"], [MathF.Log2(MathF.Pow(2f, 0f) + MathF.Pow(2f, 1f)), MathF.Log2(MathF.Pow(2f, 1f) + MathF.Pow(2f, 0f)), MathF.Log2(MathF.Pow(2f, 2f) + MathF.Pow(2f, -1f)), MathF.Log2(MathF.Pow(2f, 3f) + MathF.Pow(2f, 2f))], 2, 2);
         AssertTensorValues(floatResults["logit"], [MathF.Log(0.001f / 0.999f), MathF.Log(0.25f / 0.75f), MathF.Log(0.999f / 0.001f)], 3);
+        AssertTensorValues(floatResults["logit_no_eps"], [float.NegativeInfinity, MathF.Log(0.25f / 0.75f), float.PositiveInfinity], 3);
         AssertTensorValues(floatResults["logsumexp"], [MathF.Log(MathF.Exp(0f) + MathF.Exp(1f)), MathF.Log(MathF.Exp(2f) + MathF.Exp(3f))], 2);
+        AssertTensorValues(floatResults["logsumexp_scalar"], [3.5f]);
+        Assert.Equal(Array.Empty<int>(), floatResults["logsumexp_scalar"].Dimensions.ToArray());
     }
 
     [Fact]
@@ -1081,6 +1139,7 @@ public sealed class TorchTensorOperatorExtensionsTests
         AddFloatOutput(model, "addmm", model.Graph.ExportAddMM(matrixInput, matrixLeft, matrixRight, beta: 2f, alpha: 0.5f), 2, 2);
         AddFloatOutput(model, "addmv", model.Graph.ExportAddMV(vectorInput, matrixLeft, vectorLeft, beta: 2f, alpha: 0.5f), 2);
         AddFloatOutput(model, "addr", model.Graph.ExportAddr(matrixInput, vectorLeft, vectorRight, beta: 0f, alpha: 0.5f), 2, 2);
+        AddFloatOutput(model, "addr_beta", model.Graph.ExportAddr(matrixInput, vectorLeft, vectorRight, beta: 2f, alpha: 0.5f), 2, 2);
         AddFloatOutput(model, "baddbmm", model.Graph.ExportBAddBmm(batchAccumulator, batchLeft, batchRight, beta: 2f, alpha: 0.5f), 2, 2, 2);
         AddFloatOutput(model, "lerp_tensor", model.Graph.ExportLerp(matrixInput, matrixRight, interpolationWeight), 2, 2);
         AddFloatOutput(model, "lerp_scalar", model.Graph.ExportLerp(matrixInput, matrixRight, 0.25f), 2, 2);
@@ -1109,6 +1168,7 @@ public sealed class TorchTensorOperatorExtensionsTests
         AssertTensorValues(results["addmm"], [4f, 5f, 11f, 10.5f], 2, 2);
         AssertTensorValues(results["addmv"], [7f, 15f], 2);
         AssertTensorValues(results["addr"], [1.5f, 2f, 3f, 4f], 2, 2);
+        AssertTensorValues(results["addr_beta"], [3.5f, 6f, 9f, 12f], 2, 2);
         AssertTensorValues(results["baddbmm"], [2.5f, 3f, 3.5f, 4f, 5f, 6.5f, 4f, 4.5f], 2, 2, 2);
         AssertTensorValues(results["lerp_tensor"], [1f, 0.875f, 2f, 1.75f], 2, 2);
         AssertTensorValues(results["lerp_scalar"], [1f, 1.625f, 2.375f, 3.0625f], 2, 2);
@@ -1136,6 +1196,148 @@ public sealed class TorchTensorOperatorExtensionsTests
             ["Tile", "TopK", "ArgMax", "TopK"],
             graph.Nodes.Select(x => x.OpType).ToArray()
         );
+    }
+
+    [Fact]
+    public void ExportTopK_WithScalarInput_Throws()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([]));
+
+        var exception = Assert.Throws<NotSupportedException>(() => graph.ExportTopK(input, k: 1));
+
+        Assert.Contains("scalar inputs", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ExportSort_WithScalarInput_EmitsIdentityAndScalarIndex()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([]));
+
+        var sorted = graph.ExportSort(input);
+
+        Assert.NotNull(sorted.Values);
+        Assert.NotNull(sorted.Indices);
+        Assert.Equal(["Identity"], graph.Nodes.Select(x => x.OpType).ToArray());
+
+        var scalarIndex = Assert.IsType<OnnxTensor<long>>(sorted.Indices);
+        Assert.Equal(Array.Empty<long>(), scalarIndex.Shape.Select(static x => (long)x).ToArray());
+        Assert.Equal([0L], scalarIndex.Value.ToArray());
+    }
+
+    [Fact]
+    public void Smoke_RuntimeExecutesOrderingOperators()
+    {
+        var valueModel = CreateRuntimeModel();
+        var input = valueModel.Graph.AddInput("input", OnnxTensorType.Create<float>([2L, 4L]));
+        var scalar = valueModel.Graph.AddInput("scalar", OnnxTensorType.Create<float>([]));
+
+        var topk = valueModel.Graph.ExportTopK(input, k: 2, dim: 1, largest: true, sorted: true);
+        var sorted = valueModel.Graph.ExportSort(input, dim: 1, descending: false);
+        var scalarSort = valueModel.Graph.ExportSort(scalar);
+
+        AddFloatOutput(valueModel, "topk_values", topk.Values!, 2, 2);
+        AddFloatOutput(valueModel, "sort_values", sorted.Values!, 2, 4);
+        AddFloatOutput(valueModel, "sort_scalar_values", scalarSort.Values!);
+
+        var valueResults = RunModel<float>(
+            valueModel,
+            new NamedOnnxValue[]
+            {
+                NamedOnnxValue.CreateFromTensor("input", new DenseTensor<float>(new[] { 1f, 4f, 3f, 2f, 9f, 7f, 8f, 6f }, new[] { 2, 4 })),
+                NamedOnnxValue.CreateFromTensor("scalar", new DenseTensor<float>(new[] { 5f }, Array.Empty<int>())),
+            });
+
+        AssertTensorValues(valueResults["topk_values"], [4f, 3f, 9f, 8f], 2, 2);
+        AssertTensorValues(valueResults["sort_values"], [1f, 2f, 3f, 4f, 6f, 7f, 8f, 9f], 2, 4);
+        AssertTensorValues(valueResults["sort_scalar_values"], [5f]);
+        Assert.Equal(Array.Empty<int>(), valueResults["sort_scalar_values"].Dimensions.ToArray());
+
+        var indexModel = CreateRuntimeModel();
+        var indexInput = indexModel.Graph.AddInput("input", OnnxTensorType.Create<float>([2L, 4L]));
+        var indexScalar = indexModel.Graph.AddInput("scalar", OnnxTensorType.Create<float>([]));
+
+        var topkIndex = indexModel.Graph.ExportTopK(indexInput, k: 2, dim: 1, largest: true, sorted: true);
+        var sortedIndex = indexModel.Graph.ExportSort(indexInput, dim: 1, descending: false);
+        var scalarSortIndex = indexModel.Graph.ExportSort(indexScalar);
+
+        AddLongOutput(indexModel, "topk_indices", topkIndex.Indices!, 2, 2);
+        AddLongOutput(indexModel, "sort_indices", sortedIndex.Indices!, 2, 4);
+        AddLongOutput(indexModel, "sort_scalar_indices", scalarSortIndex.Indices!);
+
+        var indexResults = RunModel<long>(
+            indexModel,
+            new NamedOnnxValue[]
+            {
+                NamedOnnxValue.CreateFromTensor("input", new DenseTensor<float>(new[] { 1f, 4f, 3f, 2f, 9f, 7f, 8f, 6f }, new[] { 2, 4 })),
+                NamedOnnxValue.CreateFromTensor("scalar", new DenseTensor<float>(new[] { 5f }, Array.Empty<int>())),
+            });
+
+        AssertTensorValues(indexResults["topk_indices"], [1L, 2L, 0L, 2L], 2, 2);
+        AssertTensorValues(indexResults["sort_indices"], [0L, 3L, 2L, 1L, 3L, 1L, 2L, 0L], 2, 4);
+        AssertTensorValues(indexResults["sort_scalar_indices"], [0L]);
+        Assert.Equal(Array.Empty<int>(), indexResults["sort_scalar_indices"].Dimensions.ToArray());
+    }
+
+    [Fact]
+    public void Smoke_RuntimeExecutesShapeSensitiveIndexingOperators()
+    {
+        var model = CreateRuntimeModel();
+        var gatherInput = model.Graph.AddInput("gather_input", OnnxTensorType.Create<float>([3L]));
+        var gatherScalarIndex = model.Graph.AddInput("gather_scalar_index", OnnxTensorType.Create<int>([]));
+        var scalarInput = model.Graph.AddInput("scalar_input", OnnxTensorType.Create<float>([]));
+        var scalarIndex = model.Graph.AddInput("scalar_index", OnnxTensorType.Create<int>([3L]));
+        var indexSelectInput = model.Graph.AddInput("index_select_input", OnnxTensorType.Create<float>([]));
+        var indexSelectIndex = model.Graph.AddInput("index_select_index", OnnxTensorType.Create<int>([]));
+        var condition = model.Graph.AddInput("condition", OnnxTensorType.Create<bool>([2L, 2L]));
+        var whereInput = model.Graph.AddInput("where_input", OnnxTensorType.Create<float>([2L, 2L]));
+        var sliceInput = model.Graph.AddInput("slice_input", OnnxTensorType.Create<float>([5L]));
+        var unsqueezeInput = model.Graph.AddInput("unsqueeze_input", OnnxTensorType.Create<float>([2L, 3L]));
+        var expandInput = model.Graph.AddInput("expand_input", OnnxTensorType.Create<float>([1L, 2L]));
+        var expandTarget = model.Graph.AddInput("expand_target", OnnxTensorType.Create<float>([3L, 2L]));
+
+        AddFloatOutput(model, "gather_scalar_index_output", model.Graph.ExportGather(gatherInput, dim: 0, gatherScalarIndex));
+        AddFloatOutput(model, "gather_scalar_input_output", model.Graph.ExportGather(scalarInput, dim: 0, scalarIndex), 3);
+        AddFloatOutput(model, "index_select_scalar_output", model.Graph.ExportIndexSelect(indexSelectInput, dim: 0, indexSelectIndex));
+        AddFloatOutput(model, "where_tensor", model.Graph.ExportWhere(condition, whereInput, model.Graph.ExportAdd(whereInput, 100f)), 2, 2);
+        AddFloatOutput(model, "where_scalar_self", model.Graph.ExportWhere(condition, 10d, whereInput), 2, 2);
+        AddFloatOutput(model, "where_scalar_other", model.Graph.ExportWhere(condition, whereInput, -1d), 2, 2);
+        AddFloatOutput(model, "slice", model.Graph.ExportSlice(sliceInput, dim: 0, start: 1L, end: 5L, step: 2L), 2);
+        AddFloatOutput(model, "broadcast_to", model.Graph.ExportExpand(expandInput, 3L, 2L), 3, 2);
+        AddFloatOutput(model, "expand_as", model.Graph.ExportExpandAs(expandInput, expandTarget), 3, 2);
+        AddFloatOutput(model, "unsqueeze", model.Graph.ExportUnsqueeze(unsqueezeInput, -1), 2, 3, 1);
+
+        var results = RunModel<float>(
+            model,
+            new NamedOnnxValue[]
+            {
+                NamedOnnxValue.CreateFromTensor("gather_input", new DenseTensor<float>(new[] { 10f, 20f, 30f }, new[] { 3 })),
+                NamedOnnxValue.CreateFromTensor("gather_scalar_index", new DenseTensor<int>(new[] { 1 }, Array.Empty<int>())),
+                NamedOnnxValue.CreateFromTensor("scalar_input", new DenseTensor<float>(new[] { 5.5f }, Array.Empty<int>())),
+                NamedOnnxValue.CreateFromTensor("scalar_index", new DenseTensor<int>(new[] { 0, 0, 0 }, new[] { 3 })),
+                NamedOnnxValue.CreateFromTensor("index_select_input", new DenseTensor<float>(new[] { 9f }, Array.Empty<int>())),
+                NamedOnnxValue.CreateFromTensor("index_select_index", new DenseTensor<int>(new[] { 0 }, Array.Empty<int>())),
+                NamedOnnxValue.CreateFromTensor("condition", new DenseTensor<bool>(new[] { true, false, true, false }, new[] { 2, 2 })),
+                NamedOnnxValue.CreateFromTensor("where_input", new DenseTensor<float>(new[] { 1f, 2f, 3f, 4f }, new[] { 2, 2 })),
+                NamedOnnxValue.CreateFromTensor("slice_input", new DenseTensor<float>(new[] { 0f, 1f, 2f, 3f, 4f }, new[] { 5 })),
+                NamedOnnxValue.CreateFromTensor("unsqueeze_input", new DenseTensor<float>(new[] { 1f, 2f, 3f, 4f, 5f, 6f }, new[] { 2, 3 })),
+                NamedOnnxValue.CreateFromTensor("expand_input", new DenseTensor<float>(new[] { 7f, 8f }, new[] { 1, 2 })),
+                NamedOnnxValue.CreateFromTensor("expand_target", new DenseTensor<float>(new[] { 0f, 0f, 0f, 0f, 0f, 0f }, new[] { 3, 2 })),
+            });
+
+        AssertTensorValues(results["gather_scalar_index_output"], [20f]);
+        Assert.Equal(Array.Empty<int>(), results["gather_scalar_index_output"].Dimensions.ToArray());
+        AssertTensorValues(results["gather_scalar_input_output"], [5.5f, 5.5f, 5.5f], 3);
+        AssertTensorValues(results["index_select_scalar_output"], [9f]);
+        Assert.Equal(Array.Empty<int>(), results["index_select_scalar_output"].Dimensions.ToArray());
+        AssertTensorValues(results["where_tensor"], [1f, 102f, 3f, 104f], 2, 2);
+        AssertTensorValues(results["where_scalar_self"], [10f, 2f, 10f, 4f], 2, 2);
+        AssertTensorValues(results["where_scalar_other"], [1f, -1f, 3f, -1f], 2, 2);
+        AssertTensorValues(results["slice"], [1f, 3f], 2);
+        AssertTensorValues(results["broadcast_to"], [7f, 8f, 7f, 8f, 7f, 8f], 3, 2);
+        AssertTensorValues(results["expand_as"], [7f, 8f, 7f, 8f, 7f, 8f], 3, 2);
+        AssertTensorValues(results["unsqueeze"], [1f, 2f, 3f, 4f, 5f, 6f], 2, 3, 1);
     }
 
     [Fact]
@@ -1544,6 +1746,24 @@ public sealed class TorchTensorOperatorExtensionsTests
 
         for (var i = 0; i < expected.Count; i++)
         {
+            if (float.IsNaN(expected[i]))
+            {
+                Assert.True(float.IsNaN(actualValues[i]), $"Expected NaN at index {i}.");
+                continue;
+            }
+
+            if (float.IsPositiveInfinity(expected[i]))
+            {
+                Assert.True(float.IsPositiveInfinity(actualValues[i]), $"Expected +Inf at index {i}.");
+                continue;
+            }
+
+            if (float.IsNegativeInfinity(expected[i]))
+            {
+                Assert.True(float.IsNegativeInfinity(actualValues[i]), $"Expected -Inf at index {i}.");
+                continue;
+            }
+
             Assert.InRange(actualValues[i], expected[i] - 1e-4f, expected[i] + 1e-4f);
         }
     }
