@@ -569,6 +569,122 @@ public static class TorchTensorOperatorExtensions
         return graph.ExportDiv(log, AddScalarLike(graph, input, "log2", Math.Log(2d)));
     }
 
+    [TorchOp("aten::logaddexp")]
+    public static IOnnxGraphEdge ExportLogAddExp(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IOnnxGraphEdge other
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(other);
+
+        return graph.ExportLog(
+            graph.ExportAdd(
+                graph.ExportExp(input),
+                graph.ExportExp(other)
+            )
+        );
+    }
+
+    [TorchOp("aten::logaddexp2")]
+    public static IOnnxGraphEdge ExportLogAddExp2(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IOnnxGraphEdge other
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(other);
+
+        var two = AddScalarLike(graph, input, "logaddexp2", 2d);
+        var sum = graph.ExportAdd(
+            graph.ExportPow(two, input),
+            graph.ExportPow(two, other)
+        );
+
+        return graph.ExportDiv(
+            graph.ExportLog(sum),
+            graph.ExportLog(two)
+        );
+    }
+
+    [TorchOp("aten::logit")]
+    public static IOnnxGraphEdge ExportLogit(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        double? eps = null
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+
+        var one = AddScalarLike(graph, input, "logit", 1d);
+
+        if (eps is null)
+        {
+            return graph.ExportLog(
+                graph.ExportDiv(
+                    input,
+                    graph.ExportSub(one, input)
+                )
+            );
+        }
+
+        var epsilon = AddScalarLike(graph, input, "logit", eps.Value);
+        var oneMinusEpsilon = AddScalarLike(graph, input, "logit", 1d - eps.Value);
+        var temporary = graph.ExportWhere(
+            graph.ExportLessOrEqual(input, oneMinusEpsilon),
+            input,
+            oneMinusEpsilon
+        );
+        var clamped = graph.ExportWhere(
+            graph.ExportLess(temporary, epsilon),
+            epsilon,
+            temporary
+        );
+
+        return graph.ExportLog(
+            graph.ExportDiv(
+                clamped,
+                graph.ExportSub(one, clamped)
+            )
+        );
+    }
+
+    [TorchOp("aten::logsumexp")]
+    public static IOnnxGraphEdge ExportLogSumExp(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IReadOnlyList<long> dims,
+        bool keepdim = false
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(dims);
+
+        if (TryGetRank(input) == 0)
+        {
+            return graph.ExportIdentity(input);
+        }
+
+        var axes = dims.Count == 0
+            ? null
+            : AddAxesTensor(graph, "logsumexp", dims);
+
+        return ExportReduceNode(
+            graph,
+            "logsumexp",
+            "ReduceLogSumExp",
+            input,
+            axes,
+            keepdim
+        );
+    }
+
     [TorchOp("aten::signbit")]
     public static IOnnxGraphEdge ExportSignBit(
         this OnnxGraph graph,
@@ -614,6 +730,128 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(input);
 
         return graph.ExportEqual(input, AddScalarLike(graph, input, "eq", other));
+    }
+
+    [TorchOp("aten::equal")]
+    public static IOnnxGraphEdge ExportEqualAll(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IOnnxGraphEdge other
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(other);
+
+        return ExportTruthReduction(
+            graph,
+            "equal",
+            graph.ExportEqual(input, other),
+            dims: null,
+            keepdim: false,
+            useMin: true
+        );
+    }
+
+    [TorchOp("aten::allclose")]
+    public static IOnnxGraphEdge ExportAllClose(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IOnnxGraphEdge other,
+        double rtol = 1e-05,
+        double atol = 1e-08,
+        bool equalNan = false
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(other);
+
+        _ = equalNan;
+
+        return ExportTruthReduction(
+            graph,
+            "allclose",
+            graph.ExportIsClose(
+                input,
+                other,
+                rtol,
+                atol,
+                equalNan
+            ),
+            dims: null,
+            keepdim: false,
+            useMin: true
+        );
+    }
+
+    [TorchOp("aten::isclose")]
+    public static IOnnxGraphEdge ExportIsClose(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IOnnxGraphEdge other,
+        double rtol = 1e-05,
+        double atol = 1e-08,
+        bool equalNan = false
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(other);
+
+        _ = equalNan;
+
+        var leftPart = graph.ExportAbs(graph.ExportSub(input, other));
+        var rightPart = graph.ExportAdd(
+            AddScalarLike(graph, input, "isclose", atol),
+            graph.ExportMul(
+                AddScalarLike(graph, input, "isclose", rtol),
+                graph.ExportAbs(other)
+            )
+        );
+
+        return graph.ExportLessOrEqual(leftPart, rightPart);
+    }
+
+    [TorchOp("aten::isfinite")]
+    public static IOnnxGraphEdge ExportIsFinite(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+
+        var cast = ExportCastTo(graph, "isfinite_cast", input, 1L);
+        var notInf = graph.ExportLogicalNot(ExportUnaryNode(graph, "isfinite", "IsInf", cast));
+        var notNan = graph.ExportLogicalNot(ExportUnaryNode(graph, "isfinite", "IsNaN", cast));
+        return graph.ExportLogicalAnd(notInf, notNan);
+    }
+
+    [TorchOp("aten::isinf")]
+    public static IOnnxGraphEdge ExportIsInf(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+
+        var cast = ExportCastTo(graph, "isinf_cast", input, 1L);
+        return ExportUnaryNode(graph, "isinf", "IsInf", cast);
+    }
+
+    [TorchOp("aten::isnan")]
+    public static IOnnxGraphEdge ExportIsNaN(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+
+        var cast = ExportCastTo(graph, "isnan_cast", input, 1L);
+        return ExportUnaryNode(graph, "isnan", "IsNaN", cast);
     }
 
     [TorchOp("aten::ne")]
@@ -2911,6 +3149,34 @@ public static class TorchTensorOperatorExtensions
         }
 
         return current;
+    }
+
+    private static IOnnxGraphEdge ExportReduceNode(
+        OnnxGraph graph,
+        string prefix,
+        string opType,
+        IOnnxGraphEdge input,
+        IOnnxGraphEdge? axes,
+        bool keepdim
+    )
+    {
+        var name = graph.NextName(prefix);
+        var output = graph.AddEdge($"{name}_output");
+        var inputs = axes is null
+            ? new[] { input }
+            : new[] { input, axes };
+
+        graph.AddNode(
+            name: name,
+            opType: opType,
+            domain: string.Empty,
+            docString: string.Empty,
+            inputs: inputs,
+            outputs: [output],
+            attributes: [new OnnxAttribute<long>("keepdims", keepdim ? 1L : 0L)]
+        );
+
+        return output;
     }
 
     private static TopKOutput ExportExtremumByDim(

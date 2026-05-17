@@ -922,6 +922,107 @@ public sealed class TorchTensorOperatorExtensionsTests
     }
 
     [Fact]
+    public void ExportCloseAndLogOperators_EmitExpectedNodes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 2L]));
+        var other = graph.AddInput("other", OnnxTensorType.Create<float>([2L, 2L]));
+
+        var equalAll = graph.ExportEqualAll(input, other);
+        var allClose = graph.ExportAllClose(input, other);
+        var isClose = graph.ExportIsClose(input, other);
+        var isFinite = graph.ExportIsFinite(input);
+        var isInf = graph.ExportIsInf(input);
+        var isNaN = graph.ExportIsNaN(input);
+        var logAddExp = graph.ExportLogAddExp(input, other);
+        var logAddExp2 = graph.ExportLogAddExp2(input, other);
+        var logit = graph.ExportLogit(input, eps: 1e-3);
+        var logSumExp = graph.ExportLogSumExp(input, new long[] { 1L }, keepdim: false);
+
+        Assert.NotNull(equalAll);
+        Assert.NotNull(allClose);
+        Assert.NotNull(isClose);
+        Assert.NotNull(isFinite);
+        Assert.NotNull(isInf);
+        Assert.NotNull(isNaN);
+        Assert.NotNull(logAddExp);
+        Assert.NotNull(logAddExp2);
+        Assert.NotNull(logit);
+        Assert.NotNull(logSumExp);
+
+        var opTypes = graph.Nodes.Select(x => x.OpType).ToArray();
+        Assert.Contains("ReduceMin", opTypes);
+        Assert.Contains("IsInf", opTypes);
+        Assert.Contains("IsNaN", opTypes);
+        Assert.Contains("ReduceLogSumExp", opTypes);
+        Assert.Contains("Log", opTypes);
+        Assert.Contains("Where", opTypes);
+    }
+
+    [Fact]
+    public void Smoke_RuntimeExecutesCloseAndLogOperators()
+    {
+        var boolModel = CreateRuntimeModel();
+        var input = boolModel.Graph.AddInput("input", OnnxTensorType.Create<float>([2L, 2L]));
+        var other = boolModel.Graph.AddInput("other", OnnxTensorType.Create<float>([2L, 2L]));
+        var special = boolModel.Graph.AddInput("special", OnnxTensorType.Create<float>([4L]));
+
+        var equalAll = boolModel.Graph.ExportEqualAll(input, other);
+        var allClose = boolModel.Graph.ExportAllClose(input, other, rtol: 1e-04, atol: 1e-05);
+        var isClose = boolModel.Graph.ExportIsClose(input, other, rtol: 1e-04, atol: 1e-05);
+        var isFinite = boolModel.Graph.ExportIsFinite(special);
+        var isInf = boolModel.Graph.ExportIsInf(special);
+        var isNaN = boolModel.Graph.ExportIsNaN(special);
+
+        AddBoolOutput(boolModel, "equal", equalAll);
+        AddBoolOutput(boolModel, "allclose", allClose);
+        AddBoolOutput(boolModel, "isclose", isClose, 2, 2);
+        AddBoolOutput(boolModel, "isfinite", isFinite, 4);
+        AddBoolOutput(boolModel, "isinf", isInf, 4);
+        AddBoolOutput(boolModel, "isnan", isNaN, 4);
+
+        var boolResults = RunModel<bool>(
+            boolModel,
+            new NamedOnnxValue[]
+            {
+                NamedOnnxValue.CreateFromTensor("input", new DenseTensor<float>(new[] { 1f, 2f, 3f, 4f }, new[] { 2, 2 })),
+                NamedOnnxValue.CreateFromTensor("other", new DenseTensor<float>(new[] { 1f, 2.00001f, 3f, 4.1f }, new[] { 2, 2 })),
+                NamedOnnxValue.CreateFromTensor("special", new DenseTensor<float>(new[] { 0f, float.PositiveInfinity, float.NaN, -2f }, new[] { 4 })),
+            });
+
+        AssertTensorValues(boolResults["equal"], [false]);
+        AssertTensorValues(boolResults["allclose"], [false]);
+        AssertTensorValues(boolResults["isclose"], [true, true, true, false], 2, 2);
+        AssertTensorValues(boolResults["isfinite"], [true, false, false, true], 4);
+        AssertTensorValues(boolResults["isinf"], [false, true, false, false], 4);
+        AssertTensorValues(boolResults["isnan"], [false, false, true, false], 4);
+
+        var floatModel = CreateRuntimeModel();
+        var left = floatModel.Graph.AddInput("left", OnnxTensorType.Create<float>([2L, 2L]));
+        var right = floatModel.Graph.AddInput("right", OnnxTensorType.Create<float>([2L, 2L]));
+        var probability = floatModel.Graph.AddInput("probability", OnnxTensorType.Create<float>([3L]));
+
+        AddFloatOutput(floatModel, "logaddexp", floatModel.Graph.ExportLogAddExp(left, right), 2, 2);
+        AddFloatOutput(floatModel, "logaddexp2", floatModel.Graph.ExportLogAddExp2(left, right), 2, 2);
+        AddFloatOutput(floatModel, "logit", floatModel.Graph.ExportLogit(probability, eps: 1e-3), 3);
+        AddFloatOutput(floatModel, "logsumexp", floatModel.Graph.ExportLogSumExp(left, new long[] { 1L }, keepdim: false), 2);
+
+        var floatResults = RunModel<float>(
+            floatModel,
+            new NamedOnnxValue[]
+            {
+                NamedOnnxValue.CreateFromTensor("left", new DenseTensor<float>(new[] { 0f, 1f, 2f, 3f }, new[] { 2, 2 })),
+                NamedOnnxValue.CreateFromTensor("right", new DenseTensor<float>(new[] { 1f, 0f, -1f, 2f }, new[] { 2, 2 })),
+                NamedOnnxValue.CreateFromTensor("probability", new DenseTensor<float>(new[] { 0f, 0.25f, 1f }, new[] { 3 })),
+            });
+
+        AssertTensorValues(floatResults["logaddexp"], [MathF.Log(MathF.Exp(0f) + MathF.Exp(1f)), MathF.Log(MathF.Exp(1f) + MathF.Exp(0f)), MathF.Log(MathF.Exp(2f) + MathF.Exp(-1f)), MathF.Log(MathF.Exp(3f) + MathF.Exp(2f))], 2, 2);
+        AssertTensorValues(floatResults["logaddexp2"], [MathF.Log2(MathF.Pow(2f, 0f) + MathF.Pow(2f, 1f)), MathF.Log2(MathF.Pow(2f, 1f) + MathF.Pow(2f, 0f)), MathF.Log2(MathF.Pow(2f, 2f) + MathF.Pow(2f, -1f)), MathF.Log2(MathF.Pow(2f, 3f) + MathF.Pow(2f, 2f))], 2, 2);
+        AssertTensorValues(floatResults["logit"], [MathF.Log(0.001f / 0.999f), MathF.Log(0.25f / 0.75f), MathF.Log(0.999f / 0.001f)], 3);
+        AssertTensorValues(floatResults["logsumexp"], [MathF.Log(MathF.Exp(0f) + MathF.Exp(1f)), MathF.Log(MathF.Exp(2f) + MathF.Exp(3f))], 2);
+    }
+
+    [Fact]
     public void ExportRepeatTopKArgMaxAndSort_EmitExpectedNodes()
     {
         var graph = CreateGraph();
@@ -1099,6 +1200,12 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("aten::logical_and", coveredOperators);
         Assert.Contains("aten::logical_or", coveredOperators);
         Assert.Contains("aten::logical_xor", coveredOperators);
+        Assert.Contains("aten::equal", coveredOperators);
+        Assert.Contains("aten::allclose", coveredOperators);
+        Assert.Contains("aten::isclose", coveredOperators);
+        Assert.Contains("aten::isfinite", coveredOperators);
+        Assert.Contains("aten::isinf", coveredOperators);
+        Assert.Contains("aten::isnan", coveredOperators);
         Assert.Contains("aten::maximum", coveredOperators);
         Assert.Contains("aten::minimum", coveredOperators);
         Assert.Contains("aten::index_select", coveredOperators);
@@ -1138,6 +1245,10 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("aten::exp2", coveredOperators);
         Assert.Contains("aten::frac", coveredOperators);
         Assert.Contains("aten::log10", coveredOperators);
+        Assert.Contains("aten::logaddexp", coveredOperators);
+        Assert.Contains("aten::logaddexp2", coveredOperators);
+        Assert.Contains("aten::logit", coveredOperators);
+        Assert.Contains("aten::logsumexp", coveredOperators);
         Assert.Contains("aten::round.decimals", coveredOperators);
         Assert.Contains("aten::sinc", coveredOperators);
         Assert.Contains("aten::special_sinc", coveredOperators);

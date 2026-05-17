@@ -1,7 +1,7 @@
 # TorchSharp operator coverage
 
 Found: 83.73% (417/498)
-Coverage: 61.04% (304/498)
+Coverage: 63.05% (314/498)
 
 | ONNXScript operator | TorchSharp module | Found | Coverage |
 | --- | --- | --- | --- |
@@ -68,7 +68,7 @@ Coverage: 61.04% (304/498)
 | aten::all | TorchSharp.torch+Tensor.all | &#10003; | &#10003; |
 | aten::all.dim | TorchSharp.torch+Tensor.all | &#10003; | &#10003; |
 | aten::all.dims | TorchSharp.torch+Tensor.all | &#10003; | &#10003; |
-| aten::allclose | TorchSharp.torch+Tensor.allclose | &#10003; |  |
+| aten::allclose | TorchSharp.torch+Tensor.allclose | &#10003; | &#10003; |
 | aten::amax | TorchSharp.torch+Tensor.amax | &#10003; | &#10003; |
 | aten::amin | TorchSharp.torch+Tensor.amin | &#10003; | &#10003; |
 | aten::angle | TorchSharp.torch+Tensor.angle | &#10003; |  |
@@ -171,7 +171,7 @@ Coverage: 61.04% (304/498)
 | aten::eq | TorchSharp.torch+Tensor.eq | &#10003; | &#10003; |
 | aten::eq.Scalar | TorchSharp.torch+Tensor.eq | &#10003; | &#10003; |
 | aten::eq.Tensor | TorchSharp.torch+Tensor.eq | &#10003; | &#10003; |
-| aten::equal | TorchSharp.torch+Tensor.equal | &#10003; |  |
+| aten::equal | TorchSharp.torch+Tensor.equal | &#10003; | &#10003; |
 | aten::erf | TorchSharp.torch+Tensor.erf | &#10003; | &#10003; |
 | aten::erfc | TorchSharp.torch+Tensor.erfc | &#10003; | &#10003; |
 | aten::exp | TorchSharp.torch+Tensor.exp | &#10003; | &#10003; |
@@ -221,10 +221,10 @@ Coverage: 61.04% (304/498)
 | aten::index_select | TorchSharp.torch+Tensor.index_select | &#10003; | &#10003; |
 | aten::instance_norm | TorchSharp.Modules.InstanceNorm | &#10003; | &#10003; |
 | aten::is_nonzero | TorchSharp.torch+Tensor.is_nonzero | &#10003; |  |
-| aten::isclose | TorchSharp.torch+Tensor.isclose | &#10003; |  |
-| aten::isfinite | TorchSharp.torch+Tensor.isfinite | &#10003; |  |
-| aten::isinf | TorchSharp.torch+Tensor.isinf | &#10003; |  |
-| aten::isnan | TorchSharp.torch+Tensor.isnan | &#10003; |  |
+| aten::isclose | TorchSharp.torch+Tensor.isclose | &#10003; | &#10003; |
+| aten::isfinite | TorchSharp.torch+Tensor.isfinite | &#10003; | &#10003; |
+| aten::isinf | TorchSharp.torch+Tensor.isinf | &#10003; | &#10003; |
+| aten::isnan | TorchSharp.torch+Tensor.isnan | &#10003; | &#10003; |
 | aten::isneginf | TorchSharp.torch+Tensor.isneginf | &#10003; | &#10003; |
 | aten::isposinf | TorchSharp.torch+Tensor.isposinf | &#10003; | &#10003; |
 | aten::layer_norm | TorchSharp.Modules.LayerNorm | &#10003; | &#10003; |
@@ -247,16 +247,16 @@ Coverage: 61.04% (304/498)
 | aten::log2 | TorchSharp.torch+Tensor.log2 | &#10003; | &#10003; |
 | aten::log_sigmoid | TorchSharp.Modules.LogSigmoid | &#10003; | &#10003; |
 | aten::log_softmax.int | TorchSharp.Modules.LogSoftmax | &#10003; | &#10003; |
-| aten::logaddexp | TorchSharp.torch+Tensor.logaddexp | &#10003; |  |
-| aten::logaddexp2 | TorchSharp.torch+Tensor.logaddexp2 | &#10003; |  |
+| aten::logaddexp | TorchSharp.torch+Tensor.logaddexp | &#10003; | &#10003; |
+| aten::logaddexp2 | TorchSharp.torch+Tensor.logaddexp2 | &#10003; | &#10003; |
 | aten::logcumsumexp | TorchSharp.torch+Tensor.logcumsumexp | &#10003; |  |
 | aten::logdet | TorchSharp.torch+Tensor.logdet | &#10003; |  |
 | aten::logical_and | TorchSharp.torch+Tensor.logical_and | &#10003; | &#10003; |
 | aten::logical_not | TorchSharp.torch+Tensor.logical_not | &#10003; | &#10003; |
 | aten::logical_or | TorchSharp.torch+Tensor.logical_or | &#10003; | &#10003; |
 | aten::logical_xor | TorchSharp.torch+Tensor.logical_xor | &#10003; | &#10003; |
-| aten::logit | TorchSharp.torch+Tensor.logit | &#10003; |  |
-| aten::logsumexp | TorchSharp.torch+Tensor.logsumexp | &#10003; |  |
+| aten::logit | TorchSharp.torch+Tensor.logit | &#10003; | &#10003; |
+| aten::logsumexp | TorchSharp.torch+Tensor.logsumexp | &#10003; | &#10003; |
 | aten::lstm.input | TorchSharp.Modules.LSTM | &#10003; | &#10003; |
 | aten::lt.Scalar | TorchSharp.torch+Tensor.lt | &#10003; | &#10003; |
 | aten::lt.Tensor | TorchSharp.torch+Tensor.lt | &#10003; | &#10003; |
