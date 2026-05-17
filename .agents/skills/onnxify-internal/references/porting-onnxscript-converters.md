@@ -52,6 +52,47 @@ Read the Python converter closely and identify:
 - whether it handles multiple overloads for the same Torch op
 - whether it depends on inference-only assumptions or unsupported edge cases
 
+Do not stop at the exporter implementation alone.
+You also need to understand how ONNXScript expects that exporter to behave from the Python tests that cover it.
+
+## 3A. Find The Python Tests For The Operator
+
+After locating the Python exporter, search `third_party/onnxscript` for tests that cover the same Torch op or nearby conversion path.
+
+Practical searches usually start with:
+
+```powershell
+rg -n "aten::addmm|addmm" third_party\onnxscript
+```
+
+Use those tests to infer:
+
+- the behavior the exporter is expected to preserve
+- the kinds of inputs the operator accepts
+- the shapes and value patterns the operator returns
+- important overload, dtype, broadcasting, rank, or tuple-output expectations
+- edge cases that the exporter is supposed to reject or normalize
+
+Treat the Python tests as behavior evidence, not as C# code templates.
+The goal is to understand the operator contract, not to mechanically translate Python tests line-for-line.
+
+## 3B. Convert That Understanding Into C# Test Intent
+
+Before adjusting `Onnxify.TorchSharp`, decide what behavior must be protected in:
+
+- `src/Onnxify.Tests`
+
+From the ONNXScript exporter plus its tests, extract the smallest high-value C# test cases that cover:
+
+- representative successful inputs
+- important output shape and output value expectations
+- overload-specific semantics
+- special branches such as scalar-vs-tensor, `keepdim`, `beta == 0`, or tuple outputs
+- explicit unsupported cases when the C# exporter intentionally supports a narrower surface
+
+These C# tests should encode the same semantic expectations, but they must remain idiomatic for this repo.
+Do not mirror Python-specific helper structure, naming style, or language-specific mechanics when those clash with the C# test style or the local export architecture.
+
 ## 4. Mirror The Conversion In `Onnxify.TorchSharp`
 
 Most direct TorchSharp exports live in:
@@ -68,6 +109,15 @@ Typical implementation work:
 - keep unsupported semantics explicit with `NotSupportedException` or `NotImplementedException`
 
 If you are porting a module-backed operator, also make sure the public dispatch path still reaches your new exporter consistently.
+
+In practice, the implementation order should usually be:
+
+1. understand the Python exporter
+2. understand the Python tests for that exporter
+3. implement focused C# tests in `Onnxify.Tests` that express the same behavioral contract
+4. bring the `Onnxify.TorchSharp` exporter into alignment with those tests
+
+Prefer this test-first or test-guided flow over writing the C# exporter in isolation and only validating it afterward.
 
 ## 5. Decorate The Converter With `TorchOp`
 
@@ -98,6 +148,8 @@ Good tests for ported converters usually assert:
 - important attributes, tensor names, or graph wiring are preserved
 
 Keep these tests lightweight. A small structural graph assertion is usually better than a large end-to-end fixture.
+The tests should reflect operator semantics learned from ONNXScript and its tests, but they should not be a line-by-line translation of Python tests.
+Avoid dragging Python-specific conventions into C# when they conflict with local helper patterns, naming, or runtime assumptions.
 
 ## 7. Refresh The Generated Skill Docs
 
@@ -123,3 +175,4 @@ Before finishing:
 - Match the ONNXScript behavior semantically, not line-for-line. Reuse existing C# helpers where the repo already has them.
 - Keep the `TorchOp` names aligned with ONNXScript operator names, including overload suffixes when relevant.
 - If the Python version handles more cases than the current C# export layer can support safely, implement the safe subset first and fail clearly for the rest.
+- Use ONNXScript tests to learn the operator contract, then restate that contract as idiomatic `Onnxify.Tests` coverage instead of transliterating Python test code.

@@ -2,12 +2,16 @@
 
 Use this workflow when you need to validate an existing `Onnxify.TorchSharp` exporter against the original Python-side exporter in `third_party/onnxscript`.
 
+Use it only when the user explicitly asks for validation, parity checking, comparison, or audit of already existing `Onnxify.TorchSharp` operators.
+Do not trigger this workflow automatically for generic operator-porting, coverage, or ONNXScript tasks.
+
 ## Goal
 
 Start from the repo's generated coverage and converter references, identify the exact `Onnxify.TorchSharp` export surface for a Torch op, trace the real C# implementation including helper calls, then compare it against the ONNXScript implementation for semantic parity.
 
 This workflow is for validation of already covered operators, not for choosing missing operators to port.
 If the operator is not already exposed by `Onnxify.TorchSharp`, treat that as unsupported and stop the validation there.
+This workflow also includes reviewing the existing C# unit tests that cover the exporter, because semantic parity is not fully validated unless the current test surface is checked too.
 
 ## 1. Start With The Observer Report
 
@@ -145,6 +149,27 @@ The main files are usually:
 
 Read the Python function decorated with the exact op name. If the decorator covers several ops together, validate only the branch or semantics relevant to your chosen op.
 
+## 6A. Find The Python Tests For That Exporter
+
+Do not validate against the Python exporter implementation alone.
+You also need to inspect the ONNXScript tests that cover the same operator or conversion path.
+
+Start with a broad search in `third_party/onnxscript`, for example:
+
+```powershell
+rg -n "aten::addmm|addmm" third_party\onnxscript
+```
+
+Use the tests to infer the practical behavior contract of the operator, including:
+
+- what kinds of inputs the exporter is expected to accept
+- what kinds of outputs it returns
+- what shapes, dtypes, ranks, tuple members, or broadcasting rules matter
+- which branches are important enough to be locked down in tests
+- which edge cases are intentionally unsupported or normalized
+
+The Python tests are especially useful when the exporter implementation is compact but hides important behavior in the surrounding test matrix.
+
 ## 7. Compare Semantics, Not Just Node Names
 
 The comparison should be semantic and structured.
@@ -171,8 +196,46 @@ Focus on the emitted graph contract, for example:
 - does `max.dim` or `topk` return both values and indices in the same shape conventions
 
 Do not mark two exporters equivalent just because both eventually use the same ONNX primitive.
+Also compare the C# behavior against the intent visible in the Python tests, not just the raw Python exporter body.
 
-## 8. Record The Validation Outcome Clearly
+## 8. Review The Existing C# Unit Tests
+
+After tracing the exporter and comparing it against ONNXScript, inspect the current tests that cover the exporter in:
+
+- `src/Onnxify.Tests`
+
+Search by:
+
+- exporter method name
+- Torch op spelling
+- nearby helper name when the main exporter is thin
+
+For example:
+
+```powershell
+rg -n "ExportAddMM|aten::addmm|addmm" src\Onnxify.Tests
+```
+
+Review whether the current tests actually cover the semantic points that matter for parity with ONNXScript, such as:
+
+- the expected ONNX node kind
+- shape and tuple-output conventions
+- default parameter behavior
+- overload-specific behavior
+- scalar-versus-tensor cases
+- dtype-sensitive branches
+- `keepdim`, axis normalization, reshape, squeeze, or broadcast behavior
+- special branches like `beta == 0`, `alpha == 1`, or scalar-rank handling
+- explicit unsupported paths
+
+Do not assume that existing tests are sufficient just because some exporter test already exists.
+Part of validation is deciding whether the current tests really protect the C# behavior you just compared against ONNXScript.
+Use the Python tests as a guide for which semantic branches deserve coverage in `Onnxify.Tests`, but do not transliterate Python test code directly into C#.
+The C# tests should express the same behavioral contract in repo-idiomatic form, without dragging Python-specific language patterns or helpers into the C# suite.
+
+If tests are missing an important semantic branch, record that gap explicitly and, when the task requires code changes, add or update focused tests in `src/Onnxify.Tests`.
+
+## 9. Record The Validation Outcome Clearly
 
 A useful validation result usually fits one of these buckets:
 
@@ -187,9 +250,10 @@ If you find a mismatch, write down:
 - the exact C# signature validated
 - the Python function and file in `third_party/onnxscript`
 - the concrete semantic difference
+- the current state of C# test coverage for that behavior
 - whether the difference is acceptable repo policy, an intentional subset, or a bug
 
-## 9. Suggested Search Pattern
+## 10. Suggested Search Pattern
 
 For a single operator, a practical terminal workflow is:
 
@@ -198,6 +262,7 @@ rg -n "aten::addmm" src\Onnxify.TorchSharp.Observer\torchsharp-operator-report.m
 rg -n "aten::addmm" .agents\skills\onnxify\references\torchsharp-converters\index.md
 rg -n "ExportAddMM|\[TorchOp\(\" src\Onnxify.TorchSharp
 rg -n '@torch_op\("aten::addmm"|@torch_op\(\("aten::addmm"' third_party\onnxscript\onnxscript\function_libs\torch_lib\ops
+rg -n "ExportAddMM|aten::addmm|addmm" src\Onnxify.Tests
 ```
 
 Then open:
@@ -206,8 +271,10 @@ Then open:
 - the C# exporter source
 - every semantic helper it calls
 - the ONNXScript Python implementation
+- the ONNXScript Python tests for that operator
+- the existing C# tests for that exporter
 
-## 10. Common Pitfalls
+## 11. Common Pitfalls
 
 - Do not validate against a guessed Torch op spelling. Use the exact observer row.
 - Do not treat `Coverage = yes` in the observer report as proof of semantic parity. It only proves `[TorchOp(...)]` coverage exists.
@@ -215,6 +282,8 @@ Then open:
 - Do not ignore helper methods that change dtype, rank, branching, or tuple outputs.
 - Do not compare only the first ONNX node emitted. Many converters differ in surrounding casts, reshapes, or reduction behavior.
 - Do not treat missing presence in `index.md` as a docs bug by default. For this workflow, absence means unsupported until proven otherwise.
+- Do not treat the presence of a smoke test as proof that all parity-relevant branches are covered.
+- Do not copy Python tests line-for-line into C# when the language model, test helpers, or runtime expectations differ.
 
 ## Heuristics
 
@@ -222,4 +291,6 @@ Then open:
 - Prefer method-name search from the generated converter page over broad repo-wide Torch op search once you know the signature.
 - Treat helper tracing as required whenever the exporter is more than a one-node wrapper.
 - When ONNXScript supports a wider surface than C#, first decide whether the C# subset is intentionally narrower and explicit or silently incomplete.
-- If the validation uncovers a real mismatch, add or update focused tests in `src/Onnxify.Tests` close to the exporter you inspected.
+- Treat test review as part of validation, not as an optional follow-up.
+- If the validation uncovers a real mismatch or an uncovered semantic branch, add or update focused tests in `src/Onnxify.Tests` close to the exporter you inspected.
+- Use the ONNXScript tests to understand the operator's contract, then restate that contract as idiomatic C# tests before or alongside exporter changes.
