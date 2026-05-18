@@ -1,10 +1,13 @@
 <Project>
 
   <ItemGroup Condition="'@(OnnxModel)' != ''">
-    <AdditionalFiles Include="@(OnnxModel)">
-      <OnnxifyModelClassName>%(OnnxModel.OnnxifyModelClassName)</OnnxifyModelClassName>
-      <OnnxifyModelNamespace>%(OnnxModel.OnnxifyModelNamespace)</OnnxifyModelNamespace>
-    </AdditionalFiles>
+    <CompilerVisibleItemMetadata Include="AdditionalFiles"
+                                 MetadataName="OnnxifyModelClassName" />
+    <CompilerVisibleItemMetadata Include="AdditionalFiles"
+                                 MetadataName="OnnxifyModelNamespace" />
+
+    <AdditionalFiles Include="@(OnnxModel)"
+                     KeepMetadata="OnnxifyModelClassName;OnnxifyModelNamespace" />
 
     <None Update="@(OnnxModel)">
       <CopyToOutputDirectory Condition="'%(OnnxModel.CopyToOutputDirectory)' != ''">%(OnnxModel.CopyToOutputDirectory)</CopyToOutputDirectory>

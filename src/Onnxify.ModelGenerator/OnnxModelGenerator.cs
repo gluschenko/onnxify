@@ -18,8 +18,8 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
     private const string GLOBAL_PROJECT_DIR_KEY = "build_property.ProjectDir";
     private const string GLOBAL_ROOT_NAMESPACE_KEY = "build_property.RootNamespace";
     private const string GLOBAL_ASSEMBLY_NAME_KEY = "build_property.AssemblyName";
-    private const string ADDITIONAL_FILE_CLASS_NAME_KEY = "build_metadata.AdditionalFiles.OnnxifyModelClassName";
-    private const string ADDITIONAL_FILE_NAMESPACE_KEY = "build_metadata.AdditionalFiles.OnnxifyModelNamespace";
+    private const string ADDITIONAL_FILE_CLASS_NAME_KEY = "build_metadata.additionalfiles.OnnxifyModelClassName";
+    private const string ADDITIONAL_FILE_NAMESPACE_KEY = "build_metadata.additionalfiles.OnnxifyModelNamespace";
 
     private static readonly DiagnosticDescriptor _invalidModelDescriptor = new(
         id: "OMG001",

@@ -115,8 +115,8 @@ public sealed class OnnxModelGeneratorTests
                 {
                     [modelPath] = new Dictionary<string, string>(StringComparer.Ordinal)
                     {
-                        ["build_metadata.AdditionalFiles.OnnxifyModelClassName"] = "VisionWrapper",
-                        ["build_metadata.AdditionalFiles.OnnxifyModelNamespace"] = "Demo.Custom.Models",
+                        ["build_metadata.additionalfiles.OnnxifyModelClassName"] = "VisionWrapper",
+                        ["build_metadata.additionalfiles.OnnxifyModelNamespace"] = "Demo.Custom.Models",
                     }
                 });
 
