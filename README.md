@@ -12,16 +12,16 @@ The idea behind this repository is simple: models should be easier to work with,
 
 The repository currently implements the following NuGet packages. Package-specific instructions live in [`.docs/nuget`](.docs/nuget).
 
-| Package | Instructions | NuGet |
-| ------- | :----------: | :---: |
-| `Onnxify` | [`README`](.docs/nuget/Onnxify.md) | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify)](https://www.nuget.org/packages/Onnxify/) |
-| `Onnxify.TorchSharp` | [`README`](.docs/nuget/Onnxify.TorchSharp.md) | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.TorchSharp)](https://www.nuget.org/packages/Onnxify.TorchSharp/) |
-| `Onnxify.Safetensors` | [`README`](.docs/nuget/Onnxify.Safetensors.md) | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.Safetensors)](https://www.nuget.org/packages/Onnxify.Safetensors/) |
-| `Onnxify.ModelGenerator` | [`README`](.docs/nuget/Onnxify.ModelGenerator.md) | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.ModelGenerator)](https://www.nuget.org/packages/Onnxify.ModelGenerator/) |
-| `Onnxify.ML` | [`README`](.docs/nuget/Onnxify.ML.md) | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.ML)](https://www.nuget.org/packages/Onnxify.ML/) |
-| `Onnxify.ML.TorchSharp` | [`README`](.docs/nuget/Onnxify.ML.TorchSharp.md) |  [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.ML.TorchSharp)](https://www.nuget.org/packages/Onnxify.ML.TorchSharp/) |
-| `Onnxify.ProjectGenerator` | [`README`](.docs/nuget/Onnxify.ProjectGenerator.md) | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.ProjectGenerator)](https://www.nuget.org/packages/Onnxify.ProjectGenerator/) |
-| `Onnxify.CLI` | [`README`](.docs/nuget/Onnxify.CLI.md) | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.CLI)](https://www.nuget.org/packages/Onnxify.CLI/) |
+| Labrary                                                               | NuGet Package                                                                                                                            |
+| --------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------- |
+| [`Onnxify`](.docs/nuget/Onnxify.md)                                   | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify)](https://www.nuget.org/packages/Onnxify/)                                   |
+| [`Onnxify.TorchSharp`](.docs/nuget/Onnxify.TorchSharp.md)             | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.TorchSharp)](https://www.nuget.org/packages/Onnxify.TorchSharp/)             |
+| [`Onnxify.Safetensors`](.docs/nuget/Onnxify.Safetensors.md)           | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.Safetensors)](https://www.nuget.org/packages/Onnxify.Safetensors/)           |
+| [`Onnxify.ProjectGenerator`](.docs/nuget/Onnxify.ProjectGenerator.md) | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.ProjectGenerator)](https://www.nuget.org/packages/Onnxify.ProjectGenerator/) |
+| [`Onnxify.ModelGenerator`](.docs/nuget/Onnxify.ModelGenerator.md)     | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.ModelGenerator)](https://www.nuget.org/packages/Onnxify.ModelGenerator/)     |
+| [`Onnxify.ML`](.docs/nuget/Onnxify.ML.md)                             | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.ML)](https://www.nuget.org/packages/Onnxify.ML/)                             |
+| [`Onnxify.ML.TorchSharp`](.docs/nuget/Onnxify.ML.TorchSharp.md)       | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.ML.TorchSharp)](https://www.nuget.org/packages/Onnxify.ML.TorchSharp/)       |
+| [`Onnxify.CLI`](.docs/nuget/Onnxify.CLI.md)                           | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.CLI)](https://www.nuget.org/packages/Onnxify.CLI/)                           |                  
 
 ## TorchSharp Operator Porting
 
