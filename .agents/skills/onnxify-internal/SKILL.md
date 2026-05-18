@@ -14,6 +14,7 @@ Read [references/generated-artifacts.md](references/generated-artifacts.md) when
 Read [references/finding-torchsharp-porting-candidates.md](references/finding-torchsharp-porting-candidates.md) when you need to identify the highest-value missing `Onnxify.TorchSharp` operators before starting a port.
 Read [references/porting-onnxscript-converters.md](references/porting-onnxscript-converters.md) when you need to port a Python-side ONNXScript Torch conversion into `Onnxify.TorchSharp`.
 Read [references/validating-existing-torchsharp-converters-against-onnxscript.md](references/validating-existing-torchsharp-converters-against-onnxscript.md) only when the user explicitly asks you to validate an already covered `Onnxify.TorchSharp` exporter against the original Python exporter in `third_party/onnxscript`.
+Read [references/torchsharp-operator-verification-log.md](references/torchsharp-operator-verification-log.md) when the user wants the already completed parity-validation batches for covered tensor operators or needs to continue the same running validation log.
 Read [references/porting-safetensors.md](references/porting-safetensors.md) when you need to port `third_party/safetensors` into `Onnxify.Safetensors`.
 
 For requests like "port more operators", "add 25 unsupported operators", or "what should we port next", do not jump straight into implementation from the observer table alone.
@@ -49,6 +50,7 @@ Use it only when the user explicitly asks to validate, compare, audit, or check 
 3. Open the linked generated converter page to get the exact C# signature and source file.
 4. Trace the real exporter implementation in `src/Onnxify.TorchSharp`, including semantic helper methods it calls.
 5. Then use `references/validating-existing-torchsharp-converters-against-onnxscript.md` to compare that behavior against the Python exporter in `third_party/onnxscript`.
+6. If the task is about continuing or reviewing the existing documented validation batches, open `references/torchsharp-operator-verification-log.md` before starting the next wave and keep extending its combined operator table.
 
 ## Core Principles
 
@@ -144,6 +146,7 @@ private const long InlineTensorElementThreshold = 20L;
 - Find the next best TorchSharp operator to port: start with `references/finding-torchsharp-porting-candidates.md`, then inspect `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md`.
 - Port an ONNXScript Torch conversion into `Onnxify.TorchSharp`: if the user did not name the operator explicitly, first use `references/finding-torchsharp-porting-candidates.md`; then use `references/porting-onnxscript-converters.md`.
 - Validate an existing `Onnxify.TorchSharp` exporter against ONNXScript: only do this when the user explicitly asks for validation/parity checking of already supported operators; then start with `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md` and use `references/validating-existing-torchsharp-converters-against-onnxscript.md`.
+- Need the already written parity-validation batch reports for covered tensor operators: open `references/torchsharp-operator-verification-log.md`.
 - For requests like "port 10/25/50 more operators", treat candidate selection as a required first phase, not an optional nicety.
 - Port `third_party/safetensors` into `Onnxify.Safetensors`: start with `third_party/safetensors/safetensors/src`, then use `references/porting-safetensors.md`.
 - Fix generated operator or TorchSharp converter docs: start with `src/Onnxify.AgentSkillGenerator`, then refresh `.agents/skills/onnxify/references`.

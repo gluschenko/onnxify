@@ -142,11 +142,27 @@ public sealed class TorchTensorOperatorExtensionsTests
         var output = graph.ExportView(input, 0L, 12L);
 
         Assert.NotNull(output);
-        Assert.Equal("Reshape", Assert.Single(graph.Nodes).OpType);
+        var reshape = Assert.Single(graph.Nodes);
+        Assert.Equal("Reshape", reshape.OpType);
+        Assert.Equal(1L, Assert.IsType<long>(reshape.Attributes.Single(x => x.Name == "allowzero").GetValue()));
 
         var shapeTensor = Assert.Single(graph.Initializers);
         var typed = Assert.IsType<OnnxTensor<long>>(shapeTensor);
         Assert.Equal([0L, 12L], typed.Value.ToArray());
+    }
+
+    [Fact]
+    public void ExportReshape_EmitsReshapeWithoutAllowZeroAttribute()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 3L, 4L]));
+
+        var output = graph.ExportReshape(input, 0L, 12L);
+
+        Assert.NotNull(output);
+        var reshape = Assert.Single(graph.Nodes);
+        Assert.Equal("Reshape", reshape.OpType);
+        Assert.Equal(0L, Assert.IsType<long>(reshape.Attributes.Single(x => x.Name == "allowzero").GetValue()));
     }
 
     [Fact]
@@ -155,13 +171,30 @@ public sealed class TorchTensorOperatorExtensionsTests
         var graph = CreateGraph();
         var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 3L, 4L]));
 
-        var output = graph.ExportPermute(input, 2L, 0L, 1L);
+        var output = graph.ExportPermute(input, -1L, 0L, 1L);
 
         Assert.NotNull(output);
         var node = Assert.Single(graph.Nodes);
         Assert.Equal("Transpose", node.OpType);
         Assert.Equal(
             [2L, 0L, 1L],
+            Assert.IsType<long[]>(node.Attributes.Single(x => x.Name == "perm").GetValue())
+        );
+    }
+
+    [Fact]
+    public void ExportPermute_WithEmptyPermutation_ReversesAxes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 3L, 4L]));
+
+        var output = graph.ExportPermute(input);
+
+        Assert.NotNull(output);
+        var node = Assert.Single(graph.Nodes);
+        Assert.Equal("Transpose", node.OpType);
+        Assert.Equal(
+            [2L, 1L, 0L],
             Assert.IsType<long[]>(node.Attributes.Single(x => x.Name == "perm").GetValue())
         );
     }
@@ -184,6 +217,35 @@ public sealed class TorchTensorOperatorExtensionsTests
     }
 
     [Fact]
+    public void ExportTranspose_WithScalarInput_EmitsIdentity()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([]));
+
+        var output = graph.ExportTranspose(input, 0L, 0L);
+
+        Assert.NotNull(output);
+        Assert.Equal("Identity", Assert.Single(graph.Nodes).OpType);
+    }
+
+    [Fact]
+    public void ExportPrimsTranspose_EmitsRequestedPermutation()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 3L, 4L]));
+
+        var output = graph.ExportTranspose(input, new long[] { 1L, 2L, 0L });
+
+        Assert.NotNull(output);
+        var node = Assert.Single(graph.Nodes);
+        Assert.Equal("Transpose", node.OpType);
+        Assert.Equal(
+            [1L, 2L, 0L],
+            Assert.IsType<long[]>(node.Attributes.Single(x => x.Name == "perm").GetValue())
+        );
+    }
+
+    [Fact]
     public void ExportT_EmitsMatrixTranspose()
     {
         var graph = CreateGraph();
@@ -198,6 +260,18 @@ public sealed class TorchTensorOperatorExtensionsTests
             [1L, 0L],
             Assert.IsType<long[]>(node.Attributes.Single(x => x.Name == "perm").GetValue())
         );
+    }
+
+    [Fact]
+    public void ExportT_WithRankOneInput_EmitsIdentity()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([3L]));
+
+        var output = graph.ExportT(input);
+
+        Assert.NotNull(output);
+        Assert.Equal("Identity", Assert.Single(graph.Nodes).OpType);
     }
 
     [Fact]
@@ -1173,6 +1247,52 @@ public sealed class TorchTensorOperatorExtensionsTests
         AssertTensorValues(results["lerp_tensor"], [1f, 0.875f, 2f, 1.75f], 2, 2);
         AssertTensorValues(results["lerp_scalar"], [1f, 1.625f, 2.375f, 3.0625f], 2, 2);
         AssertTensorValues(results["mv"], [10f, 22f], 2);
+    }
+
+    [Fact]
+    public void Smoke_RuntimeExecutesViewTransposeConcatAndSplitOperators()
+    {
+        var model = CreateRuntimeModel();
+        var matrix = model.Graph.AddInput("matrix", OnnxTensorType.Create<float>([2L, 3L]));
+        var cube = model.Graph.AddInput("cube", OnnxTensorType.Create<float>([2L, 3L, 4L]));
+        var left = model.Graph.AddInput("left", OnnxTensorType.Create<float>([2L, 2L]));
+        var right = model.Graph.AddInput("right", OnnxTensorType.Create<float>([2L, 1L]));
+        var splitInput = model.Graph.AddInput("split_input", OnnxTensorType.Create<float>([5L]));
+
+        AddFloatOutput(model, "view", model.Graph.ExportView(matrix, 3L, 2L), 3, 2);
+        AddFloatOutput(model, "reshape", model.Graph.ExportReshape(matrix, 3L, 2L), 3, 2);
+        AddFloatOutput(model, "permute", model.Graph.ExportPermute(cube, -1L, 0L, 1L), 4, 2, 3);
+        AddFloatOutput(model, "transpose", model.Graph.ExportTranspose(matrix, 0L, 1L), 3, 2);
+        AddFloatOutput(model, "prims_transpose", model.Graph.ExportTranspose(cube, new long[] { 1L, 2L, 0L }), 3, 4, 2);
+        AddFloatOutput(model, "vector_t", model.Graph.ExportT(splitInput), 5);
+        AddFloatOutput(model, "concat", model.Graph.ExportConcat(new IOnnxGraphEdge[] { left, right }, dim: 1), 2, 3);
+
+        var split = model.Graph.ExportSplit(splitInput, splitSize: 2, dim: 0);
+        AddFloatOutput(model, "split_out_0", split[0], 2);
+        AddFloatOutput(model, "split_out_1", split[1], 2);
+        AddFloatOutput(model, "split_out_2", split[2], 1);
+
+        var outputs = RunModel<float>(
+            model,
+            new NamedOnnxValue[]
+            {
+                NamedOnnxValue.CreateFromTensor("matrix", new DenseTensor<float>(new[] { 1f, 2f, 3f, 4f, 5f, 6f }, new[] { 2, 3 })),
+                NamedOnnxValue.CreateFromTensor("cube", new DenseTensor<float>(Enumerable.Range(1, 24).Select(static x => (float)x).ToArray(), new[] { 2, 3, 4 })),
+                NamedOnnxValue.CreateFromTensor("left", new DenseTensor<float>(new[] { 1f, 2f, 3f, 4f }, new[] { 2, 2 })),
+                NamedOnnxValue.CreateFromTensor("right", new DenseTensor<float>(new[] { 9f, 8f }, new[] { 2, 1 })),
+                NamedOnnxValue.CreateFromTensor("split_input", new DenseTensor<float>(new[] { 10f, 20f, 30f, 40f, 50f }, new[] { 5 })),
+            });
+
+        AssertTensorValues(outputs["view"], [1f, 2f, 3f, 4f, 5f, 6f], 3, 2);
+        AssertTensorValues(outputs["reshape"], [1f, 2f, 3f, 4f, 5f, 6f], 3, 2);
+        AssertTensorValues(outputs["permute"], [1f, 5f, 9f, 13f, 17f, 21f, 2f, 6f, 10f, 14f, 18f, 22f, 3f, 7f, 11f, 15f, 19f, 23f, 4f, 8f, 12f, 16f, 20f, 24f], 4, 2, 3);
+        AssertTensorValues(outputs["transpose"], [1f, 4f, 2f, 5f, 3f, 6f], 3, 2);
+        AssertTensorValues(outputs["prims_transpose"], [1f, 13f, 2f, 14f, 3f, 15f, 4f, 16f, 5f, 17f, 6f, 18f, 7f, 19f, 8f, 20f, 9f, 21f, 10f, 22f, 11f, 23f, 12f, 24f], 3, 4, 2);
+        AssertTensorValues(outputs["vector_t"], [10f, 20f, 30f, 40f, 50f], 5);
+        AssertTensorValues(outputs["concat"], [1f, 2f, 9f, 3f, 4f, 8f], 2, 3);
+        AssertTensorValues(outputs["split_out_0"], [10f, 20f], 2);
+        AssertTensorValues(outputs["split_out_1"], [30f, 40f], 2);
+        AssertTensorValues(outputs["split_out_2"], [50f], 1);
     }
 
     [Fact]

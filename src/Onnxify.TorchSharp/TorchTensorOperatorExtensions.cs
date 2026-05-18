@@ -1373,12 +1373,41 @@ public static class TorchTensorOperatorExtensions
     }
 
     [TorchOp("aten::reshape")]
-    [TorchOp("aten::view")]
     [TorchOp("prims::reshape")]
+    public static IOnnxGraphEdge ExportReshape(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        params long[] shape
+    )
+    {
+        return ExportReshapeCore(
+            graph,
+            input,
+            shape,
+            allowZero: false
+        );
+    }
+
+    [TorchOp("aten::view")]
     public static IOnnxGraphEdge ExportView(
         this OnnxGraph graph,
         IOnnxGraphEdge input,
         params long[] shape
+    )
+    {
+        return ExportReshapeCore(
+            graph,
+            input,
+            shape,
+            allowZero: true
+        );
+    }
+
+    private static IOnnxGraphEdge ExportReshapeCore(
+        OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IReadOnlyList<long> shape,
+        bool allowZero
     )
     {
         ArgumentNullException.ThrowIfNull(graph);
@@ -1388,18 +1417,27 @@ public static class TorchTensorOperatorExtensions
         var name = graph.NextName("reshape");
         var shapeTensor = graph.AddTensor(
             name: $"{name}_shape",
-            shape: [shape.LongLength],
-            value: shape
+            shape: [shape.Count],
+            value: shape.ToArray()
         );
 
-        return graph.Reshape(
-            name: name,
-            options: new ReshapeInputOptions
-            {
-                Data = input,
-                Shape = shapeTensor,
-            }
-        );
+        return allowZero
+            ? ExportBinaryNode(
+                graph,
+                "reshape",
+                "Reshape",
+                input,
+                shapeTensor,
+                [new OnnxAttribute<long>("allowzero", 1L)]
+            )
+            : graph.Reshape(
+                name: name,
+                options: new ReshapeInputOptions
+                {
+                    Data = input,
+                    Shape = shapeTensor,
+                }
+            );
     }
 
     [TorchOp("aten::permute")]
@@ -1413,12 +1451,24 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(permutation);
 
+        var rank = GetRequiredRank(input, "permute");
+        if (rank == 0)
+        {
+            return graph.ExportIdentity(input);
+        }
+
+        var normalizedPermutation = permutation.Length == 0
+            ? Enumerable.Range(0, rank).Reverse().Select(static index => (long)index).ToArray()
+            : permutation
+                .Select(axis => (long)NormalizeAxis(axis, rank, "permute"))
+                .ToArray();
+
         return graph.Transpose(
             name: graph.NextName("transpose"),
             options: new TransposeInputOptions
             {
                 Data = input,
-                Perm = permutation,
+                Perm = normalizedPermutation,
             }
         );
     }
@@ -1436,6 +1486,11 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(input);
 
         var rank = GetRequiredRank(input, "transpose");
+        if (rank == 0)
+        {
+            return graph.ExportIdentity(input);
+        }
+
         var normalizedDim0 = NormalizeAxis(dim0, rank, "transpose");
         var normalizedDim1 = NormalizeAxis(dim1, rank, "transpose");
         var permutation = Enumerable.Range(0, rank).Select(static index => (long)index).ToArray();
@@ -1452,6 +1507,27 @@ public static class TorchTensorOperatorExtensions
         );
     }
 
+    [TorchOp("prims::transpose")]
+    public static IOnnxGraphEdge ExportTranspose(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IReadOnlyList<long> permutation
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(permutation);
+
+        return graph.Transpose(
+            name: graph.NextName("transpose"),
+            options: new TransposeInputOptions
+            {
+                Data = input,
+                Perm = permutation.ToArray(),
+            }
+        );
+    }
+
     [TorchOp("aten::t")]
     public static IOnnxGraphEdge ExportT(
         this OnnxGraph graph,
@@ -1462,12 +1538,9 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(input);
 
         var rank = GetRequiredRank(input, "t");
-        if (rank != 2)
-        {
-            throw new NotSupportedException($"t export expects a rank-2 tensor, but got rank {rank}.");
-        }
-
-        return graph.ExportTranspose(input, 0, 1);
+        return rank == 2
+            ? graph.ExportTranspose(input, 0, 1)
+            : graph.ExportIdentity(input);
     }
 
     [TorchOp("aten::unsqueeze")]
