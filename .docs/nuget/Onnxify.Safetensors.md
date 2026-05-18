@@ -30,7 +30,11 @@ Modern ML workflows often keep model weights in `.safetensors` because the forma
 ### Create and Round-Trip a Safetensors File
 
 ```csharp
+using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Onnxify.Safetensors;
 
@@ -68,7 +72,11 @@ Console.WriteLine(string.Join(", ", loadedValues.Select(x => x.ToString(CultureI
 
 ### Read Only Metadata Before Touching Tensor Payloads
 
+This example assumes `weights.safetensors` already exists, for example from the previous example or from your own export pipeline.
+
 ```csharp
+using System;
+using System.IO;
 using Onnxify.Safetensors;
 
 var buffer = File.ReadAllBytes("weights.safetensors");
@@ -91,7 +99,11 @@ if (metadata.MetadataEntries is not null)
 
 ### Slice a Tensor View Without Rebuilding the Whole Archive
 
+This example also assumes `weights.safetensors` already exists and contains a tensor named `weights`.
+
 ```csharp
+using System;
+using System.IO;
 using Onnxify.Safetensors;
 
 var archive = SafeTensors.Deserialize(File.ReadAllBytes("weights.safetensors"));

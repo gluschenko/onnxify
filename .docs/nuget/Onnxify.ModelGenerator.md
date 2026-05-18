@@ -2,31 +2,31 @@
 
 `Onnxify.ModelGenerator` is a Roslyn source generator that turns `.onnx` files in your project into typed `Microsoft.ML.OnnxRuntime` wrapper classes.
 
+## Why This Package Exists
+
+Using ONNX Runtime directly is powerful, but repetitive:
+
+- you have to load the model manually with `InferenceSession`
+- you have to keep string-based input and output names in sync with the real ONNX signature
+- you have to map tensors into `NamedOnnxValue` collections by hand
+- you have to remember which outputs should be disposed and when
+
+`Onnxify.ModelGenerator` removes that plumbing. You add an ONNX model to your project, and the generator emits a small typed API around it:
+
+- a model wrapper such as `SampleClassifierModel`
+- an input contract such as `SampleClassifierModelInputs`
+- an output contract such as `SampleClassifierModelOutputs`
+- typed `Run(...)` overloads with optional `RunOptions`
+
+Use the main `Onnxify` package instead when your goal is to inspect, build, or edit ONNX graphs themselves.
+
 ## Install
 
 ```bash
+dotnet add package Onnxify
 dotnet add package Onnxify.ModelGenerator
+dotnet add package Microsoft.ML.OnnxRuntime
 ```
-
-In a real consumer project you will typically also reference `Onnxify` and `Microsoft.ML.OnnxRuntime`, because the generated code uses `Onnxify` metadata types and executes through ONNX Runtime.
-
-## When To Use It
-
-Use `Onnxify.ModelGenerator` when you already have an ONNX model and want:
-
-- strongly typed wrapper classes instead of hand-written `InferenceSession` plumbing
-- generated input and output contracts based on the real ONNX signature
-- fewer hard-coded input and output names in application code
-- a small, reusable inference surface for app or service code
-
-Use the main `Onnxify` package instead when your goal is to build, inspect, or edit ONNX graphs directly.
-
-## What It Provides
-
-- Detect `.onnx` files added to the consuming project through the `OnnxModel` MSBuild item.
-- Generate typed input and output contracts from the model signature.
-- Emit a thin `InferenceSession` wrapper with `Run(...)` overloads for `Microsoft.ML.OnnxRuntime`.
-- Surface model input and output metadata in generated code for runtime inspection.
 
 ## Recommended `csproj` Setup
 
@@ -39,78 +39,116 @@ Use the main `Onnxify` package instead when your goal is to build, inspect, or e
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Onnxify" Version="0.0.0.11" />
-    <PackageReference Include="Onnxify.ModelGenerator" Version="0.0.0.11" />
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.23.2" />
+    <PackageReference Include="Onnxify" Version="0.1.0" />
+    <PackageReference Include="Onnxify.ModelGenerator" Version="0.1.0" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.24.4" />
   </ItemGroup>
 
   <ItemGroup>
-    <OnnxModel Include="Models\sample-classifier.onnx" />
+    <OnnxModel Include="Models\sample-classifier.onnx"
+               OnnxifyModelNamespace="MyApp.Models"
+               OnnxifyModelClassName="SampleClassifier" />
   </ItemGroup>
 </Project>
 ```
 
 The packaged `.targets` file forwards `OnnxModel` items to Roslyn as additional files and keeps the model copied to the output directory by default.
 
-## Naming Overrides
+With the configuration above, the generator emits types like:
 
-If you want a custom namespace or class name, set metadata on the `OnnxModel` item:
+- `MyApp.Models.SampleClassifierModel`
+- `MyApp.Models.SampleClassifierModelInputs`
+- `MyApp.Models.SampleClassifierModelOutputs`
 
-```xml
-<ItemGroup>
-  <OnnxModel Include="Models\sample-classifier.onnx"
-             OnnxifyModelNamespace="MyApp.Models"
-             OnnxifyModelClassName="SampleClassifier" />
-</ItemGroup>
-```
+## Example: Run Inference With `SessionOptions` And `RunOptions`
 
-This generates a wrapper named `SampleClassifierModel` in namespace `MyApp.Models`.
-
-## Runtime Example
-
-Assuming the ONNX model exposes an input named `input_ids` and an output named `logits`:
+This is the most copy-paste-friendly shape for a consumer project:
 
 ```csharp
+using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using MyApp.Models;
 
-var model = new SampleClassifierModel();
+using var sessionOptions = new SessionOptions();
+using var model = new SampleClassifierModel(sessionOptions);
 
-var inputIds = new DenseTensor<long>(
-    values: new long[] { 101, 2023, 2003, 1037, 3231, 102 },
-    dimensions: new[] { 1, 6 }
+var image = new DenseTensor<float>(
+    new float[1 * 3 * 16 * 16],
+    new[] { 1, 3, 16, 16 }
 );
 
-using var outputs = model.Run(inputIds);
-Tensor<float> logits = outputs.Logits;
+using var runOptions = new RunOptions();
+runOptions.LogId = "image-classification";
+
+using var outputs = model.Run(
+    input: image,
+    runOptions: runOptions
+);
+
+Tensor<float> prediction = outputs.Output;
+Console.WriteLine($"Output tensor length: {prediction.Length}");
 ```
 
-You can also use the generated input contract object:
+This example shows the most important runtime lifetimes:
+
+- `SessionOptions` is disposable
+- the generated model wrapper is disposable because it owns `InferenceSession`
+- `RunOptions` is disposable
+- the generated outputs wrapper is disposable because it owns ONNX Runtime output values
+
+## Example: Use The Generated Input Contract
+
+If you prefer an object that mirrors the model signature, use the generated input class:
 
 ```csharp
+using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using MyApp.Models;
 
-var model = new SampleClassifierModel();
+using var model = new SampleClassifierModel();
+using var runOptions = new RunOptions();
+runOptions.LogId = "typed-inputs";
 
 var inputs = new SampleClassifierModelInputs
 {
-    InputIds = new DenseTensor<long>(
-        values: new long[] { 101, 7592, 2088, 102 },
-        dimensions: new[] { 1, 4 }
-    )
+    Input = new DenseTensor<float>(
+        new float[1 * 3 * 16 * 16],
+        new[] { 1, 3, 16, 16 }
+    ),
 };
 
-using var outputs = model.Run(inputs);
-Tensor<float> logits = outputs.Logits;
+using var outputs = model.Run(
+    inputs: inputs,
+    runOptions: runOptions
+);
+
+Tensor<float> prediction = outputs.Output;
+Console.WriteLine($"Output tensor length: {prediction.Length}");
 ```
 
-## Notes
+This style becomes especially useful when the ONNX model has multiple inputs or optional inputs.
 
-- The default constructor loads the model from `DefaultModelPath`, which resolves relative to the application output folder.
-- Optional ONNX inputs become nullable tensor properties and nullable tensor parameters in generated `Run(...)` overloads.
+## Disposal Guidance
+
+Treat these objects as scoped resources:
+
+- `SessionOptions`
+- `RunOptions`
+- the generated model wrapper, for example `SampleClassifierModel`
+- the generated outputs wrapper, for example `SampleClassifierModelOutputs`
+
+Prefer `using var` for all of them.
+
+Also note that `outputs.Output` and `outputs.Raw` are tied to the lifetime of the output wrapper. Read or copy the data you need before leaving the `using` scope.
+
+## Generated API Notes
+
+- The default constructor loads the model from `DefaultModelPath`, resolved relative to the application output folder.
+- You can also construct the wrapper from a custom file path or raw model bytes.
+- The generated wrapper exposes both `Run(<generated inputs>)` and `Run(..., RunOptions? runOptions)` overloads.
+- Optional ONNX inputs become nullable properties on the generated input type and nullable parameters on the generated `Run(...)` overloads.
+- The generated wrapper also exposes `Inputs`, `Outputs`, and `OutputNames` metadata for runtime inspection.
 - Models that use external tensor data still require their sibling external-data files at deployment time.
-- If you need to wire ONNX files manually, the generator ultimately reads Roslyn additional files, but the recommended project-facing entry point is `OnnxModel`.
 
 ## Repository
 

@@ -1,3 +1,6 @@
+> **Warning**
+> This package is currently in active development and research. Its public API is unstable and may change radically in future versions.
+
 # Onnxify.ML
 
 `Onnxify.ML` is a publishable package slot for ML-oriented functionality in this repository.
@@ -7,10 +10,6 @@
 ```bash
 dotnet add package Onnxify.ML
 ```
-
-## Current Status
-
-This package currently represents an early-stage surface and should be treated as experimental. Verify the source before depending on a specific API shape or feature set.
 
 ## Intended Direction
 

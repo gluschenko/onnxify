@@ -6,7 +6,12 @@
 
 ```bash
 dotnet add package Onnxify.TorchSharp
+dotnet add package TorchSharp-cpu
 ```
+
+`Onnxify.TorchSharp` gives you the export and safetensors integration layer, but a TorchSharp runtime package is typically still needed to instantiate and run TorchSharp modules in a real application.
+
+For local CPU execution, `TorchSharp-cpu` is the simplest starting point. For GPU execution, install the appropriate TorchSharp CUDA runtime package for your environment instead.
 
 ## Why This Package Exists
 
@@ -28,82 +33,130 @@ In short, this package is not just for "saving a model to ONNX". It is for build
 - `SaveStateAsSafetensors(...)` and `LoadStateFromSafetensors(...)` for saving and loading `state_dict()`.
 - `SafetensorsExternalDataProvider` for scenarios where ONNX external data should be stored in `safetensors` format.
 
-## Example: Exporting a Sequential Model to ONNX
+## Example: A Realistic TorchSharp Model Class
 
 ```csharp
+using System.Collections.Generic;
+using Onnxify;
 using Onnxify.TorchSharp;
+using TorchSharp;
+using static TorchSharp.torch;
 using static TorchSharp.torch.nn;
 
-var features = Sequential(
-    ("conv1", Conv2d(3, 8, kernel_size: 3)),
-    ("gelu", GELU()),
-    ("pool", AvgPool2d(kernel_size: 2, stride: 2)),
-    ("flatten", Flatten()),
-    ("fc", Linear(392, 10))
-);
-
-var model = OnnxModel.Create(new OnnxModelCreationOptions
+public sealed class MyModel : torch.nn.Module<Tensor, Tensor>
 {
-    Opset = 22,
-});
+    private readonly torch.nn.Module<Tensor, Tensor> _features;
+    private readonly torch.nn.Module<Tensor, Tensor> _classifier;
 
-var graph = model.Graph;
-var input = graph.AddInput(
-    name: "input",
-    type: OnnxTensorType.Create<float>(["batch", 3, 16, 16])
-);
-
-var output = features.Export(graph, input);
-
-var outputEdge = graph.AddEdge("output");
-
-graph.Identity(
-    name: "output_identity",
-    options: new IdentityInputOutputOptions
+    public MyModel(string name = "my_model")
+        : base(name)
     {
-        Input = output,
-        Output = outputEdge,
+        _features = Sequential(
+            ("conv1", Conv2d(3, 8, kernel_size: 3)),
+            ("gelu", GELU()),
+            ("pool", AvgPool2d(kernel_size: 2, stride: 2)),
+            ("flatten", Flatten())
+        );
+
+        _classifier = Sequential(
+            ("fc1", Linear(392, 64)),
+            ("relu", ReLU()),
+            ("fc2", Linear(64, 10))
+        );
+
+        RegisterComponents();
     }
-);
 
-graph.AddOutput(
-    name: "output",
-    type: OnnxTensorType.Create<float>(["batch", 10])
-);
+    public override Tensor forward(Tensor input)
+    {
+        var x = _features.forward(input);
+        x = _classifier.forward(x);
+        return x;
+    }
 
-model.Save("model.onnx", overwrite: true);
+    public OnnxModel Export()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            Opset = 22,
+        });
+
+        var graph = model.Graph;
+        var input = graph.AddInput(
+            name: "input",
+            type: OnnxTensorType.Create<float>(["batch", 3, 16, 16])
+        );
+
+        var x = _features.Export(graph, input);
+        x = _classifier.Export(graph, x);
+
+        var outputEdge = graph.AddEdge("output");
+        graph.Identity(
+            name: "output_identity",
+            options: new IdentityInputOutputOptions
+            {
+                Input = x,
+                Output = outputEdge,
+            }
+        );
+
+        graph.AddOutput(
+            name: "output",
+            type: OnnxTensorType.Create<float>(["batch", 10])
+        );
+
+        return model;
+    }
+
+    public void SaveCheckpoint(
+        string path,
+        IReadOnlyDictionary<string, string>? metadata = null
+    )
+    {
+        this.SaveStateAsSafetensors(path, metadata);
+    }
+
+    public void LoadCheckpoint(
+        string path,
+        bool strict = true
+    )
+    {
+        this.LoadStateFromSafetensors(path, strict);
+    }
+}
 ```
 
-This is useful when the model architecture lives in TorchSharp, but you want the result to be saved as a normal ONNX model that you can later open, inspect, or refine through `Onnxify`.
+This shape is closer to how consumers usually structure a real application: the architecture lives in a reusable TorchSharp model class, while ONNX export and checkpoint persistence are exposed as explicit model methods.
 
-## Example: Saving TorchSharp Weights to safetensors
+The sample above assumes a TorchSharp runtime package such as `TorchSharp-cpu` is installed. Without a runtime package, the project may compile but fail at runtime when TorchSharp tries to create modules.
+
+## Example: Exporting the Model to ONNX
 
 ```csharp
-using Onnxify.TorchSharp;
-using static TorchSharp.torch.nn;
+var model = new MyModel();
+var onnxModel = model.Export();
+onnxModel.Save("model.onnx", overwrite: true);
+```
 
-var model = Sequential(
-    ("fc1", Linear(128, 64)),
-    ("relu", ReLU()),
-    ("fc2", Linear(64, 10))
-);
+This keeps the export path attached to the same class that defines the TorchSharp architecture, which makes the code easier to discover and reuse.
 
-model.SaveStateAsSafetensors("model.safetensors");
+## Example: Saving and Loading a safetensors Checkpoint
 
-var restored = Sequential(
-    ("fc1", Linear(128, 64)),
-    ("relu", ReLU()),
-    ("fc2", Linear(64, 10))
-);
+```csharp
+var model = new MyModel();
+model.SaveCheckpoint("model.safetensors");
 
-restored.LoadStateFromSafetensors("model.safetensors");
+var restored = new MyModel();
+restored.LoadCheckpoint("model.safetensors");
 ```
 
 This is useful when the ONNX graph and the weights should be stored separately, when you want to reuse state across experiments, or when `safetensors` is part of your model delivery pipeline.
 
+This example also requires a TorchSharp runtime package because creating `Conv2d(...)`, `Linear(...)`, `ReLU()`, and other TorchSharp modules loads the underlying TorchSharp native backend.
+
 ## How safetensors Save and Load Works
 
-`SaveStateAsSafetensors(...)` and `LoadStateFromSafetensors(...)` operate on the module `state_dict()`.
+In the class pattern above, `SaveCheckpoint(...)` and `LoadCheckpoint(...)` are thin wrappers over `SaveStateAsSafetensors(...)` and `LoadStateFromSafetensors(...)`, and those APIs operate on the module `state_dict()`.
 
 That means the safetensors file stores the model state that TorchSharp exposes as named tensors:
 
@@ -120,16 +173,8 @@ It does not store the full TorchSharp object graph, constructor arguments, or ar
 ## Example: Saving with Metadata and Restoring Later
 
 ```csharp
-using Onnxify.TorchSharp;
-using static TorchSharp.torch.nn;
-
-var model = Sequential(
-    ("fc1", Linear(128, 64)),
-    ("relu", ReLU()),
-    ("fc2", Linear(64, 10))
-);
-
-model.SaveStateAsSafetensors(
+var model = new MyModel();
+model.SaveCheckpoint(
     path: "checkpoints/classifier.safetensors",
     metadata: new Dictionary<string, string>
     {
@@ -139,13 +184,8 @@ model.SaveStateAsSafetensors(
     }
 );
 
-var restored = Sequential(
-    ("fc1", Linear(128, 64)),
-    ("relu", ReLU()),
-    ("fc2", Linear(64, 10))
-);
-
-restored.LoadStateFromSafetensors("checkpoints/classifier.safetensors");
+var restored = new MyModel();
+restored.LoadCheckpoint("checkpoints/classifier.safetensors");
 ```
 
 During save, tensors are copied through CPU contiguous buffers before they are serialized. This makes the produced file independent of whether the live module currently resides on CPU or GPU.
@@ -157,7 +197,7 @@ During load, tensors from the file are matched by name against the target module
 By default, loading is strict:
 
 ```csharp
-restored.LoadStateFromSafetensors("model.safetensors", strict: true);
+restored.LoadCheckpoint("model.safetensors", strict: true);
 ```
 
 With strict loading enabled:
@@ -172,7 +212,7 @@ This is the safer default when you expect the file and the module architecture t
 If you intentionally want a more permissive restore, you can opt into:
 
 ```csharp
-restored.LoadStateFromSafetensors("model.safetensors", strict: false);
+restored.LoadCheckpoint("model.safetensors", strict: false);
 ```
 
 That can be useful during migrations, partial warm starts, or experiments where the target module evolved but you still want to reuse the compatible subset of saved tensors.

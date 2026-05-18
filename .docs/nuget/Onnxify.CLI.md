@@ -1,3 +1,6 @@
+> **Warning**
+> This package is currently in active development and research. Its public API is unstable and may change radically in future versions.
+
 # Onnxify.CLI
 
 `Onnxify.CLI` is the command-line entry point for this repository. It is published as a `dotnet tool` and exposes the `onnxify` command.

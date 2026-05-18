@@ -1,3 +1,6 @@
+> **Warning**
+> This package is currently in active development and research. Its public API is unstable and may change radically in future versions.
+
 # Onnxify.ProjectGenerator
 
 `Onnxify.ProjectGenerator` generates C# project output from an existing ONNX model so you can reconstruct or inspect that model through `Onnxify` code.

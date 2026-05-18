@@ -169,6 +169,8 @@ Restart Codex after installation so it picks up the new or refreshed skill files
 - [x] Agent skills for Export implementation on Torch modules
 - [x] Allow to add or remove OnnxModel meta (training info, imports, producer, version)
 - [ ] CLI redesign: command patterns, more features, better output formatting, etc
+- [ ] NuGet integration tests
+- [ ] Safetensors: more user-friendly API
 
 ## License
 

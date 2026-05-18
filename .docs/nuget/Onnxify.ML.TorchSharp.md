@@ -1,3 +1,6 @@
+> **Warning**
+> This package is currently in active development and research. Its public API is unstable and may change radically in future versions.
+
 # Onnxify.ML.TorchSharp
 
 `Onnxify.ML.TorchSharp` is a publishable TorchSharp-oriented ML package slot in this repository.
@@ -7,10 +10,6 @@
 ```bash
 dotnet add package Onnxify.ML.TorchSharp
 ```
-
-## Current Status
-
-This package is currently early-stage and should be treated as experimental. Its surface is intentionally small for now, so verify the source before relying on a specific API contract.
 
 ## Intended Direction
 
