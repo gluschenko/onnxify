@@ -229,6 +229,106 @@ public sealed class OnnxModelGeneratorTests
     }
 
     [Fact]
+    public void Generate_Float16Tensor_UsesOnnxRuntimeFloat16()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, "Models", "float16-model.onnx");
+        Directory.CreateDirectory(Path.GetDirectoryName(modelPath)!);
+
+        try
+        {
+            var model = new ModelProto
+            {
+                Graph = new GraphProto()
+            };
+
+            model.Graph.Input.Add(CreateTensorValueInfo("input_half", TensorProto.Types.DataType.Float16, 1L, 8L));
+            model.Graph.Output.Add(CreateTensorValueInfo("output_half", TensorProto.Types.DataType.Float16, 1L, 8L));
+
+            File.WriteAllBytes(modelPath, model.ToByteArray());
+
+            var driver = CreateDriver(
+                additionalFiles: [new BinaryAdditionalText(modelPath)],
+                globalOptions: new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["build_property.ProjectDir"] = tempRoot + Path.DirectorySeparatorChar,
+                    ["build_property.RootNamespace"] = "Demo.App",
+                });
+
+            var compilation = CreateCompilation();
+            driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var updatedCompilation, out var generatorDiagnostics);
+
+            Assert.DoesNotContain(generatorDiagnostics, static x => x.Severity == DiagnosticSeverity.Error);
+            Assert.DoesNotContain(updatedCompilation.GetDiagnostics(), static x => x.Severity == DiagnosticSeverity.Error);
+
+            var generatedSource = GetGeneratedSource(driver);
+            Assert.Contains("public required Tensor<Float16> InputHalf { get; init; }", generatedSource);
+            Assert.Contains("public Tensor<Float16> OutputHalf => GetTensor<Float16>(\"output_half\")", generatedSource);
+            Assert.Contains("Element type: <c>Float16</c>", generatedSource);
+            Assert.DoesNotContain("Tensor<Half>", generatedSource, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Generate_BFloat16Tensor_UsesOnnxRuntimeBFloat16()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, "Models", "bfloat16-model.onnx");
+        Directory.CreateDirectory(Path.GetDirectoryName(modelPath)!);
+
+        try
+        {
+            var model = new ModelProto
+            {
+                Graph = new GraphProto()
+            };
+
+            model.Graph.Input.Add(CreateTensorValueInfo("input_bfloat", TensorProto.Types.DataType.Bfloat16, 1L, 8L));
+            model.Graph.Output.Add(CreateTensorValueInfo("output_bfloat", TensorProto.Types.DataType.Bfloat16, 1L, 8L));
+
+            File.WriteAllBytes(modelPath, model.ToByteArray());
+
+            var driver = CreateDriver(
+                additionalFiles: [new BinaryAdditionalText(modelPath)],
+                globalOptions: new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["build_property.ProjectDir"] = tempRoot + Path.DirectorySeparatorChar,
+                    ["build_property.RootNamespace"] = "Demo.App",
+                });
+
+            var compilation = CreateCompilation();
+            driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var updatedCompilation, out var generatorDiagnostics);
+
+            Assert.DoesNotContain(generatorDiagnostics, static x => x.Severity == DiagnosticSeverity.Error);
+            Assert.DoesNotContain(updatedCompilation.GetDiagnostics(), static x => x.Severity == DiagnosticSeverity.Error);
+
+            var generatedSource = GetGeneratedSource(driver);
+            Assert.Contains("public required Tensor<BFloat16> InputBfloat { get; init; }", generatedSource);
+            Assert.Contains("public Tensor<BFloat16> OutputBfloat => GetTensor<BFloat16>(\"output_bfloat\")", generatedSource);
+            Assert.Contains("Element type: <c>BFloat16</c>", generatedSource);
+            Assert.DoesNotContain("Tensor<Half>", generatedSource, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void Generate_InvalidOnnxFile_ReportsInvalidModelDiagnostic()
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
@@ -373,6 +473,32 @@ public sealed class OnnxModelGeneratorTests
         model.Graph.AddInput(inputName, inputType);
         model.Graph.AddOutput(outputName, outputType);
         model.Save(modelPath, overwrite: true);
+    }
+
+    private static ValueInfoProto CreateTensorValueInfo(
+        string name,
+        TensorProto.Types.DataType dataType,
+        params long[] dimensions
+    )
+    {
+        var tensorShape = new TensorShapeProto();
+        foreach (var dimension in dimensions)
+        {
+            tensorShape.Dim.Add(new TensorShapeProto.Types.Dimension { DimValue = dimension });
+        }
+
+        return new ValueInfoProto
+        {
+            Name = name,
+            Type = new TypeProto
+            {
+                TensorType = new TypeProto.Types.Tensor
+                {
+                    ElemType = (int)dataType,
+                    Shape = tensorShape,
+                }
+            }
+        };
     }
 
     private static CSharpCompilation CreateCompilation()
