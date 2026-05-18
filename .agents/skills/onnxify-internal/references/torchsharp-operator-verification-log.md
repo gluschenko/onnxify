@@ -72,6 +72,22 @@ Fix summary:
 - `aten::t` now returns `Identity(self)` for non-matrix inputs, matching ONNXScript's trace-only contract.
 - `src/Onnxify.Tests/TorchTensorOperatorExtensionsTests.cs` was expanded with branch-sensitive coverage for reshape-vs-view, permute normalization, scalar transpose, prims transpose, rank-1 `t`, and runtime checks for view/reshape, transpose variants, concat, and split.
 
+### Wave 3
+
+Scope: third explicit parity-validation wave for the next 25 already covered tensor operators after the previous logged batch.
+
+Focused result after this wave: `57/57` passing on `net8.0` and `net10.0`.
+
+Fix summary:
+
+- `aten::split.Tensor` was remapped onto the scalar split-size exporter, and the list-based overload was corrected to `aten::split_with_sizes`, matching the ONNXScript operator split between `split` and `split_with_sizes`.
+- `prims::squeeze` now has its own explicit-axes exporter instead of incorrectly sharing `aten::squeeze`'s no-axes behavior.
+- `aten::squeeze.dim` now returns `Identity(self)` for scalar inputs, matching ONNXScript.
+- `aten::masked_fill.Tensor` now casts the replacement value like `self` before `Where`, matching ONNXScript's `CastLike` behavior.
+- `aten::all.dims` and `aten::any.dims` now treat an empty `dims` list as reduce-all-dimensions instead of passing an empty axes tensor through to ONNX.
+- `aten::clamp` now returns `Identity(self)` when both bounds are omitted, matching ONNXScript's null-bounds branch.
+- `src/Onnxify.Tests/TorchTensorOperatorExtensionsTests.cs` was expanded with branch-sensitive and runtime coverage for split-with-sizes, scalar `squeeze.dim`, `prims::squeeze`, tensor `masked_fill`, empty-dims truth reductions, scalar `where`, `select`, `chunk`, and the no-bounds `clamp` path.
+
 ## Combined Operator Log
 
 Continue appending newly verified operators to this table during future waves. Do not start a fresh standalone table elsewhere unless there is a strong reason to change the workflow.
@@ -128,6 +144,31 @@ Continue appending newly verified operators to this table during future waves. D
 | 48 | `wave2` | `aten::concat` | `equivalent with constraints` | Alias of `aten::cat`; validated on the same shared exporter contract. |
 | 49 | `wave2` | `aten::concatenate` | `equivalent with constraints` | Alias of `aten::cat`; validated on the same shared exporter contract. |
 | 50 | `wave2` | `aten::split` | `equivalent` | Runtime coverage now validates split-size semantics, including a trailing smaller chunk. |
+| 51 | `wave3` | `aten::split.Tensor` | `partial mismatch fixed` | C# had mapped this spelling onto split-with-sizes semantics; it now shares the scalar split-size path like ONNXScript, while the list-based overload is exposed as `aten::split_with_sizes`. |
+| 52 | `wave3` | `aten::chunk` | `equivalent with constraints` | Normal chunk semantics match and now have runtime coverage, but C# still relies on a statically known axis size to determine the emitted output count. |
+| 53 | `wave3` | `aten::select.int` | `equivalent` | Gather-based select semantics match ONNXScript and now have runtime coverage. |
+| 54 | `wave3` | `aten::squeeze` | `equivalent` | No-axes squeeze semantics match ONNXScript. |
+| 55 | `wave3` | `prims::squeeze` | `partial mismatch fixed` | C# now exports explicit axes for prims squeeze instead of reusing `aten::squeeze`'s remove-all-size-1-dims behavior. |
+| 56 | `wave3` | `aten::squeeze.dim` | `partial mismatch fixed` | Scalar inputs now return identity instead of failing on rank-0 axis normalization. |
+| 57 | `wave3` | `prims::where` | `equivalent` | Tensor/tensor/tensor `Where` semantics match ONNXScript. |
+| 58 | `wave3` | `aten::where.Scalar` | `equivalent with constraints` | The scalar/scalar branch is aligned for the current float-literal C# surface and now has runtime coverage, but it remains narrower than ONNXScript's broader promotion-aware Python contract. |
+| 59 | `wave3` | `aten::masked_fill.Scalar` | `equivalent` | Scalar masked-fill semantics remain aligned through the shared `Where` lowering. |
+| 60 | `wave3` | `aten::masked_fill.Tensor` | `partial mismatch fixed` | Replacement tensors are now cast like `self` before `Where`, matching ONNXScript. |
+| 61 | `wave3` | `aten::all` | `equivalent` | Reduce-all truth semantics match ONNXScript, including the scalar identity branch. |
+| 62 | `wave3` | `aten::all.dim` | `equivalent` | Single-dimension truth reduction semantics match ONNXScript. |
+| 63 | `wave3` | `aten::all.dims` | `partial mismatch fixed` | Empty `dims` now means reduce all dimensions, matching ONNXScript's dedicated no-dim branch. |
+| 64 | `wave3` | `aten::any` | `equivalent` | Reduce-any truth semantics match ONNXScript, including the scalar identity branch. |
+| 65 | `wave3` | `aten::any.dim` | `equivalent` | Single-dimension truth reduction semantics match ONNXScript. |
+| 66 | `wave3` | `aten::any.dims` | `partial mismatch fixed` | Empty `dims` now means reduce all dimensions, matching ONNXScript's dedicated no-dim branch. |
+| 67 | `wave3` | `aten::nonzero` | `equivalent` | `NonZero` plus transpose semantics match ONNXScript and retain runtime coverage. |
+| 68 | `wave3` | `aten::cumsum` | `equivalent with constraints` | Main cumsum semantics match and scalar inputs return identity, but the currently exposed C# surface does not add ONNXScript's optional dtype override and inherits the same practical dtype caveats around non-default accumulation types. |
+| 69 | `wave3` | `aten::clamp` | `partial mismatch fixed` | The no-bounds branch now returns identity instead of throwing, matching ONNXScript. |
+| 70 | `wave3` | `aten::full` | `equivalent with constraints` | Expand-based creation semantics match for the current float-producing C# surface, but the broader ONNXScript dtype/device parameters remain outside this exporter signature. |
+| 71 | `wave3` | `aten::full_like` | `equivalent with constraints` | Shape-driven fill semantics match, with the current C# surface intentionally narrower than ONNXScript's explicit dtype override options. |
+| 72 | `wave3` | `aten::ones` | `equivalent with constraints` | Current C# surface matches the float creator path but is narrower than ONNXScript's broader dtype-aware signature. |
+| 73 | `wave3` | `aten::ones_like` | `equivalent with constraints` | Shape-driven ones creation matches for the current C# surface, with narrower dtype configurability than ONNXScript. |
+| 74 | `wave3` | `aten::zeros` | `equivalent with constraints` | Current C# surface matches the float creator path but is narrower than ONNXScript's broader dtype-aware signature. |
+| 75 | `wave3` | `aten::zeros_like` | `equivalent with constraints` | Shape-driven zeros creation matches for the current C# surface, with narrower dtype configurability than ONNXScript. |
 
 ## Notes For Future Waves
 
@@ -135,4 +176,5 @@ Continue appending newly verified operators to this table during future waves. D
 - `aten::isclose` and `aten::allclose` should stay marked as constrained until ONNXScript itself resolves the `equal_nan` gap.
 - `aten::_conj` and `aten::conj` should stay marked as constrained until `Onnxify.TorchSharp` grows an explicit complex-tensor story comparable to ONNXScript's dedicated complex branches.
 - `aten::expand` and the `aten::arange*` family are aligned on the currently exposed C# surface, but they remain narrower than ONNXScript's broader dtype- and dynamic-shape-aware Python contract.
+- `aten::chunk`, `aten::full*`, `aten::ones*`, `aten::zeros*`, and `aten::where.Scalar` should stay marked as constrained until `Onnxify.TorchSharp` grows the same dynamic-shape and dtype-override surface area that ONNXScript already exposes in Python.
 - `aten::topk` remains intentionally constrained the same way ONNXScript is constrained: scalar inputs are unsupported.

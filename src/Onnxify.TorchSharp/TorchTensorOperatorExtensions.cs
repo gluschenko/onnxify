@@ -1884,6 +1884,7 @@ public static class TorchTensorOperatorExtensions
     }
 
     [TorchOp("aten::split")]
+    [TorchOp("aten::split.Tensor")]
     public static IReadOnlyList<IOnnxGraphEdge> ExportSplit(
         this OnnxGraph graph,
         IOnnxGraphEdge input,
@@ -1914,7 +1915,7 @@ public static class TorchTensorOperatorExtensions
         );
     }
 
-    [TorchOp("aten::split.Tensor")]
+    [TorchOp("aten::split_with_sizes")]
     public static IReadOnlyList<IOnnxGraphEdge> ExportSplit(
         this OnnxGraph graph,
         IOnnxGraphEdge input,
@@ -2006,7 +2007,6 @@ public static class TorchTensorOperatorExtensions
     }
 
     [TorchOp("aten::squeeze")]
-    [TorchOp("prims::squeeze")]
     public static IOnnxGraphEdge ExportSqueeze(
         this OnnxGraph graph,
         IOnnxGraphEdge input
@@ -2024,6 +2024,31 @@ public static class TorchTensorOperatorExtensions
         );
     }
 
+    [TorchOp("prims::squeeze")]
+    public static IOnnxGraphEdge ExportSqueeze(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IReadOnlyList<long> dims
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(dims);
+
+        var axes = TryGetRank(input) is int rank
+            ? dims.Select(axis => (long)NormalizeAxis(axis, rank, "squeeze")).ToArray()
+            : dims.ToArray();
+
+        return graph.Squeeze(
+            name: graph.NextName("squeeze"),
+            options: new SqueezeInputOptions
+            {
+                Data = input,
+                Axes = AddAxesTensor(graph, "squeeze", axes),
+            }
+        );
+    }
+
     [TorchOp("aten::squeeze.dim")]
     public static IOnnxGraphEdge ExportSqueeze(
         this OnnxGraph graph,
@@ -2033,6 +2058,11 @@ public static class TorchTensorOperatorExtensions
     {
         ArgumentNullException.ThrowIfNull(graph);
         ArgumentNullException.ThrowIfNull(input);
+
+        if (TryGetRank(input) == 0)
+        {
+            return graph.ExportIdentity(input);
+        }
 
         var axis = TryGetRank(input) is int rank
             ? NormalizeAxis(dim, rank, "squeeze")
@@ -2237,7 +2267,7 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(mask);
         ArgumentNullException.ThrowIfNull(value);
 
-        return graph.ExportWhere(mask, value, input);
+        return graph.ExportWhere(mask, CastLikeIfNeeded(graph, value, input, "masked_fill"), input);
     }
 
     [TorchOp("aten::all")]
@@ -2278,7 +2308,14 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(dims);
 
-        return ExportTruthReduction(graph, "all", input, dims, keepdim, useMin: true);
+        return ExportTruthReduction(
+            graph,
+            "all",
+            input,
+            dims.Count == 0 ? null : dims,
+            keepdim,
+            useMin: true
+        );
     }
 
     [TorchOp("aten::any")]
@@ -2319,7 +2356,14 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(dims);
 
-        return ExportTruthReduction(graph, "any", input, dims, keepdim, useMin: false);
+        return ExportTruthReduction(
+            graph,
+            "any",
+            input,
+            dims.Count == 0 ? null : dims,
+            keepdim,
+            useMin: false
+        );
     }
 
     [TorchOp("aten::nonzero")]
@@ -3503,7 +3547,7 @@ public static class TorchTensorOperatorExtensions
     {
         if (min is null && max is null)
         {
-            throw new NotSupportedException("clamp export requires at least one bound.");
+            return graph.ExportIdentity(input);
         }
 
         var current = input;

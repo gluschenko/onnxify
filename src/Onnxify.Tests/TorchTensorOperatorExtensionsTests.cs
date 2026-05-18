@@ -362,6 +362,22 @@ public sealed class TorchTensorOperatorExtensionsTests
     }
 
     [Fact]
+    public void ExportSplitWithSizes_EmitsSplitNodeWithSizesTensor()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([5L]));
+
+        var split = graph.ExportSplit(input, new long[] { 2L, 3L }, dim: 0);
+
+        Assert.Equal(2, split.Count);
+        Assert.Equal("Split", Assert.Single(graph.Nodes).OpType);
+
+        var sizes = Assert.Single(graph.Initializers.OfType<OnnxTensor<long>>());
+        Assert.Equal([2L], sizes.Shape.Select(static x => (long)x).ToArray());
+        Assert.Equal([2L, 3L], sizes.Value.ToArray());
+    }
+
+    [Fact]
     public void ExportSelectAndGather_EmitGatherFamilyNodes()
     {
         var graph = CreateGraph();
@@ -383,13 +399,46 @@ public sealed class TorchTensorOperatorExtensionsTests
         var condition = graph.AddInput("condition", OnnxTensorType.Create<bool>([2L, 3L]));
         var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 3L]));
         var other = graph.AddInput("other", OnnxTensorType.Create<float>([2L, 3L]));
+        var fill = graph.AddInput("fill", OnnxTensorType.Create<long>([]));
 
         var where = graph.ExportWhere(condition, input, other);
         var masked = graph.ExportMaskedFill(input, condition, 0.0);
+        var maskedTensor = graph.ExportMaskedFill(input, condition, fill);
 
         Assert.NotNull(where);
         Assert.NotNull(masked);
-        Assert.Equal(["Where", "Where"], graph.Nodes.Select(x => x.OpType).ToArray());
+        Assert.NotNull(maskedTensor);
+        Assert.Equal(["Where", "Where", "Cast", "Where"], graph.Nodes.Select(x => x.OpType).ToArray());
+    }
+
+    [Fact]
+    public void ExportSqueezeVariants_HandleExplicitAxesAndScalarDim()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([1L, 2L, 1L]));
+        var scalar = graph.AddInput("scalar", OnnxTensorType.Create<float>([]));
+
+        var squeezed = graph.ExportSqueeze(input);
+        var primsSqueezed = graph.ExportSqueeze(input, new long[] { 0L, 2L });
+        var dimSqueezed = graph.ExportSqueeze(input, dim: -1);
+        var scalarDim = graph.ExportSqueeze(scalar, dim: 0);
+
+        Assert.NotNull(squeezed);
+        Assert.NotNull(primsSqueezed);
+        Assert.NotNull(dimSqueezed);
+        Assert.NotNull(scalarDim);
+        Assert.Equal(["Squeeze", "Squeeze", "Squeeze", "Identity"], graph.Nodes.Select(x => x.OpType).ToArray());
+
+        var axesTensors = graph.Initializers.OfType<OnnxTensor<long>>().ToArray();
+        Assert.Equal(2, axesTensors.Length);
+        Assert.Equal(
+            [0L, 2L],
+            axesTensors.Single(tensor => tensor.Shape.Select(static x => (long)x).SequenceEqual([2L])).Value.ToArray()
+        );
+        Assert.Equal(
+            [2L],
+            axesTensors.Single(tensor => tensor.Shape.Select(static x => (long)x).SequenceEqual([1L])).Value.ToArray()
+        );
     }
 
     [Fact]
@@ -512,6 +561,7 @@ public sealed class TorchTensorOperatorExtensionsTests
         var min = graph.AddInput("min", OnnxTensorType.Create<float>([2L, 3L]));
         var max = graph.AddInput("max", OnnxTensorType.Create<float>([2L, 3L]));
 
+        graph.ExportClamp(input);
         graph.ExportClamp(input, min: -1d, max: 1d);
         graph.ExportClamp(input, min, max);
         graph.ExportClampMin(input, -2d);
@@ -524,6 +574,7 @@ public sealed class TorchTensorOperatorExtensionsTests
 
         Assert.Equal(
             [
+                "Identity",
                 "Max", "Min", "Max", "Min", "Max", "Min",
                 "Mod", "Mod",
                 "Div", "Floor", "Mul", "Sub",
@@ -612,6 +663,23 @@ public sealed class TorchTensorOperatorExtensionsTests
             ],
             graph.Nodes.Select(x => x.OpType).ToArray()
         );
+    }
+
+    [Fact]
+    public void ExportAllAndAny_WithEmptyDims_ReduceAllAxes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 3L]));
+
+        var all = graph.ExportAll(input, Array.Empty<long>(), keepdim: false);
+        var any = graph.ExportAny(input, Array.Empty<long>(), keepdim: true);
+
+        Assert.NotNull(all);
+        Assert.NotNull(any);
+
+        var reduceNodes = graph.Nodes.Where(node => node.OpType is "ReduceMin" or "ReduceMax").ToArray();
+        Assert.Equal(2, reduceNodes.Length);
+        Assert.All(reduceNodes, node => Assert.Single(node.Inputs));
     }
 
     [Fact]
@@ -1461,6 +1529,84 @@ public sealed class TorchTensorOperatorExtensionsTests
     }
 
     [Fact]
+    public void Smoke_RuntimeExecutesSplitSqueezeMaskAndTruthOperators()
+    {
+        var floatModel = CreateRuntimeModel();
+        var vector = floatModel.Graph.AddInput("vector", OnnxTensorType.Create<float>([5L]));
+        var matrix = floatModel.Graph.AddInput("matrix", OnnxTensorType.Create<float>([2L, 3L]));
+        var squeezeInput = floatModel.Graph.AddInput("squeeze_input", OnnxTensorType.Create<float>([1L, 2L, 1L]));
+        var scalar = floatModel.Graph.AddInput("scalar", OnnxTensorType.Create<float>([]));
+        var condition = floatModel.Graph.AddInput("condition", OnnxTensorType.Create<bool>([2L, 2L]));
+        var maskedInput = floatModel.Graph.AddInput("masked_input", OnnxTensorType.Create<float>([2L, 2L]));
+        var maskedValue = floatModel.Graph.AddInput("masked_value", OnnxTensorType.Create<long>([]));
+
+        var splitTensor = floatModel.Graph.ExportSplit(vector, splitSize: 2, dim: 0);
+        var splitWithSizes = floatModel.Graph.ExportSplit(vector, new long[] { 1L, 4L }, dim: 0);
+        var chunk = floatModel.Graph.ExportChunk(vector, chunks: 2, dim: 0);
+
+        AddFloatOutput(floatModel, "split_tensor_0", splitTensor[0], 2);
+        AddFloatOutput(floatModel, "split_tensor_1", splitTensor[1], 2);
+        AddFloatOutput(floatModel, "split_tensor_2", splitTensor[2], 1);
+        AddFloatOutput(floatModel, "split_sizes_0", splitWithSizes[0], 1);
+        AddFloatOutput(floatModel, "split_sizes_1", splitWithSizes[1], 4);
+        AddFloatOutput(floatModel, "chunk_0", chunk[0], 3);
+        AddFloatOutput(floatModel, "chunk_1", chunk[1], 2);
+        AddFloatOutput(floatModel, "select", floatModel.Graph.ExportSelect(matrix, dim: 1, index: 1), 2);
+        AddFloatOutput(floatModel, "squeeze", floatModel.Graph.ExportSqueeze(squeezeInput), 2);
+        AddFloatOutput(floatModel, "prims_squeeze", floatModel.Graph.ExportSqueeze(squeezeInput, new long[] { 0L, 2L }), 2);
+        AddFloatOutput(floatModel, "scalar_squeeze_dim", floatModel.Graph.ExportSqueeze(scalar, dim: 0));
+        AddFloatOutput(floatModel, "where_scalar", floatModel.Graph.ExportWhere(condition, 10d, -1d), 2, 2);
+        AddFloatOutput(floatModel, "masked_fill_tensor", floatModel.Graph.ExportMaskedFill(maskedInput, condition, maskedValue), 2, 2);
+        AddFloatOutput(floatModel, "clamp_identity", floatModel.Graph.ExportClamp(maskedInput), 2, 2);
+
+        var outputs = RunModel<float>(
+            floatModel,
+            new NamedOnnxValue[]
+            {
+                NamedOnnxValue.CreateFromTensor("vector", new DenseTensor<float>(new[] { 10f, 20f, 30f, 40f, 50f }, new[] { 5 })),
+                NamedOnnxValue.CreateFromTensor("matrix", new DenseTensor<float>(new[] { 1f, 2f, 3f, 4f, 5f, 6f }, new[] { 2, 3 })),
+                NamedOnnxValue.CreateFromTensor("squeeze_input", new DenseTensor<float>(new[] { 7f, 8f }, new[] { 1, 2, 1 })),
+                NamedOnnxValue.CreateFromTensor("scalar", new DenseTensor<float>(new[] { 9f }, Array.Empty<int>())),
+                NamedOnnxValue.CreateFromTensor("condition", new DenseTensor<bool>(new[] { true, false, false, true }, new[] { 2, 2 })),
+                NamedOnnxValue.CreateFromTensor("masked_input", new DenseTensor<float>(new[] { 1f, 2f, 3f, 4f }, new[] { 2, 2 })),
+                NamedOnnxValue.CreateFromTensor("masked_value", new DenseTensor<long>(new[] { 99L }, Array.Empty<int>())),
+            });
+
+        AssertTensorValues(outputs["split_tensor_0"], [10f, 20f], 2);
+        AssertTensorValues(outputs["split_tensor_1"], [30f, 40f], 2);
+        AssertTensorValues(outputs["split_tensor_2"], [50f], 1);
+        AssertTensorValues(outputs["split_sizes_0"], [10f], 1);
+        AssertTensorValues(outputs["split_sizes_1"], [20f, 30f, 40f, 50f], 4);
+        AssertTensorValues(outputs["chunk_0"], [10f, 20f, 30f], 3);
+        AssertTensorValues(outputs["chunk_1"], [40f, 50f], 2);
+        AssertTensorValues(outputs["select"], [2f, 5f], 2);
+        AssertTensorValues(outputs["squeeze"], [7f, 8f], 2);
+        AssertTensorValues(outputs["prims_squeeze"], [7f, 8f], 2);
+        AssertTensorValues(outputs["scalar_squeeze_dim"], [9f]);
+        Assert.Equal(Array.Empty<int>(), outputs["scalar_squeeze_dim"].Dimensions.ToArray());
+        AssertTensorValues(outputs["where_scalar"], [10f, -1f, -1f, 10f], 2, 2);
+        AssertTensorValues(outputs["masked_fill_tensor"], [99f, 2f, 3f, 99f], 2, 2);
+        AssertTensorValues(outputs["clamp_identity"], [1f, 2f, 3f, 4f], 2, 2);
+
+        var boolModel = CreateRuntimeModel();
+        var truthInput = boolModel.Graph.AddInput("truth_input", OnnxTensorType.Create<float>([2L, 2L]));
+        AddBoolOutput(boolModel, "all_dims_empty", boolModel.Graph.ExportAll(truthInput, Array.Empty<long>(), keepdim: false));
+        AddBoolOutput(boolModel, "any_dims_empty", boolModel.Graph.ExportAny(truthInput, Array.Empty<long>(), keepdim: false));
+
+        var boolOutputs = RunModel<bool>(
+            boolModel,
+            new NamedOnnxValue[]
+            {
+                NamedOnnxValue.CreateFromTensor("truth_input", new DenseTensor<float>(new[] { 1f, 0f, 2f, 3f }, new[] { 2, 2 })),
+            });
+
+        AssertTensorValues(boolOutputs["all_dims_empty"], [false]);
+        Assert.Equal(Array.Empty<int>(), boolOutputs["all_dims_empty"].Dimensions.ToArray());
+        AssertTensorValues(boolOutputs["any_dims_empty"], [true]);
+        Assert.Equal(Array.Empty<int>(), boolOutputs["any_dims_empty"].Dimensions.ToArray());
+    }
+
+    [Fact]
     public void ExportPowSqrtAndRsqrt_EmitExpectedNodes()
     {
         var graph = CreateGraph();
@@ -1551,10 +1697,13 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("aten::expand_as", coveredOperators);
         Assert.Contains("aten::cat", coveredOperators);
         Assert.Contains("aten::split.Tensor", coveredOperators);
+        Assert.Contains("aten::split_with_sizes", coveredOperators);
         Assert.Contains("aten::chunk", coveredOperators);
         Assert.Contains("aten::select.int", coveredOperators);
         Assert.Contains("aten::gather", coveredOperators);
         Assert.Contains("aten::where.self", coveredOperators);
+        Assert.Contains("aten::where.Scalar", coveredOperators);
+        Assert.Contains("aten::masked_fill.Tensor", coveredOperators);
         Assert.Contains("aten::masked_fill.Scalar", coveredOperators);
         Assert.Contains("aten::triu", coveredOperators);
         Assert.Contains("aten::sum.dim_IntList", coveredOperators);
