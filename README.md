@@ -6,20 +6,22 @@ Machine learning workflows are often difficult not because models are impossible
 
 The idea behind this repository is simple: models should be easier to work with, easier to reason about, and easier to integrate into real development workflows. If ONNX is meant to be a common language for models, then the tools around it should help people move faster, make smaller changes safely, and build their own workflows without unnecessary friction. That is the direction Onnxify is trying to push.
 
+[![GitHub CI](https://github.com/gluschenko/onnxify/actions/workflows/github-ci.yml/badge.svg)](https://github.com/gluschenko/onnxify/actions/workflows/github-ci.yml)
+
 ## NuGet Packages
 
 The repository currently implements the following NuGet packages. Package-specific instructions live in [`.docs/nuget`](.docs/nuget).
 
-| Package | Instructions |
-| --- | --- |
-| `Onnxify` | [`.docs/nuget/Onnxify.md`](.docs/nuget/Onnxify.md) |
-| `Onnxify.TorchSharp` | [`.docs/nuget/Onnxify.TorchSharp.md`](.docs/nuget/Onnxify.TorchSharp.md) |
-| `Onnxify.ML` | [`.docs/nuget/Onnxify.ML.md`](.docs/nuget/Onnxify.ML.md) |
-| `Onnxify.ML.TorchSharp` | [`.docs/nuget/Onnxify.ML.TorchSharp.md`](.docs/nuget/Onnxify.ML.TorchSharp.md) |
-| `Onnxify.ProjectGenerator` | [`.docs/nuget/Onnxify.ProjectGenerator.md`](.docs/nuget/Onnxify.ProjectGenerator.md) |
-| `Onnxify.ModelGenerator` | [`.docs/nuget/Onnxify.ModelGenerator.md`](.docs/nuget/Onnxify.ModelGenerator.md) |
-| `Onnxify.Safetensors` | [`.docs/nuget/Onnxify.Safetensors.md`](.docs/nuget/Onnxify.Safetensors.md) |
-| `Onnxify.CLI` | [`.docs/nuget/Onnxify.CLI.md`](.docs/nuget/Onnxify.CLI.md) |
+| Package | Instructions | NuGet |
+| ------- | :----------: | :---: |
+| `Onnxify` | [`README`](.docs/nuget/Onnxify.md) | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify)](https://www.nuget.org/packages/Onnxify/) |
+| `Onnxify.TorchSharp` | [`README`](.docs/nuget/Onnxify.TorchSharp.md) | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.TorchSharp)](https://www.nuget.org/packages/Onnxify.TorchSharp/) |
+| `Onnxify.Safetensors` | [`README`](.docs/nuget/Onnxify.Safetensors.md) | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.Safetensors)](https://www.nuget.org/packages/Onnxify.Safetensors/) |
+| `Onnxify.ModelGenerator` | [`README`](.docs/nuget/Onnxify.ModelGenerator.md) | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.ModelGenerator)](https://www.nuget.org/packages/Onnxify.ModelGenerator/) |
+| `Onnxify.ML` | [`README`](.docs/nuget/Onnxify.ML.md) | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.ML)](https://www.nuget.org/packages/Onnxify.ML/) |
+| `Onnxify.ML.TorchSharp` | [`README`](.docs/nuget/Onnxify.ML.TorchSharp.md) |  [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.ML.TorchSharp)](https://www.nuget.org/packages/Onnxify.ML.TorchSharp/) |
+| `Onnxify.ProjectGenerator` | [`README`](.docs/nuget/Onnxify.ProjectGenerator.md) | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.ProjectGenerator)](https://www.nuget.org/packages/Onnxify.ProjectGenerator/) |
+| `Onnxify.CLI` | [`README`](.docs/nuget/Onnxify.CLI.md) | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.CLI)](https://www.nuget.org/packages/Onnxify.CLI/) |
 
 ## TorchSharp Operator Porting
 
@@ -166,6 +168,7 @@ Restart Codex after installation so it picks up the new or refreshed skill files
 - [x] OnnxDataProvider, SafetensorsDataProvider, BaseDataProvider...
 - [x] Agent skills for Export implementation on Torch modules
 - [x] Allow to add or remove OnnxModel meta (training info, imports, producer, version)
+- [ ] CLI redesign: command patterns, more features, better output formatting, etc
 
 ## License
 
