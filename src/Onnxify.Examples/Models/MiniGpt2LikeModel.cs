@@ -1,4 +1,4 @@
-using Onnxify.TorchSharp;
+﻿using Onnxify.TorchSharp;
 using TorchSharp;
 using static TorchSharp.torch;
 using static TorchSharp.torch.nn;
@@ -298,7 +298,8 @@ internal sealed class MiniGpt2CausalSelfAttention : Module<Tensor, Tensor>
         var key = qkv[1];
         var value = qkv[2];
 
-        using var causalMask = torch.triu(
+        using var causalMask = 
+            torch.triu(
                 torch.full(
                     [_maxContextLength, _maxContextLength],
                     -10_000f,

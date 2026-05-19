@@ -516,47 +516,71 @@ internal class DeepExportSample : Sample
 
     public override async Task RunAsync()
     {
-        var outputDirectory = Utils.EnsureAssetsDirectory();
-        var outputPath = Path.Combine(outputDirectory, "language-lstm-deep-export.onnx");
+        A();
+        B();
 
-        var embeddingDim = 128;
-        var hiddenDim = 128;
-        var layers = 2;
-
-        var charToIdx = new Dictionary<string, int>
+        void A()
         {
-            ["PAD"] = 0,
-            ["A"] = 1,
-            ["B"] = 2,
-            ["C"] = 3,
-        };
+            var outputDirectory = Utils.EnsureAssetsDirectory();
+            var outputPath = Path.Combine(outputDirectory, "language-lstm-deep-export.onnx");
 
-        var langToIdx = new Dictionary<string, int>
-        {
-            ["english"] = 0,
-            ["french"] = 1,
-            ["german"] = 2,
-        };
+            var embeddingDim = 128;
+            var hiddenDim = 128;
+            var layers = 2;
 
-        var model = new LSTMLIDModel(
-            charToIdx,
-            langToIdx,
-            langToIdx.Count,
-            embeddingDim,
-            hiddenDim,
-            layers
-        );
-
-        var onnxModel = model.Export(
-            input: OnnxTensorType.Create<long>(["batch_size", "seq_len"]),
-            output: OnnxTensorType.Create<float>(["batch_size", langToIdx.Count]),
-            options: new OnnxModelCreationOptions
+            var charToIdx = new Dictionary<string, int>
             {
-                Opset = 22,
-            }
-        );
+                ["PAD"] = 0,
+                ["A"] = 1,
+                ["B"] = 2,
+                ["C"] = 3,
+            };
 
-        onnxModel.Save(outputPath, true);
+            var langToIdx = new Dictionary<string, int>
+            {
+                ["english"] = 0,
+                ["french"] = 1,
+                ["german"] = 2,
+            };
+
+            var model = new LSTMLIDModel(
+                charToIdx,
+                langToIdx,
+                langToIdx.Count,
+                embeddingDim,
+                hiddenDim,
+                layers
+            );
+
+            var onnxModel = model.Export(
+                input: OnnxTensorType.Create<long>(["batch_size", "seq_len"]),
+                output: OnnxTensorType.Create<float>(["batch_size", langToIdx.Count]),
+                options: new OnnxModelCreationOptions
+                {
+                    Opset = 22,
+                }
+            );
+
+            onnxModel.Save(outputPath, true);
+        }
+
+        void B()
+        {
+            var outputDirectory = Utils.EnsureAssetsDirectory();
+            var outputPath = Path.Combine(outputDirectory, "gpt-deep-export.onnx");
+            var model = new MiniGpt2LikeModel();
+
+            var onnxModel = model.Export(
+                input: OnnxTensorType.Create<long>(["batch", model.MaxSequenceLength]),
+                output: OnnxTensorType.Create<float>(["batch", model.MaxSequenceLength, model.VocabularySize]),
+                options: new OnnxModelCreationOptions
+                {
+                    Opset = 22,
+                }
+            );
+
+            onnxModel.Save(outputPath, true);
+        }
 
         await Task.CompletedTask;
     }
