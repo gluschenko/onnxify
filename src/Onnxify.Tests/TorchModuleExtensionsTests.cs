@@ -9,6 +9,38 @@ namespace Onnxify.Tests;
 public sealed class TorchModuleExtensionsTests
 {
     [Fact]
+    public void DeepExport_ForLstmStyleForward_EmitsGraphFromForwardAst()
+    {
+        using var module = new DeepExportTestModule();
+        module.eval();
+
+        var model = module.Export(
+            input: OnnxTensorType.Create<long>(["batch_size", "seq_len"]),
+            output: OnnxTensorType.Create<float>(["batch_size", 3]),
+            options: new OnnxModelCreationOptions
+            {
+                Opset = 22,
+            }
+        );
+
+        Assert.Collection(
+            model.Graph.Inputs,
+            input => Assert.Equal("input", input.Name)
+        );
+
+        Assert.Collection(
+            model.Graph.Outputs,
+            output => Assert.Equal("output", output.Name)
+        );
+
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Gather");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "LSTM");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Gemm");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "ReduceSum");
+        Assert.Equal("Identity", model.Graph.Nodes.Last().OpType);
+    }
+
+    [Fact]
     public void Export_ForGlu_EmitsSplitSigmoidAndMul()
     {
         var graph = CreateGraph(opset: 21);
@@ -296,5 +328,30 @@ public sealed class TorchModuleExtensionsTests
         throw new InvalidOperationException(
             $"Could not find any writable member named '{string.Join("' or '", candidateNames)}' on '{instance.GetType().FullName}'."
         );
+    }
+
+    private sealed class DeepExportTestModule : TorchModule
+    {
+        private readonly global::TorchSharp.Modules.Embedding _embedding;
+        private readonly global::TorchSharp.Modules.LSTM _lstm;
+        private readonly global::TorchSharp.Modules.Linear _linear;
+
+        public DeepExportTestModule()
+            : base(nameof(DeepExportTestModule))
+        {
+            _embedding = nn.Embedding(8, 4);
+            _lstm = nn.LSTM(4, 5, numLayers: 1, bidirectional: true, batchFirst: true);
+            _linear = nn.Linear(10, 3);
+
+            RegisterComponents();
+        }
+
+        public override Tensor forward(Tensor input)
+        {
+            var x = _embedding.forward(input);
+            var (lstm, _, _) = _lstm.forward(x);
+            var linear = _linear.forward(lstm);
+            return sum(linear, 1);
+        }
     }
 }
