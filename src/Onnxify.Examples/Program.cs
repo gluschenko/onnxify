@@ -518,6 +518,8 @@ internal class DeepExportSample : Sample
     {
         A();
         B();
+        C();
+        D();
 
         void A()
         {
@@ -551,6 +553,7 @@ internal class DeepExportSample : Sample
                 hiddenDim,
                 layers
             );
+            model.eval();
 
             var onnxModel = model.Export(
                 input: OnnxTensorType.Create<long>(["batch_size", "seq_len"]),
@@ -569,10 +572,49 @@ internal class DeepExportSample : Sample
             var outputDirectory = Utils.EnsureAssetsDirectory();
             var outputPath = Path.Combine(outputDirectory, "gpt-deep-export.onnx");
             var model = new MiniGpt2LikeModel();
+            model.eval();
 
             var onnxModel = model.Export(
                 input: OnnxTensorType.Create<long>(["batch", model.MaxSequenceLength]),
                 output: OnnxTensorType.Create<float>(["batch", model.MaxSequenceLength, model.VocabularySize]),
+                options: new OnnxModelCreationOptions
+                {
+                    Opset = 22,
+                }
+            );
+
+            onnxModel.Save(outputPath, true);
+        }
+
+        void C() 
+        {
+            var outputDirectory = Utils.EnsureAssetsDirectory();
+            var outputPath = Path.Combine(outputDirectory, "alexnet-deep-export.onnx");
+            var model = new AlexNet("alexnet", 10);
+            model.eval();
+
+            var onnxModel = model.Export(
+                input: OnnxTensorType.Create<float>(["batch", 3, 227, 227]),
+                output: OnnxTensorType.Create<float>(["batch", 10]),
+                options: new OnnxModelCreationOptions
+                {
+                    Opset = 22,
+                }
+            );
+
+            onnxModel.Save(outputPath, true);
+        }
+        
+        void D() 
+        {
+            var outputDirectory = Utils.EnsureAssetsDirectory();
+            var outputPath = Path.Combine(outputDirectory, "mobilenet-deep-export.onnx");
+            var model = new MobileNetV1LikeClassifier("mobilenet", 10);
+            model.eval();
+
+            var onnxModel = model.Export(
+                input: OnnxTensorType.Create<float>(["batch", 3, 96, 96]),
+                output: OnnxTensorType.Create<float>(["batch", 10]),
                 options: new OnnxModelCreationOptions
                 {
                     Opset = 22,

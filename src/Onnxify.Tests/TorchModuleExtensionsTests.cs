@@ -55,8 +55,16 @@ public sealed class TorchModuleExtensionsTests
             }
         );
 
-        Assert.Contains(model.Graph.Initializers, initializer => initializer.Name.StartsWith("position_ids", StringComparison.Ordinal));
-        Assert.Contains(model.Graph.Initializers, initializer => initializer.Name.StartsWith("causal_mask", StringComparison.Ordinal));
+        Assert.Contains(
+            model.Graph.Initializers.OfType<OnnxTensor<long>>(),
+            initializer => initializer.Shape.SequenceEqual([module.MaxSequenceLength])
+                && initializer.Value.SequenceEqual(Enumerable.Range(0, module.MaxSequenceLength).Select(static x => (long)x))
+        );
+        Assert.Contains(
+            model.Graph.Initializers.OfType<OnnxTensor<float>>(),
+            initializer => initializer.Shape.SequenceEqual([module.MaxSequenceLength, module.MaxSequenceLength])
+                && initializer.Value.Contains(-10_000f)
+        );
         Assert.Contains(model.Graph.Nodes, node => node.OpType == "Gather");
         Assert.Contains(model.Graph.Nodes, node => node.OpType == "Reshape");
         Assert.Contains(model.Graph.Nodes, node => node.OpType == "Transpose");
