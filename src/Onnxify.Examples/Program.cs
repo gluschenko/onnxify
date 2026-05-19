@@ -22,6 +22,7 @@ internal class Program
         new LSTMSample(),
         new MiniGpt2LikeSample(),
         new TorchSharpExportShowcaseSample(),
+        new DeepExportSample(),
     ];
 
     static async Task Main(string[] args)
@@ -273,16 +274,16 @@ internal class LSTMSample : Sample
         var weightOutputPath = Path.Combine(outputDirectory, "lang-lstm.safetensors");
         var torchModelPath = Path.Combine(outputDirectory, "lang-lstm.pt");
 
-        var pipeline = new LanguageLstmTrainingPipeline(
-            DATASET_PATH,
-            maxSequenceLength: 32,
-            trainSamplesPerLanguage: 1000000,
-            validationSamplesPerLanguage: 64
-        );
-
         var embeddingDim = 128;
         var hiddenDim = 128;
         var layers = 2;
+
+        var pipeline = new LanguageLstmTrainingPipeline(
+            DATASET_PATH,
+            maxSequenceLength: 32,
+            trainSamplesPerLanguage: 100,
+            validationSamplesPerLanguage: 64
+        );
 
         var training = await pipeline.TrainAsync(
             embeddingDim,
@@ -504,5 +505,59 @@ internal class AlexNetSample : Sample
             onnxEvaluation,
             trainDataset.LabelNames
         );
+    }
+}
+
+internal class DeepExportSample : Sample
+{
+    public override string Name => "deep-export";
+
+    public override string Description => "Deep export of LSTM model";
+
+    public override async Task RunAsync()
+    {
+        var outputDirectory = Utils.EnsureAssetsDirectory();
+        var outputPath = Path.Combine(outputDirectory, "language-lstm-deep-export.onnx");
+
+        var embeddingDim = 128;
+        var hiddenDim = 128;
+        var layers = 2;
+
+        var charToIdx = new Dictionary<string, int>
+        {
+            ["PAD"] = 0,
+            ["A"] = 1,
+            ["B"] = 2,
+            ["C"] = 3,
+        };
+
+        var langToIdx = new Dictionary<string, int>
+        {
+            ["english"] = 0,
+            ["french"] = 1,
+            ["german"] = 2,
+        };
+
+        var model = new LSTMLIDModel(
+            charToIdx,
+            langToIdx,
+            langToIdx.Count,
+            embeddingDim,
+            hiddenDim,
+            layers
+        );
+
+        var onnxModel = model.Export(
+            input: OnnxTensorType.Create<long>(["batch_size", "seq_len"]),
+            output: OnnxTensorType.Create<float>(["batch_size", langToIdx.Count]),
+            options: new OnnxModelCreationOptions
+            {
+                Opset = 22,
+            }
+        );
+
+        onnxModel.Save(outputPath, true);
+
+        await Task.CompletedTask;
     }
 }

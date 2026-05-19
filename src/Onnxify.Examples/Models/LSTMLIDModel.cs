@@ -77,7 +77,7 @@ public class LSTMLIDModel : torch.nn.Module<Tensor, Tensor>
 
         var x = _charEmbeddings.Export(graph, input);
         x = _lstm.Export(graph, x).Y ?? throw new Exception();
-        x = AddLinearProjection(graph, "hidden2lang", x, _hidden2Lang);
+        x = _hidden2Lang.Export(graph, x);
 
         x = graph.ReduceSum(
             name: "sum_logits",
@@ -123,71 +123,5 @@ public class LSTMLIDModel : torch.nn.Module<Tensor, Tensor>
         );
 
         return model;
-    }
-
-    private static IOnnxGraphEdge AddLinearProjection(
-        OnnxGraph graph,
-        string prefix,
-        IOnnxGraphEdge input,
-        global::TorchSharp.Modules.Linear linear
-    )
-    {
-        var rows = checked((int)linear.weight.shape[0]);
-        var columns = checked((int)linear.weight.shape[1]);
-        var transposedWeight = Transpose2D(
-            linear.weight.detach().cpu().data<float>().ToArray(),
-            rows,
-            columns
-        );
-
-        var name = graph.NextName(prefix);
-        var weight = graph.AddTensor(
-            name: $"{name}_w",
-            shape: [columns, rows],
-            value: transposedWeight
-        );
-
-        var output = graph.MatMul(
-            name: name,
-            options: new MatMulInputOptions
-            {
-                A = input,
-                B = weight,
-            }
-        );
-
-        if (linear.bias is null)
-        {
-            return output;
-        }
-
-        var bias = graph.AddTensor(
-            name: $"{name}_b",
-            shape: [rows],
-            value: linear.bias.detach().cpu().data<float>().ToArray()
-        );
-
-        return graph.Add(
-            name: $"{name}_bias",
-            options: new AddInputOptions
-            {
-                A = output,
-                B = bias,
-            }
-        );
-    }
-
-    private static float[] Transpose2D(float[] input, int rows, int columns)
-    {
-        var output = new float[input.Length];
-        for (var row = 0; row < rows; row++)
-        {
-            for (var column = 0; column < columns; column++)
-            {
-                output[(column * rows) + row] = input[(row * columns) + column];
-            }
-        }
-
-        return output;
     }
 }
