@@ -63,6 +63,11 @@ public sealed class RealEsrganRrdbNetTests
         using var module = CreateSmallModel(scale: 4);
         module.eval();
         using var input = CreateFloat32Tensor([1, 3, 8, 8]);
+        using var torchOutput = module.forward(input);
+        using var detachedOutput = torchOutput.detach();
+        using var cpuOutput = detachedOutput.cpu();
+        var expected = cpuOutput.data<float>().ToArray();
+        var expectedShape = ToIntShape(cpuOutput.shape);
 
         var model = TorchModuleExportExtensions.ExportOnnxModel(
             (TorchModule)module,
@@ -75,7 +80,9 @@ public sealed class RealEsrganRrdbNetTests
         );
         var actual = RunOnnxModel(model, input);
 
-        Assert.Equal([1, 3, 32, 32], actual.Dimensions.ToArray());
+        Assert.Equal(expectedShape, actual.Dimensions.ToArray());
+        Assert.Equal(expected.Length, actual.Length);
+        AssertClose(expected, actual.Buffer.ToArray(), absoluteTolerance: 5e-2f);
         Assert.Contains(model.Graph.Nodes, node => node.OpType == "Concat");
         Assert.Contains(model.Graph.Nodes, node => node.OpType == "Resize");
     }

@@ -4,6 +4,7 @@ using Onnxify.Examples.Models;
 using Onnxify.TorchSharp;
 using TorchSharp;
 using static TorchSharp.torch;
+using static TorchSharp.torch.nn;
 using TorchModule = TorchSharp.torch.nn.Module<TorchSharp.torch.Tensor, TorchSharp.torch.Tensor>;
 using TorchTensor = TorchSharp.torch.Tensor;
 
@@ -51,6 +52,26 @@ public sealed class TorchModuleDeepExportSmokeTests
             inputType: OnnxTensorType.Create<long>([2, 5]),
             outputType: OnnxTensorType.Create<float>([2, langToIdx.Count]),
             absoluteTolerance: 1e-4f
+        );
+    }
+
+    [Fact]
+    public void DeepExport_ForDocumentedTransformerSyntaxExample_MatchesTorchSharpOutput()
+    {
+        ResetTorchSeed();
+
+        using var module = new DocumentedTransformerSyntaxModule();
+        using var input = CreateInt64Tensor(
+            [2, module.MaxSequenceLength],
+            [0, 1, 2, 3, 4, 5, 6, 7]
+        );
+
+        AssertDeepExportMatchesTorchSharp(
+            module,
+            input,
+            inputType: OnnxTensorType.Create<long>([2, module.MaxSequenceLength]),
+            outputType: OnnxTensorType.Create<float>([2, module.MaxSequenceLength, module.VocabularySize]),
+            absoluteTolerance: 5e-4f
         );
     }
 
@@ -220,5 +241,137 @@ public sealed class TorchModuleDeepExportSmokeTests
     private static int[] ToIntShape(IReadOnlyList<long> shape)
     {
         return shape.Select(static dimension => checked((int)dimension)).ToArray();
+    }
+
+    private sealed class DocumentedTransformerSyntaxModule : TorchModule
+    {
+        private const int VOCABULARY_SIZE = 17;
+        private const int MAX_SEQUENCE_LENGTH = 4;
+        private const int ATTENTION_HEADS = 2;
+        private const int ATTENTION_DIMENSIONS = 8;
+
+        private readonly global::TorchSharp.Modules.Embedding _tokenEmbedding;
+        private readonly global::TorchSharp.Modules.Embedding _positionEmbedding;
+        private readonly DocumentedAttentionBlock _block;
+        private readonly global::TorchSharp.Modules.LayerNorm _outputNorm;
+
+        public DocumentedTransformerSyntaxModule()
+            : base(nameof(DocumentedTransformerSyntaxModule))
+        {
+            _tokenEmbedding = Embedding(VOCABULARY_SIZE, ATTENTION_DIMENSIONS);
+            _positionEmbedding = Embedding(MAX_SEQUENCE_LENGTH, ATTENTION_DIMENSIONS);
+            _block = new DocumentedAttentionBlock(
+                ATTENTION_HEADS,
+                ATTENTION_DIMENSIONS,
+                MAX_SEQUENCE_LENGTH
+            );
+            _outputNorm = LayerNorm([ATTENTION_DIMENSIONS]);
+
+            RegisterComponents();
+        }
+
+        public int VocabularySize => VOCABULARY_SIZE;
+
+        public int MaxSequenceLength => MAX_SEQUENCE_LENGTH;
+
+        public override TorchTensor forward(TorchTensor tokens)
+        {
+            ValidateInputShape(tokens);
+
+            using var positions = CreatePositionIds(tokens.shape[0], tokens.device);
+
+            var x = _tokenEmbedding.forward(tokens) + _positionEmbedding.forward(positions);
+            x = _block.forward(x);
+            x = _outputNorm.forward(x);
+
+            return ComputeLogits(x);
+        }
+
+        private TorchTensor ComputeLogits(TorchTensor hiddenStates)
+        {
+            using var tiedWeight = _tokenEmbedding.weight!.transpose(0, 1);
+            return matmul(hiddenStates, tiedWeight);
+        }
+
+        private TorchTensor CreatePositionIds(long batchSize, Device device)
+        {
+            return arange(MAX_SEQUENCE_LENGTH, dtype: ScalarType.Int64, device: device)
+                .unsqueeze(0)
+                .expand(batchSize, MAX_SEQUENCE_LENGTH);
+        }
+
+        private static void ValidateInputShape(TorchTensor tokens)
+        {
+            if (tokens.shape.Length != 2)
+            {
+                throw new ArgumentException("Expected token ids with rank 2.", nameof(tokens));
+            }
+        }
+    }
+
+    private sealed class DocumentedAttentionBlock : TorchModule
+    {
+        private readonly int _headCount;
+        private readonly int _headDimension;
+        private readonly int _attentionDimensions;
+        private readonly int _maxSequenceLength;
+        private readonly float _scale;
+        private readonly global::TorchSharp.Modules.Linear _attention;
+        private readonly global::TorchSharp.Modules.Linear _projection;
+
+        public DocumentedAttentionBlock(
+            int headCount,
+            int attentionDimensions,
+            int maxSequenceLength
+        ) : base(nameof(DocumentedAttentionBlock))
+        {
+            _headCount = headCount;
+            _headDimension = attentionDimensions / headCount;
+            _attentionDimensions = attentionDimensions;
+            _maxSequenceLength = maxSequenceLength;
+            _scale = 1.0f / MathF.Sqrt(_headDimension);
+            _attention = Linear(attentionDimensions, attentionDimensions * 3);
+            _projection = Linear(attentionDimensions, attentionDimensions);
+
+            RegisterComponents();
+        }
+
+        public override TorchTensor forward(TorchTensor x)
+        {
+            var batchSize = x.shape[0];
+            var sequenceLength = x.shape[1];
+
+            var qkv = _attention.forward(x)
+                .view([batchSize, sequenceLength, 3, _headCount, _headDimension])
+                .permute(2, 0, 3, 1, 4);
+
+            var query = qkv[0];
+            var key = qkv[1];
+            var value = qkv[2];
+
+            using var causalMask =
+                triu(
+                    full(
+                        [_maxSequenceLength, _maxSequenceLength],
+                        -10_000f,
+                        dtype: x.dtype,
+                        device: x.device
+                    ),
+                    diagonal: 1
+                )
+                .slice(0, 0, sequenceLength, 1)
+                .slice(1, 0, sequenceLength, 1)
+                .unsqueeze(0)
+                .unsqueeze(0);
+
+            var scores = matmul(query, key.transpose(2, 3)) * _scale;
+            var weights = softmax(scores + causalMask, dim: -1);
+            var context = matmul(weights, value)
+                .permute(0, 2, 1, 3)
+                .contiguous()
+                .view([batchSize, sequenceLength, _attentionDimensions]);
+
+            return _projection.forward(context);
+        }
     }
 }
