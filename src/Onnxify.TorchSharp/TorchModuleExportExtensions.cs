@@ -2194,24 +2194,6 @@ public static class TorchModuleExportExtensions
         return false;
     }
 
-    private static float[] Transpose2D(
-        float[] input,
-        int rows,
-        int columns
-    )
-    {
-        var output = new float[input.Length];
-        for (var row = 0; row < rows; row++)
-        {
-            for (var column = 0; column < columns; column++)
-            {
-                output[(column * rows) + row] = input[(row * columns) + column];
-            }
-        }
-
-        return output;
-    }
-
     private static int GetInheritanceDistance(Type type, Type candidate)
     {
         if (type == candidate)
