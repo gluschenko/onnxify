@@ -10,6 +10,40 @@ namespace Onnxify.TorchSharp;
 
 public static class TorchModuleExportExtensions
 {
+    /// <summary>
+    /// Exports a single-input TorchSharp module to an ONNX model by analyzing the module's
+    /// decompiled <c>forward</c> method and synthesizing an equivalent inference graph.
+    /// </summary>
+    /// <param name="module">
+    /// The TorchSharp <see cref="TorchModule"/> instance whose <c>forward(Tensor)</c> method
+    /// should be exported.
+    /// </param>
+    /// <param name="input">
+    /// The ONNX type metadata for the exported model input. The exporter uses this metadata
+    /// as the graph input contract; it does not infer input shape or dtype by running the module.
+    /// </param>
+    /// <param name="output">
+    /// The ONNX type metadata for the exported model output.
+    /// </param>
+    /// <param name="options">
+    /// Model creation options, including the target opset and producer metadata.
+    /// </param>
+    /// <returns>
+    /// A new <see cref="OnnxModel"/> whose graph contains the declared input, declared output,
+    /// and the ONNX nodes produced from the supported tensor operations in <c>forward</c>.
+    /// </returns>
+    /// <remarks>
+    /// The exporter decompiles <c>forward</c> with ICSharpCode.Decompiler, walks the resulting
+    /// C# syntax tree as a small data-flow program, and maps local variables, assignments,
+    /// returns, tensor method calls, static <c>torch</c> calls, scalar arithmetic, and supported
+    /// module <c>forward</c> calls into ONNX graph edges and initializers.
+    /// </remarks>
+    /// <remarks>
+    /// Calls to known TorchSharp modules are delegated to the ordinary
+    /// <c>TorchModuleExtensions.Export</c> overloads. User-defined child modules are recursively
+    /// deep-exported when no concrete overload exists. Unsupported control flow or expressions
+    /// fail with <see cref="NotSupportedException"/> rather than emitting a lossy graph.
+    /// </remarks>
     public static OnnxModel Export(
         this TorchModule module,
         OnnxTensorType input,
@@ -61,6 +95,9 @@ public static class TorchModuleExportExtensions
 
         // The public overload currently supports single-input Module<Tensor, Tensor>.
         // Every decompiled forward parameter is therefore treated as an alias of the same graph input.
+        // Examples:
+        //   forward(Tensor input)
+        //   forward(Tensor tokens)
         context.Values["input"] = new ExportValue(input);
 
         foreach (var parameter in forward.Parameters)
@@ -92,23 +129,35 @@ public static class TorchModuleExportExtensions
 
         switch (statement)
         {
+            // Handles local bindings from plain declarations and using-statement resources:
+            //   var x = _embedding.forward(input);
+            //   using var ids = torch.arange(...).unsqueeze(0);
             case VariableDeclarationStatement variableDeclaration:
                 ExportVariableDeclaration(context, variableDeclaration);
                 return null;
 
+            // Handles rebinding a graph value, e.g.:
+            //   x = _block.forward(x);
+            //   attentionScores = attentionScores + causalMask;
             case ExpressionStatement { Expression: AssignmentExpression assignment }:
                 AssignValue(context, assignment.Left, ExportExpression(context, assignment.Right));
                 return null;
 
+            // Handles side-effect-shaped calls, usually validation guards:
+            //   ValidateInputShape(tokens);
             case ExpressionStatement { Expression: InvocationExpression invocation }:
                 ExportStatementInvocation(context, invocation);
                 return null;
 
             // Decompiler emits "using var tensor = ..." as a UsingStatement that contains
-            // the remaining forward body; disposal is irrelevant for the synthesized ONNX graph.
+            // the remaining forward body, e.g. "using var mask = ...; return input + mask;".
+            // Disposal is irrelevant for the synthesized ONNX graph.
             case UsingStatement usingStatement:
                 return ExportUsingStatement(context, usingStatement);
 
+            // Handles final graph outputs and helper returns:
+            //   return _linear.forward(x);
+            //   return matmul(hiddenStates, tiedWeight);
             case ReturnStatement returnStatement:
                 return ExportExpression(context, returnStatement.Expression);
 
@@ -124,12 +173,17 @@ public static class TorchModuleExportExtensions
         UsingStatement usingStatement
     )
     {
+        // "using var" resources are usually temporary tensors:
+        //   using var positions = CreatePositionIds(...);
+        //   using var causalMask = triu(...).slice(...);
         if (usingStatement.ResourceAcquisition is VariableDeclarationStatement declaration)
         {
             ExportVariableDeclaration(context, declaration);
         }
         else if (usingStatement.ResourceAcquisition is Expression resourceExpression)
         {
+            // Handles less common decompiled forms where the resource is an expression:
+            //   using (CreateMask(...)) { ... }
             ExportExpression(context, resourceExpression);
         }
 
@@ -147,8 +201,9 @@ public static class TorchModuleExportExtensions
         InvocationExpression invocation
     )
     {
-        // Runtime validation guards affect eager execution only. The exported model already
-        // gets its input contract from the caller-provided OnnxTensorType.
+        // Runtime validation guards such as "ValidateInputShape(tokens);" affect eager
+        // execution only. The exported model already gets its input contract from the
+        // caller-provided OnnxTensorType.
         if (invocation.Target is IdentifierExpression identifier
             && IsValidationMethodName(identifier.Identifier))
         {
@@ -168,6 +223,9 @@ public static class TorchModuleExportExtensions
         VariableDeclarationStatement declaration
     )
     {
+        // Each declared variable becomes a named data-flow slot:
+        //   var query = qkv[0];
+        //   var batchSize = x.shape[0];
         foreach (var variable in declaration.Variables)
         {
             if (variable.Initializer.IsNull)
@@ -184,8 +242,10 @@ public static class TorchModuleExportExtensions
         Statement statement
     )
     {
-        // Tuple deconstruction may survive as source syntax for some modules, while recurrent
-        // modules return wrapper objects such as LSTMOutput. Map tuple slots onto ONNX outputs.
+        // Tuple deconstruction may survive as source syntax:
+        //   var (lstm, _, _) = _lstm.forward(x);
+        // Recurrent exporters return wrapper objects such as LSTMOutput, so tuple slots are
+        // mapped to object members like Y, YH, and YC.
         var text = statement.ToString().Trim();
         var match = Regex.Match(
             text,
@@ -227,6 +287,9 @@ public static class TorchModuleExportExtensions
     {
         switch (expression)
         {
+            // Local values and decompiled fields both arrive as identifiers:
+            //   x
+            //   _scale
             case IdentifierExpression identifier:
                 if (context.Values.TryGetValue(identifier.Identifier, out var value))
                 {
@@ -251,19 +314,33 @@ public static class TorchModuleExportExtensions
             case BinaryOperatorExpression binaryOperator:
                 return ExportBinaryOperator(context, binaryOperator);
 
+            // ILSpy sometimes wraps null-flow expressions in NullConditionalRewrap even when
+            // the source was just a nullable-suppressed member access such as "weight!".
             case UnaryOperatorExpression unaryOperator
                 when unaryOperator.Operator == UnaryOperatorType.NullConditionalRewrap:
                 return ExportExpression(context, unaryOperator.Expression);
 
+            case UnaryOperatorExpression unaryOperator:
+                return ExportUnaryOperator(context, unaryOperator);
+
+            // Handles tensor indexing and shape indexing:
+            //   qkv[0]
+            //   input.shape[1]
             case IndexerExpression indexer:
                 return ExportIndexer(context, indexer);
 
+            // Parentheses and casts should not change the export meaning:
+            //   (batchSize)
+            //   (long)sequenceLength
             case ParenthesizedExpression parenthesized:
                 return ExportExpression(context, parenthesized.Expression);
 
             case CastExpression cast:
                 return ExportExpression(context, cast.Expression);
 
+            // Handles scalar literals used by shape math and tensor arithmetic:
+            //   1
+            //   -10_000f
             case PrimitiveExpression primitive:
                 return new ExportValue(primitive.Value);
 
@@ -273,8 +350,9 @@ public static class TorchModuleExportExtensions
             case ThrowExpression:
                 throw new NotSupportedException($"Expression '{expression}' threw while being evaluated for export.");
 
-            // C# collection expressions like .view([b, s, h]) can decompile into compiler-generated
-            // InlineArray temporaries. Represent the temporary as a mutable shape/permutation builder.
+            // C# collection expressions like ".view([b, s, h])" can decompile into
+            // compiler-generated InlineArray temporaries. Represent the temporary as a
+            // mutable shape/permutation builder until subsequent assignments fill it.
             case DefaultValueExpression defaultValue
                 when TryCreateInlineArrayBuilder(defaultValue, out var builder):
                 return new ExportValue(builder);
@@ -291,6 +369,9 @@ public static class TorchModuleExportExtensions
         InvocationExpression invocation
     )
     {
+        // Handles private helpers inside the model:
+        //   ComputeLogits(x)
+        //   CreatePositionIds(tokens.shape[0], tokens.device)
         if (invocation.Target is IdentifierExpression identifier
             && TryExportLocalMethodInvocation(context, identifier.Identifier, invocation, out var localResult))
         {
@@ -307,13 +388,17 @@ public static class TorchModuleExportExtensions
             return ExportModuleForwardCall(context, memberReference, invocation);
         }
 
-        // Tensor instance methods are lowered here because they are not nn.Module calls and
-        // therefore do not go through TorchModuleExtensions.Export dispatch.
+        // Tensor instance methods such as "x.view(...)" and "mask.unsqueeze(0)" are
+        // lowered here because they are not nn.Module calls and therefore do not go
+        // through TorchModuleExtensions.Export dispatch.
         if (IsTensorMethod(memberReference.MemberName))
         {
             return ExportTensorMethodInvocation(context, memberReference, invocation);
         }
 
+        // Static torch functions decompile as member calls on "torch":
+        //   torch.matmul(query, key)
+        //   torch.arange(maxLength, dtype: ..., device: ...)
         if (string.Equals(memberReference.MemberName, "sum", StringComparison.Ordinal)
             && IsTorchReference(memberReference.Target))
         {
@@ -367,6 +452,8 @@ public static class TorchModuleExportExtensions
         var target = ExportExpression(context, memberReference.Target);
         if (target.Value is global::TorchSharp.torch.Tensor tensor)
         {
+            // Constant tensor methods are executed once during export:
+            //   _tokenEmbedding.weight!.transpose(0, 1)
             return ExportRuntimeTensorMethod(context, tensor, memberReference.MemberName, invocation);
         }
 
@@ -374,8 +461,12 @@ public static class TorchModuleExportExtensions
 
         return memberReference.MemberName switch
         {
+            // Dynamic tensor methods become ONNX graph operators:
+            //   x.view([batchSize, sequenceLength, hidden])
+            //   qkv.permute(2, 0, 3, 1, 4)
+            //   mask.slice(0, 0, sequenceLength, 1)
             "view" or "reshape" => new ExportValue(
-                context.Graph.ExportView(input, ResolveLongArguments(context, invocation.Arguments).ToArray())
+                context.Graph.ExportReshape(input, ResolveLongArguments(context, invocation.Arguments).ToArray())
             ),
             "permute" => new ExportValue(
                 context.Graph.Transpose(
@@ -533,13 +624,20 @@ public static class TorchModuleExportExtensions
         if (indexer.Target is MemberReferenceExpression { MemberName: "shape" } shapeReference)
         {
             var dimensionIndex = Convert.ToInt64(ExportExpression(context, argument).Value);
+            var shapeTarget = ExportExpression(context, shapeReference.Target);
+            if (shapeTarget.Value is global::TorchSharp.torch.Tensor runtimeTensor)
+            {
+                return new ExportValue(runtimeTensor.shape[checked((int)dimensionIndex)]);
+            }
 
-            // Torch shape reads feed static reshape templates in the supported patterns.
+            // Torch shape reads such as "x.shape[0]" feed static reshape templates in
+            // the supported patterns.
             // ONNX Reshape uses 0 to copy the corresponding input dimension.
-            return new ExportValue(new ShapeDimensionReference(checked((int)dimensionIndex)));
+            return new ExportValue(new ShapeDimensionReference(shapeTarget.Value as IOnnxGraphEdge, checked((int)dimensionIndex)));
         }
 
-        // qkv[0], qkv[1], qkv[2] in attention are tensor slices along the first axis.
+        // Tensor indexers such as "qkv[0]", "qkv[1]", "qkv[2]" in attention are
+        // exported as Gather along the first axis.
         var target = ExportExpression(context, indexer.Target).GetRequiredEdge(indexer.Target);
         var index = Convert.ToInt64(ExportExpression(context, argument).Value);
         var name = context.Graph.NextName("gather");
@@ -565,20 +663,47 @@ public static class TorchModuleExportExtensions
     {
         if (binaryOperator.Operator == BinaryOperatorType.NullCoalescing)
         {
+            // Handles null fallbacks preserved by decompilation:
+            //   weight ?? throw new InvalidOperationException(...)
             var value = ExportExpression(context, binaryOperator.Left);
             return value.Value is not null ? value : ExportExpression(context, binaryOperator.Right);
         }
 
         var left = ExportExpression(context, binaryOperator.Left);
         var right = ExportExpression(context, binaryOperator.Right);
+        if (TryFoldNumericBinary(binaryOperator.Operator, left, right, out var folded))
+        {
+            // Fold scalar-only shape/math expressions before they reach ONNX:
+            //   ((_base + 2L) * 2L) - 3L
+            //   (((_floatBase + 2f) * 4f) - 6f) / 3f
+            return folded;
+        }
 
         return binaryOperator.Operator switch
         {
+            // Tensor arithmetic accepts tensor-tensor and tensor-scalar forms:
+            //   input + mask
+            //   attentionScores * _scale
+            //   (input + offset) / divisor
             BinaryOperatorType.Add => new ExportValue(
-                context.Graph.ExportAdd(
-                    left.GetRequiredEdge(binaryOperator.Left),
-                    right.GetRequiredEdge(binaryOperator.Right)
-                )
+                TryGetGraphEdge(left, out var leftEdge) && TryGetScalar(right, out var rightScalar)
+                    ? context.Graph.ExportAdd(leftEdge, rightScalar)
+                    : TryGetGraphEdge(right, out var rightEdge) && TryGetScalar(left, out var leftScalar)
+                        ? context.Graph.ExportAdd(rightEdge, leftScalar)
+                        : context.Graph.ExportAdd(
+                            left.GetRequiredEdge(binaryOperator.Left),
+                            right.GetRequiredEdge(binaryOperator.Right)
+                        )
+            ),
+            BinaryOperatorType.Subtract => new ExportValue(
+                TryGetGraphEdge(left, out var leftEdge) && TryGetScalar(right, out var rightScalar)
+                    ? context.Graph.ExportSub(leftEdge, rightScalar)
+                    : TryGetGraphEdge(right, out var rightEdge) && TryGetScalar(left, out var leftScalar)
+                        ? context.Graph.ExportSub(AddScalar(context.Graph, "sub", leftScalar), rightEdge)
+                        : context.Graph.ExportSub(
+                            left.GetRequiredEdge(binaryOperator.Left),
+                            right.GetRequiredEdge(binaryOperator.Right)
+                        )
             ),
             BinaryOperatorType.Multiply => new ExportValue(
                 // ONNX Mul expects both operands as graph edges; scalar literals become scalar initializers.
@@ -591,8 +716,53 @@ public static class TorchModuleExportExtensions
                             right.GetRequiredEdge(binaryOperator.Right)
                         )
             ),
+            BinaryOperatorType.Divide => new ExportValue(
+                TryGetGraphEdge(left, out var leftEdge) && TryGetScalar(right, out var rightScalar)
+                    ? context.Graph.ExportDiv(leftEdge, rightScalar)
+                    : TryGetGraphEdge(right, out var rightEdge) && TryGetScalar(left, out var leftScalar)
+                        ? context.Graph.ExportDiv(AddScalar(context.Graph, "div", leftScalar), rightEdge)
+                        : context.Graph.ExportDiv(
+                            left.GetRequiredEdge(binaryOperator.Left),
+                            right.GetRequiredEdge(binaryOperator.Right)
+                        )
+            ),
             _ => throw new NotSupportedException($"Unsupported binary operator: {binaryOperator}"),
         };
+    }
+
+    private static ExportValue ExportUnaryOperator(
+        ForwardExportContext context,
+        UnaryOperatorExpression unaryOperator
+    )
+    {
+        var operand = ExportExpression(context, unaryOperator.Expression);
+
+        if (TryGetIntegral(operand, out var integral))
+        {
+            // Unary signs on integral constants are common inside shapes and arange bounds:
+            //   -1
+            //   +sequenceLength
+            return unaryOperator.Operator switch
+            {
+                UnaryOperatorType.Plus => new ExportValue(integral),
+                UnaryOperatorType.Minus => new ExportValue(checked(-integral)),
+                _ => throw new NotSupportedException($"Unsupported unary operator: {unaryOperator}"),
+            };
+        }
+
+        if (TryGetFloating(operand, out var floating))
+        {
+            // Unary signs on float constants are common in masks:
+            //   -10_000f
+            return unaryOperator.Operator switch
+            {
+                UnaryOperatorType.Plus => new ExportValue(floating),
+                UnaryOperatorType.Minus => new ExportValue(-floating),
+                _ => throw new NotSupportedException($"Unsupported unary operator: {unaryOperator}"),
+            };
+        }
+
+        throw new NotSupportedException($"Unsupported unary operator: {unaryOperator}");
     }
 
     private static ExportValue ExportModuleForwardCall(
@@ -609,8 +779,9 @@ public static class TorchModuleExportExtensions
             );
         }
 
-        // First prefer concrete module exporters; if no exporter exists, recursively decompile
-        // user-defined Module<Tensor, Tensor> children such as transformer blocks.
+        // First prefer concrete module exporters for calls like "_linear.forward(x)".
+        // If no exporter exists, recursively decompile user-defined Module<Tensor, Tensor>
+        // children such as "_block.forward(x)".
         var torchModule = ResolveTorchModule(context.RootModule, target.Target);
         var input = ExportExpression(context, invocation.Arguments.First()).GetRequiredEdge(invocation);
         var output = InvokeModuleExport(torchModule, context.Graph, input);
@@ -635,6 +806,9 @@ public static class TorchModuleExportExtensions
         var keepdims = invocation.Arguments.Count >= 3
             && Convert.ToBoolean(ExportExpression(context, invocation.Arguments.ElementAt(2)).Value);
 
+        // Exports reductions with an explicit dimension:
+        //   sum(linear, 1)
+        //   torch.sum(x, dim)
         var name = context.Graph.NextName("sum");
         var output = context.Graph.ReduceSum(
             name: name,
@@ -659,6 +833,9 @@ public static class TorchModuleExportExtensions
             throw new NotSupportedException($"Unsupported torch.matmul argument count: {invocation}");
         }
 
+        // Handles batched and plain matrix multiplies with the same ONNX MatMul:
+        //   matmul(query, key.transpose(2, 3))
+        //   matmul(hiddenStates, tiedWeight)
         return new ExportValue(
             context.Graph.MatMul(
                 name: context.Graph.NextName("matmul"),
@@ -685,6 +862,9 @@ public static class TorchModuleExportExtensions
             ? ResolveLongArgument(context, invocation.Arguments.ElementAt(1))
             : -1;
 
+        // Handles both positional and omitted dim:
+        //   softmax(scores, dim: -1)
+        //   torch.softmax(scores)
         return new ExportValue(
             context.Graph.Softmax(
                 name: context.Graph.NextName("softmax"),
@@ -708,6 +888,10 @@ public static class TorchModuleExportExtensions
             throw new NotSupportedException($"Unsupported torch.arange argument count: {invocation}");
         }
 
+        // Supports torch.arange forms used for ids/positions:
+        //   arange(end)
+        //   arange(start, end)
+        //   arange(start, end, step, dtype: ..., device: ...)
         var start = arguments.Length == 1 ? 0 : arguments[0];
         var end = arguments.Length == 1
             ? arguments[0]
@@ -749,6 +933,8 @@ public static class TorchModuleExportExtensions
         var fillValue = Convert.ToSingle(ExportExpression(context, arguments[1]).Value);
         var values = Enumerable.Repeat(fillValue, checked((int)elementCount)).ToArray();
 
+        // Constant factories such as "full([context, context], -10_000f, ...)" become
+        // ONNX initializers instead of runtime graph operators.
         return new ExportValue(
             context.Graph.AddTensor(
                 name: context.Graph.NextName("full"),
@@ -786,6 +972,8 @@ public static class TorchModuleExportExtensions
                 ? ResolveLongArgument(context, arguments[1])
                 : 0;
 
+        // Constant masks are evaluated during export:
+        //   triu(full([n, n], -10_000f, ...), diagonal: 1)
         var rows = checked((int)tensor.Shape[0]);
         var columns = checked((int)tensor.Shape[1]);
         var values = GetFloatTensorValues(tensor);
@@ -816,7 +1004,7 @@ public static class TorchModuleExportExtensions
         out ExportValue result
     )
     {
-        const BindingFlags FLAGS = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+        const BindingFlags FLAGS = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
 
         var arguments = GetPositionalArguments(invocation).ToArray();
         var method = context.RootModule.GetType()
@@ -836,6 +1024,9 @@ public static class TorchModuleExportExtensions
             return true;
         }
 
+        // Inline helper methods by decompiling their own bodies:
+        //   ComputeLogits(x) -> return matmul(hiddenStates, tiedWeight);
+        //   CreatePositionIds(batch, device) -> return arange(...).unsqueeze(...);
         var declaration = DecompileMethod(context.RootModule, method);
         var nestedContext = new ForwardExportContext(context.RootModule, context.Graph);
         foreach (var (name, value) in context.Values)
@@ -880,6 +1071,8 @@ public static class TorchModuleExportExtensions
         {
             if (memberReference.MemberName is "dtype" or "device")
             {
+                // Metadata reads are accepted when passed through to constant factories:
+                //   full([n, n], value, dtype: x.dtype, device: x.device)
                 return new ExportValue(new SymbolicTensorMember(memberReference.MemberName));
             }
 
@@ -891,9 +1084,14 @@ public static class TorchModuleExportExtensions
 
         if (TryGetTupleItemIndex(memberReference.MemberName, out var itemIndex))
         {
+            // Deconstructed tuple values can later be read as ItemN by the decompiler:
+            //   result.Item1
             return GetTupleElement(new ExportValue(value), itemIndex, memberReference);
         }
 
+        // Regular member access resolves against live module/runtime objects:
+        //   _tokenEmbedding.weight
+        //   tokens.device
         return new ExportValue(GetRequiredMemberValue(value, memberReference.MemberName));
     }
 
@@ -905,6 +1103,9 @@ public static class TorchModuleExportExtensions
     {
         if (target is IdentifierExpression identifier)
         {
+            // Plain assignment/reassignment:
+            //   x = _block.forward(x);
+            //   attentionScores = attentionScores + causalMask;
             context.Values[identifier.Identifier] = value;
             return;
         }
@@ -915,7 +1116,8 @@ public static class TorchModuleExportExtensions
             && inlineArrayValue.Value is InlineArrayBuilder builder)
         {
             // Source-level collection expressions may appear as normal indexer assignments
-            // when the decompiler can keep the shape literal close to C# syntax.
+            // when the decompiler can keep the shape literal close to C# syntax:
+            //   buffer[0] = batchSize;
             var index = checked((int)ResolveLongArgument(context, indexer.Arguments.Single()));
             builder.Values[index] = value;
             return;
@@ -941,8 +1143,8 @@ public static class TorchModuleExportExtensions
             return false;
         }
 
-        // Newer C# collection expressions can decompile to calls into PrivateImplementationDetails,
-        // for example InlineArrayElementRef(ref buffer, 0) = batchSize.
+        // Newer C# collection expressions can decompile to calls into PrivateImplementationDetails:
+        //   InlineArrayElementRef(ref buffer, 0) = batchSize;
         var match = Regex.Match(
             targetText,
             @"ref\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)\s*,\s*(?<index>\d+)",
@@ -979,6 +1181,10 @@ public static class TorchModuleExportExtensions
         Expression expression
     )
     {
+        // Resolve module paths that appear on the left side of ".forward":
+        //   _linear
+        //   this._block
+        //   _container._projection
         return expression switch
         {
             IdentifierExpression identifier => GetRequiredMemberValue(root, identifier.Identifier),
@@ -999,6 +1205,9 @@ public static class TorchModuleExportExtensions
     {
         const BindingFlags FLAGS = BindingFlags.Public | BindingFlags.Static;
 
+        // Look for extension overloads that are more specific than TorchModule:
+        //   Export(this Linear module, graph, input)
+        //   Export(this LayerNorm module, graph, input)
         var exportMethod = typeof(TorchModuleExtensions)
             .GetMethods(FLAGS)
             .Where(static x => string.Equals(x.Name, "Export", StringComparison.Ordinal))
@@ -1026,6 +1235,8 @@ public static class TorchModuleExportExtensions
 
         if (exportMethod is IOnnxGraphEdge deepExportOutput)
         {
+            // TryDeepExportModule returns the produced edge directly when no concrete
+            // Export overload exists for a user-defined child module.
             return deepExportOutput;
         }
 
@@ -1042,7 +1253,8 @@ public static class TorchModuleExportExtensions
     )
     {
         // Concrete TorchSharp module types (Linear, LayerNorm, LSTM, ...) should use explicit
-        // exporters. This fallback is only for user modules whose forward can be lowered.
+        // exporters. This fallback is only for user modules whose forward can be lowered, e.g.
+        // a custom transformer block composed from supported modules and tensor ops.
         return module is TorchModule torchModule
             ? ExportForwardBody(torchModule, graph, input, DecompileForward(torchModule))
             : null;
@@ -1078,6 +1290,9 @@ public static class TorchModuleExportExtensions
         );
 
         var metadataToken = MetadataTokenHelpers.EntityHandleOrNil(method.MetadataToken);
+        // Decompile only the requested method token, then find the matching MethodDeclaration:
+        //   forward(...)
+        //   ComputeLogits(...)
         var syntaxTree = decompiler.Decompile(metadataToken);
 
         return syntaxTree
@@ -1091,6 +1306,9 @@ public static class TorchModuleExportExtensions
 
     private static IEnumerable<Statement> GetNestedStatements(Statement statement)
     {
+        // UsingStatement.EmbeddedStatement can be either a block or a single statement:
+        //   using var x = ...; { stmt1; stmt2; }
+        //   using var x = ...; return x;
         if (statement is BlockStatement block)
         {
             return block.Statements;
@@ -1119,6 +1337,8 @@ public static class TorchModuleExportExtensions
     {
         var shape = tensor.GetShape();
         var detached = tensor.detach().cpu();
+        // Runtime tensor constants are materialized as initializers:
+        //   tiedWeight = _embedding.weight.transpose(0, 1)
         return tensor.dtype switch
         {
             global::TorchSharp.torch.ScalarType.Int64 => graph.AddTensor(
@@ -1158,11 +1378,18 @@ public static class TorchModuleExportExtensions
 
         var end = ExportExpression(context, UnwrapNamedArgument(endExpression));
         if (end.Value is ShapeDimensionReference
-            && input is OnnxTensor tensor
             && invocation.Arguments.ElementAtOrDefault(0) is { } dimExpression)
         {
+            // "mask.slice(0, 0, sequenceLength, 1)" may use "sequenceLength = x.shape[1]".
+            // Static initializers can use the concrete shape; dynamic edges fall back to
+            // long.MaxValue so Slice means "through the end" instead of accidentally ending at 0.
             var dim = ResolveLongArgument(context, dimExpression);
-            return tensor.Shape[NormalizeAxis(dim, tensor.Shape.Length)];
+            if (input is OnnxTensor tensor)
+            {
+                return tensor.Shape[NormalizeAxis(dim, tensor.Shape.Length)];
+            }
+
+            return long.MaxValue;
         }
 
         return ConvertExportValueToLong(end, endExpression, long.MaxValue);
@@ -1170,6 +1397,9 @@ public static class TorchModuleExportExtensions
 
     private static IEnumerable<Expression> GetPositionalArguments(InvocationExpression invocation)
     {
+        // Keep ordinary arguments and unwrap named ones when they carry real values:
+        //   arange(start, end, step, dtype: ..., device: ...)
+        // becomes start/end/step for constant factory evaluation.
         return invocation.Arguments
             .OfType<Expression>()
             .Where(static x => x is not NamedArgumentExpression)
@@ -1190,7 +1420,9 @@ public static class TorchModuleExportExtensions
             }
             catch (NotSupportedException)
             {
-                // Named dtype/device arguments decompile differently across compiler versions.
+                // Named dtype/device arguments decompile differently across compiler versions:
+                //   dtype: ScalarType.Int64
+                //   device: input.device
                 // Constant-only torch factories can ignore those metadata hints during export.
             }
         }
@@ -1218,6 +1450,9 @@ public static class TorchModuleExportExtensions
 
     private static bool TryGetScalar(ExportValue value, out float scalar)
     {
+        // Tensor-scalar arithmetic accepts primitive numeric values:
+        //   x * _scale
+        //   input + 8f
         if (value.Value is null)
         {
             scalar = default;
@@ -1234,6 +1469,113 @@ public static class TorchModuleExportExtensions
         return false;
     }
 
+    private static bool TryFoldNumericBinary(
+        BinaryOperatorType operatorType,
+        ExportValue left,
+        ExportValue right,
+        out ExportValue result
+    )
+    {
+        // Integral math feeds shape and index arguments:
+        //   var step = ((_longBase + 7L) / 4L) + 1L;
+        // Division is kept in floating space to avoid surprising integer truncation here.
+        if (TryGetIntegral(left, out var leftIntegral)
+            && TryGetIntegral(right, out var rightIntegral)
+            && operatorType != BinaryOperatorType.Divide)
+        {
+            result = operatorType switch
+            {
+                BinaryOperatorType.Add => new ExportValue(checked(leftIntegral + rightIntegral)),
+                BinaryOperatorType.Subtract => new ExportValue(checked(leftIntegral - rightIntegral)),
+                BinaryOperatorType.Multiply => new ExportValue(checked(leftIntegral * rightIntegral)),
+                BinaryOperatorType.Modulus => new ExportValue(leftIntegral % rightIntegral),
+                _ => default,
+            };
+
+            return result.Value is not null;
+        }
+
+        if (TryGetFloating(left, out var leftFloating)
+            && TryGetFloating(right, out var rightFloating))
+        {
+            // Floating math feeds scalar tensor arithmetic:
+            //   var scale = (((_floatBase + 2f) * 4f) - 6f) / 3f;
+            result = operatorType switch
+            {
+                BinaryOperatorType.Add => new ExportValue(leftFloating + rightFloating),
+                BinaryOperatorType.Subtract => new ExportValue(leftFloating - rightFloating),
+                BinaryOperatorType.Multiply => new ExportValue(leftFloating * rightFloating),
+                BinaryOperatorType.Divide => new ExportValue(leftFloating / rightFloating),
+                BinaryOperatorType.Modulus => new ExportValue(leftFloating % rightFloating),
+                _ => default,
+            };
+
+            return result.Value is not null;
+        }
+
+        result = default;
+        return false;
+    }
+
+    private static bool TryGetIntegral(ExportValue value, out long result)
+    {
+        switch (value.Value)
+        {
+            case byte x:
+                result = x;
+                return true;
+            case sbyte x:
+                result = x;
+                return true;
+            case short x:
+                result = x;
+                return true;
+            case ushort x:
+                result = x;
+                return true;
+            case int x:
+                result = x;
+                return true;
+            case uint x:
+                result = x;
+                return true;
+            case long x:
+                result = x;
+                return true;
+            case ulong x when x <= long.MaxValue:
+                result = checked((long)x);
+                return true;
+            default:
+                result = default;
+                return false;
+        }
+    }
+
+    private static bool TryGetFloating(ExportValue value, out float result)
+    {
+        if (TryGetIntegral(value, out var integral))
+        {
+            result = integral;
+            return true;
+        }
+
+        switch (value.Value)
+        {
+            case float x:
+                result = x;
+                return true;
+            case double x:
+                result = checked((float)x);
+                return true;
+            case decimal x:
+                result = checked((float)x);
+                return true;
+            default:
+                result = default;
+                return false;
+        }
+    }
+
     private static IReadOnlyList<long> ResolveLongArguments(
         ForwardExportContext context,
         IEnumerable<Expression> arguments
@@ -1242,9 +1584,13 @@ public static class TorchModuleExportExtensions
         var argumentList = arguments.ToArray();
         if (argumentList.Length == 1)
         {
+            // Single argument may itself be a shape/permutation list:
+            //   view([batchSize, sequenceLength, hidden])
             return ResolveLongArray(context, argumentList[0]);
         }
 
+        // Multiple arguments are already the desired long list:
+        //   permute(2, 0, 3, 1, 4)
         return argumentList
             .Select(argument => ResolveLongArgument(context, argument))
             .ToArray();
@@ -1259,13 +1605,27 @@ public static class TorchModuleExportExtensions
 
         switch (expression)
         {
+            case ParenthesizedExpression parenthesized:
+                // Shape arrays may be wrapped by syntax noise:
+                //   ([batchSize, sequenceLength, hidden])
+                return ResolveLongArray(context, parenthesized.Expression);
+
+            case CastExpression cast:
+                // Casts can appear around generated collection-expression temporaries.
+                return ResolveLongArray(context, cast.Expression);
+
             case ArrayCreateExpression arrayCreate:
+                // Handles explicit arrays:
+                //   new long[] { batchSize, sequenceLength, hidden }
                 return arrayCreate.Initializer.Elements
                     .OfType<Expression>()
                     .Select(element => ResolveLongArgument(context, element))
                     .ToArray();
 
             case ArrayInitializerExpression arrayInitializer:
+                // Handles collection expressions and array initializers:
+                //   [batchSize, sequenceLength, hidden]
+                //   { batchSize, sequenceLength, hidden }
                 return arrayInitializer.Elements
                     .OfType<Expression>()
                     .Select(element => ResolveLongArgument(context, element))
@@ -1273,6 +1633,8 @@ public static class TorchModuleExportExtensions
 
             case InvocationExpression invocation
                 when TryResolveInlineArraySpan(context, invocation, out var values):
+                // Handles compiler-generated reads:
+                //   InlineArrayAsReadOnlySpan(in buffer, 3)
                 return values;
 
             default:
@@ -1310,6 +1672,8 @@ public static class TorchModuleExportExtensions
             @"in\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)\s*,\s*(?<length>\d+)",
             RegexOptions.CultureInvariant
         );
+        // The decompiler text contains the generated buffer name and length:
+        //   InlineArrayAsReadOnlySpan(in buffer, 5)
         if (!match.Success)
         {
             values = [];
@@ -1340,6 +1704,8 @@ public static class TorchModuleExportExtensions
     {
         if (expression is null)
         {
+            // Optional tensor method parameters have TorchSharp defaults:
+            //   slice(dim, start) -> end defaults through the helper call site.
             return defaultValue;
         }
 
@@ -1358,16 +1724,45 @@ public static class TorchModuleExportExtensions
         {
             // ShapeDimensionReference represents x.shape[i]. In supported reshape templates,
             // a 0 means "copy this dimension from the input" in ONNX Reshape.
-            { Value: ShapeDimensionReference } => 0,
+            { Value: ShapeDimensionReference reference } => TryResolveShapeDimension(reference, out var dimension) ? dimension : 0,
             { Value: null } => defaultValue,
             { Value: IConvertible convertible } => Convert.ToInt64(convertible),
             _ => throw new NotSupportedException($"Expression '{source}' did not produce an integer value."),
         };
     }
 
+    private static bool TryResolveShapeDimension(
+        ShapeDimensionReference reference,
+        out long dimension
+    )
+    {
+        if (reference.Source is OnnxTensor tensor
+            && reference.Index >= 0
+            && reference.Index < tensor.Shape.Length)
+        {
+            dimension = tensor.Shape[reference.Index];
+            return true;
+        }
+
+        if (reference.Source is OnnxValue value
+            && value.Type is OnnxTensorType { Shape: not null } tensorType
+            && reference.Index >= 0
+            && reference.Index < tensorType.Shape.Dimensions.Length
+            && tensorType.Shape.Dimensions[reference.Index].GetValue() is long fixedDimension)
+        {
+            dimension = fixedDimension;
+            return true;
+        }
+
+        dimension = default;
+        return false;
+    }
+
     private static int NormalizeAxis(long axis, long rank)
     {
         var normalized = axis < 0 ? axis + rank : axis;
+        // Normalize PyTorch-style negative axes:
+        //   dim: -1 on rank 4 -> axis 3
         if (normalized < 0 || normalized >= rank)
         {
             throw new NotSupportedException($"Axis {axis} is outside rank {rank}.");
@@ -1382,6 +1777,8 @@ public static class TorchModuleExportExtensions
         float value
     )
     {
+        // Scalar literals become rank-0 initializers when paired with graph edges:
+        //   attentionScores * _scale
         return graph.AddTensor(
             name: graph.NextName($"{prefix}_scalar"),
             shape: [],
@@ -1395,6 +1792,8 @@ public static class TorchModuleExportExtensions
     )
     {
         var typeText = expression.Type.ToString();
+        // Default values of compiler-generated inline arrays look like:
+        //   default(<>y__InlineArray3<long>)
         var match = Regex.Match(typeText, @"InlineArray(?<length>\d+)<", RegexOptions.CultureInvariant);
         if (match.Success && int.TryParse(match.Groups["length"].Value, out var length))
         {
@@ -1460,6 +1859,9 @@ public static class TorchModuleExportExtensions
 
         var memberName = index switch
         {
+            // TorchSharp recurrent exports expose named outputs, while true tuples expose
+            // Item1/Item2/etc. Support both shapes for:
+            //   var (y, h, c) = _lstm.forward(x);
             0 => "Y",
             1 => "YH",
             2 => "YC",
@@ -1510,6 +1912,9 @@ public static class TorchModuleExportExtensions
     {
         const BindingFlags FLAGS = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
+        // Reflection bridges decompiled member syntax back to the live module instance:
+        //   _scale
+        //   _embedding.weight
         var type = instance.GetType();
         var property = type.GetProperty(name, FLAGS);
         if (property is not null)
@@ -1531,10 +1936,18 @@ public static class TorchModuleExportExtensions
 
     private static bool IsTorchReference(Expression expression)
     {
+        // Static imports and fully qualified calls both tend to print with "torch":
+        //   torch.arange(...)
+        //   global::TorchSharp.torch.full(...)
         return string.Equals(expression.ToString(), "torch", StringComparison.Ordinal)
             || expression.ToString().EndsWith(".torch", StringComparison.Ordinal);
     }
 
+    // Per-method mutable export state. Values tracks graph edges, constants, and small
+    // symbolic placeholders by decompiled variable name:
+    //   x -> ONNX edge
+    //   batchSize -> ShapeDimensionReference
+    //   scale -> 0.3535f
     private sealed class ForwardExportContext(
         TorchModule rootModule,
         OnnxGraph graph
@@ -1551,6 +1964,9 @@ public static class TorchModuleExportExtensions
     {
         public IOnnxGraphEdge GetRequiredEdge(AstNode source)
         {
+            // Call sites use this when the syntax must resolve to a tensor-producing graph edge:
+            //   matmul(query, key)
+            //   _linear.forward(x)
             return Value as IOnnxGraphEdge
                 ?? throw new NotSupportedException(
                     $"Expression '{source}' did not produce an ONNX graph edge."
@@ -1558,10 +1974,17 @@ public static class TorchModuleExportExtensions
         }
     }
 
-    private readonly record struct ShapeDimensionReference(int Index);
+    // Placeholder for shape reads such as "x.shape[1]" before we know whether the consumer
+    // wants ONNX Reshape's "copy input dimension" sentinel or a concrete initializer bound.
+    private readonly record struct ShapeDimensionReference(IOnnxGraphEdge? Source, int Index);
 
+    // Placeholder for metadata reads such as "x.dtype" and "x.device"; constant factories
+    // accept them syntactically but current initializer emission decides dtype from values.
     private readonly record struct SymbolicTensorMember(string Name);
 
+    // Builder for C# collection expressions after decompilation:
+    //   [batchSize, sequenceLength, hidden]
+    // may become "default(InlineArray3<long>)" plus element assignments.
     private sealed class InlineArrayBuilder(int length)
     {
         public ExportValue?[] Values { get; } = new ExportValue?[length];
