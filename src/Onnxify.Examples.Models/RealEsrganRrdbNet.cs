@@ -372,6 +372,7 @@ public sealed class RealEsrganRrdbNet : Module<Tensor, Tensor>
             options: new ResizeInputOptions
             {
                 X = input,
+                Roi = new OnnxEdge(string.Empty),
                 Scales = scales,
                 Axes = [2, 3],
                 Antialias = 0,

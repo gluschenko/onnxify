@@ -44,7 +44,8 @@ public static class TorchModuleExportExtensions
     /// deep-exported when no concrete overload exists. Unsupported control flow or expressions
     /// fail with <see cref="NotSupportedException"/> rather than emitting a lossy graph.
     /// </remarks>
-    public static OnnxModel Export(
+    [Obsolete("This is an experimental feature")]
+    public static OnnxModel ExportOnnxModel(
         this TorchModule module,
         OnnxTensorType input,
         OnnxTensorType output,
@@ -314,6 +315,13 @@ public static class TorchModuleExportExtensions
             case BinaryOperatorExpression binaryOperator:
                 return ExportBinaryOperator(context, binaryOperator);
 
+            // Handles statically decidable ternaries produced by optional module branches:
+            //   _pixelUnshuffle == null ? input : _pixelUnshuffle.forward(input)
+            //   _optional != null ? _optional.forward(input) : input
+            // Only the selected branch is exported, so nullable inactive branches may stay unsupported.
+            case ConditionalExpression conditional:
+                return ExportConditionalExpression(context, conditional);
+
             // ILSpy sometimes wraps null-flow expressions in NullConditionalRewrap even when
             // the source was just a nullable-suppressed member access such as "weight!".
             case UnaryOperatorExpression unaryOperator
@@ -378,6 +386,12 @@ public static class TorchModuleExportExtensions
             return localResult;
         }
 
+        if (invocation.Target is IdentifierExpression torchIdentifier
+            && IsTorchConcatName(torchIdentifier.Identifier))
+        {
+            return ExportTorchConcat(context, invocation);
+        }
+
         if (invocation.Target is not MemberReferenceExpression memberReference)
         {
             throw new NotSupportedException($"Unsupported invocation target: {invocation}");
@@ -433,6 +447,18 @@ public static class TorchModuleExportExtensions
             && IsTorchReference(memberReference.Target))
         {
             return ExportTorchTriu(context, invocation);
+        }
+
+        if (string.Equals(memberReference.MemberName, "cat", StringComparison.Ordinal)
+            && IsTorchReference(memberReference.Target))
+        {
+            return ExportTorchConcat(context, invocation);
+        }
+
+        if (string.Equals(memberReference.MemberName, "interpolate", StringComparison.Ordinal)
+            && IsTorchFunctionalReference(memberReference.Target))
+        {
+            return ExportTorchInterpolate(context, invocation);
         }
 
         throw new NotSupportedException($"Unsupported forward invocation: {invocation}");
@@ -669,6 +695,11 @@ public static class TorchModuleExportExtensions
             return value.Value is not null ? value : ExportExpression(context, binaryOperator.Right);
         }
 
+        if (TryEvaluateBooleanExpression(context, binaryOperator, out var booleanResult))
+        {
+            return new ExportValue(booleanResult);
+        }
+
         var left = ExportExpression(context, binaryOperator.Left);
         var right = ExportExpression(context, binaryOperator.Right);
         if (TryFoldNumericBinary(binaryOperator.Operator, left, right, out var folded))
@@ -730,12 +761,36 @@ public static class TorchModuleExportExtensions
         };
     }
 
+    private static ExportValue ExportConditionalExpression(
+        ForwardExportContext context,
+        ConditionalExpression conditional
+    )
+    {
+        if (!TryEvaluateBooleanExpression(context, conditional.Condition, out var condition))
+        {
+            throw new NotSupportedException(
+                $"Conditional expression condition must be statically resolvable during export: {conditional.Condition}"
+            );
+        }
+
+        return ExportExpression(
+            context,
+            condition ? conditional.TrueExpression : conditional.FalseExpression
+        );
+    }
+
     private static ExportValue ExportUnaryOperator(
         ForwardExportContext context,
         UnaryOperatorExpression unaryOperator
     )
     {
         var operand = ExportExpression(context, unaryOperator.Expression);
+
+        if (unaryOperator.Operator == UnaryOperatorType.Not
+            && TryGetBoolean(operand, out var boolean))
+        {
+            return new ExportValue(!boolean);
+        }
 
         if (TryGetIntegral(operand, out var integral))
         {
@@ -997,6 +1052,90 @@ public static class TorchModuleExportExtensions
         );
     }
 
+    private static ExportValue ExportTorchConcat(
+        ForwardExportContext context,
+        InvocationExpression invocation
+    )
+    {
+        var arguments = GetPositionalArguments(invocation).ToArray();
+        if (arguments.Length < 1 || arguments.Length > 2)
+        {
+            throw new NotSupportedException($"Unsupported torch.cat argument count: {invocation}");
+        }
+
+        var inputs = ResolveGraphEdgeArray(context, arguments[0]);
+        var dim = GetNamedArgument(invocation, "dim") is { } namedDim
+            ? ResolveLongArgument(context, namedDim)
+            : arguments.Length == 2
+                ? ResolveLongArgument(context, arguments[1])
+                : 0;
+
+        // Dense blocks commonly use static tensor lists:
+        //   cat(new[] { input, x1, x2 }, 1)
+        //   torch.cat([left, right], dim: 1)
+        return new ExportValue(context.Graph.ExportConcat(inputs, dim));
+    }
+
+    private static ExportValue ExportTorchInterpolate(
+        ForwardExportContext context,
+        InvocationExpression invocation
+    )
+    {
+        var arguments = GetPositionalArguments(invocation).ToArray();
+        if (arguments.Length < 1)
+        {
+            throw new NotSupportedException($"Unsupported interpolate argument count: {invocation}");
+        }
+
+        var input = ExportExpression(context, arguments[0]).GetRequiredEdge(invocation);
+        var spatialSizes = arguments.Length >= 2
+            ? ResolveLongArray(context, arguments[1]).ToArray()
+            : [];
+        var spatialScales = arguments.Length >= 3
+            ? ResolveDoubleArray(context, arguments[2]).ToArray()
+            : [];
+
+        if (spatialSizes.Length != 0)
+        {
+            throw new NotSupportedException(
+                $"functional.interpolate export currently supports scale_factor, not explicit size: {invocation}"
+            );
+        }
+
+        if (spatialScales.Length == 0)
+        {
+            throw new NotSupportedException($"functional.interpolate export requires scale_factor: {invocation}");
+        }
+
+        var mode = arguments.Length >= 4
+            ? ResolveInterpolationMode(arguments[3])
+            : "nearest";
+        var name = context.Graph.NextName("interpolate");
+        var scales = context.Graph.AddTensor(
+            name: $"{name}_scales",
+            shape: [spatialScales.Length],
+            value: spatialScales.Select(static x => checked((float)x)).ToArray()
+        );
+
+        return new ExportValue(
+            context.Graph.Resize(
+                name: name,
+                options: new ResizeInputOptions
+                {
+                    X = input,
+                    Roi = new OnnxEdge(string.Empty),
+                    Scales = scales,
+                    Axes = Enumerable.Range(2, spatialScales.Length).Select(static x => (long)x).ToArray(),
+                    Antialias = 0,
+                    CoordinateTransformationMode = mode == "nearest" ? "asymmetric" : "pytorch_half_pixel",
+                    CubicCoeffA = -0.75f,
+                    Mode = mode,
+                    NearestMode = "floor",
+                }
+            )
+        );
+    }
+
     private static bool TryExportLocalMethodInvocation(
         ForwardExportContext context,
         string methodName,
@@ -1205,6 +1344,11 @@ public static class TorchModuleExportExtensions
     {
         const BindingFlags FLAGS = BindingFlags.Public | BindingFlags.Static;
 
+        if (module is TorchModules.Sequential sequential)
+        {
+            return ExportSequentialWithDeepFallback(sequential, graph, input);
+        }
+
         // Look for extension overloads that are more specific than TorchModule:
         //   Export(this Linear module, graph, input)
         //   Export(this LayerNorm module, graph, input)
@@ -1244,6 +1388,27 @@ public static class TorchModuleExportExtensions
             ?? throw new InvalidOperationException(
                 $"Export overload '{exportMethod}' returned null for '{module.GetType().FullName}'."
             );
+    }
+
+    private static IOnnxGraphEdge ExportSequentialWithDeepFallback(
+        TorchModules.Sequential sequential,
+        OnnxGraph graph,
+        IOnnxGraphEdge input
+    )
+    {
+        var children = sequential.children().OfType<TorchModule>().ToArray();
+        if (children.Length == 0)
+        {
+            throw new NotSupportedException($"Unsupported TorchSharp module leaf: {sequential.GetType().FullName}.");
+        }
+
+        var current = input;
+        foreach (var child in children)
+        {
+            current = (IOnnxGraphEdge)InvokeModuleExport(child, graph, current);
+        }
+
+        return current;
     }
 
     private static object? TryDeepExportModule(
@@ -1469,6 +1634,96 @@ public static class TorchModuleExportExtensions
         return false;
     }
 
+    private static bool TryEvaluateBooleanExpression(
+        ForwardExportContext context,
+        Expression expression,
+        out bool result
+    )
+    {
+        expression = UnwrapNamedArgument(expression);
+
+        switch (expression)
+        {
+            case ParenthesizedExpression parenthesized:
+                return TryEvaluateBooleanExpression(context, parenthesized.Expression, out result);
+
+            case CastExpression cast:
+                return TryEvaluateBooleanExpression(context, cast.Expression, out result);
+
+            case UnaryOperatorExpression { Operator: UnaryOperatorType.Not } unary:
+                if (TryEvaluateBooleanExpression(context, unary.Expression, out var negated))
+                {
+                    result = !negated;
+                    return true;
+                }
+
+                break;
+
+            case BinaryOperatorExpression binary:
+                return TryEvaluateBooleanBinary(context, binary, out result);
+        }
+
+        var value = ExportExpression(context, expression);
+        return TryGetBoolean(value, out result);
+    }
+
+    private static bool TryEvaluateBooleanBinary(
+        ForwardExportContext context,
+        BinaryOperatorExpression binaryOperator,
+        out bool result
+    )
+    {
+        switch (binaryOperator.Operator)
+        {
+            case BinaryOperatorType.Equality:
+            case BinaryOperatorType.InEquality:
+                var left = ExportExpression(context, binaryOperator.Left).Value;
+                var right = ExportExpression(context, binaryOperator.Right).Value;
+                result = Equals(left, right);
+                if (binaryOperator.Operator == BinaryOperatorType.InEquality)
+                {
+                    result = !result;
+                }
+
+                return true;
+
+            case BinaryOperatorType.ConditionalAnd:
+                if (TryEvaluateBooleanExpression(context, binaryOperator.Left, out var andLeft)
+                    && TryEvaluateBooleanExpression(context, binaryOperator.Right, out var andRight))
+                {
+                    result = andLeft && andRight;
+                    return true;
+                }
+
+                break;
+
+            case BinaryOperatorType.ConditionalOr:
+                if (TryEvaluateBooleanExpression(context, binaryOperator.Left, out var orLeft)
+                    && TryEvaluateBooleanExpression(context, binaryOperator.Right, out var orRight))
+                {
+                    result = orLeft || orRight;
+                    return true;
+                }
+
+                break;
+        }
+
+        result = default;
+        return false;
+    }
+
+    private static bool TryGetBoolean(ExportValue value, out bool result)
+    {
+        if (value.Value is bool boolean)
+        {
+            result = boolean;
+            return true;
+        }
+
+        result = default;
+        return false;
+    }
+
     private static bool TryFoldNumericBinary(
         BinaryOperatorType operatorType,
         ExportValue left,
@@ -1632,6 +1887,10 @@ public static class TorchModuleExportExtensions
                     .ToArray();
 
             case InvocationExpression invocation
+                when IsArrayEmptyInvocation(invocation):
+                return [];
+
+            case InvocationExpression invocation
                 when TryResolveInlineArraySpan(context, invocation, out var values):
                 // Handles compiler-generated reads:
                 //   InlineArrayAsReadOnlySpan(in buffer, 3)
@@ -1652,6 +1911,84 @@ public static class TorchModuleExportExtensions
 
                 return [ConvertExportValueToLong(new ExportValue(value), expression)];
         }
+    }
+
+    private static IReadOnlyList<double> ResolveDoubleArray(
+        ForwardExportContext context,
+        Expression expression
+    )
+    {
+        expression = UnwrapNamedArgument(expression);
+
+        switch (expression)
+        {
+            case ParenthesizedExpression parenthesized:
+                return ResolveDoubleArray(context, parenthesized.Expression);
+
+            case CastExpression cast:
+                return ResolveDoubleArray(context, cast.Expression);
+
+            case NullReferenceExpression:
+                return [];
+
+            case ArrayCreateExpression arrayCreate:
+                return arrayCreate.Initializer.Elements
+                    .OfType<Expression>()
+                    .Select(element => Convert.ToDouble(ExportExpression(context, element).Value))
+                    .ToArray();
+
+            case ArrayInitializerExpression arrayInitializer:
+                return arrayInitializer.Elements
+                    .OfType<Expression>()
+                    .Select(element => Convert.ToDouble(ExportExpression(context, element).Value))
+                    .ToArray();
+
+            case InvocationExpression invocation
+                when IsArrayEmptyInvocation(invocation):
+                return [];
+
+            default:
+                return [Convert.ToDouble(ExportExpression(context, expression).Value)];
+        }
+    }
+
+    private static IReadOnlyList<IOnnxGraphEdge> ResolveGraphEdgeArray(
+        ForwardExportContext context,
+        Expression expression
+    )
+    {
+        expression = UnwrapNamedArgument(expression);
+
+        var elements = expression switch
+        {
+            ParenthesizedExpression parenthesized => ResolveGraphEdgeArray(context, parenthesized.Expression),
+            CastExpression cast => ResolveGraphEdgeArray(context, cast.Expression),
+            ArrayCreateExpression arrayCreate => arrayCreate.Initializer.Elements
+                .OfType<Expression>()
+                .Select(element => ExportExpression(context, element).GetRequiredEdge(element))
+                .ToArray(),
+            ArrayInitializerExpression arrayInitializer => arrayInitializer.Elements
+                .OfType<Expression>()
+                .Select(element => ExportExpression(context, element).GetRequiredEdge(element))
+                .ToArray(),
+            _ => throw new NotSupportedException($"Expression '{expression}' did not produce a tensor list."),
+        };
+
+        if (elements.Count == 0)
+        {
+            throw new NotSupportedException($"Tensor list '{expression}' must not be empty.");
+        }
+
+        return elements;
+    }
+
+    private static bool IsArrayEmptyInvocation(InvocationExpression invocation)
+    {
+        var text = invocation.ToString();
+        // Decompiler output for empty array arguments commonly looks like:
+        //   Array.Empty<long>()
+        //   global::System.Array.Empty<double>()
+        return text.Contains("Array.Empty", StringComparison.Ordinal);
     }
 
     private static bool TryResolveInlineArraySpan(
@@ -1941,6 +2278,46 @@ public static class TorchModuleExportExtensions
         //   global::TorchSharp.torch.full(...)
         return string.Equals(expression.ToString(), "torch", StringComparison.Ordinal)
             || expression.ToString().EndsWith(".torch", StringComparison.Ordinal);
+    }
+
+    private static bool IsTorchFunctionalReference(Expression expression)
+    {
+        var text = expression.ToString();
+        // Functional calls may decompile as:
+        //   torch.nn.functional.interpolate(...)
+        //   global::TorchSharp.torch.nn.functional.interpolate(...)
+        return text.EndsWith(".functional", StringComparison.Ordinal)
+            || text.Contains(".torch.nn.functional", StringComparison.Ordinal);
+    }
+
+    private static bool IsTorchConcatName(string name)
+    {
+        return string.Equals(name, "cat", StringComparison.Ordinal)
+            || string.Equals(name, "concat", StringComparison.Ordinal)
+            || string.Equals(name, "concatenate", StringComparison.Ordinal);
+    }
+
+    private static string ResolveInterpolationMode(Expression expression)
+    {
+        var text = UnwrapNamedArgument(expression).ToString();
+        if (text.EndsWith("Nearest", StringComparison.Ordinal))
+        {
+            return "nearest";
+        }
+
+        if (text.EndsWith("Linear", StringComparison.Ordinal)
+            || text.EndsWith("Bilinear", StringComparison.Ordinal)
+            || text.EndsWith("Trilinear", StringComparison.Ordinal))
+        {
+            return "linear";
+        }
+
+        if (text.EndsWith("Bicubic", StringComparison.Ordinal))
+        {
+            return "cubic";
+        }
+
+        throw new NotSupportedException($"Unsupported interpolation mode expression: {expression}");
     }
 
     // Per-method mutable export state. Values tracks graph edges, constants, and small

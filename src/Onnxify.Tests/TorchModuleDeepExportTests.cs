@@ -1,4 +1,4 @@
-using Onnxify.TorchSharp;
+﻿using Onnxify.TorchSharp;
 using static TorchSharp.torch;
 using TorchModule = TorchSharp.torch.nn.Module<TorchSharp.torch.Tensor, TorchSharp.torch.Tensor>;
 
@@ -12,7 +12,7 @@ public sealed class TorchModuleDeepExportTests
         using var module = new DeepExportTestModule();
         module.eval();
 
-        var model = module.Export(
+        var model = module.ExportOnnxModel(
             input: OnnxTensorType.Create<long>(["batch_size", "seq_len"]),
             output: OnnxTensorType.Create<float>(["batch_size", 3]),
             options: new OnnxModelCreationOptions
@@ -44,7 +44,7 @@ public sealed class TorchModuleDeepExportTests
         using var module = new DeepExportMiniGptModule();
         module.eval();
 
-        var model = module.Export(
+        var model = module.ExportOnnxModel(
             input: OnnxTensorType.Create<long>(["batch", module.MaxSequenceLength]),
             output: OnnxTensorType.Create<float>(["batch", module.MaxSequenceLength, module.VocabularySize]),
             options: new OnnxModelCreationOptions
@@ -235,6 +235,45 @@ public sealed class TorchModuleDeepExportTests
         );
     }
 
+    [Theory]
+    [InlineData(false, 1)]
+    [InlineData(true, 2)]
+    public void DeepExport_ForStaticNullConditionalExpression_ExportsSelectedBranch(
+        bool hasOptionalProjection,
+        int expectedMatMulCount
+    )
+    {
+        using var module = new DeepExportNullConditionalModule(hasOptionalProjection);
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 3]),
+            output: OnnxTensorType.Create<float>([2, 2])
+        );
+
+        Assert.Equal(expectedMatMulCount, model.Graph.Nodes.Count(node => node.OpType == "MatMul"));
+        Assert.Equal("Identity", model.Graph.Nodes.Last().OpType);
+    }
+
+    [Theory]
+    [InlineData(true, "Add")]
+    [InlineData(false, "Mul")]
+    public void DeepExport_ForStaticBoolConditionalExpression_ExportsSelectedBranch(
+        bool useAdd,
+        string expectedOperator
+    )
+    {
+        using var module = new DeepExportBoolConditionalModule(useAdd);
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 2]),
+            output: OnnxTensorType.Create<float>([2, 2])
+        );
+
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == expectedOperator);
+    }
+
     [Fact]
     public void DeepExport_ForLoopStatement_ThrowsUnsupportedStatement()
     {
@@ -276,7 +315,7 @@ public sealed class TorchModuleDeepExportTests
     )
     {
         module.eval();
-        return module.Export(
+        return module.ExportOnnxModel(
             input: input,
             output: output,
             options: new OnnxModelCreationOptions
@@ -499,6 +538,50 @@ public sealed class TorchModuleDeepExportTests
             var divisor = (_base + 5f) / 3f;
 
             return ((input + offset) - subtract) / divisor;
+        }
+    }
+
+    private sealed class DeepExportNullConditionalModule : TorchModule
+    {
+        private readonly global::TorchSharp.Modules.Linear? _optionalProjection;
+        private readonly global::TorchSharp.Modules.Linear _outputProjection;
+
+        public DeepExportNullConditionalModule(bool hasOptionalProjection)
+            : base(nameof(DeepExportNullConditionalModule))
+        {
+            _optionalProjection = hasOptionalProjection
+                ? nn.Linear(3, 3)
+                : null;
+            _outputProjection = nn.Linear(3, 2);
+
+            RegisterComponents();
+        }
+
+        public override Tensor forward(Tensor input)
+        {
+            var x = _optionalProjection == null
+                ? input
+                : _optionalProjection.forward(input);
+
+            return _outputProjection.forward(x);
+        }
+    }
+
+    private sealed class DeepExportBoolConditionalModule : TorchModule
+    {
+        private readonly bool _useAdd;
+
+        public DeepExportBoolConditionalModule(bool useAdd)
+            : base(nameof(DeepExportBoolConditionalModule))
+        {
+            _useAdd = useAdd;
+        }
+
+        public override Tensor forward(Tensor input)
+        {
+            return _useAdd
+                ? input + 1f
+                : input * 2f;
         }
     }
 

@@ -1,8 +1,10 @@
-using Microsoft.ML.OnnxRuntime;
+﻿using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using Onnxify.Examples.Models;
+using Onnxify.TorchSharp;
 using TorchSharp;
 using static TorchSharp.torch;
+using TorchModule = TorchSharp.torch.nn.Module<TorchSharp.torch.Tensor, TorchSharp.torch.Tensor>;
 using TorchTensor = TorchSharp.torch.Tensor;
 
 namespace Onnxify.Tests;
@@ -51,6 +53,31 @@ public sealed class RealEsrganRrdbNetTests
         Assert.Equal(expectedShape, actual.Dimensions.ToArray());
         Assert.Equal(expected.Length, actual.Length);
         AssertClose(expected, actual.Buffer.ToArray(), absoluteTolerance: 2e-4f);
+    }
+
+    [Fact]
+    public void DeepExport_ForSmallModel_EmitsRunnableRealEsrganGraph()
+    {
+        ResetTorchSeed();
+
+        using var module = CreateSmallModel(scale: 4);
+        module.eval();
+        using var input = CreateFloat32Tensor([1, 3, 8, 8]);
+
+        var model = TorchModuleExportExtensions.ExportOnnxModel(
+            (TorchModule)module,
+            input: OnnxTensorType.Create<float>([1, 3, 8, 8]),
+            output: OnnxTensorType.Create<float>([1, 3, 32, 32]),
+            options: new OnnxModelCreationOptions
+            {
+                Opset = 22,
+            }
+        );
+        var actual = RunOnnxModel(model, input);
+
+        Assert.Equal([1, 3, 32, 32], actual.Dimensions.ToArray());
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Concat");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Resize");
     }
 
     [Fact]

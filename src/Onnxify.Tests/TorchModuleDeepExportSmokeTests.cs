@@ -121,7 +121,7 @@ public sealed class TorchModuleDeepExportSmokeTests
         var expected = cpuOutput.data<float>().ToArray();
         var expectedShape = ToIntShape(cpuOutput.shape);
 
-        var model = module.Export(
+        var model = module.ExportOnnxModel(
             input: inputType,
             output: outputType,
             options: new OnnxModelCreationOptions

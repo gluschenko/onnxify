@@ -1,6 +1,6 @@
 ## 0.1.1
 
-- Added deep export for single-input TorchSharp modules via `TorchModule.Export(...)`, which decompiles supported `forward(Tensor)` methods and lowers the resulting data flow into ONNX.
+- Added deep export for single-input TorchSharp modules via `TorchModule.ExportOnnxModel(...)`, which decompiles supported `forward(Tensor)` methods and lowers the resulting data flow into ONNX.
 - Added recursive export support for user-defined child modules when a built-in module exporter is not available.
 - Added lowering for common forward-body patterns used by LSTM, CNN, and MiniGPT-style models, including local helper calls, tuple deconstruction, validation guards, shape reads, tensor indexing, scalar arithmetic, `using var` temporaries, `torch.arange`, `torch.full`, `torch.triu`, `torch.matmul`, `torch.softmax`, and tensor reshape/transpose/slice/expand methods.
 - Changed `nn.Linear` export from `Gemm` to `MatMul` plus optional `Add`, preserving leading batch dimensions for higher-rank inputs.

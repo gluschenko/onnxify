@@ -556,7 +556,7 @@ internal class DeepExportSample : Sample
             );
             model.eval();
 
-            var onnxModel = model.Export(
+            var onnxModel = model.ExportOnnxModel(
                 input: OnnxTensorType.Create<long>(["batch_size", "seq_len"]),
                 output: OnnxTensorType.Create<float>(["batch_size", langToIdx.Count]),
                 options: new OnnxModelCreationOptions
@@ -575,7 +575,7 @@ internal class DeepExportSample : Sample
             var model = new MiniGpt2LikeModel();
             model.eval();
 
-            var onnxModel = model.Export(
+            var onnxModel = model.ExportOnnxModel(
                 input: OnnxTensorType.Create<long>(["batch", model.MaxSequenceLength]),
                 output: OnnxTensorType.Create<float>(["batch", model.MaxSequenceLength, model.VocabularySize]),
                 options: new OnnxModelCreationOptions
@@ -594,7 +594,7 @@ internal class DeepExportSample : Sample
             var model = new AlexNet("alexnet", 10);
             model.eval();
 
-            var onnxModel = model.Export(
+            var onnxModel = model.ExportOnnxModel(
                 input: OnnxTensorType.Create<float>(["batch", 3, 227, 227]),
                 output: OnnxTensorType.Create<float>(["batch", 10]),
                 options: new OnnxModelCreationOptions
@@ -613,7 +613,7 @@ internal class DeepExportSample : Sample
             var model = new MobileNetV1LikeClassifier("mobilenet", 10);
             model.eval();
 
-            var onnxModel = model.Export(
+            var onnxModel = model.ExportOnnxModel(
                 input: OnnxTensorType.Create<float>(["batch", 3, 96, 96]),
                 output: OnnxTensorType.Create<float>(["batch", 10]),
                 options: new OnnxModelCreationOptions
@@ -630,8 +630,9 @@ internal class DeepExportSample : Sample
             var outputDirectory = Utils.EnsureAssetsDirectory();
             var outputPath = Path.Combine(outputDirectory, "realesrgan-deep-export.onnx");
             var model = new RealEsrganRrdbNet();
+            model.eval();
 
-            var onnxModel = model.Export(
+            var onnxModel = model.ExportOnnxModel(
                 input: OnnxTensorType.Create<float>(["batch", model.InputChannels, 64, 64]),
                 output: OnnxTensorType.Create<float>(["batch", model.OutputChannels, 64 * model.Scale, 64 * model.Scale]),
                 options: new OnnxModelCreationOptions
