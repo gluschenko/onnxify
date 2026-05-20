@@ -46,6 +46,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="Onnxify.ConsoleTest/Onnxify.ConsoleTest.csproj" Id="5c5a0524-cb99-49b6-99af-dc2cdc27ee43" />
+    <Project Path="Onnxify.Examples.Models/Onnxify.Examples.Models.csproj" Id="9fcbfc5e-2f83-4dd5-b0af-fdd6b1725dd5" />
     <Project Path="Onnxify.Examples/Onnxify.Examples.csproj" Id="f31ca623-5d5c-498e-b96f-a88cbb5348f8" />
     <Project Path="Onnxify.Tests/Onnxify.Tests.csproj" Id="f5756bb4-50cc-4816-8297-e2e28b5be08e" />
   </Folder>
