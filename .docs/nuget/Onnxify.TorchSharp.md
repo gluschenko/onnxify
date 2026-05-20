@@ -29,9 +29,12 @@ In short, this package is not just for "saving a model to ONNX". It is for build
 ## What It Provides
 
 - `Export(...)` for supported `TorchSharp` modules and sequential containers.
+- Experimental `ExportOnnxModel(...)` for deep-exporting supported single-input `Module<Tensor, Tensor>` models directly from their decompiled `forward(Tensor)` method.
 - A set of helpers for tensor-style operations when you want to build an ONNX graph in terms that are close to Torch.
 - `SaveStateAsSafetensors(...)` and `LoadStateFromSafetensors(...)` for saving and loading `state_dict()`.
 - `SafetensorsExternalDataProvider` for scenarios where ONNX external data should be stored in `safetensors` format.
+
+Naming note: `Export(...)` is still the low-level module/operator export API used while you are manually building a graph, for example `_features.Export(graph, input)`. The experimental whole-model API is named `ExportOnnxModel(...)` because it tries to export the model by decompiling `forward(Tensor)` instead of following a hand-written export method.
 
 ## Example: A Realistic TorchSharp Model Class
 
@@ -138,7 +141,152 @@ var onnxModel = model.Export();
 onnxModel.Save("model.onnx", overwrite: true);
 ```
 
-This keeps the export path attached to the same class that defines the TorchSharp architecture, which makes the code easier to discover and reuse.
+This example uses a regular model-owned `Export()` method that manually constructs the ONNX graph. It keeps the export path attached to the same class that defines the TorchSharp architecture, which makes the code easier to discover and reuse. The experimental `ExportOnnxModel(...)` API is shown separately below.
+
+## Experimental: Deep Export from forward(Tensor)
+
+> Spoiler: `ExportOnnxModel(...)` is experimental, but it is already useful for trying real TorchSharp architectures without writing a manual `Export()` method, including transformer-style and convolution-style `forward(Tensor)` bodies. It is not a complete C# or TorchSharp compiler.
+
+`ExportOnnxModel(...)` decompiles a model's `forward(Tensor)` method, walks the supported syntax tree, and lowers the recognized data flow into an `OnnxModel`. It can handle supported module calls, recursively deep-export some user-defined child modules, and lower a focused set of tensor operations and statically resolvable branches.
+
+```csharp
+using Onnxify;
+using Onnxify.TorchSharp;
+using TorchSharp;
+using static TorchSharp.torch;
+
+var model = new MyModel();
+model.eval();
+
+var onnxModel = model.ExportOnnxModel(
+    input: OnnxTensorType.Create<float>(["batch", 3, 16, 16]),
+    output: OnnxTensorType.Create<float>(["batch", 10]),
+    options: new OnnxModelCreationOptions
+    {
+        Opset = 22,
+        ProducerName = "my-app",
+    }
+);
+
+onnxModel.Save("model-deep-export.onnx", overwrite: true);
+```
+
+This path is a good fit for quick smoke exports and for models whose `forward` is mostly a composition of supported TorchSharp modules and tensor operations:
+
+```csharp
+public override Tensor forward(Tensor input)
+{
+    var x = _features.forward(input);
+    x = _classifier.forward(x);
+    return x;
+}
+```
+
+It is also able to lower more involved model code when the control flow is statically understandable. A transformer-like model can use validation helpers, shape reads, helper methods that return tensors, disposable temporaries, tied weights, and recursive user-defined child modules:
+
+```csharp
+public override Tensor forward(Tensor tokens)
+{
+    ValidateInputShape(tokens);
+
+    using var positions = CreatePositionIds(tokens.shape[0], tokens.device);
+
+    var x = _tokenEmbedding.forward(tokens) + _positionEmbedding.forward(positions);
+    x = _block.forward(x);
+    x = _outputNorm.forward(x);
+
+    return ComputeLogits(x);
+}
+
+private Tensor ComputeLogits(Tensor hiddenStates)
+{
+    using var tiedWeight = _tokenEmbedding.weight!.transpose(0, 1);
+    return torch.matmul(hiddenStates, tiedWeight);
+}
+
+private Tensor CreatePositionIds(long batchSize, Device device)
+{
+    return torch.arange(_maxSequenceLength, dtype: ScalarType.Int64, device: device)
+        .unsqueeze(0)
+        .expand(batchSize, _maxSequenceLength);
+}
+
+private static void ValidateInputShape(Tensor tokens)
+{
+    if (tokens.shape.Length != 2)
+    {
+        throw new ArgumentException("Expected token ids with rank 2.", nameof(tokens));
+    }
+}
+```
+
+A recursively exported attention child can then use tensor indexing, view/permute chains, scalar tensor math, generated masks, slicing, `matmul`, and `softmax`:
+
+```csharp
+public override Tensor forward(Tensor x)
+{
+    var batchSize = x.shape[0];
+    var sequenceLength = x.shape[1];
+
+    var qkv = _attention.forward(x)
+        .view([batchSize, sequenceLength, 3, _headCount, _headDimension])
+        .permute(2, 0, 3, 1, 4);
+
+    var query = qkv[0];
+    var key = qkv[1];
+    var value = qkv[2];
+
+    using var causalMask =
+        torch.triu(
+            torch.full(
+                [_maxSequenceLength, _maxSequenceLength],
+                -10_000f,
+                dtype: x.dtype,
+                device: x.device
+            ),
+            diagonal: 1
+        )
+        .slice(0, 0, sequenceLength, 1)
+        .slice(1, 0, sequenceLength, 1)
+        .unsqueeze(0)
+        .unsqueeze(0);
+
+    var scores = torch.matmul(query, key.transpose(2, 3)) * _scale;
+    var weights = torch.softmax(scores + causalMask, dim: -1);
+    var context = torch.matmul(weights, value)
+        .permute(0, 2, 1, 3)
+        .contiguous()
+        .view([batchSize, sequenceLength, _attentionDimensions]);
+
+    return _projection.forward(context);
+}
+```
+
+Convolutional models can also use recursively exported user-defined child modules, inline tensor arrays, `torch.cat(...)`, scalar residual scaling, nearest-neighbor interpolation helpers, and configuration-time conditional expressions such as:
+
+```csharp
+var x = _pixelUnshuffle is null
+    ? input
+    : _pixelUnshuffle.forward(input);
+
+var x2 = _activation.forward(_conv2.forward(torch.cat(new[] { input, x1 }, 1)));
+return (x5 * ResidualScale) + input;
+```
+
+It can also fold configuration-time choices when the condition can be evaluated from the already-created module instance:
+
+```csharp
+public override Tensor forward(Tensor input)
+{
+    var x = _optionalProjection == null
+        ? input
+        : _optionalProjection.forward(input);
+
+    return _head.forward(x);
+}
+```
+
+It is not intended to silently guess semantics for arbitrary runtime control flow. If a branch, loop, operator, tensor method, or helper call cannot be represented safely, the exporter throws `NotSupportedException` so that the model can be adjusted or exported manually.
 
 ## Example: Saving and Loading a safetensors Checkpoint
 
@@ -247,7 +395,7 @@ Use that provider when you are already working at the ONNX tensor level and want
 - Store weights with `SaveStateAsSafetensors(...)` when you want to separate the graph from the parameters or use `safetensors` as your main artifact format.
 - Check coverage for the specific `TorchSharp` modules you need up front. The package already covers a meaningful set of practical layers and tensor operations, but it does not aim to be a complete mirror of the entire TorchSharp API.
 - If you do not need the TorchSharp bridge and only need to read, write, or edit ONNX, the base `Onnxify` package is usually enough.
-- If your model contains complex dynamic logic, branching, or custom modules, plan for manual export refinement or adding your own `Export(...)` coverage.
+- If your model contains complex dynamic logic, runtime branching, or unsupported custom modules, prefer a manual model `Export()` method or add the missing module/operator `Export(...)` coverage instead of relying on experimental deep export alone.
 
 ## Repository
 

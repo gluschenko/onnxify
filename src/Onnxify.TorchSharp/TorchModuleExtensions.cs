@@ -1590,7 +1590,7 @@ public static class TorchModuleExtensions
     /// <param name="input">Input graph edge connected to the exported module.</param>
     /// <returns>The graph edge that carries the exported module output.</returns>
     /// <remarks>
-    /// The layer is lowered to ONNX Gemm with the TorchSharp weight exported as an initializer and transposed through Gemm attributes.
+    /// The layer is lowered to ONNX MatMul plus an optional Add so batched inputs preserve their leading dimensions.
     /// </remarks>
     /// <exception cref="NotSupportedException">Thrown when the TorchSharp module configuration cannot be represented by the current exporter.</exception>
     [TorchOp("aten::linear")]
@@ -1601,32 +1601,50 @@ public static class TorchModuleExtensions
     )
     {
         var name = graph.NextName("linear");
+        var weightShape = TorchHelper.GetShape(module.weight);
+        if (weightShape.Length != 2)
+        {
+            throw new NotSupportedException($"Linear weight must be rank-2. Got rank {weightShape.Length}.");
+        }
+
         var weight = graph.AddTensor(
-            name: $"{name}_w",
-            shape: TorchHelper.GetShape(module.weight),
-            value: TorchHelper.GetFloatData(module.weight)
+            name: $"{name}_w_t",
+            shape: [weightShape[1], weightShape[0]],
+            value: Transpose2D(
+                TorchHelper.GetFloatData(module.weight),
+                rows: checked((int)weightShape[0]),
+                columns: checked((int)weightShape[1])
+            )
         );
 
-        IOnnxGraphEdge? bias = null;
+        var output = graph.MatMul(
+            name: name,
+            options: new MatMulInputOptions
+            {
+                A = input,
+                B = weight,
+            }
+        );
+
         if (module.bias is not null)
         {
-            bias = graph.AddTensor(
+            var bias = graph.AddTensor(
                 name: $"{name}_b",
                 shape: TorchHelper.GetShape(module.bias),
                 value: TorchHelper.GetFloatData(module.bias)
             );
+
+            return graph.Add(
+                name: graph.NextName($"{name}_bias"),
+                options: new AddInputOptions
+                {
+                    A = output,
+                    B = bias,
+                }
+            );
         }
 
-        return graph.Gemm(
-            name: name,
-            options: new GemmInputOptions
-            {
-                A = input,
-                B = weight,
-                C = bias,
-                TransB = 1,
-            }
-        );
+        return output;
     }
 
     /// <summary>
@@ -3221,6 +3239,24 @@ public static class TorchModuleExtensions
         throw new NotSupportedException(
             "GroupNorm export requires either affine weights/biases or a statically known channel dimension on the input."
         );
+    }
+
+    private static float[] Transpose2D(
+        float[] input,
+        int rows,
+        int columns
+    )
+    {
+        var output = new float[input.Length];
+        for (var row = 0; row < rows; row++)
+        {
+            for (var column = 0; column < columns; column++)
+            {
+                output[(column * rows) + row] = input[(row * columns) + column];
+            }
+        }
+
+        return output;
     }
 
     // PyTorch LSTM gate order: [i, f, g, o]
