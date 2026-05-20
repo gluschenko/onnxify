@@ -546,7 +546,7 @@ internal class DeepExportSample : Sample
                 ["german"] = 2,
             };
 
-            var model = new LSTMLIDModel(
+            using var model = new LSTMLIDModel(
                 charToIdx,
                 langToIdx,
                 langToIdx.Count,
@@ -572,7 +572,7 @@ internal class DeepExportSample : Sample
         {
             var outputDirectory = Utils.EnsureAssetsDirectory();
             var outputPath = Path.Combine(outputDirectory, "gpt-deep-export.onnx");
-            var model = new MiniGpt2LikeModel();
+            using var model = new MiniGpt2LikeModel();
             model.eval();
 
             var onnxModel = model.ExportOnnxModel(
@@ -591,7 +591,7 @@ internal class DeepExportSample : Sample
         {
             var outputDirectory = Utils.EnsureAssetsDirectory();
             var outputPath = Path.Combine(outputDirectory, "alexnet-deep-export.onnx");
-            var model = new AlexNet("alexnet", 10);
+            using var model = new AlexNet("alexnet", 10);
             model.eval();
 
             var onnxModel = model.ExportOnnxModel(
@@ -610,7 +610,7 @@ internal class DeepExportSample : Sample
         {
             var outputDirectory = Utils.EnsureAssetsDirectory();
             var outputPath = Path.Combine(outputDirectory, "mobilenet-deep-export.onnx");
-            var model = new MobileNetV1LikeClassifier("mobilenet", 10);
+            using var model = new MobileNetV1LikeClassifier("mobilenet", 10);
             model.eval();
 
             var onnxModel = model.ExportOnnxModel(
@@ -629,7 +629,7 @@ internal class DeepExportSample : Sample
         {
             var outputDirectory = Utils.EnsureAssetsDirectory();
             var outputPath = Path.Combine(outputDirectory, "realesrgan-deep-export.onnx");
-            var model = new RealEsrganRrdbNet();
+            using var model = new RealEsrganRrdbNet();
             model.eval();
 
             var onnxModel = model.ExportOnnxModel(

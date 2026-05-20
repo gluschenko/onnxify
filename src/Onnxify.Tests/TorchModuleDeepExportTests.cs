@@ -292,9 +292,9 @@ public sealed class TorchModuleDeepExportTests
     }
 
     [Fact]
-    public void DeepExport_ForIfElseStatement_ThrowsUnsupportedStatement()
+    public void DeepExport_ForDynamicIfElseStatement_ThrowsUnsupportedStatement()
     {
-        using var module = new DeepExportIfElseModule(useResidual: true);
+        using var module = new DeepExportDynamicIfElseModule();
 
         var exception = Assert.Throws<NotSupportedException>(
             () => ExportDeep(
@@ -304,8 +304,7 @@ public sealed class TorchModuleDeepExportTests
             )
         );
 
-        Assert.Contains("Unsupported forward statement", exception.Message, StringComparison.Ordinal);
-        Assert.Contains("IfElseStatement", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("If statement condition must be statically resolvable", exception.Message, StringComparison.Ordinal);
     }
 
     private static OnnxModel ExportDeep(
@@ -603,19 +602,15 @@ public sealed class TorchModuleDeepExportTests
         }
     }
 
-    private sealed class DeepExportIfElseModule : TorchModule
+    private sealed class DeepExportDynamicIfElseModule : TorchModule
     {
-        private readonly bool _useResidual;
-
-        public DeepExportIfElseModule(bool useResidual)
-            : base(nameof(DeepExportIfElseModule))
-        {
-            _useResidual = useResidual;
-        }
+        public DeepExportDynamicIfElseModule()
+            : base(nameof(DeepExportDynamicIfElseModule))
+        { }
 
         public override Tensor forward(Tensor input)
         {
-            if (_useResidual)
+            if (DateTime.UtcNow.Ticks > 0)
             {
                 return input + input;
             }

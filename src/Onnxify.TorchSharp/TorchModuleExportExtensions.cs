@@ -110,9 +110,13 @@ public static class TorchModuleExportExtensions
         foreach (var statement in forward.Body.Statements)
         {
             result = ExportStatement(context, statement) ?? result;
+            if (context.HasReturned)
+            {
+                break;
+            }
         }
 
-        return result?.GetRequiredEdge(forward)
+        return (context.ReturnValue ?? result)?.GetRequiredEdge(forward)
             ?? throw new NotSupportedException(
                 $"Method '{forward.Name}' did not return a supported ONNX graph edge."
             );
@@ -160,7 +164,17 @@ public static class TorchModuleExportExtensions
             //   return _linear.forward(x);
             //   return matmul(hiddenStates, tiedWeight);
             case ReturnStatement returnStatement:
-                return ExportExpression(context, returnStatement.Expression);
+                return context.Return(ExportExpression(context, returnStatement.Expression));
+
+            // Release and platform-specific decompilation can rewrite a conditional return:
+            //   return _useAdd ? input + 1f : input * 2f;
+            // into:
+            //   if (!_useAdd) { return input * 2f; }
+            //   return input + 1f;
+            // The condition still has to be resolvable from module state; dynamic branches
+            // remain unsupported.
+            case IfElseStatement ifElseStatement:
+                return ExportIfElseStatement(context, ifElseStatement);
 
             default:
                 throw new NotSupportedException(
@@ -192,6 +206,44 @@ public static class TorchModuleExportExtensions
         foreach (var nestedStatement in GetNestedStatements(usingStatement.EmbeddedStatement))
         {
             result = ExportStatement(context, nestedStatement) ?? result;
+            if (context.HasReturned)
+            {
+                break;
+            }
+        }
+
+        return result;
+    }
+
+    private static ExportValue? ExportIfElseStatement(
+        ForwardExportContext context,
+        IfElseStatement ifElseStatement
+    )
+    {
+        if (!TryEvaluateBooleanExpression(context, ifElseStatement.Condition, out var condition))
+        {
+            throw new NotSupportedException(
+                $"If statement condition must be statically resolvable during export: {ifElseStatement.Condition}"
+            );
+        }
+
+        var selectedStatement = condition
+            ? ifElseStatement.TrueStatement
+            : ifElseStatement.FalseStatement;
+
+        if (selectedStatement.IsNull)
+        {
+            return null;
+        }
+
+        ExportValue? result = null;
+        foreach (var nestedStatement in GetNestedStatements(selectedStatement))
+        {
+            result = ExportStatement(context, nestedStatement) ?? result;
+            if (context.HasReturned)
+            {
+                break;
+            }
         }
 
         return result;
@@ -2335,6 +2387,17 @@ public static class TorchModuleExportExtensions
         public OnnxGraph Graph { get; } = graph;
 
         public Dictionary<string, ExportValue> Values { get; } = new(StringComparer.Ordinal);
+
+        public bool HasReturned { get; private set; }
+
+        public ExportValue? ReturnValue { get; private set; }
+
+        public ExportValue Return(ExportValue value)
+        {
+            HasReturned = true;
+            ReturnValue = value;
+            return value;
+        }
     }
 
     private readonly record struct ExportValue(object? Value)
