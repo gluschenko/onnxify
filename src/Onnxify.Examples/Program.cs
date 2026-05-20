@@ -520,6 +520,7 @@ internal class DeepExportSample : Sample
         B();
         C();
         D();
+        E();
 
         void A()
         {
@@ -615,6 +616,24 @@ internal class DeepExportSample : Sample
             var onnxModel = model.Export(
                 input: OnnxTensorType.Create<float>(["batch", 3, 96, 96]),
                 output: OnnxTensorType.Create<float>(["batch", 10]),
+                options: new OnnxModelCreationOptions
+                {
+                    Opset = 22,
+                }
+            );
+
+            onnxModel.Save(outputPath, true);
+        }
+
+        void E()
+        {
+            var outputDirectory = Utils.EnsureAssetsDirectory();
+            var outputPath = Path.Combine(outputDirectory, "realesrgan-deep-export.onnx");
+            var model = new RealEsrganRrdbNet();
+
+            var onnxModel = model.Export(
+                input: OnnxTensorType.Create<float>(["batch", model.InputChannels, 64, 64]),
+                output: OnnxTensorType.Create<float>(["batch", model.OutputChannels, 64 * model.Scale, 64 * model.Scale]),
                 options: new OnnxModelCreationOptions
                 {
                     Opset = 22,
