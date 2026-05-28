@@ -75,11 +75,118 @@ public sealed class OnnxModelTests
     }
 
     [Fact]
+    public async Task SaveAsync_AndFromFileAsync_RoundTripsGraphNameAndCustomOpsetImports()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            ProducerName = "async-graph-name-tests",
+            IrVersion = 9,
+            Opset = 13,
+        });
+
+        model.Graph.Name = "async_graph";
+        model.ClearOpsetImports();
+        model.SetOpsetImport("", 13);
+        model.SetOpsetImport("ai.onnx.ml", 2);
+
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+
+        try
+        {
+            await model.SaveAsync(path);
+            var loaded = await OnnxModel.FromFileAsync(path);
+
+            Assert.Equal("async_graph", loaded.Graph.Name);
+            Assert.Collection(
+                loaded.OpsetImport,
+                x =>
+                {
+                    Assert.Equal(string.Empty, x.Domain);
+                    Assert.Equal(13, x.Version);
+                },
+                x =>
+                {
+                    Assert.Equal("ai.onnx.ml", x.Domain);
+                    Assert.Equal(2, x.Version);
+                });
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public void Save_AndFromStream_RoundTripsGraphNameAndMetadata()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            ProducerName = "stream-tests",
+            IrVersion = 9,
+            Opset = 13,
+        });
+
+        model.Graph.Name = "stream_graph";
+        model.AddMetadataProps("source", "memory-stream");
+
+        using var stream = new MemoryStream();
+        model.Save(stream);
+
+        stream.Position = 0;
+        var loaded = OnnxModel.FromStream(stream);
+
+        Assert.Equal("stream_graph", loaded.Graph.Name);
+        Assert.Contains(
+            loaded.MetadataProps,
+            metadata => metadata.Key == "source" && metadata.Value == "memory-stream"
+        );
+    }
+
+    [Fact]
+    public async Task SaveAsync_AndFromStreamAsync_RoundTripsGraphNameAndMetadata()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            ProducerName = "async-stream-tests",
+            IrVersion = 9,
+            Opset = 13,
+        });
+
+        model.Graph.Name = "async_stream_graph";
+        model.AddMetadataProps("source", "async-memory-stream");
+
+        using var stream = new MemoryStream();
+        await model.SaveAsync(stream);
+
+        stream.Position = 0;
+        var loaded = await OnnxModel.FromStreamAsync(stream);
+
+        Assert.Equal("async_stream_graph", loaded.Graph.Name);
+        Assert.Contains(
+            loaded.MetadataProps,
+            metadata => metadata.Key == "source" && metadata.Value == "async-memory-stream"
+        );
+    }
+
+    [Fact]
     public void FromFile_MissingPath_ThrowsFileNotFoundException()
     {
         var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
 
         var exception = Assert.Throws<FileNotFoundException>(() => OnnxModel.FromFile(path));
+
+        Assert.Equal(path, exception.FileName);
+    }
+
+    [Fact]
+    public async Task FromFileAsync_MissingPath_ThrowsFileNotFoundException()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+
+        var exception = await Assert.ThrowsAsync<FileNotFoundException>(() => OnnxModel.FromFileAsync(path));
 
         Assert.Equal(path, exception.FileName);
     }
@@ -95,6 +202,28 @@ public sealed class OnnxModelTests
             model.Save(path);
 
             var exception = Assert.Throws<IOException>(() => model.Save(path));
+            Assert.Contains(path, exception.Message);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task SaveAsync_ExistingFileWithoutOverwrite_ThrowsIOException()
+    {
+        var model = OnnxModel.Create();
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+
+        try
+        {
+            await model.SaveAsync(path);
+
+            var exception = await Assert.ThrowsAsync<IOException>(() => model.SaveAsync(path));
             Assert.Contains(path, exception.Message);
         }
         finally
