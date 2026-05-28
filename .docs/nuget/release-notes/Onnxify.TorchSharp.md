@@ -1,6 +1,7 @@
 ## 0.1.2
 
 - Added async TorchSharp safetensors checkpoint helpers with `SaveStateAsSafetensorsAsync(...)` and `LoadStateFromSafetensorsAsync(...)`.
+- Fixed deep export of `torch.cat([left, right], dim: ...)` when C# collection expressions decompile into compiler-generated inline-array spans.
 - Added an `ExportOnnxModel(...)` overload that lets callers provide the exported input and output name prefixes.
 - Promoted `ExportOnnxModel(...)` by removing its experimental obsolete marker.
 

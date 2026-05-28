@@ -104,6 +104,8 @@ public static class TorchModuleExportExtensions
         OnnxModelCreationOptions options
     )
     {
+        ArgumentNullException.ThrowIfNullOrWhiteSpace(inputName);
+        ArgumentNullException.ThrowIfNullOrWhiteSpace(outputName);
         ArgumentNullException.ThrowIfNull(module);
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(output);
@@ -2075,6 +2077,8 @@ public static class TorchModuleExportExtensions
                 .OfType<Expression>()
                 .Select(element => ExportExpression(context, element).GetRequiredEdge(element))
                 .ToArray(),
+            InvocationExpression invocation
+                when TryResolveInlineArrayGraphEdges(context, invocation, out var values) => values,
             _ => throw new NotSupportedException($"Expression '{expression}' did not produce a tensor list."),
         };
 
@@ -2101,29 +2105,7 @@ public static class TorchModuleExportExtensions
         out IReadOnlyList<long> values
     )
     {
-        var text = invocation.ToString();
-        if (!text.Contains("InlineArrayAsReadOnlySpan", StringComparison.Ordinal))
-        {
-            values = [];
-            return false;
-        }
-
-        var match = Regex.Match(
-            text,
-            @"in\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)\s*,\s*(?<length>\d+)",
-            RegexOptions.CultureInvariant
-        );
-        // The decompiler text contains the generated buffer name and length:
-        //   InlineArrayAsReadOnlySpan(in buffer, 5)
-        if (!match.Success)
-        {
-            values = [];
-            return false;
-        }
-
-        var name = match.Groups["name"].Value;
-        if (!context.Values.TryGetValue(name, out var builderValue)
-            || builderValue.Value is not InlineArrayBuilder builder)
+        if (!TryResolveInlineArrayBuilder(context, invocation, out var name, out var builder))
         {
             values = [];
             return false;
@@ -2135,6 +2117,69 @@ public static class TorchModuleExportExtensions
                 : ConvertExportValueToLong(item.Value, invocation))
             .ToArray();
         return true;
+    }
+
+    private static bool TryResolveInlineArrayGraphEdges(
+        ForwardExportContext context,
+        InvocationExpression invocation,
+        out IReadOnlyList<IOnnxGraphEdge> values
+    )
+    {
+        if (!TryResolveInlineArrayBuilder(context, invocation, out var name, out var builder))
+        {
+            values = [];
+            return false;
+        }
+
+        values = builder.Values
+            .Select(item => item is null
+                ? throw new NotSupportedException($"Inline array '{name}' has unassigned elements.")
+                : item.Value.GetRequiredEdge(invocation))
+            .ToArray();
+        return true;
+    }
+
+    private static bool TryResolveInlineArrayBuilder(
+        ForwardExportContext context,
+        InvocationExpression invocation,
+        out string name,
+        out InlineArrayBuilder builder
+    )
+    {
+        var text = invocation.ToString();
+        if (!text.Contains("InlineArrayAsReadOnlySpan", StringComparison.Ordinal)
+            && !text.Contains("InlineArrayAsSpan", StringComparison.Ordinal))
+        {
+            name = string.Empty;
+            builder = null!;
+            return false;
+        }
+
+        var match = Regex.Match(
+            text,
+            @"(?:in|ref)\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)\s*,\s*(?<length>\d+)",
+            RegexOptions.CultureInvariant
+        );
+        // The decompiler text contains the generated buffer name and length:
+        //   InlineArrayAsReadOnlySpan(in buffer, 5)
+        //   InlineArrayAsSpan(ref buffer, 5)
+        if (!match.Success)
+        {
+            name = string.Empty;
+            builder = null!;
+            return false;
+        }
+
+        name = match.Groups["name"].Value;
+        if (context.Values.TryGetValue(name, out var builderValue)
+            && builderValue.Value is InlineArrayBuilder inlineArrayBuilder)
+        {
+            builder = inlineArrayBuilder;
+            return true;
+        }
+
+        builder = null!;
+        return false;
     }
 
     private static long ResolveLongArgument(

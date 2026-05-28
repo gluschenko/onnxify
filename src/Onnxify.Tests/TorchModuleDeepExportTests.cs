@@ -235,6 +235,49 @@ public sealed class TorchModuleDeepExportTests
         );
     }
 
+    [Fact]
+    public void DeepExport_ForCatCollectionExpression_ResolvesInlineArrayTensorList()
+    {
+        using var module = new DeepExportCatCollectionExpressionModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>(["batch", 2, 3]),
+            output: OnnxTensorType.Create<float>(["batch", 4, 3])
+        );
+
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Concat");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Add");
+    }
+
+    [Fact]
+    public void DeepExport_ForViewCollectionExpression_ResolvesInlineArrayShape()
+    {
+        using var module = new DeepExportViewCollectionExpressionModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([6]),
+            output: OnnxTensorType.Create<float>([2, 3])
+        );
+
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Reshape");
+    }
+
+    [Fact]
+    public void DeepExport_ForPermuteCollectionExpression_ResolvesInlineArrayPermutation()
+    {
+        using var module = new DeepExportPermuteCollectionExpressionModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 3, 4]),
+            output: OnnxTensorType.Create<float>([2, 4, 3])
+        );
+
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Transpose");
+    }
+
     [Theory]
     [InlineData(false, 1)]
     [InlineData(true, 2)]
@@ -537,6 +580,44 @@ public sealed class TorchModuleDeepExportTests
             var divisor = (_base + 5f) / 3f;
 
             return ((input + offset) - subtract) / divisor;
+        }
+    }
+
+    private sealed class DeepExportCatCollectionExpressionModule : TorchModule
+    {
+        public DeepExportCatCollectionExpressionModule()
+            : base(nameof(DeepExportCatCollectionExpressionModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            var shifted = input + 1f;
+
+            return cat([input, shifted], dim: 1);
+        }
+    }
+
+    private sealed class DeepExportViewCollectionExpressionModule : TorchModule
+    {
+        public DeepExportViewCollectionExpressionModule()
+            : base(nameof(DeepExportViewCollectionExpressionModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            return input.view([2, 3]);
+        }
+    }
+
+    private sealed class DeepExportPermuteCollectionExpressionModule : TorchModule
+    {
+        public DeepExportPermuteCollectionExpressionModule()
+            : base(nameof(DeepExportPermuteCollectionExpressionModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            return input.permute([0, 2, 1]);
         }
     }
 
