@@ -64,6 +64,7 @@ Use it only when the user explicitly asks to validate, compare, audit, or check 
 ## Ownership Rules
 
 - Put library semantics in `src/Onnxify` and `src/Onnxify.TorchSharp`, not in docs-only or sample-only projects.
+- Keep core ONNX model I/O centered in `src/Onnxify/OnnxModel.cs`. File APIs should remain consistent with the stream APIs: `FromFile(...)` / `FromFileAsync(...)` configure path-relative external data, while `FromStream(...)` / `FromStreamAsync(...)` rely on caller-provided `OnnxModelBaseOptions.DataLocation` when external tensor data needs a base path.
 - Put repository-facing generation logic in `src/Onnxify.AgentSkillGenerator`, `src/Onnxify.ProjectGenerator`, or `src/Onnxify.SourceGenerator`, depending on ownership.
 - Put durable automated checks in `src/Onnxify.Tests`.
 - Put walkthroughs, install notes, and contributor-facing explanations in `README.md` or skill docs under `.agents/skills`.
@@ -173,5 +174,6 @@ private const long InlineTensorElementThreshold = 20L;
 - If package behavior or package-facing metadata changed, did you update the relevant `.docs/nuget` README and `.docs/nuget/release-notes` files?
 - If generated output changed, did you update generator code and the closest generator tests?
 - If solution or project wiring changed, did you inspect both `src/Onnxify.slnx` and the affected `*.csproj` files?
+- If model I/O changed, did you cover both file and stream surfaces where relevant, including async overloads and `DataLocation` behavior for external data?
 - If the task changed only playground or sample code, did you avoid implying that production behavior changed too?
 - If the task introduced a new internal workflow, did you document it in the most discoverable place?

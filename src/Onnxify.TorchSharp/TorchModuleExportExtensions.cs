@@ -44,7 +44,6 @@ public static class TorchModuleExportExtensions
     /// deep-exported when no concrete overload exists. Unsupported control flow or expressions
     /// fail with <see cref="NotSupportedException"/> rather than emitting a lossy graph.
     /// </remarks>
-    [Obsolete("This is an experimental feature")]
     public static OnnxModel ExportOnnxModel(
         this TorchModule module,
         OnnxTensorType input,
@@ -52,6 +51,61 @@ public static class TorchModuleExportExtensions
         OnnxModelCreationOptions options
     )
     {
+        return ExportOnnxModel(
+            module: module,
+            inputName: "input",
+            outputName: "output",
+            input: input,
+            output: output,
+            options: options
+        );
+    }
+
+    /// <summary>
+    /// Exports a single-input TorchSharp module to an ONNX model by analyzing the module's
+    /// decompiled <c>forward</c> method and synthesizing an equivalent inference graph.
+    /// </summary>
+    /// <param name="module">
+    /// The TorchSharp <see cref="TorchModule"/> instance whose <c>forward(Tensor)</c> method
+    /// should be exported.
+    /// </param>
+    /// <param name="input">
+    /// The ONNX type metadata for the exported model input. The exporter uses this metadata
+    /// as the graph input contract; it does not infer input shape or dtype by running the module.
+    /// </param>
+    /// <param name="output">
+    /// The ONNX type metadata for the exported model output.
+    /// </param>
+    /// <param name="options">
+    /// Model creation options, including the target opset and producer metadata.
+    /// </param>
+    /// <returns>
+    /// A new <see cref="OnnxModel"/> whose graph contains the declared input, declared output,
+    /// and the ONNX nodes produced from the supported tensor operations in <c>forward</c>.
+    /// </returns>
+    /// <remarks>
+    /// The exporter decompiles <c>forward</c> with ICSharpCode.Decompiler, walks the resulting
+    /// C# syntax tree as a small data-flow program, and maps local variables, assignments,
+    /// returns, tensor method calls, static <c>torch</c> calls, scalar arithmetic, and supported
+    /// module <c>forward</c> calls into ONNX graph edges and initializers.
+    /// </remarks>
+    /// <remarks>
+    /// Calls to known TorchSharp modules are delegated to the ordinary
+    /// <c>TorchModuleExtensions.Export</c> overloads. User-defined child modules are recursively
+    /// deep-exported when no concrete overload exists. Unsupported control flow or expressions
+    /// fail with <see cref="NotSupportedException"/> rather than emitting a lossy graph.
+    /// </remarks>
+    public static OnnxModel ExportOnnxModel(
+        this TorchModule module,
+        string inputName,
+        string outputName,
+        OnnxTensorType input,
+        OnnxTensorType output,
+        OnnxModelCreationOptions options
+    )
+    {
+        ArgumentNullException.ThrowIfNullOrWhiteSpace(inputName);
+        ArgumentNullException.ThrowIfNullOrWhiteSpace(outputName);
         ArgumentNullException.ThrowIfNull(module);
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(output);
@@ -60,18 +114,18 @@ public static class TorchModuleExportExtensions
         var onnxModel = OnnxModel.Create(options);
         var graph = onnxModel.Graph;
 
-        var inputName = graph.NextName("input");
-        var outputName = graph.NextName("output");
+        var graphInputName = graph.NextName(inputName);
+        var graphOutputName = graph.NextName(outputName);
 
-        var inputEdge = graph.AddInput(inputName, input);
-        graph.AddOutput(outputName, output);
+        var inputEdge = graph.AddInput(graphInputName, input);
+        graph.AddOutput(graphOutputName, output);
 
         var forward = DecompileForward(module);
 
         // Interpret the decompiled forward body as a small data-flow program.
         // Only tensor-producing inference patterns are lowered; unsupported C# fails loudly.
         var result = ExportForwardBody(module, graph, inputEdge, forward);
-        var outputEdge = graph.AddEdge(outputName);
+        var outputEdge = graph.AddEdge(graphOutputName);
 
         graph.Identity(
             name: graph.NextName("output_identity"),
@@ -2023,6 +2077,8 @@ public static class TorchModuleExportExtensions
                 .OfType<Expression>()
                 .Select(element => ExportExpression(context, element).GetRequiredEdge(element))
                 .ToArray(),
+            InvocationExpression invocation
+                when TryResolveInlineArrayGraphEdges(context, invocation, out var values) => values,
             _ => throw new NotSupportedException($"Expression '{expression}' did not produce a tensor list."),
         };
 
@@ -2049,29 +2105,7 @@ public static class TorchModuleExportExtensions
         out IReadOnlyList<long> values
     )
     {
-        var text = invocation.ToString();
-        if (!text.Contains("InlineArrayAsReadOnlySpan", StringComparison.Ordinal))
-        {
-            values = [];
-            return false;
-        }
-
-        var match = Regex.Match(
-            text,
-            @"in\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)\s*,\s*(?<length>\d+)",
-            RegexOptions.CultureInvariant
-        );
-        // The decompiler text contains the generated buffer name and length:
-        //   InlineArrayAsReadOnlySpan(in buffer, 5)
-        if (!match.Success)
-        {
-            values = [];
-            return false;
-        }
-
-        var name = match.Groups["name"].Value;
-        if (!context.Values.TryGetValue(name, out var builderValue)
-            || builderValue.Value is not InlineArrayBuilder builder)
+        if (!TryResolveInlineArrayBuilder(context, invocation, out var name, out var builder))
         {
             values = [];
             return false;
@@ -2083,6 +2117,69 @@ public static class TorchModuleExportExtensions
                 : ConvertExportValueToLong(item.Value, invocation))
             .ToArray();
         return true;
+    }
+
+    private static bool TryResolveInlineArrayGraphEdges(
+        ForwardExportContext context,
+        InvocationExpression invocation,
+        out IReadOnlyList<IOnnxGraphEdge> values
+    )
+    {
+        if (!TryResolveInlineArrayBuilder(context, invocation, out var name, out var builder))
+        {
+            values = [];
+            return false;
+        }
+
+        values = builder.Values
+            .Select(item => item is null
+                ? throw new NotSupportedException($"Inline array '{name}' has unassigned elements.")
+                : item.Value.GetRequiredEdge(invocation))
+            .ToArray();
+        return true;
+    }
+
+    private static bool TryResolveInlineArrayBuilder(
+        ForwardExportContext context,
+        InvocationExpression invocation,
+        out string name,
+        out InlineArrayBuilder builder
+    )
+    {
+        var text = invocation.ToString();
+        if (!text.Contains("InlineArrayAsReadOnlySpan", StringComparison.Ordinal)
+            && !text.Contains("InlineArrayAsSpan", StringComparison.Ordinal))
+        {
+            name = string.Empty;
+            builder = null!;
+            return false;
+        }
+
+        var match = Regex.Match(
+            text,
+            @"(?:in|ref)\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)\s*,\s*(?<length>\d+)",
+            RegexOptions.CultureInvariant
+        );
+        // The decompiler text contains the generated buffer name and length:
+        //   InlineArrayAsReadOnlySpan(in buffer, 5)
+        //   InlineArrayAsSpan(ref buffer, 5)
+        if (!match.Success)
+        {
+            name = string.Empty;
+            builder = null!;
+            return false;
+        }
+
+        name = match.Groups["name"].Value;
+        if (context.Values.TryGetValue(name, out var builderValue)
+            && builderValue.Value is InlineArrayBuilder inlineArrayBuilder)
+        {
+            builder = inlineArrayBuilder;
+            return true;
+        }
+
+        builder = null!;
+        return false;
     }
 
     private static long ResolveLongArgument(

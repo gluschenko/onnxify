@@ -184,8 +184,81 @@ public class OnnxModel
         options ??= new OnnxModelBaseOptions();
         options.DataLocation ??= Path.GetDirectoryName(path);
 
-        var data = File.ReadAllBytes(path);
-        var model = ModelProto.Parser.ParseFrom(data);
+        using var stream = File.OpenRead(path);
+        return FromStream(stream, options);
+    }
+
+    /// <summary>
+    /// Loads an ONNX model from a stream.
+    /// </summary>
+    /// <param name="stream">Readable stream containing a serialized ONNX model.</param>
+    /// <param name="options">Loading options for external data and operator node type resolution.</param>
+    /// <returns>A mutable wrapper around the loaded model.</returns>
+    public static OnnxModel FromStream(Stream stream, OnnxModelBaseOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+
+        options ??= new OnnxModelBaseOptions();
+
+        var model = ModelProto.Parser.ParseFrom(stream);
+        return new OnnxModel(model, options);
+    }
+
+    /// <summary>
+    /// Asynchronously loads an ONNX model from disk and configures relative external tensor data to resolve from the model file's directory.
+    /// </summary>
+    /// <param name="path">Path to a serialized <c>.onnx</c> file.</param>
+    /// <param name="options">Loading options for external data and operator node type resolution.</param>
+    /// <param name="cancellationToken">Token used to cancel the file read before parsing.</param>
+    /// <returns>A mutable wrapper around the loaded model.</returns>
+    /// <exception cref="FileNotFoundException">Thrown when <paramref name="path"/> does not exist.</exception>
+    public static async Task<OnnxModel> FromFileAsync(
+        string path,
+        OnnxModelBaseOptions? options = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (!File.Exists(path))
+        {
+            throw new FileNotFoundException("File not found", path);
+        }
+
+        options ??= new OnnxModelBaseOptions();
+        options.DataLocation ??= Path.GetDirectoryName(path);
+
+        await using var stream = new FileStream(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            bufferSize: 81920,
+            useAsync: true
+        );
+
+        return await FromStreamAsync(stream, options, cancellationToken);
+    }
+
+    /// <summary>
+    /// Asynchronously loads an ONNX model from a stream.
+    /// </summary>
+    /// <param name="stream">Readable stream containing a serialized ONNX model.</param>
+    /// <param name="options">Loading options for external data and operator node type resolution.</param>
+    /// <param name="cancellationToken">Token used to cancel the stream read before parsing.</param>
+    /// <returns>A mutable wrapper around the loaded model.</returns>
+    public static async Task<OnnxModel> FromStreamAsync(
+        Stream stream,
+        OnnxModelBaseOptions? options = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+
+        options ??= new OnnxModelBaseOptions();
+
+        using var memoryStream = new MemoryStream();
+        await stream.CopyToAsync(memoryStream, cancellationToken);
+
+        var model = ModelProto.Parser.ParseFrom(memoryStream.ToArray());
         return new OnnxModel(model, options);
     }
 
@@ -204,8 +277,65 @@ public class OnnxModel
 
         using var fileStream = File.Create(path);
 
+        Save(fileStream);
+    }
+
+    /// <summary>
+    /// Serializes the current model state to a stream.
+    /// </summary>
+    /// <param name="stream">Writable stream that receives the serialized model.</param>
+    public void Save(Stream stream)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+
         var newModel = ToProto();
-        newModel.WriteTo(fileStream);
+        newModel.WriteTo(stream);
+    }
+
+    /// <summary>
+    /// Asynchronously serializes the current model state to an ONNX file.
+    /// </summary>
+    /// <param name="path">Destination path for the serialized model.</param>
+    /// <param name="overwrite">Set to <see langword="true"/> to replace an existing file.</param>
+    /// <param name="cancellationToken">Token used to cancel the file write.</param>
+    /// <exception cref="IOException">Thrown when the destination exists and <paramref name="overwrite"/> is <see langword="false"/>.</exception>
+    public async Task SaveAsync(
+        string path,
+        bool overwrite = false,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (File.Exists(path) && !overwrite)
+        {
+            throw new IOException($"File already exists at '{path}'");
+        }
+
+        await using var fileStream = new FileStream(
+            path,
+            FileMode.Create,
+            FileAccess.Write,
+            FileShare.None,
+            bufferSize: 81920,
+            useAsync: true
+        );
+
+        await SaveAsync(fileStream, cancellationToken);
+    }
+
+    /// <summary>
+    /// Asynchronously serializes the current model state to a stream.
+    /// </summary>
+    /// <param name="stream">Writable stream that receives the serialized model.</param>
+    /// <param name="cancellationToken">Token used to cancel the stream write.</param>
+    public async Task SaveAsync(
+        Stream stream,
+        CancellationToken cancellationToken = default
+    )
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+
+        var newModel = ToProto();
+        await stream.WriteAsync(newModel.ToByteArray(), cancellationToken);
     }
 
     internal ModelProto ToProto()

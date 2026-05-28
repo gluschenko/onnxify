@@ -6,6 +6,8 @@ Machine learning workflows are often difficult not because models are impossible
 
 The idea behind this repository is simple: models should be easier to work with, easier to reason about, and easier to integrate into real development workflows. If ONNX is meant to be a common language for models, then the tools around it should help people move faster, make smaller changes safely, and build their own workflows without unnecessary friction. That is the direction Onnxify is trying to push.
 
+The core `Onnxify` package can load and save models from files or streams with both synchronous and asynchronous APIs: `OnnxModel.FromFile(...)`, `FromFileAsync(...)`, `FromStream(...)`, `FromStreamAsync(...)`, `model.Save(...)`, and `model.SaveAsync(...)`.
+
 [![GitHub CI](https://github.com/gluschenko/onnxify/actions/workflows/github-ci.yml/badge.svg)](https://github.com/gluschenko/onnxify/actions/workflows/github-ci.yml)
 
 ## NuGet Packages
@@ -156,7 +158,7 @@ Restart Codex after installation so it picks up the new or refreshed skill files
 - [x] OnnxGraph rework
 - [x] SourceGenerator: operator type annotations
 - [ ] SourceGenerator: fully-typed operator Input/Output fields (OneOf?)
-- [ ] Async I/O ops
+- [x] Async I/O ops
 - [ ] Graph edges in a single collection (or in two for placeholders)
 - [ ] Graph manipulations: add nodes, remove nodes, replace nodes
 - [ ] Graph cyclicity validation

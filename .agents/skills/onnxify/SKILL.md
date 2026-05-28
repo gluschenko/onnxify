@@ -66,6 +66,8 @@ Use this section for the packages and tools that the repo itself exports outward
 ## 1. Loading And Inspecting Models
 
 - Start with `OnnxModel.FromFile(path)` for existing models.
+- Use `await OnnxModel.FromFileAsync(path, cancellationToken: ...)` when file I/O should not block the caller.
+- Use `OnnxModel.FromStream(stream)` or `await OnnxModel.FromStreamAsync(stream, cancellationToken: ...)` when the model already comes from memory, a network response, embedded resources, or another stream source. Set `OnnxModelBaseOptions.DataLocation` when relative external tensor data still needs a filesystem base path.
 - Inspect through `model.Graph`, then walk `Inputs`, `Outputs`, `Initializers`, `Placeholders`, and `Nodes`.
 - Prefer repository terminology: graph values may be inputs, outputs, placeholders, initializers, or loose edges.
 - If you only need to inspect structure, avoid rewriting the model unless the task requires it.
@@ -103,6 +105,8 @@ Use this section for the packages and tools that the repo itself exports outward
 ## 3. Serialization And Round Trips
 
 - Save models with `model.Save(path, overwrite: ...)`.
+- In async workflows, save with `await model.SaveAsync(path, overwrite: ..., cancellationToken: ...)`.
+- For non-file destinations, use `model.Save(stream)` or `await model.SaveAsync(stream, cancellationToken: ...)`.
 - For any change that affects protobuf conversion, graph composition, or tensor/value metadata, add or update a round-trip test.
 - Verify both structure and metadata after reload: producer info, IR/opset, graph members, attributes, tensor values, and node connections.
 - Preserve `DataLocation` and path-sensitive behavior when touching tensor loading or external data logic.
