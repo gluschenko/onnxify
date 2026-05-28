@@ -4,11 +4,35 @@ using Onnxify.TorchSharp;
 using TorchSharp;
 using Xunit;
 using static TorchSharp.torch;
+using TorchModule = TorchSharp.torch.nn.Module<TorchSharp.torch.Tensor, TorchSharp.torch.Tensor>;
 
 namespace Onnxify.Tests;
 
 public sealed class TorchModuleSafetensorsExtensionsTests
 {
+    [Fact]
+    public async Task SaveAndLoadStateAsSafetensorsAsync_RoundTripsModuleState()
+    {
+        using var source = torch.nn.Linear(2, 3);
+        using var target = torch.nn.Linear(2, 3);
+
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.safetensors");
+        try
+        {
+            await source.SaveStateAsSafetensorsAsync(path);
+            await target.LoadStateFromSafetensorsAsync(path);
+
+            AssertStateEqual(source, target);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
     [Theory]
     [InlineData(ScalarType.Byte)]
     [InlineData(ScalarType.Int8)]
@@ -74,5 +98,28 @@ public sealed class TorchModuleSafetensorsExtensionsTests
             ScalarType.BFloat16 => torch.tensor(new float[] { 1.5f, -2.25f, 0.5f, 4.5f }, new long[] { 2, 2 }, dtype: dtype),
             _ => throw new ArgumentOutOfRangeException(nameof(dtype), dtype, null),
         };
+    }
+
+    private static void AssertStateEqual(TorchModule expected, TorchModule actual)
+    {
+        var expectedState = expected.state_dict()
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+        var actualState = actual.state_dict()
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+
+        Assert.Equal(
+            expectedState.Keys.OrderBy(x => x, StringComparer.Ordinal),
+            actualState.Keys.OrderBy(x => x, StringComparer.Ordinal)
+        );
+
+        foreach (var name in expectedState.Keys)
+        {
+            var expectedView = TorchModuleSafetensorsExtensions.CreateTensorView(expectedState[name]);
+            var actualView = TorchModuleSafetensorsExtensions.CreateTensorView(actualState[name]);
+
+            Assert.Equal(expectedView.DataType, actualView.DataType);
+            Assert.Equal(expectedView.Shape, actualView.Shape);
+            Assert.Equal(expectedView.Data.ToArray(), actualView.Data.ToArray());
+        }
     }
 }

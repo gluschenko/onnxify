@@ -227,6 +227,60 @@ public class SafetensorsTests
     }
 
     [Fact]
+    public async Task SaveToFileAsync_AndLoadFromFileAsync_RoundTripValues()
+    {
+        var safetensors = new SafeTensors();
+        safetensors.Set("scores", [1.2f, 3.4f, 5.6f]);
+        safetensors.Set("labels", ["a", "b", "c"]);
+
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.safetensors");
+        try
+        {
+            await safetensors.SaveToFileAsync(path);
+
+            var loaded = await SafeTensors.LoadFromFileAsync(path);
+
+            Assert.Equal([1.2f, 3.4f, 5.6f], loaded.Get<float>("scores"));
+            Assert.Equal(["a", "b", "c"], loaded.Get<string>("labels"));
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task SerializeToFileAsync_RoundTripsTensorViews()
+    {
+        var data = FloatsToBytes(0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f);
+        var metadata = new Dictionary<string, TensorView>
+        {
+            ["attn.0"] = new(DataType.F32, [1, 2, 3], data),
+        };
+
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.safetensors");
+        try
+        {
+            await SafeTensors.SerializeToFileAsync(metadata, null, path);
+
+            var loaded = await SafeTensors.LoadFromFileAsync(path);
+
+            Assert.Equal(["attn.0"], loaded.Names());
+            Assert.Equal(data, loaded.Tensor("attn.0").Data.ToArray());
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
     public void Slice_FromTensorRsExamples_MatchesUpstreamOutput()
     {
         var data = FloatsToBytes(0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f);

@@ -30,41 +30,43 @@ public static class TorchModuleSafetensorsExtensions
         ArgumentNullException.ThrowIfNull(module);
         ArgumentNullException.ThrowIfNull(path);
 
-        var directory = Path.GetDirectoryName(path);
-        if (!string.IsNullOrWhiteSpace(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        var state = EnumerateStateTensors(module)
-            .Select(entry => new KeyValuePair<string, TensorView>(entry.Name, CreateTensorView(entry.Tensor)))
-            .ToArray();
-
-        if (state.Length == 0)
-        {
-            throw new InvalidOperationException(
-                $"No state tensors were discovered for '{module.GetType().FullName}'. " +
-                "This usually means TorchSharp state_dict() did not expose any serializable state.");
-        }
-
-        var mergedMetadata = new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["format"] = "pt",
-            ["module"] = module.GetType().Name,
-        };
-
-        if (metadata is not null)
-        {
-            foreach (var entry in metadata)
-            {
-                mergedMetadata[entry.Key] = entry.Value;
-            }
-        }
+        EnsureDirectoryExists(path);
+        var (state, mergedMetadata) = PrepareStateForSerialization(module, metadata);
 
         global::Onnxify.Safetensors.SafeTensors.SerializeToFile(
             data: state,
             metadata: mergedMetadata,
             path: path
+        );
+    }
+
+    /// <summary>
+    /// Asynchronously saves all serializable tensors from a TorchSharp module state dictionary to a safetensors file.
+    /// </summary>
+    /// <param name="module">Module whose <c>state_dict()</c> should be exported.</param>
+    /// <param name="path">Destination safetensors path.</param>
+    /// <param name="metadata">Optional metadata entries to merge with the default format and module metadata.</param>
+    /// <param name="cancellationToken">A token that can cancel the asynchronous file writes.</param>
+    /// <exception cref="InvalidOperationException">Thrown when the module exposes no serializable state tensors.</exception>
+    /// <exception cref="NotSupportedException">Thrown when a state tensor uses a Torch dtype that cannot be represented by the current safetensors mapping.</exception>
+    public static async Task SaveStateAsSafetensorsAsync(
+        this TorchModule module,
+        string path,
+        IReadOnlyDictionary<string, string>? metadata = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        ArgumentNullException.ThrowIfNull(module);
+        ArgumentNullException.ThrowIfNull(path);
+
+        EnsureDirectoryExists(path);
+        var (state, mergedMetadata) = PrepareStateForSerialization(module, metadata);
+
+        await global::Onnxify.Safetensors.SafeTensors.SerializeToFileAsync(
+            data: state,
+            metadata: mergedMetadata,
+            path: path,
+            cancellationToken: cancellationToken
         );
     }
 
@@ -85,8 +87,43 @@ public static class TorchModuleSafetensorsExtensions
         ArgumentNullException.ThrowIfNull(module);
         ArgumentNullException.ThrowIfNull(path);
 
-        var raw = File.ReadAllBytes(path);
-        var safetensors = global::Onnxify.Safetensors.SafeTensors.Deserialize(raw);
+        var safetensors = global::Onnxify.Safetensors.SafeTensors.Deserialize(File.ReadAllBytes(path));
+        LoadState(module, safetensors, strict);
+    }
+
+    /// <summary>
+    /// Asynchronously loads tensors from a safetensors file into matching entries of a TorchSharp module state dictionary.
+    /// </summary>
+    /// <param name="module">Module whose existing state tensors should receive the loaded values.</param>
+    /// <param name="path">Source safetensors path.</param>
+    /// <param name="strict">When <see langword="true"/>, fail on extra file tensors or missing module tensors.</param>
+    /// <param name="cancellationToken">A token that can cancel the asynchronous file read.</param>
+    /// <exception cref="InvalidOperationException">Thrown when strict matching fails or a tensor shape or dtype does not match the target state tensor.</exception>
+    /// <exception cref="NotSupportedException">Thrown when a target tensor dtype cannot be loaded by the current mapping.</exception>
+    public static async Task LoadStateFromSafetensorsAsync(
+        this TorchModule module,
+        string path,
+        bool strict = true,
+        CancellationToken cancellationToken = default
+    )
+    {
+        ArgumentNullException.ThrowIfNull(module);
+        ArgumentNullException.ThrowIfNull(path);
+
+        var safetensors = await global::Onnxify.Safetensors.SafeTensors.LoadFromFileAsync(
+            path,
+            cancellationToken
+        );
+
+        LoadState(module, safetensors, strict);
+    }
+
+    private static void LoadState(
+        TorchModule module,
+        global::Onnxify.Safetensors.SafeTensors safetensors,
+        bool strict
+    )
+    {
         var stateByName = EnumerateStateTensors(module)
             .ToDictionary(x => x.Name, x => x.Tensor, StringComparer.Ordinal);
 
@@ -115,6 +152,51 @@ public static class TorchModuleSafetensorsExtensions
             throw new InvalidOperationException(
                 $"Missing tensors in safetensors file: {string.Join(", ", stateByName.Keys.OrderBy(x => x, StringComparer.Ordinal))}"
             );
+        }
+    }
+
+    private static (
+        KeyValuePair<string, TensorView>[] State,
+        Dictionary<string, string> Metadata
+    ) PrepareStateForSerialization(
+        TorchModule module,
+        IReadOnlyDictionary<string, string>? metadata
+    )
+    {
+        var state = EnumerateStateTensors(module)
+            .Select(entry => new KeyValuePair<string, TensorView>(entry.Name, CreateTensorView(entry.Tensor)))
+            .ToArray();
+
+        if (state.Length == 0)
+        {
+            throw new InvalidOperationException(
+                $"No state tensors were discovered for '{module.GetType().FullName}'. " +
+                "This usually means TorchSharp state_dict() did not expose any serializable state.");
+        }
+
+        var mergedMetadata = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["format"] = "pt",
+            ["module"] = module.GetType().Name,
+        };
+
+        if (metadata is not null)
+        {
+            foreach (var entry in metadata)
+            {
+                mergedMetadata[entry.Key] = entry.Value;
+            }
+        }
+
+        return (state, mergedMetadata);
+    }
+
+    private static void EnsureDirectoryExists(string path)
+    {
+        var directory = Path.GetDirectoryName(path);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
         }
     }
 

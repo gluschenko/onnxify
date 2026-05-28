@@ -16,7 +16,7 @@ This reference focuses on two layers:
 - `src/Onnxify.Safetensors/TensorView.cs`
   - validated tensor payload view with `DataType`, `Shape`, `Data`, and `Slice(...)`
 - `src/Onnxify.TorchSharp/TorchModuleSafetensorsExtensions.cs`
-  - `SaveStateAsSafetensors(...)` and `LoadStateFromSafetensors(...)` for TorchSharp modules
+  - `SaveStateAsSafetensors(...)`, `LoadStateFromSafetensors(...)`, and async variants for TorchSharp modules
 - `src/Onnxify.ConsoleTest/Program.cs`
   - compact low-level safetensors round-trip example
 - `src/Onnxify.Examples/Program.cs`
@@ -195,6 +195,13 @@ What `LoadStateFromSafetensors(...)` does for you:
 - checks data type compatibility
 - copies data into the target TorchSharp tensors
 
+Use `SaveStateAsSafetensorsAsync(...)` and `LoadStateFromSafetensorsAsync(...)` when the caller should await file I/O:
+
+```csharp
+await model.SaveStateAsSafetensorsAsync(weightOutputPath);
+await model.LoadStateFromSafetensorsAsync(weightOutputPath);
+```
+
 Use `strict: false` only when the task explicitly wants a partial or forward-compatible load. Otherwise prefer the default strict mode so missing or unexpected weights fail clearly.
 
 ## Example 5: Work With Raw Tensor Payloads
@@ -233,8 +240,8 @@ This means you should usually trust `SafeTensors.Deserialize(...)` as the first 
 
 - Need to create a safetensors archive from scratch: start with `SafeTensors.Serialize(...)` or `SafeTensors.SerializeToFile(...)`.
 - Need to inspect tensor names, shapes, or metadata in a `.safetensors` file: start with `SafeTensors.Deserialize(...)`.
-- Need to save TorchSharp model weights: start with `TorchModuleSafetensorsExtensions.SaveStateAsSafetensors(...)`.
-- Need to restore TorchSharp model weights: start with `TorchModuleSafetensorsExtensions.LoadStateFromSafetensors(...)`.
+- Need to save TorchSharp model weights: start with `TorchModuleSafetensorsExtensions.SaveStateAsSafetensors(...)`, or `SaveStateAsSafetensorsAsync(...)` for async file I/O.
+- Need to restore TorchSharp model weights: start with `TorchModuleSafetensorsExtensions.LoadStateFromSafetensors(...)`, or `LoadStateFromSafetensorsAsync(...)` for async file I/O.
 - Need examples that actually run in this repo: inspect `src/Onnxify.ConsoleTest/Program.cs` and `src/Onnxify.Examples/Program.cs`.
 - Need terminal-only inspection instead of C# code: read `references/cli.md`.
 

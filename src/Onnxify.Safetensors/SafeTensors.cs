@@ -168,6 +168,30 @@ public sealed class SafeTensors
     }
 
     /// <summary>
+    /// Asynchronously reads a complete safetensors file from disk and parses it into a managed archive.
+    /// </summary>
+    /// <param name="path">The source file path.</param>
+    /// <param name="cancellationToken">A token that can cancel the asynchronous file read.</param>
+    /// <returns>A validated archive view over the loaded file contents.</returns>
+    public static async Task<SafeTensors> LoadFromFileAsync(
+        string path,
+        CancellationToken cancellationToken = default
+    )
+    {
+        ArgumentNullException.ThrowIfNull(path);
+
+        try
+        {
+            var raw = await File.ReadAllBytesAsync(path, cancellationToken);
+            return Deserialize(raw);
+        }
+        catch (IOException ex)
+        {
+            throw SafeTensorException.IoError(ex);
+        }
+    }
+
+    /// <summary>
     /// Serializes tensor views and optional archive metadata into a complete safetensors byte buffer.
     /// </summary>
     /// <param name="data">The tensors to serialize, keyed by safetensors tensor name.</param>
@@ -255,11 +279,66 @@ public sealed class SafeTensors
         }
     }
 
+    /// <summary>
+    /// Asynchronously streams tensor views and optional archive metadata directly to a safetensors file on disk.
+    /// </summary>
+    /// <param name="data">The tensors to serialize, keyed by safetensors tensor name.</param>
+    /// <param name="metadata">Optional top-level <c>__metadata__</c> entries.</param>
+    /// <param name="path">The destination file path.</param>
+    /// <param name="cancellationToken">A token that can cancel the asynchronous file writes.</param>
+    public static async Task SerializeToFileAsync(
+        IEnumerable<KeyValuePair<string, TensorView>> data,
+        IReadOnlyDictionary<string, string>? metadata,
+        string path,
+        CancellationToken cancellationToken = default
+    )
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        ArgumentNullException.ThrowIfNull(path);
+
+        var prepared = Prepare(data, metadata);
+        if (prepared.HeaderBytes.Length > MAX_HEADER_SIZE)
+        {
+            throw SafeTensorException.HeaderTooLarge();
+        }
+
+        try
+        {
+            await using var file = File.Create(path);
+            var headerLength = new byte[LENGTH_PREFIX_SIZE];
+            BinaryPrimitives.WriteUInt64LittleEndian(headerLength, (ulong)prepared.HeaderBytes.Length);
+            await file.WriteAsync(headerLength, cancellationToken);
+            await file.WriteAsync(prepared.HeaderBytes, cancellationToken);
+
+            foreach (var tensor in prepared.Tensors)
+            {
+                await file.WriteAsync(tensor.Value.Data, cancellationToken);
+            }
+        }
+        catch (IOException ex)
+        {
+            throw SafeTensorException.IoError(ex);
+        }
+    }
+
     public byte[] Serialize()
         => Serialize(_tensors, MetadataEntriesOrNull());
 
     public void SerializeToFile(string path)
         => SerializeToFile(_tensors, MetadataEntriesOrNull(), path);
+
+    /// <summary>
+    /// Asynchronously saves this archive to a safetensors file on disk.
+    /// </summary>
+    /// <param name="path">The destination file path.</param>
+    /// <param name="cancellationToken">A token that can cancel the asynchronous file writes.</param>
+    public async Task SaveToFileAsync(
+        string path,
+        CancellationToken cancellationToken = default
+    )
+    {
+        await SerializeToFileAsync(_tensors, MetadataEntriesOrNull(), path, cancellationToken);
+    }
 
     /// <summary>
     /// Stores a named value and marshals the supplied CLR array into a safetensors tensor payload.

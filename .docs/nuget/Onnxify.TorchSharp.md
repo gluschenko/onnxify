@@ -31,7 +31,7 @@ In short, this package is not just for "saving a model to ONNX". It is for build
 - `Export(...)` for supported `TorchSharp` modules and sequential containers.
 - Experimental `ExportOnnxModel(...)` for deep-exporting supported single-input `Module<Tensor, Tensor>` models directly from their decompiled `forward(Tensor)` method.
 - A set of helpers for tensor-style operations when you want to build an ONNX graph in terms that are close to Torch.
-- `SaveStateAsSafetensors(...)` and `LoadStateFromSafetensors(...)` for saving and loading `state_dict()`.
+- `SaveStateAsSafetensors(...)`, `LoadStateFromSafetensors(...)`, and their async counterparts for saving and loading `state_dict()`.
 - `SafetensorsExternalDataProvider` for scenarios where ONNX external data should be stored in `safetensors` format.
 
 Naming note: `Export(...)` is still the low-level module/operator export API used while you are manually building a graph, for example `_features.Export(graph, input)`. The experimental whole-model API is named `ExportOnnxModel(...)` because it tries to export the model by decompiling `forward(Tensor)` instead of following a hand-written export method.
@@ -302,9 +302,18 @@ This is useful when the ONNX graph and the weights should be stored separately, 
 
 This example also requires a TorchSharp runtime package because creating `Conv2d(...)`, `Linear(...)`, `ReLU()`, and other TorchSharp modules loads the underlying TorchSharp native backend.
 
+Async file I/O variants are available when checkpoint persistence sits inside an asynchronous workflow:
+
+```csharp
+await model.SaveStateAsSafetensorsAsync("model.safetensors");
+
+var restored = new MyModel();
+await restored.LoadStateFromSafetensorsAsync("model.safetensors");
+```
+
 ## How safetensors Save and Load Works
 
-In the class pattern above, `SaveCheckpoint(...)` and `LoadCheckpoint(...)` are thin wrappers over `SaveStateAsSafetensors(...)` and `LoadStateFromSafetensors(...)`, and those APIs operate on the module `state_dict()`.
+In the class pattern above, `SaveCheckpoint(...)` and `LoadCheckpoint(...)` are thin wrappers over `SaveStateAsSafetensors(...)` and `LoadStateFromSafetensors(...)`, and those APIs operate on the module `state_dict()`. Use `SaveStateAsSafetensorsAsync(...)` and `LoadStateFromSafetensorsAsync(...)` when the file read/write should be awaited.
 
 That means the safetensors file stores the model state that TorchSharp exposes as named tensors:
 
