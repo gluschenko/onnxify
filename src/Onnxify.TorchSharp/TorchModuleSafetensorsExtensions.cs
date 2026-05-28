@@ -31,11 +31,11 @@ public static class TorchModuleSafetensorsExtensions
         ArgumentNullException.ThrowIfNull(path);
 
         EnsureDirectoryExists(path);
-        var (state, mergedMetadata) = PrepareStateForSerialization(module, metadata);
+        var prepared = PrepareStateForSerialization(module, metadata);
 
         global::Onnxify.Safetensors.SafeTensors.SerializeToFile(
-            data: state,
-            metadata: mergedMetadata,
+            data: prepared.State,
+            metadata: prepared.Metadata,
             path: path
         );
     }
@@ -60,11 +60,11 @@ public static class TorchModuleSafetensorsExtensions
         ArgumentNullException.ThrowIfNull(path);
 
         EnsureDirectoryExists(path);
-        var (state, mergedMetadata) = PrepareStateForSerialization(module, metadata);
+        var prepared = PrepareStateForSerialization(module, metadata);
 
         await global::Onnxify.Safetensors.SafeTensors.SerializeToFileAsync(
-            data: state,
-            metadata: mergedMetadata,
+            data: prepared.State,
+            metadata: prepared.Metadata,
             path: path,
             cancellationToken: cancellationToken
         );
@@ -155,10 +155,7 @@ public static class TorchModuleSafetensorsExtensions
         }
     }
 
-    private static (
-        KeyValuePair<string, TensorView>[] State,
-        Dictionary<string, string> Metadata
-    ) PrepareStateForSerialization(
+    private static PreparedTorchModuleSafetensorsState PrepareStateForSerialization(
         TorchModule module,
         IReadOnlyDictionary<string, string>? metadata
     )
@@ -188,7 +185,7 @@ public static class TorchModuleSafetensorsExtensions
             }
         }
 
-        return (state, mergedMetadata);
+        return new PreparedTorchModuleSafetensorsState(state, mergedMetadata);
     }
 
     private static void EnsureDirectoryExists(string path)
@@ -505,4 +502,9 @@ public static class TorchModuleSafetensorsExtensions
     }
 
     private readonly record struct StateTensorEntry(string Name, Tensor Tensor);
+
+    private readonly record struct PreparedTorchModuleSafetensorsState(
+        KeyValuePair<string, TensorView>[] State,
+        Dictionary<string, string> Metadata
+    );
 }
