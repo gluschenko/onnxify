@@ -44,11 +44,43 @@ Prefer the TorchSharp extension methods when:
 
 ## Example 1: Low-Level Round Trip With `SafeTensors`
 
-`src/Onnxify.ConsoleTest/Program.cs` shows the smallest repository-owned round-trip:
+Use the generic `SafeTensors` API when you want to create or edit a named safetensors archive without hand-marshaling CLR arrays into byte buffers:
 
 ```csharp
 using Onnxify.Safetensors;
 
+var safetensors = new SafeTensors();
+
+safetensors.Set("scores", [1.2f, 3.4f, 5.6f]);
+safetensors.Set("thresholds", [1.2, 3.4, 5.6]);
+safetensors.Set("labels", ["a", "b", "c"]);
+safetensors.Set("matrix", [1, 2, 3, 4], 2, 2);
+
+File.WriteAllBytes(outputPath, safetensors.Serialize());
+
+var raw = File.ReadAllBytes(outputPath);
+var loaded = SafeTensors.Deserialize(raw);
+
+var scores = loaded.Get<float>("scores");
+var thresholds = loaded.Get<double>("thresholds");
+var labels = loaded.Get<string>("labels");
+
+loaded.Remove("thresholds");
+```
+
+What this pattern is good for:
+
+- writing a named archive from scratch
+- storing supported CLR arrays without manual byte marshaling
+- loading the archive back and resolving values by name and element type
+- replacing or removing ad-hoc values while preserving safetensors validation
+- validating a small deterministic round trip in tests or playground code
+
+Supported `T` values for `Set<T>(...)` and `Get<T>(...)` are `bool`, `byte`, `sbyte`, `short`, `ushort`, `Half`, `int`, `uint`, `float`, `double`, `long`, `ulong`, and `string`.
+
+If you need to attach top-level `__metadata__` entries or control raw tensor payloads directly, use the static serialization APIs with `TensorView`:
+
+```csharp
 var values = new float[] { 1.0f, 2.0f, 3.5f, 4.5f };
 var data = values
     .SelectMany(BitConverter.GetBytes)
@@ -69,23 +101,7 @@ SafeTensors.SerializeToFile(
     },
     path: outputPath
 );
-
-var raw = File.ReadAllBytes(outputPath);
-var safetensors = SafeTensors.Deserialize(raw);
-var loadedTensor = safetensors.Tensor("weights");
-
-var loadedValues = loadedTensor.Data.ToArray()
-    .Chunk(sizeof(float))
-    .Select(chunk => BitConverter.ToSingle(chunk))
-    .ToArray();
 ```
-
-What this pattern is good for:
-
-- writing a named archive from scratch
-- attaching top-level `__metadata__` entries
-- loading the archive back and resolving a tensor by name
-- validating a small deterministic round trip in tests or playground code
 
 ## Example 2: Inspect A `.safetensors` Archive
 
@@ -120,6 +136,7 @@ Useful helpers:
 
 - `SafeTensors.Deserialize(raw)` for a validated archive view over file bytes
 - `safetensors.Names()` to list tensors in metadata order
+- `safetensors.Get<T>(name)` to decode supported CLR value arrays
 - `safetensors.Tensor(name)` to resolve one tensor
 - `safetensors.Tensors()` or `safetensors.Iter()` when you want named enumeration
 - `safetensors.Metadata.MetadataEntries` for top-level `__metadata__`

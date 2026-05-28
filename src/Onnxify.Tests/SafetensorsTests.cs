@@ -8,6 +8,60 @@ namespace Onnxify.Tests;
 public class SafetensorsTests
 {
     [Fact]
+    public void ValueApi_SetGetRemove_RoundTripsUserFriendlyValues()
+    {
+        var safetensors = new SafeTensors();
+
+        safetensors.Set("floats", [1.2f, 3.4f, 5.6f]);
+        safetensors.Set("doubles", [1.2, 3.4, 5.6]);
+        safetensors.Set("strings", ["a", "b", "c"]);
+
+        Assert.Equal([1.2f, 3.4f, 5.6f], safetensors.Get<float>("floats"));
+        Assert.Equal([1.2, 3.4, 5.6], safetensors.Get<double>("doubles"));
+        Assert.Equal(["a", "b", "c"], safetensors.Get<string>("strings"));
+
+        var loaded = SafeTensors.Deserialize(safetensors.Serialize());
+        Assert.Null(loaded.Metadata.MetadataEntries);
+        Assert.Equal([1.2f, 3.4f, 5.6f], loaded.Get<float>("floats"));
+        Assert.Equal([1.2, 3.4, 5.6], loaded.Get<double>("doubles"));
+        Assert.Equal(["a", "b", "c"], loaded.Get<string>("strings"));
+
+        Assert.True(loaded.Remove("doubles"));
+        Assert.DoesNotContain("doubles", loaded.Names());
+    }
+
+    [Fact]
+    public void ValueApi_SetGet_RoundTripsAllSupportedTypes()
+    {
+        AssertValueRoundTrip("bools", DataType.Bool, new[] { true, false, true });
+        AssertValueRoundTrip("bytes", DataType.U8, new byte[] { 1, 2, 255 });
+        AssertValueRoundTrip("sbytes", DataType.I8, new sbyte[] { -2, 0, 2 });
+        AssertValueRoundTrip("shorts", DataType.I16, new short[] { -300, 0, 300 });
+        AssertValueRoundTrip("ushorts", DataType.U16, new ushort[] { 0, 300, 600 });
+        AssertValueRoundTrip("halfs", DataType.F16, new[] { (Half)1.25f, (Half)(-2.5f), (Half)3.75f });
+        AssertValueRoundTrip("ints", DataType.I32, new[] { -1000, 0, 1000 });
+        AssertValueRoundTrip("uints", DataType.U32, new uint[] { 0, 1000, 2000 });
+        AssertValueRoundTrip("floats", DataType.F32, new[] { 1.2f, 3.4f, 5.6f });
+        AssertValueRoundTrip("doubles", DataType.F64, new[] { 1.2, 3.4, 5.6 });
+        AssertValueRoundTrip("longs", DataType.I64, new long[] { -10_000_000_000L, 0, 10_000_000_000L });
+        AssertValueRoundTrip("ulongs", DataType.U64, new ulong[] { 0UL, 10_000_000_000UL, 20_000_000_000UL });
+        AssertValueRoundTrip("strings", DataType.U8, new[] { "a", "b", "c" });
+    }
+
+    [Fact]
+    public void ValueApi_Set_WithShape_StoresTensorShape()
+    {
+        var safetensors = new SafeTensors();
+
+        safetensors.Set("matrix", [1, 2, 3, 4], 2, 2);
+
+        var tensor = safetensors.Tensor("matrix");
+        Assert.Equal(DataType.I32, tensor.DataType);
+        Assert.Equal([2, 2], tensor.Shape);
+        Assert.Equal([1, 2, 3, 4], safetensors.Get<int>("matrix"));
+    }
+
+    [Fact]
     public void Serialize_F32_MatchesUpstreamBytes()
     {
         var data = FloatsToBytes(0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f);
@@ -539,5 +593,19 @@ public class SafetensorsTests
         var chunks = CollectChunks(iterator);
         Assert.Single(chunks);
         Assert.Equal(expected.ToArray(), chunks[0]);
+    }
+
+    private static void AssertValueRoundTrip<T>(string name, DataType expectedDataType, T[] expected)
+    {
+        var safetensors = new SafeTensors();
+        safetensors.Set(name, expected);
+
+        Assert.Equal(expectedDataType, safetensors.Tensor(name).DataType);
+        Assert.Equal(expected, safetensors.Get<T>(name));
+
+        var loaded = SafeTensors.Deserialize(safetensors.Serialize());
+        Assert.Null(loaded.Metadata.MetadataEntries);
+        Assert.Equal(expectedDataType, loaded.Tensor(name).DataType);
+        Assert.Equal(expected, loaded.Get<T>(name));
     }
 }

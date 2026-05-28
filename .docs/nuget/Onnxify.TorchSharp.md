@@ -340,6 +340,31 @@ During save, tensors are copied through CPU contiguous buffers before they are s
 
 During load, tensors from the file are matched by name against the target module `state_dict()`. The loader validates shape and dtype compatibility before copying values into the target tensors.
 
+## Ad-Hoc safetensors Values
+
+For smaller named values that are not part of a TorchSharp `state_dict()`, use the generic `SafeTensors` API from `Onnxify.Safetensors`. The generic methods handle the byte marshaling for supported CLR element types, so callers do not need to build `TensorView` instances by hand.
+
+```csharp
+using Onnxify.Safetensors;
+
+var archive = new SafeTensors();
+
+archive.Set("scores", [1.2f, 3.4f, 5.6f]);
+archive.Set("thresholds", [1.2, 3.4, 5.6]);
+archive.Set("labels", ["cat", "dog", "bird"]);
+archive.Set("matrix", [1, 2, 3, 4], 2, 2);
+
+File.WriteAllBytes("values.safetensors", archive.Serialize());
+
+var loaded = SafeTensors.Deserialize(File.ReadAllBytes("values.safetensors"));
+var scores = loaded.Get<float>("scores");
+var labels = loaded.Get<string>("labels");
+
+loaded.Remove("thresholds");
+```
+
+Supported `T` values for `Set<T>(...)` and `Get<T>(...)` are `bool`, `byte`, `sbyte`, `short`, `ushort`, `Half`, `int`, `uint`, `float`, `double`, `long`, `ulong`, and `string`.
+
 ## Strict vs Non-Strict Loading
 
 By default, loading is strict:

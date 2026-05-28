@@ -44,7 +44,6 @@ public static class TorchModuleExportExtensions
     /// deep-exported when no concrete overload exists. Unsupported control flow or expressions
     /// fail with <see cref="NotSupportedException"/> rather than emitting a lossy graph.
     /// </remarks>
-    [Obsolete("This is an experimental feature")]
     public static OnnxModel ExportOnnxModel(
         this TorchModule module,
         OnnxTensorType input,

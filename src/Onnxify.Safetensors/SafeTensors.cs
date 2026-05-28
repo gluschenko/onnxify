@@ -20,13 +20,27 @@ public sealed class SafeTensors
     private const int LENGTH_PREFIX_SIZE = sizeof(ulong);
     private static readonly UTF8Encoding _strictUtf8 = new(false, true);
 
-    private readonly Metadata _metadata;
-    private readonly ReadOnlyMemory<byte> _data;
+    private readonly Dictionary<string, TensorView> _tensors;
+    private readonly Dictionary<string, string> _metadataEntries;
+
+    public SafeTensors(IReadOnlyDictionary<string, string>? metadata = null)
+    {
+        _tensors = new Dictionary<string, TensorView>(StringComparer.Ordinal);
+        _metadataEntries = metadata is null
+            ? new Dictionary<string, string>(StringComparer.Ordinal)
+            : new Dictionary<string, string>(metadata, StringComparer.Ordinal);
+    }
 
     private SafeTensors(Metadata metadata, ReadOnlyMemory<byte> data)
+        : this(metadata.MetadataEntries)
     {
-        _metadata = metadata;
-        _data = data;
+        foreach (var name in metadata.OffsetKeys())
+        {
+            var info = metadata.Info(name)!;
+            var start = CheckedInt(info.DataOffsets.Start);
+            var length = CheckedInt(info.DataOffsets.End - info.DataOffsets.Start);
+            _tensors.Add(name, new TensorView(info.DataType, info.Shape, data.Slice(start, length)));
+        }
     }
 
     /// <summary>
@@ -36,7 +50,7 @@ public sealed class SafeTensors
     /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
     /// Original Rust entity: <c>SafeTensors.metadata</c>.
     /// </remarks>
-    public Metadata Metadata => _metadata;
+    public Metadata Metadata => BuildMetadata(_tensors, MetadataEntriesOrNull());
 
     /// <summary>
     /// Parses only the header portion of a safetensors buffer and returns both the header byte length and validated metadata.
@@ -241,6 +255,158 @@ public sealed class SafeTensors
         }
     }
 
+    public byte[] Serialize()
+        => Serialize(_tensors, MetadataEntriesOrNull());
+
+    public void SerializeToFile(string path)
+        => SerializeToFile(_tensors, MetadataEntriesOrNull(), path);
+
+    /// <summary>
+    /// Stores a named value and marshals the supplied CLR array into a safetensors tensor payload.
+    /// </summary>
+    /// <typeparam name="T">
+    /// Supported types: <see cref="bool"/>, <see cref="byte"/>, <see cref="sbyte"/>, <see cref="short"/>,
+    /// <see cref="ushort"/>, <see cref="Half"/>, <see cref="int"/>, <see cref="uint"/>, <see cref="float"/>,
+    /// <see cref="double"/>, <see cref="long"/>, <see cref="ulong"/>, and <see cref="string"/>.
+    /// </typeparam>
+    /// <param name="tensorName">The tensor name to create or replace.</param>
+    /// <param name="values">The values to store.</param>
+    /// <param name="shape">Optional tensor shape. When omitted, the value is stored as a one-dimensional vector.</param>
+    public void Set<T>(string tensorName, T[] values, params ulong[] shape)
+    {
+        ArgumentNullException.ThrowIfNull(tensorName);
+        ArgumentNullException.ThrowIfNull(values);
+
+        if (typeof(T) == typeof(string))
+        {
+            if (shape.Length != 0)
+            {
+                throw new ArgumentException("String values do not support an explicit safetensors shape.", nameof(shape));
+            }
+
+            SetString(tensorName, (string[])(object)values);
+            return;
+        }
+
+        var type = typeof(T);
+        if (type == typeof(bool))
+        {
+            var typedValues = (bool[])(object)values;
+            SetTensor(tensorName, DataType.Bool, ShapeOrVector(typedValues.Length, shape), BooleansToBytes(typedValues));
+        }
+        else if (type == typeof(byte))
+        {
+            var typedValues = (byte[])(object)values;
+            SetTensor(tensorName, DataType.U8, ShapeOrVector(typedValues.Length, shape), typedValues.ToArray());
+        }
+        else if (type == typeof(sbyte))
+        {
+            var typedValues = (sbyte[])(object)values;
+            SetTensor(tensorName, DataType.I8, ShapeOrVector(typedValues.Length, shape), CopyBytes<sbyte>(typedValues));
+        }
+        else if (type == typeof(short))
+        {
+            var typedValues = (short[])(object)values;
+            SetTensor(tensorName, DataType.I16, ShapeOrVector(typedValues.Length, shape), CopyBytes<short>(typedValues));
+        }
+        else if (type == typeof(ushort))
+        {
+            var typedValues = (ushort[])(object)values;
+            SetTensor(tensorName, DataType.U16, ShapeOrVector(typedValues.Length, shape), CopyBytes<ushort>(typedValues));
+        }
+        else if (type == typeof(Half))
+        {
+            var typedValues = (Half[])(object)values;
+            SetTensor(tensorName, DataType.F16, ShapeOrVector(typedValues.Length, shape), CopyBytes<Half>(typedValues));
+        }
+        else if (type == typeof(int))
+        {
+            var typedValues = (int[])(object)values;
+            SetTensor(tensorName, DataType.I32, ShapeOrVector(typedValues.Length, shape), CopyBytes<int>(typedValues));
+        }
+        else if (type == typeof(uint))
+        {
+            var typedValues = (uint[])(object)values;
+            SetTensor(tensorName, DataType.U32, ShapeOrVector(typedValues.Length, shape), CopyBytes<uint>(typedValues));
+        }
+        else if (type == typeof(float))
+        {
+            var typedValues = (float[])(object)values;
+            SetTensor(tensorName, DataType.F32, ShapeOrVector(typedValues.Length, shape), CopyBytes<float>(typedValues));
+        }
+        else if (type == typeof(double))
+        {
+            var typedValues = (double[])(object)values;
+            SetTensor(tensorName, DataType.F64, ShapeOrVector(typedValues.Length, shape), CopyBytes<double>(typedValues));
+        }
+        else if (type == typeof(long))
+        {
+            var typedValues = (long[])(object)values;
+            SetTensor(tensorName, DataType.I64, ShapeOrVector(typedValues.Length, shape), CopyBytes<long>(typedValues));
+        }
+        else if (type == typeof(ulong))
+        {
+            var typedValues = (ulong[])(object)values;
+            SetTensor(tensorName, DataType.U64, ShapeOrVector(typedValues.Length, shape), CopyBytes<ulong>(typedValues));
+        }
+        else
+        {
+            throw new NotSupportedException($"Safetensors values of type '{type.FullName}' are not supported.");
+        }
+    }
+
+    /// <summary>
+    /// Removes a named value from the archive.
+    /// </summary>
+    /// <param name="tensorName">The tensor name to remove.</param>
+    /// <returns><see langword="true"/> when a value was removed; otherwise <see langword="false"/>.</returns>
+    public bool Remove(string tensorName)
+    {
+        ArgumentNullException.ThrowIfNull(tensorName);
+
+        return _tensors.Remove(tensorName);
+    }
+
+    /// <summary>
+    /// Reads a named value and marshals the safetensors tensor payload into a CLR array.
+    /// </summary>
+    /// <typeparam name="T">
+    /// Supported types: <see cref="bool"/>, <see cref="byte"/>, <see cref="sbyte"/>, <see cref="short"/>,
+    /// <see cref="ushort"/>, <see cref="Half"/>, <see cref="int"/>, <see cref="uint"/>, <see cref="float"/>,
+    /// <see cref="double"/>, <see cref="long"/>, <see cref="ulong"/>, and <see cref="string"/>.
+    /// </typeparam>
+    /// <param name="tensorName">The tensor name to read.</param>
+    /// <returns>The tensor payload decoded as an array of <typeparamref name="T"/>.</returns>
+    public T[] Get<T>(string tensorName)
+    {
+        if (typeof(T) == typeof(string))
+        {
+            return (T[])(object)GetString(tensorName);
+        }
+
+        var tensor = Tensor(tensorName);
+        var type = typeof(T);
+        if (type == typeof(bool))
+        {
+            EnsureDataType(tensorName, tensor, DataType.Bool);
+            return (T[])(object)ToBooleanArray(tensor.Data.Span);
+        }
+
+        if (type == typeof(byte)) return (T[])(object)GetUnmanagedValue<byte>(tensorName, tensor, DataType.U8);
+        if (type == typeof(sbyte)) return (T[])(object)GetUnmanagedValue<sbyte>(tensorName, tensor, DataType.I8);
+        if (type == typeof(short)) return (T[])(object)GetUnmanagedValue<short>(tensorName, tensor, DataType.I16);
+        if (type == typeof(ushort)) return (T[])(object)GetUnmanagedValue<ushort>(tensorName, tensor, DataType.U16);
+        if (type == typeof(Half)) return (T[])(object)GetUnmanagedValue<Half>(tensorName, tensor, DataType.F16);
+        if (type == typeof(int)) return (T[])(object)GetUnmanagedValue<int>(tensorName, tensor, DataType.I32);
+        if (type == typeof(uint)) return (T[])(object)GetUnmanagedValue<uint>(tensorName, tensor, DataType.U32);
+        if (type == typeof(float)) return (T[])(object)GetUnmanagedValue<float>(tensorName, tensor, DataType.F32);
+        if (type == typeof(double)) return (T[])(object)GetUnmanagedValue<double>(tensorName, tensor, DataType.F64);
+        if (type == typeof(long)) return (T[])(object)GetUnmanagedValue<long>(tensorName, tensor, DataType.I64);
+        if (type == typeof(ulong)) return (T[])(object)GetUnmanagedValue<ulong>(tensorName, tensor, DataType.U64);
+
+        throw new NotSupportedException($"Safetensors values of type '{type.FullName}' are not supported.");
+    }
+
     /// <summary>
     /// Materializes all tensors in archive order as named tensor views over the underlying payload buffer.
     /// </summary>
@@ -251,8 +417,8 @@ public sealed class SafeTensors
     /// </remarks>
     public IReadOnlyList<KeyValuePair<string, TensorView>> Tensors()
     {
-        var tensors = new List<KeyValuePair<string, TensorView>>(_metadata.OffsetKeys().Count);
-        foreach (var name in _metadata.OffsetKeys())
+        var tensors = new List<KeyValuePair<string, TensorView>>(_tensors.Count);
+        foreach (var name in _tensors.Keys)
         {
             tensors.Add(new KeyValuePair<string, TensorView>(name, Tensor(name)));
         }
@@ -270,7 +436,7 @@ public sealed class SafeTensors
     /// </remarks>
     public IEnumerable<KeyValuePair<string, TensorView>> Iter()
     {
-        foreach (var name in _metadata.OffsetKeys())
+        foreach (var name in _tensors.Keys)
         {
             yield return new KeyValuePair<string, TensorView>(name, Tensor(name));
         }
@@ -289,15 +455,12 @@ public sealed class SafeTensors
     {
         ArgumentNullException.ThrowIfNull(tensorName);
 
-        var info = _metadata.Info(tensorName);
-        if (info is null)
+        if (!_tensors.TryGetValue(tensorName, out var tensor))
         {
             throw SafeTensorException.TensorNotFound(tensorName);
         }
 
-        var start = CheckedInt(info.DataOffsets.Start);
-        var length = CheckedInt(info.DataOffsets.End - info.DataOffsets.Start);
-        return new TensorView(info.DataType, info.Shape, _data.Slice(start, length));
+        return tensor;
     }
 
     /// <summary>
@@ -308,7 +471,7 @@ public sealed class SafeTensors
     /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
     /// Original Rust entity: <c>SafeTensors::names</c>.
     /// </remarks>
-    public IReadOnlyList<string> Names() => _metadata.OffsetKeys();
+    public IReadOnlyList<string> Names() => _tensors.Keys.ToArray();
 
     /// <summary>
     /// Gets the number of tensors described by the archive metadata.
@@ -317,7 +480,7 @@ public sealed class SafeTensors
     /// Original Rust file: <c>third_party/safetensors/safetensors/src/tensor.rs</c>.
     /// Original Rust entity: <c>SafeTensors::len</c>.
     /// </remarks>
-    public int Length => _metadata.OffsetKeys().Count;
+    public int Length => _tensors.Count;
 
     /// <summary>
     /// Gets a value indicating whether the archive contains no tensors.
@@ -332,7 +495,7 @@ public sealed class SafeTensors
     {
         return $"""
             Safetensors(
-                Metadata={Indent(FormatMetadataEntries(_metadata.MetadataEntries), 1)},
+                Metadata={Indent(FormatMetadataEntries(_metadataEntries), 1)},
                 Tensors={Indent(FormatTensorCollection(), 1)}
             )
             """;
@@ -388,6 +551,109 @@ public sealed class SafeTensors
         }
 
         return new PreparedSafetensorsData(headerBytes, sorted);
+    }
+
+    private static Metadata BuildMetadata(
+        IEnumerable<KeyValuePair<string, TensorView>> data,
+        IReadOnlyDictionary<string, string>? metadataEntries
+    )
+    {
+        ulong offset = 0;
+        var tensors = new List<KeyValuePair<string, TensorInfo>>();
+        foreach (var pair in data)
+        {
+            var length = (ulong)pair.Value.Data.Length;
+            tensors.Add(new KeyValuePair<string, TensorInfo>(
+                pair.Key,
+                new TensorInfo
+                {
+                    DataType = pair.Value.DataType,
+                    Shape = pair.Value.Shape.ToArray(),
+                    DataOffsets = new TensorDataOffsets(offset, checked(offset + length)),
+                }));
+
+            offset = checked(offset + length);
+        }
+
+        return new Metadata(metadataEntries, tensors);
+    }
+
+    private void SetTensor(string tensorName, DataType dataType, ulong[] shape, byte[] data)
+    {
+        ArgumentNullException.ThrowIfNull(tensorName);
+        _tensors[tensorName] = new TensorView(dataType, shape, data);
+    }
+
+    private void SetString(string tensorName, string[] values)
+    {
+        var json = JsonSerializer.Serialize(values);
+        var data = Encoding.UTF8.GetBytes(json);
+        _tensors[tensorName] = new TensorView(DataType.U8, [(ulong)data.Length], data);
+    }
+
+    private string[] GetString(string tensorName)
+    {
+        var tensor = Tensor(tensorName);
+        EnsureDataType(tensorName, tensor, DataType.U8);
+        var json = Encoding.UTF8.GetString(tensor.Data.Span);
+        return JsonSerializer.Deserialize<string[]>(json) ?? [];
+    }
+
+    private IReadOnlyDictionary<string, string>? MetadataEntriesOrNull()
+        => _metadataEntries.Count == 0 ? null : _metadataEntries;
+
+    private static ulong[] ShapeOrVector(int valueCount, ulong[] shape)
+        => shape.Length == 0 ? [(ulong)valueCount] : shape;
+
+    private static byte[] BooleansToBytes(ReadOnlySpan<bool> values)
+    {
+        var result = new byte[values.Length];
+        for (var i = 0; i < values.Length; i++)
+        {
+            result[i] = values[i] ? (byte)1 : (byte)0;
+        }
+
+        return result;
+    }
+
+    private static byte[] CopyBytes<T>(ReadOnlySpan<T> values)
+        where T : unmanaged
+        => MemoryMarshal.AsBytes(values).ToArray();
+
+    private static T[] GetUnmanagedValue<T>(string tensorName, TensorView tensor, DataType expectedType)
+        where T : unmanaged
+    {
+        EnsureDataType(tensorName, tensor, expectedType);
+        return MemoryMarshal.Cast<byte, T>(tensor.Data.Span).ToArray();
+    }
+
+    private static void EnsureDataType(string tensorName, TensorView tensor, DataType expectedType)
+    {
+        if (tensor.DataType != expectedType)
+        {
+            throw new InvalidOperationException(
+                $"Tensor '{tensorName}' has dtype {tensor.DataType.ToWireName()}, not {expectedType.ToWireName()}.");
+        }
+    }
+
+    private static DataType GetDataType<T>()
+        where T : unmanaged
+    {
+        var type = typeof(T);
+        if (type == typeof(bool)) return DataType.Bool;
+        if (type == typeof(byte)) return DataType.U8;
+        if (type == typeof(sbyte)) return DataType.I8;
+        if (type == typeof(short)) return DataType.I16;
+        if (type == typeof(ushort)) return DataType.U16;
+        if (type == typeof(Half)) return DataType.F16;
+        if (type == typeof(int)) return DataType.I32;
+        if (type == typeof(uint)) return DataType.U32;
+        if (type == typeof(float)) return DataType.F32;
+        if (type == typeof(double)) return DataType.F64;
+        if (type == typeof(long)) return DataType.I64;
+        if (type == typeof(ulong)) return DataType.U64;
+
+        throw new NotSupportedException($"Safetensors values of type '{type.FullName}' are not supported.");
     }
 
     /// <summary>
@@ -594,7 +860,7 @@ public sealed class SafeTensors
 
     private string FormatTensorCollection()
     {
-        var items = _metadata.OffsetKeys().Select(FormatNamedTensor);
+        var items = _tensors.Keys.Select(FormatNamedTensor);
         return FormatCollection(items);
     }
 
