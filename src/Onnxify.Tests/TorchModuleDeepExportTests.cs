@@ -278,6 +278,31 @@ public sealed class TorchModuleDeepExportTests
         Assert.Contains(model.Graph.Nodes, node => node.OpType == "Transpose");
     }
 
+    [Fact]
+    public void DeepExport_ForPaddingMaskChain_ExportsNotEqualUnsqueezeCastSumAndClamp()
+    {
+        using var module = new DeepExportPaddingMaskModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<long>(["batch_size", "seq_len"]),
+            output: OnnxTensorType.Create<float>(["batch_size", 3])
+        );
+
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Equal");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Not");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Unsqueeze");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Cast");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "ReduceSum");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Max");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Div");
+        Assert.Contains(
+            model.Graph.Initializers.OfType<OnnxTensor<long>>(),
+            initializer => initializer.Shape.SequenceEqual([1])
+                && initializer.Value.SequenceEqual([-1L])
+        );
+    }
+
     [Theory]
     [InlineData(false, 1)]
     [InlineData(true, 2)]
@@ -618,6 +643,34 @@ public sealed class TorchModuleDeepExportTests
         public override Tensor forward(Tensor input)
         {
             return input.permute([0, 2, 1]);
+        }
+    }
+
+    private sealed class DeepExportPaddingMaskModule : TorchModule
+    {
+        private readonly global::TorchSharp.Modules.Embedding _embedding;
+        private readonly global::TorchSharp.Modules.Linear _head;
+
+        public DeepExportPaddingMaskModule()
+            : base(nameof(DeepExportPaddingMaskModule))
+        {
+            _embedding = nn.Embedding(8, 4, padding_idx: 0);
+            _head = nn.Linear(4, 3);
+
+            RegisterComponents();
+        }
+
+        public override Tensor forward(Tensor input)
+        {
+            var emb = _embedding.forward(input);
+            var logitsPerToken = _head.forward(emb);
+            var mask = input.ne(0)
+                .unsqueeze(-1)
+                .to_type(logitsPerToken.dtype);
+            var maskedLogits = logitsPerToken * mask;
+            var lengths = mask.sum(1).clamp(min: 1);
+
+            return maskedLogits.sum(1) / lengths;
         }
     }
 
