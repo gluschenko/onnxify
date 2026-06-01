@@ -511,7 +511,8 @@ public static class TorchModuleExportExtensions
         // Tensor instance methods such as "x.view(...)" and "mask.unsqueeze(0)" are
         // lowered here because they are not nn.Module calls and therefore do not go
         // through TorchModuleExtensions.Export dispatch.
-        if (IsTensorMethod(memberReference.MemberName))
+        if (IsTensorMethod(memberReference.MemberName)
+            && !IsTorchReference(memberReference.Target))
         {
             return ExportTensorMethodInvocation(context, memberReference, invocation);
         }
@@ -572,7 +573,7 @@ public static class TorchModuleExportExtensions
 
     private static bool IsTensorMethod(string methodName)
     {
-        return methodName is "view" or "reshape" or "permute" or "transpose" or "contiguous" or "unsqueeze" or "slice" or "expand";
+        return methodName is "view" or "reshape" or "permute" or "transpose" or "contiguous" or "unsqueeze" or "slice" or "expand" or "ne" or "to_type" or "sum" or "clamp";
     }
 
     private static ExportValue ExportTensorMethodInvocation(
@@ -617,6 +618,18 @@ public static class TorchModuleExportExtensions
             "unsqueeze" => new ExportValue(
                 ExportUnsqueeze(context, input, ResolveLongArguments(context, invocation.Arguments).Single())
             ),
+            "ne" => new ExportValue(
+                ExportNotEqual(context, input, invocation)
+            ),
+            "to_type" => new ExportValue(
+                ExportToType(context, input, invocation)
+            ),
+            "sum" => new ExportValue(
+                ExportTensorSum(context, input, invocation)
+            ),
+            "clamp" => new ExportValue(
+                ExportTensorClamp(context, input, invocation)
+            ),
             "expand" => new ExportValue(
                 context.Graph.ExportExpand(input, ResolveLongArguments(context, invocation.Arguments).ToArray())
             ),
@@ -632,6 +645,100 @@ public static class TorchModuleExportExtensions
             ),
             _ => throw new NotSupportedException($"Unsupported tensor method invocation: {invocation}"),
         };
+    }
+
+    private static IOnnxGraphEdge ExportNotEqual(
+        ForwardExportContext context,
+        IOnnxGraphEdge input,
+        InvocationExpression invocation
+    )
+    {
+        if (invocation.Arguments.Count != 1)
+        {
+            throw new NotSupportedException($"ne requires one argument: {invocation}");
+        }
+
+        var other = ExportExpression(context, invocation.Arguments.Single());
+        return TryGetScalar(other, out var scalar)
+            ? context.Graph.ExportNotEqual(input, scalar)
+            : context.Graph.ExportNotEqual(input, other.GetRequiredEdge(invocation.Arguments.Single()));
+    }
+
+    private static IOnnxGraphEdge ExportToType(
+        ForwardExportContext context,
+        IOnnxGraphEdge input,
+        InvocationExpression invocation
+    )
+    {
+        if (invocation.Arguments.Count != 1)
+        {
+            throw new NotSupportedException($"to_type requires one dtype argument: {invocation}");
+        }
+
+        var targetType = ResolveTensorElementType(context, invocation.Arguments.Single());
+        return ExportCastTo(context.Graph, "to_type", input, GetOnnxTensorDataType(targetType));
+    }
+
+    private static IOnnxGraphEdge ExportTensorSum(
+        ForwardExportContext context,
+        IOnnxGraphEdge input,
+        InvocationExpression invocation
+    )
+    {
+        if (invocation.Arguments.Count == 0)
+        {
+            return context.Graph.ExportSum(input);
+        }
+
+        var dim = GetNamedArgument(invocation, "dim") is { } namedDim
+            ? ResolveLongArgument(context, namedDim)
+            : ResolveLongArgument(context, invocation.Arguments.ElementAt(0));
+        var keepdim = GetNamedArgument(invocation, "keepdim") is { } namedKeepdim
+            && TryGetBoolean(ExportExpression(context, namedKeepdim), out var keepdimValue)
+            && keepdimValue;
+
+        return context.Graph.ExportSum(input, [dim], keepdim);
+    }
+
+    private static IOnnxGraphEdge ExportTensorClamp(
+        ForwardExportContext context,
+        IOnnxGraphEdge input,
+        InvocationExpression invocation
+    )
+    {
+        var min = GetNamedArgument(invocation, "min") is { } namedMin
+            ? ResolveDoubleArgument(context, namedMin)
+            : invocation.Arguments.ElementAtOrDefault(0) is { } positionalMin
+                ? ResolveDoubleArgument(context, positionalMin)
+                : (double?)null;
+        var max = GetNamedArgument(invocation, "max") is { } namedMax
+            ? ResolveDoubleArgument(context, namedMax)
+            : invocation.Arguments.ElementAtOrDefault(1) is { } positionalMax
+                ? ResolveDoubleArgument(context, positionalMax)
+                : (double?)null;
+
+        var result = input;
+        var elementType = TryGetTensorElementType(input, out var knownType)
+            ? knownType
+            : typeof(float);
+
+        if (min is not null)
+        {
+            result = context.Graph.ExportMaximum(
+                result,
+                AddScalar(context.Graph, "clamp_min", min.Value, elementType)
+            );
+        }
+
+        if (max is not null)
+        {
+            result = context.Graph.ExportMinimum(
+                result,
+                AddScalar(context.Graph, "clamp_max", max.Value, elementType)
+            );
+        }
+
+        return result;
     }
 
     private static ExportValue ExportRuntimeTensorMethod(
@@ -1312,13 +1419,16 @@ public static class TorchModuleExportExtensions
     )
     {
         var target = ExportExpression(context, memberReference.Target);
-        if (target.Value is IOnnxGraphEdge)
+        if (target.Value is IOnnxGraphEdge edge)
         {
             if (memberReference.MemberName is "dtype" or "device")
             {
                 // Metadata reads are accepted when passed through to constant factories:
                 //   full([n, n], value, dtype: x.dtype, device: x.device)
-                return new ExportValue(new SymbolicTensorMember(memberReference.MemberName));
+                return new ExportValue(new SymbolicTensorMember(
+                    memberReference.MemberName,
+                    TryGetTensorElementType(edge, out var type) ? type : null
+                ));
             }
 
             throw new NotSupportedException($"Cannot access member '{memberReference.MemberName}' on an ONNX edge.");
@@ -2200,6 +2310,63 @@ public static class TorchModuleExportExtensions
         return ConvertExportValueToLong(new ExportValue(value), expression, defaultValue);
     }
 
+    private static double ResolveDoubleArgument(
+        ForwardExportContext context,
+        Expression expression
+    )
+    {
+        expression = UnwrapNamedArgument(expression);
+        return Convert.ToDouble(ExportExpression(context, expression).Value);
+    }
+
+    private static Type ResolveTensorElementType(
+        ForwardExportContext context,
+        Expression expression
+    )
+    {
+        expression = UnwrapNamedArgument(expression);
+        var value = ExportExpression(context, expression).Value;
+        if (value is SymbolicTensorMember { Name: "dtype", DataType: { } dataType })
+        {
+            return dataType;
+        }
+
+        if (value is SymbolicTensorMember { Name: "dtype" })
+        {
+            return typeof(float);
+        }
+
+        if (value is global::TorchSharp.torch.ScalarType scalarType)
+        {
+            return GetSystemType(scalarType);
+        }
+
+        var text = expression.ToString();
+        if (text.EndsWith("ScalarType.Float32", StringComparison.Ordinal)
+            || text.EndsWith("ScalarType.Float", StringComparison.Ordinal))
+        {
+            return typeof(float);
+        }
+
+        if (text.EndsWith("ScalarType.Float64", StringComparison.Ordinal)
+            || text.EndsWith("ScalarType.Double", StringComparison.Ordinal))
+        {
+            return typeof(double);
+        }
+
+        if (text.EndsWith("ScalarType.Int64", StringComparison.Ordinal))
+        {
+            return typeof(long);
+        }
+
+        if (text.EndsWith("ScalarType.Int32", StringComparison.Ordinal))
+        {
+            return typeof(int);
+        }
+
+        throw new NotSupportedException($"Unsupported tensor dtype expression: {expression}");
+    }
+
     private static long ConvertExportValueToLong(
         ExportValue value,
         AstNode source,
@@ -2270,6 +2437,184 @@ public static class TorchModuleExportExtensions
             shape: [],
             value: [value]
         );
+    }
+
+    private static IOnnxGraphEdge AddScalar(
+        OnnxGraph graph,
+        string prefix,
+        double value,
+        Type type
+    )
+    {
+        var name = graph.NextName($"{prefix}_scalar");
+        if (type == typeof(double))
+        {
+            return graph.AddTensor(name, [], [value]);
+        }
+
+        if (type == typeof(long))
+        {
+            return graph.AddTensor(name, [], [checked((long)value)]);
+        }
+
+        if (type == typeof(int))
+        {
+            return graph.AddTensor(name, [], [checked((int)value)]);
+        }
+
+        if (type == typeof(short))
+        {
+            return graph.AddTensor(name, [], [checked((short)value)]);
+        }
+
+        if (type == typeof(byte))
+        {
+            return graph.AddTensor(name, [], [checked((byte)value)]);
+        }
+
+        if (type == typeof(sbyte))
+        {
+            return graph.AddTensor(name, [], [checked((sbyte)value)]);
+        }
+
+        if (type == typeof(uint))
+        {
+            return graph.AddTensor(name, [], [checked((uint)value)]);
+        }
+
+        if (type == typeof(ulong))
+        {
+            return graph.AddTensor(name, [], [checked((ulong)value)]);
+        }
+
+        if (type == typeof(ushort))
+        {
+            return graph.AddTensor(name, [], [checked((ushort)value)]);
+        }
+
+        return graph.AddTensor(name, [], [checked((float)value)]);
+    }
+
+    private static IOnnxGraphEdge ExportCastTo(
+        OnnxGraph graph,
+        string prefix,
+        IOnnxGraphEdge input,
+        long to
+    )
+    {
+        var name = graph.NextName(prefix);
+        var output = graph.AddEdge(name);
+        graph.AddNode(
+            name: name,
+            opType: "Cast",
+            domain: string.Empty,
+            docString: string.Empty,
+            inputs: [input],
+            outputs: [output],
+            attributes: [new OnnxAttribute<long>("to", to)]
+        );
+
+        return output;
+    }
+
+    private static bool TryGetTensorElementType(
+        IOnnxGraphEdge edge,
+        out Type type
+    )
+    {
+        switch (edge)
+        {
+            case OnnxTensor tensor:
+                type = tensor.DataType;
+                return true;
+            case OnnxValue { Type: OnnxTensorType tensorType }:
+                type = tensorType.Type;
+                return true;
+            default:
+                type = null!;
+                return false;
+        }
+    }
+
+    private static long GetOnnxTensorDataType(Type type)
+    {
+        if (type == typeof(float))
+        {
+            return 1L;
+        }
+
+        if (type == typeof(byte))
+        {
+            return 2L;
+        }
+
+        if (type == typeof(sbyte))
+        {
+            return 3L;
+        }
+
+        if (type == typeof(ushort))
+        {
+            return 4L;
+        }
+
+        if (type == typeof(short))
+        {
+            return 5L;
+        }
+
+        if (type == typeof(int))
+        {
+            return 6L;
+        }
+
+        if (type == typeof(long))
+        {
+            return 7L;
+        }
+
+        if (type == typeof(bool))
+        {
+            return 9L;
+        }
+
+        if (type == typeof(Half))
+        {
+            return 10L;
+        }
+
+        if (type == typeof(double))
+        {
+            return 11L;
+        }
+
+        if (type == typeof(uint))
+        {
+            return 12L;
+        }
+
+        if (type == typeof(ulong))
+        {
+            return 13L;
+        }
+
+        throw new NotSupportedException($"ONNX cast export does not support tensor element type '{type.Name}'.");
+    }
+
+    private static Type GetSystemType(global::TorchSharp.torch.ScalarType scalarType)
+    {
+        return scalarType switch
+        {
+            global::TorchSharp.torch.ScalarType.Float32 => typeof(float),
+            global::TorchSharp.torch.ScalarType.Float64 => typeof(double),
+            global::TorchSharp.torch.ScalarType.Int64 => typeof(long),
+            global::TorchSharp.torch.ScalarType.Int32 => typeof(int),
+            global::TorchSharp.torch.ScalarType.Int16 => typeof(short),
+            global::TorchSharp.torch.ScalarType.Int8 => typeof(sbyte),
+            global::TorchSharp.torch.ScalarType.Byte => typeof(byte),
+            global::TorchSharp.torch.ScalarType.Bool => typeof(bool),
+            _ => throw new NotSupportedException($"Torch dtype '{scalarType}' is not supported by deep export.")
+        };
     }
 
     private static bool TryCreateInlineArrayBuilder(
@@ -2499,7 +2844,7 @@ public static class TorchModuleExportExtensions
 
     // Placeholder for metadata reads such as "x.dtype" and "x.device"; constant factories
     // accept them syntactically but current initializer emission decides dtype from values.
-    private readonly record struct SymbolicTensorMember(string Name);
+    private readonly record struct SymbolicTensorMember(string Name, Type? DataType);
 
     // Builder for C# collection expressions after decompilation:
     //   [batchSize, sequenceLength, hidden]

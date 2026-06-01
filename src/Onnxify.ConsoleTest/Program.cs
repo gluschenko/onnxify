@@ -1,7 +1,7 @@
 ﻿using System.Globalization;
 using System.Text;
 using Microsoft.ML.OnnxRuntime.Tensors;
-using Onnxify.Data;
+using Onnxify.HuggingFace;
 using Onnxify.ProjectGenerator;
 using Onnxify.Safetensors;
 
@@ -9,16 +9,17 @@ namespace Onnxify.ConsoleTest
 {
     internal class Program
     {
-        static void Main(string[] args)
+        static async Task Main()
         {
             CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
             CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
             CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
             Console.Title = nameof(Onnxify);
-            Console.InputEncoding = Encoding.Unicode;
-            Console.OutputEncoding = Encoding.Unicode;
+            Console.InputEncoding = Encoding.UTF8;
+            Console.OutputEncoding = Encoding.UTF8;
 
+            await Test10();
             Test0();
             Test1();
             Test2();
@@ -27,8 +28,11 @@ namespace Onnxify.ConsoleTest
             Test8();
             Test9();
 
-            Console.WriteLine("Press any key to pay respect...");
-            Console.ReadKey();
+            if (!Console.IsInputRedirected)
+            {
+                Console.WriteLine("Press any key to pay respect...");
+                Console.ReadKey();
+            }
         }
 
         static void Test0()
@@ -338,20 +342,48 @@ namespace Onnxify.ConsoleTest
                 .Take(k)
                 .ToArray();
         }
-    }
 
-    public class ReluInputOptionsX
-    {
-        /// <summary>
-        /// <b>X (parameter):</b>
-        /// 
-        /// Input tensor
-        /// 
-        /// <para>Allowed types: <c>OnnxTensor&lt;BFloat16&gt;</c>, <c>OnnxTensor&lt;double&gt;</c>, <c>OnnxTensor&lt;float&gt;</c>, <c>OnnxTensor&lt;Half&gt;</c>, <c>OnnxTensor&lt;short&gt;</c>, <c>OnnxTensor&lt;int&gt;</c>, <c>OnnxTensor&lt;long&gt;</c>, <c>OnnxTensor&lt;sbyte&gt;</c></para>
-        /// <para>Type: Single</para>
-        /// </summary>
-        [AcceptType<OnnxTensor<float>>]
-        public required IOnnxGraphEdge X { get; init; }
+        private static async Task Test10()
+        {
+            var repositoryId = "onnx-community/gemma-4-E2B-it-ONNX";
+            var outputDirectoryPath = Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory,
+                "Assets",
+                "Generated",
+                "HuggingFace",
+                "gemma-4-E2B-it-ONNX-bf16"
+            );
+            var revision = "main";
+            var variant = ".onnx";
+            var token = Environment.GetEnvironmentVariable("HF_TOKEN");
+
+            var client = new HuggingFaceClient();
+
+            var result = await client.DownloadRepositoryAsync(
+                repositoryId,
+                outputDirectoryPath,
+                new HuggingFaceDownloadOptions
+                {
+                    Revision = revision,
+                    AccessToken = string.IsNullOrWhiteSpace(token) ? null : token,
+                    IncludePath = string.Equals(variant, "all", StringComparison.OrdinalIgnoreCase)
+                        ? null
+                        : path => path.Contains(variant, StringComparison.OrdinalIgnoreCase),
+                    ProgressCallback = item =>
+                    {
+                        if (item.Completed)
+                        {
+                            Console.WriteLine($"Downloaded {item.FileIndex}/{item.FileCount}: {item.RepositoryPath}");
+                        }
+                    },
+                    Overwrite = true,
+                }
+            );
+
+            Console.WriteLine($"Hugging Face repository: {result.RepositoryId}@{result.Revision}");
+            Console.WriteLine($"Output directory: {result.OutputDirectoryPath}");
+            Console.WriteLine($"Downloaded files: {result.DownloadedFileCount}");
+        }
     }
 }
 

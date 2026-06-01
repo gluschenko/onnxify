@@ -1,6 +1,6 @@
 ---
 name: onnxify-internal
-description: "Use this skill when maintaining the Onnxify repository, package docs, and generators rather than consuming the public APIs directly. It covers repository-facing work for the Onnxify package family, including Onnxify, Onnxify.TorchSharp, Onnxify.Safetensors, Onnxify.ProjectGenerator, Onnxify.ModelGenerator, Onnxify.ML, Onnxify.ML.TorchSharp, and Onnxify.CLI: updating README, NuGet docs, and skill content; editing solution or project wiring under src/; keeping generated skill artifacts in sync; and modifying repository generators such as Onnxify.AgentSkillGenerator, Onnxify.ProjectGenerator, and Onnxify.SourceGenerator."
+description: "Use this skill when maintaining the Onnxify repository, package docs, and generators rather than consuming the public APIs directly. It covers repository-facing work for the Onnxify package family, including Onnxify, Onnxify.TorchSharp, Onnxify.Safetensors, Onnxify.HuggingFace, Onnxify.ProjectGenerator, Onnxify.ModelGenerator, Onnxify.ML, Onnxify.ML.TorchSharp, and Onnxify.CLI: updating README, NuGet docs, and skill content; editing solution or project wiring under src/; keeping generated skill artifacts in sync; and modifying repository generators such as Onnxify.AgentSkillGenerator, Onnxify.ProjectGenerator, and Onnxify.SourceGenerator."
 ---
 
 # Onnxify Internal

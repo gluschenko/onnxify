@@ -29,6 +29,7 @@
     <ProjectReference Include="..\Onnxify.ML\Onnxify.ML.csproj" />
     <ProjectReference Include="..\Onnxify.ModelGenerator\Onnxify.ModelGenerator.csproj" Aliases="ModelGen" />
     <ProjectReference Include="..\Onnxify\Onnxify.csproj" />
+    <ProjectReference Include="..\Onnxify.HuggingFace\Onnxify.HuggingFace.csproj" />
     <ProjectReference Include="..\Onnxify.ProjectGenerator\Onnxify.ProjectGenerator.csproj" />
     <ProjectReference Include="..\Onnxify.Safetensors\Onnxify.Safetensors.csproj" />
     <ProjectReference Include="..\Onnxify.SourceGenerator\Onnxify.SourceGenerator.csproj" Aliases="SourceGen" />

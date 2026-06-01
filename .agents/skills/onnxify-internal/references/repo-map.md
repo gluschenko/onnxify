@@ -5,9 +5,9 @@ Use this reference when you need to decide which project owns a repository-maint
 ## Solution Folders
 
 - `src/Onnxify.slnx`
-  - `/generators/`: `Onnxify.AgentSkillGenerator`, `Onnxify.ProjectGenerator`, `Onnxify.SourceGenerator`
-  - `/libs/`: `Onnxify`, `Onnxify.TorchSharp`, `Onnxify.ML`, `Onnxify.ML.TorchSharp`, `Onnxify.Safetensors`
-  - `/tests/`: `Onnxify.ConsoleTest`, `Onnxify.Examples`, `Onnxify.Tests`, `Onnxify.TorchSharp.Observer`
+  - `/generators/`: `Onnxify.AgentSkillGenerator`, `Onnxify.SourceGenerator`, `Onnxify.TorchSharp.Observer`
+  - `/packages/`: `Onnxify`, `Onnxify.TorchSharp`, `Onnxify.ML`, `Onnxify.ML.TorchSharp`, `Onnxify.Safetensors`, `Onnxify.HuggingFace`, `Onnxify.ProjectGenerator`, `Onnxify.ModelGenerator`, `Onnxify.CLI`
+  - `/tests/`: `Onnxify.ConsoleTest`, `Onnxify.Examples`, `Onnxify.Examples.Models`, `Onnxify.Tests`
 
 ## Project Roles
 
@@ -16,6 +16,9 @@ Use this reference when you need to decide which project owns a repository-maint
 
 - `src/Onnxify.TorchSharp`
   - TorchSharp-to-ONNX export layer and conversion helpers
+
+- `src/Onnxify.HuggingFace`
+  - Hugging Face model repository download client with include/exclude filters, progress callbacks, revision, token, and path-safety support
 
 - `src/Onnxify.Tests`
   - automated regression tests for library, generator, and project-generator behavior

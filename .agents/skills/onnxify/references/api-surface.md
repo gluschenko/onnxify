@@ -111,6 +111,24 @@ Use this reference when you need concrete entry points for repository work in th
   - practical guide for when and why to use `Onnxify.ML` and `Onnxify.ML.TorchSharp`
   - includes inference and training pipeline examples
 
+## Hugging Face Surface
+
+- `src/Onnxify.HuggingFace/HuggingFaceClient.cs`
+  - `DownloadRepositoryAsync(repositoryId, targetDirectoryPath, options, progress, cancellationToken)`
+  - downloads Hugging Face repository files into a local directory while preserving repository-relative paths
+  - supports injected `HttpClient` for testing or custom endpoints
+
+- `src/Onnxify.HuggingFace/HuggingFaceDownloadOptions.cs`
+  - `Revision`
+  - `AccessToken`
+  - `IncludePath` and `ExcludePath` path filters
+  - `ProgressCallback`
+  - `Overwrite`
+  - `BufferSize`
+
+- `src/Onnxify.Tests/HuggingFaceClientTests.cs`
+  - source of truth for filtered downloads, progress callbacks, and path-safety behavior
+
 ## Best Existing Examples
 
 - `src/Onnxify.Tests/OnnxModelTests.cs`
