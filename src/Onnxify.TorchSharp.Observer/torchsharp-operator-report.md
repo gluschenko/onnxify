@@ -1,7 +1,7 @@
 # TorchSharp operator coverage
 
 Found: 83.73% (417/498)
-Coverage: 65.06% (324/498)
+Coverage: 71.29% (355/498)
 
 | ONNXScript operator | TorchSharp module | Found | Coverage |
 | --- | --- | --- | --- |
@@ -33,7 +33,7 @@ Coverage: 65.06% (324/498)
 | aten::_fft_c2c |  |  |  |
 | aten::_fft_c2r |  |  |  |
 | aten::_fft_r2c |  |  |  |
-| aten::_linalg_det | TorchSharp.torch+Tensor.det | &#10003; |  |
+| aten::_linalg_det | TorchSharp.torch+Tensor.det | &#10003; | &#10003; |
 | aten::_local_scalar_dense |  |  |  |
 | aten::_log_softmax | TorchSharp.Modules.LogSoftmax | &#10003; | &#10003; |
 | aten::_native_batch_norm_legit |  |  | &#10003; |
@@ -71,7 +71,7 @@ Coverage: 65.06% (324/498)
 | aten::allclose | TorchSharp.torch+Tensor.allclose | &#10003; | &#10003; |
 | aten::amax | TorchSharp.torch+Tensor.amax | &#10003; | &#10003; |
 | aten::amin | TorchSharp.torch+Tensor.amin | &#10003; | &#10003; |
-| aten::angle | TorchSharp.torch+Tensor.angle | &#10003; |  |
+| aten::angle | TorchSharp.torch+Tensor.angle | &#10003; | &#10003; |
 | aten::any | TorchSharp.torch+Tensor.any | &#10003; | &#10003; |
 | aten::any.dim | TorchSharp.torch+Tensor.any | &#10003; | &#10003; |
 | aten::any.dims | TorchSharp.torch+Tensor.any | &#10003; | &#10003; |
@@ -86,11 +86,11 @@ Coverage: 65.06% (324/498)
 | aten::atan | TorchSharp.torch+Tensor.atan | &#10003; | &#10003; |
 | aten::atan2 | TorchSharp.torch+Tensor.atan2 | &#10003; | &#10003; |
 | aten::atanh | TorchSharp.torch+Tensor.atanh | &#10003; | &#10003; |
-| aten::atleast_1d | TorchSharp.torch+Tensor.atleast_1d | &#10003; |  |
+| aten::atleast_1d | TorchSharp.torch+Tensor.atleast_1d | &#10003; | &#10003; |
 | aten::atleast_1d.Sequence | TorchSharp.torch+Tensor.atleast_1d | &#10003; |  |
-| aten::atleast_2d | TorchSharp.torch+Tensor.atleast_2d | &#10003; |  |
+| aten::atleast_2d | TorchSharp.torch+Tensor.atleast_2d | &#10003; | &#10003; |
 | aten::atleast_2d.Sequence | TorchSharp.torch+Tensor.atleast_2d | &#10003; |  |
-| aten::atleast_3d | TorchSharp.torch+Tensor.atleast_3d | &#10003; |  |
+| aten::atleast_3d | TorchSharp.torch+Tensor.atleast_3d | &#10003; | &#10003; |
 | aten::atleast_3d.Sequence | TorchSharp.torch+Tensor.atleast_3d | &#10003; |  |
 | aten::avg_pool1d | TorchSharp.Modules.AvgPool1d | &#10003; | &#10003; |
 | aten::avg_pool2d | TorchSharp.Modules.AvgPool2d | &#10003; | &#10003; |
@@ -99,22 +99,22 @@ Coverage: 65.06% (324/498)
 | aten::bernoulli | TorchSharp.torch+Tensor.bernoulli | &#10003; |  |
 | aten::bernoulli.p | TorchSharp.torch+Tensor.bernoulli | &#10003; |  |
 | aten::bilinear | TorchSharp.Modules.Bilinear | &#10003; |  |
-| aten::bitwise_and.Scalar | TorchSharp.torch+Tensor.bitwise_and | &#10003; |  |
-| aten::bitwise_and.Scalar_Tensor | TorchSharp.torch+Tensor.bitwise_and | &#10003; |  |
-| aten::bitwise_and.Tensor | TorchSharp.torch+Tensor.bitwise_and | &#10003; |  |
-| aten::bitwise_left_shift.Scalar_Tensor | TorchSharp.torch+Tensor.bitwise_left_shift | &#10003; |  |
-| aten::bitwise_left_shift.Tensor | TorchSharp.torch+Tensor.bitwise_left_shift | &#10003; |  |
-| aten::bitwise_left_shift.Tensor_Scalar | TorchSharp.torch+Tensor.bitwise_left_shift | &#10003; |  |
-| aten::bitwise_not | TorchSharp.torch+Tensor.bitwise_not | &#10003; |  |
-| aten::bitwise_or.Scalar | TorchSharp.torch+Tensor.bitwise_or | &#10003; |  |
-| aten::bitwise_or.Scalar_Tensor | TorchSharp.torch+Tensor.bitwise_or | &#10003; |  |
-| aten::bitwise_or.Tensor | TorchSharp.torch+Tensor.bitwise_or | &#10003; |  |
-| aten::bitwise_right_shift.Scalar_Tensor | TorchSharp.torch+Tensor.bitwise_right_shift | &#10003; |  |
-| aten::bitwise_right_shift.Tensor | TorchSharp.torch+Tensor.bitwise_right_shift | &#10003; |  |
-| aten::bitwise_right_shift.Tensor_Scalar | TorchSharp.torch+Tensor.bitwise_right_shift | &#10003; |  |
-| aten::bitwise_xor.Scalar | TorchSharp.torch+Tensor.bitwise_xor | &#10003; |  |
-| aten::bitwise_xor.Scalar_Tensor | TorchSharp.torch+Tensor.bitwise_xor | &#10003; |  |
-| aten::bitwise_xor.Tensor | TorchSharp.torch+Tensor.bitwise_xor | &#10003; |  |
+| aten::bitwise_and.Scalar | TorchSharp.torch+Tensor.bitwise_and | &#10003; | &#10003; |
+| aten::bitwise_and.Scalar_Tensor | TorchSharp.torch+Tensor.bitwise_and | &#10003; | &#10003; |
+| aten::bitwise_and.Tensor | TorchSharp.torch+Tensor.bitwise_and | &#10003; | &#10003; |
+| aten::bitwise_left_shift.Scalar_Tensor | TorchSharp.torch+Tensor.bitwise_left_shift | &#10003; | &#10003; |
+| aten::bitwise_left_shift.Tensor | TorchSharp.torch+Tensor.bitwise_left_shift | &#10003; | &#10003; |
+| aten::bitwise_left_shift.Tensor_Scalar | TorchSharp.torch+Tensor.bitwise_left_shift | &#10003; | &#10003; |
+| aten::bitwise_not | TorchSharp.torch+Tensor.bitwise_not | &#10003; | &#10003; |
+| aten::bitwise_or.Scalar | TorchSharp.torch+Tensor.bitwise_or | &#10003; | &#10003; |
+| aten::bitwise_or.Scalar_Tensor | TorchSharp.torch+Tensor.bitwise_or | &#10003; | &#10003; |
+| aten::bitwise_or.Tensor | TorchSharp.torch+Tensor.bitwise_or | &#10003; | &#10003; |
+| aten::bitwise_right_shift.Scalar_Tensor | TorchSharp.torch+Tensor.bitwise_right_shift | &#10003; | &#10003; |
+| aten::bitwise_right_shift.Tensor | TorchSharp.torch+Tensor.bitwise_right_shift | &#10003; | &#10003; |
+| aten::bitwise_right_shift.Tensor_Scalar | TorchSharp.torch+Tensor.bitwise_right_shift | &#10003; | &#10003; |
+| aten::bitwise_xor.Scalar | TorchSharp.torch+Tensor.bitwise_xor | &#10003; | &#10003; |
+| aten::bitwise_xor.Scalar_Tensor | TorchSharp.torch+Tensor.bitwise_xor | &#10003; | &#10003; |
+| aten::bitwise_xor.Tensor | TorchSharp.torch+Tensor.bitwise_xor | &#10003; | &#10003; |
 | aten::blackman_window | TorchSharp.torch.blackman_window | &#10003; |  |
 | aten::bmm | TorchSharp.torch+Tensor.bmm | &#10003; | &#10003; |
 | aten::broadcast_to | TorchSharp.torch+Tensor.broadcast_to | &#10003; | &#10003; |
@@ -140,24 +140,24 @@ Coverage: 65.06% (324/498)
 | aten::conv2d | TorchSharp.Modules.Conv2d | &#10003; | &#10003; |
 | aten::conv3d | TorchSharp.Modules.Conv3d | &#10003; | &#10003; |
 | aten::convolution | TorchSharp.Modules.Convolution | &#10003; | &#10003; |
-| aten::copy | TorchSharp.torch+Storage`1.copy_ | &#10003; |  |
+| aten::copy | TorchSharp.torch+Storage`1.copy_ | &#10003; | &#10003; |
 | aten::cos | TorchSharp.torch+Tensor.cos | &#10003; | &#10003; |
 | aten::cosh | TorchSharp.torch+Tensor.cosh | &#10003; | &#10003; |
 | aten::cross | TorchSharp.torch+Tensor.cross | &#10003; |  |
 | aten::cross_entropy_loss | TorchSharp.Modules.CrossEntropyLoss | &#10003; |  |
 | aten::cumsum | TorchSharp.torch+Tensor.cumsum | &#10003; | &#10003; |
 | aten::deg2rad | TorchSharp.torch+Tensor.deg2rad | &#10003; | &#10003; |
-| aten::det | TorchSharp.torch+Tensor.det | &#10003; |  |
+| aten::det | TorchSharp.torch+Tensor.det | &#10003; | &#10003; |
 | aten::detach | TorchSharp.torch+Tensor.detach | &#10003; | &#10003; |
 | aten::diagonal | TorchSharp.torch+Tensor.diagonal | &#10003; |  |
 | aten::diagonal_copy |  |  |  |
 | aten::div.Scalar | TorchSharp.torch+Tensor.div | &#10003; | &#10003; |
-| aten::div.Scalar_mode | TorchSharp.torch+Tensor.div | &#10003; |  |
+| aten::div.Scalar_mode | TorchSharp.torch+Tensor.div | &#10003; | &#10003; |
 | aten::div.Tensor | TorchSharp.torch+Tensor.div | &#10003; | &#10003; |
-| aten::div.Tensor_mode | TorchSharp.torch+Tensor.div | &#10003; |  |
+| aten::div.Tensor_mode | TorchSharp.torch+Tensor.div | &#10003; | &#10003; |
 | aten::divide.Scalar | TorchSharp.torch+Tensor.divide | &#10003; | &#10003; |
 | aten::divide.Tensor | TorchSharp.torch+Tensor.divide | &#10003; | &#10003; |
-| aten::dot | TorchSharp.torch+Tensor.dot | &#10003; |  |
+| aten::dot | TorchSharp.torch+Tensor.dot | &#10003; | &#10003; |
 | aten::dropout | TorchSharp.Modules.Dropout | &#10003; | &#10003; |
 | aten::einsum | TorchSharp.torch.einsum | &#10003; |  |
 | aten::elu | TorchSharp.Modules.ELU | &#10003; | &#10003; |
@@ -237,7 +237,7 @@ Coverage: 65.06% (324/498)
 | aten::less_equal.Tensor | TorchSharp.torch+Tensor.less_equal | &#10003; | &#10003; |
 | aten::lift_fresh_copy |  |  |  |
 | aten::linalg_cross |  |  |  |
-| aten::linalg_det | TorchSharp.torch+Tensor.det | &#10003; |  |
+| aten::linalg_det | TorchSharp.torch+Tensor.det | &#10003; | &#10003; |
 | aten::linalg_vector_norm | TorchSharp.torch+linalg.vector_norm | &#10003; |  |
 | aten::linear | TorchSharp.Modules.Linear | &#10003; | &#10003; |
 | aten::linspace | TorchSharp.torch.linspace | &#10003; | &#10003; |
@@ -384,7 +384,7 @@ Coverage: 65.06% (324/498)
 | aten::special_softmax |  |  | &#10003; |
 | aten::split | TorchSharp.torch+Tensor.split | &#10003; | &#10003; |
 | aten::split.Tensor | TorchSharp.torch+Tensor.split | &#10003; | &#10003; |
-| aten::split_with_sizes |  |  |  |
+| aten::split_with_sizes |  |  | &#10003; |
 | aten::sqrt | TorchSharp.torch+Tensor.sqrt | &#10003; | &#10003; |
 | aten::squeeze | TorchSharp.torch+Tensor.squeeze | &#10003; | &#10003; |
 | aten::squeeze.dim | TorchSharp.torch+Tensor.squeeze | &#10003; | &#10003; |
@@ -444,9 +444,9 @@ Coverage: 65.06% (324/498)
 | aten::where.ScalarOther | TorchSharp.torch+Tensor.where | &#10003; | &#10003; |
 | aten::where.ScalarSelf | TorchSharp.torch+Tensor.where | &#10003; | &#10003; |
 | aten::where.self | TorchSharp.torch+Tensor.where | &#10003; | &#10003; |
-| aten::xlogy.Scalar_Other | TorchSharp.torch+Tensor.xlogy | &#10003; |  |
-| aten::xlogy.Scalar_Self | TorchSharp.torch+Tensor.xlogy | &#10003; |  |
-| aten::xlogy.Tensor | TorchSharp.torch+Tensor.xlogy | &#10003; |  |
+| aten::xlogy.Scalar_Other | TorchSharp.torch+Tensor.xlogy | &#10003; | &#10003; |
+| aten::xlogy.Scalar_Self | TorchSharp.torch+Tensor.xlogy | &#10003; | &#10003; |
+| aten::xlogy.Tensor | TorchSharp.torch+Tensor.xlogy | &#10003; | &#10003; |
 | aten::zeros | TorchSharp.torch+Tensor.zeros | &#10003; | &#10003; |
 | aten::zeros_like | TorchSharp.torch+Tensor.zeros_like | &#10003; | &#10003; |
 | math::ceil | TorchSharp.torch+Tensor.ceil | &#10003; | &#10003; |

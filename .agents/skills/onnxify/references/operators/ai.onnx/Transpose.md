@@ -54,3 +54,8 @@ where `n` is the rank of the input tensor.
 | --- | --- |
 | `Onnxify.TorchSharp.TorchModuleExtensions.Export(this GRU module, OnnxGraph graph, IOnnxGraphEdge input) -> GRUOutput` | `aten::gru.input` |
 | `Onnxify.TorchSharp.TorchModuleExtensions.Export(this LSTM module, OnnxGraph graph, IOnnxGraphEdge input) -> LSTMOutput` | `aten::lstm.input` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportNonZero(this OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::nonzero` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportPermute(this OnnxGraph graph, IOnnxGraphEdge input, long[] permutation) -> IOnnxGraphEdge` | `aten::permute` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportT(this OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::t` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportTranspose(this OnnxGraph graph, IOnnxGraphEdge input, IReadOnlyList<long> permutation) -> IOnnxGraphEdge` | `prims::transpose` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportTranspose(this OnnxGraph graph, IOnnxGraphEdge input, long dim0, long dim1) -> IOnnxGraphEdge` | `aten::transpose.int`, `prims::transpose` |

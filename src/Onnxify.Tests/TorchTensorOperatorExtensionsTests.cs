@@ -121,6 +121,199 @@ public sealed class TorchTensorOperatorExtensionsTests
     }
 
     [Fact]
+    public void ExportBitwiseOperators_EmitExpectedNodes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<int>([2L, 3L]));
+        var other = graph.AddInput("other", OnnxTensorType.Create<int>([2L, 3L]));
+
+        graph.ExportBitwiseNot(input);
+        graph.ExportBitwiseAnd(input, other);
+        graph.ExportBitwiseAnd(input, 3d);
+        graph.ExportBitwiseAnd(7d, other);
+        graph.ExportBitwiseOr(input, other);
+        graph.ExportBitwiseOr(input, 3d);
+        graph.ExportBitwiseOr(7d, other);
+        graph.ExportBitwiseXor(input, other);
+        graph.ExportBitwiseXor(input, 3d);
+        graph.ExportBitwiseXor(7d, other);
+
+        Assert.Equal(
+            [
+                "BitwiseNot",
+                "BitwiseAnd",
+                "BitwiseAnd",
+                "BitwiseAnd",
+                "BitwiseOr",
+                "BitwiseOr",
+                "BitwiseOr",
+                "BitwiseXor",
+                "BitwiseXor",
+                "BitwiseXor",
+            ],
+            graph.Nodes.Select(x => x.OpType).ToArray()
+        );
+
+        Assert.All(
+            graph.Initializers.OfType<OnnxTensor<int>>(),
+            tensor => Assert.Equal([], tensor.Shape.Select(static x => (long)x).ToArray())
+        );
+    }
+
+    [Fact]
+    public void ExportBitwiseOperators_WithFloatInput_Throws()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 3L]));
+
+        Assert.Throws<NotSupportedException>(() => graph.ExportBitwiseNot(input));
+        Assert.Throws<NotSupportedException>(() => graph.ExportBitwiseAnd(input, 1d));
+        Assert.Throws<NotSupportedException>(() => graph.ExportBitwiseOr(input, 1d));
+        Assert.Throws<NotSupportedException>(() => graph.ExportBitwiseXor(input, 1d));
+    }
+
+    [Fact]
+    public void ExportBitShiftOperators_EmitExpectedNodes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<int>([2L, 3L]));
+        var other = graph.AddInput("other", OnnxTensorType.Create<int>([2L, 3L]));
+
+        graph.ExportBitwiseLeftShift(input, other);
+        graph.ExportBitwiseLeftShift(input, 1d);
+        graph.ExportBitwiseLeftShift(8d, other);
+        graph.ExportBitwiseRightShift(input, other);
+        graph.ExportBitwiseRightShift(input, 1d);
+        graph.ExportBitwiseRightShift(8d, other);
+
+        Assert.Equal(9, graph.Nodes.Count(static node => node.OpType == "BitShift"));
+        Assert.Equal(21, graph.Nodes.Count(static node => node.OpType == "Cast"));
+        Assert.Equal(3, graph.Nodes.Count(static node => node.OpType == "Less"));
+        Assert.Equal(3, graph.Nodes.Count(static node => node.OpType == "BitwiseNot"));
+        Assert.Equal(3, graph.Nodes.Count(static node => node.OpType == "BitwiseOr"));
+        Assert.Equal(3, graph.Nodes.Count(static node => node.OpType == "Where"));
+        Assert.Equal(
+            ["LEFT", "LEFT", "LEFT", "RIGHT", "RIGHT", "RIGHT", "RIGHT", "RIGHT", "RIGHT"],
+            graph.Nodes
+                .Where(static node => node.OpType == "BitShift")
+                .Select(static node => Assert.IsType<string>(node.Attributes.Single(x => x.Name == "direction").GetValue()))
+                .ToArray()
+        );
+    }
+
+    [Fact]
+    public void ExportBitShiftOperators_WithFloatOrBoolInput_Throws()
+    {
+        var graph = CreateGraph();
+        var floatInput = graph.AddInput("float_input", OnnxTensorType.Create<float>([2L, 3L]));
+        var boolInput = graph.AddInput("bool_input", OnnxTensorType.Create<bool>([2L, 3L]));
+
+        Assert.Throws<NotSupportedException>(() => graph.ExportBitwiseLeftShift(floatInput, 1d));
+        Assert.Throws<NotSupportedException>(() => graph.ExportBitwiseRightShift(floatInput, 1d));
+        Assert.Throws<NotSupportedException>(() => graph.ExportBitwiseLeftShift(boolInput, 1d));
+        Assert.Throws<NotSupportedException>(() => graph.ExportBitwiseRightShift(boolInput, 1d));
+    }
+
+    [Fact]
+    public void ExportDot_EmitsMatMulNode()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([3L]));
+        var other = graph.AddInput("other", OnnxTensorType.Create<float>([3L]));
+
+        var output = graph.ExportDot(input, other);
+
+        Assert.NotNull(output);
+        Assert.Equal("MatMul", Assert.Single(graph.Nodes).OpType);
+    }
+
+    [Fact]
+    public void ExportDot_WithKnownNonVectorInput_Throws()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 3L]));
+        var other = graph.AddInput("other", OnnxTensorType.Create<float>([3L]));
+
+        Assert.Throws<NotSupportedException>(() => graph.ExportDot(input, other));
+    }
+
+    [Fact]
+    public void ExportXLogYOperators_EmitExpectedNodes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 3L]));
+        var other = graph.AddInput("other", OnnxTensorType.Create<float>([2L, 3L]));
+
+        graph.ExportXLogY(input, other);
+        graph.ExportXLogY(2d, other);
+        graph.ExportXLogY(input, 3d);
+
+        Assert.Equal(3, graph.Nodes.Count(static node => node.OpType == "IsNaN"));
+        Assert.Equal(3, graph.Nodes.Count(static node => node.OpType == "Equal"));
+        Assert.Equal(3, graph.Nodes.Count(static node => node.OpType == "Log"));
+        Assert.Equal(3, graph.Nodes.Count(static node => node.OpType == "Mul"));
+        Assert.Equal(6, graph.Nodes.Count(static node => node.OpType == "Where"));
+        Assert.Equal(5, graph.Initializers.OfType<OnnxTensor<float>>().Count());
+    }
+
+    [Fact]
+    public void ExportAngleAtLeastDetAndCopy_EmitExpectedNodes()
+    {
+        var graph = CreateGraph();
+        var scalar = graph.AddInput("scalar", OnnxTensorType.Create<float>([]));
+        var vector = graph.AddInput("vector", OnnxTensorType.Create<float>([3L]));
+        var matrix = graph.AddInput("matrix", OnnxTensorType.Create<float>([2L, 3L]));
+        var detInput = graph.AddInput("det_input", OnnxTensorType.Create<float>([2L, 2L]));
+        var intSource = graph.AddInput("int_source", OnnxTensorType.Create<int>([2L, 3L]));
+
+        graph.ExportAngle(vector);
+        graph.ExportAtLeast1D(scalar);
+        graph.ExportAtLeast2D(vector);
+        graph.ExportAtLeast3D(matrix);
+        graph.ExportDet(detInput);
+        graph.ExportCopy(matrix, intSource);
+
+        var opTypes = graph.Nodes.Select(static node => node.OpType).ToArray();
+        Assert.Contains("Less", opTypes);
+        Assert.Contains("Where", opTypes);
+        Assert.Equal(2, opTypes.Count(static opType => opType == "Reshape"));
+        Assert.Contains("Unsqueeze", opTypes);
+        Assert.Contains("Det", opTypes);
+        Assert.Contains("Cast", opTypes);
+        Assert.Equal(3, opTypes.Count(static opType => opType == "Identity"));
+    }
+
+    [Fact]
+    public void ExportDivMode_EmitsExpectedRoundingNodes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 3L]));
+        var other = graph.AddInput("other", OnnxTensorType.Create<float>([2L, 3L]));
+        var longInput = graph.AddInput("long_input", OnnxTensorType.Create<long>([2L, 3L]));
+        var longOther = graph.AddInput("long_other", OnnxTensorType.Create<long>([2L, 3L]));
+
+        graph.ExportDiv(input, other, roundingMode: null);
+        graph.ExportDiv(input, 2d, roundingMode: "floor");
+        graph.ExportDiv(longInput, longOther, roundingMode: "trunc");
+
+        var opTypes = graph.Nodes.Select(static node => node.OpType).ToArray();
+        Assert.Equal(3, opTypes.Count(static opType => opType == "Div"));
+        Assert.Contains("Floor", opTypes);
+        Assert.Contains("Trunc", opTypes);
+        Assert.Equal(3, opTypes.Count(static opType => opType == "Cast"));
+    }
+
+    [Fact]
+    public void ExportDivMode_WithUnsupportedRoundingMode_Throws()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 3L]));
+        var other = graph.AddInput("other", OnnxTensorType.Create<float>([2L, 3L]));
+
+        Assert.Throws<NotSupportedException>(() => graph.ExportDiv(input, other, "ceil"));
+    }
+
+    [Fact]
     public void ExportMatMul_EmitsMatMulNode()
     {
         var graph = CreateGraph();
@@ -1764,6 +1957,36 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("aten::logical_and", coveredOperators);
         Assert.Contains("aten::logical_or", coveredOperators);
         Assert.Contains("aten::logical_xor", coveredOperators);
+        Assert.Contains("aten::bitwise_not", coveredOperators);
+        Assert.Contains("aten::bitwise_and.Tensor", coveredOperators);
+        Assert.Contains("aten::bitwise_and.Scalar", coveredOperators);
+        Assert.Contains("aten::bitwise_and.Scalar_Tensor", coveredOperators);
+        Assert.Contains("aten::bitwise_or.Tensor", coveredOperators);
+        Assert.Contains("aten::bitwise_or.Scalar", coveredOperators);
+        Assert.Contains("aten::bitwise_or.Scalar_Tensor", coveredOperators);
+        Assert.Contains("aten::bitwise_xor.Tensor", coveredOperators);
+        Assert.Contains("aten::bitwise_xor.Scalar", coveredOperators);
+        Assert.Contains("aten::bitwise_xor.Scalar_Tensor", coveredOperators);
+        Assert.Contains("aten::bitwise_left_shift.Tensor", coveredOperators);
+        Assert.Contains("aten::bitwise_left_shift.Tensor_Scalar", coveredOperators);
+        Assert.Contains("aten::bitwise_left_shift.Scalar_Tensor", coveredOperators);
+        Assert.Contains("aten::bitwise_right_shift.Tensor", coveredOperators);
+        Assert.Contains("aten::bitwise_right_shift.Tensor_Scalar", coveredOperators);
+        Assert.Contains("aten::bitwise_right_shift.Scalar_Tensor", coveredOperators);
+        Assert.Contains("aten::dot", coveredOperators);
+        Assert.Contains("aten::xlogy.Tensor", coveredOperators);
+        Assert.Contains("aten::xlogy.Scalar_Self", coveredOperators);
+        Assert.Contains("aten::xlogy.Scalar_Other", coveredOperators);
+        Assert.Contains("aten::angle", coveredOperators);
+        Assert.Contains("aten::atleast_1d", coveredOperators);
+        Assert.Contains("aten::atleast_2d", coveredOperators);
+        Assert.Contains("aten::atleast_3d", coveredOperators);
+        Assert.Contains("aten::div.Tensor_mode", coveredOperators);
+        Assert.Contains("aten::div.Scalar_mode", coveredOperators);
+        Assert.Contains("aten::_linalg_det", coveredOperators);
+        Assert.Contains("aten::linalg_det", coveredOperators);
+        Assert.Contains("aten::det", coveredOperators);
+        Assert.Contains("aten::copy", coveredOperators);
         Assert.Contains("aten::equal", coveredOperators);
         Assert.Contains("aten::allclose", coveredOperators);
         Assert.Contains("aten::isclose", coveredOperators);

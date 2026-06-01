@@ -49,3 +49,6 @@ If the input 'split' is specified, it indicates the sizes of each output in the 
 | Converter | Torch ops |
 | --- | --- |
 | `Onnxify.TorchSharp.TorchModuleExtensions.Export(this GLU module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::glu` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportChunk(this OnnxGraph graph, IOnnxGraphEdge input, long chunks, long dim) -> IReadOnlyList<IOnnxGraphEdge>` | `aten::chunk` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportSplit(this OnnxGraph graph, IOnnxGraphEdge input, IReadOnlyList<long> splitSizes, long dim) -> IReadOnlyList<IOnnxGraphEdge>` | `aten::split_with_sizes` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportSplit(this OnnxGraph graph, IOnnxGraphEdge input, long splitSize, long dim) -> IReadOnlyList<IOnnxGraphEdge>` | `aten::split`, `aten::split.Tensor` |
