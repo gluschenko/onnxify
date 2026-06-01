@@ -7,6 +7,7 @@
   </Folder>
   <Folder Name="/.docs/nuget/">
     <File Path="../.docs/nuget/Onnxify.CLI.md" />
+    <File Path="../.docs/nuget/Onnxify.HuggingFace.md" />
     <File Path="../.docs/nuget/Onnxify.ModelGenerator.md" />
     <File Path="../.docs/nuget/Onnxify.md" />
     <File Path="../.docs/nuget/Onnxify.ML.md" />
@@ -17,6 +18,7 @@
   </Folder>
   <Folder Name="/.docs/nuget/release-notes/">
     <File Path="../.docs/nuget/release-notes/Onnxify.CLI.md" />
+    <File Path="../.docs/nuget/release-notes/Onnxify.HuggingFace.md" />
     <File Path="../.docs/nuget/release-notes/Onnxify.ModelGenerator.md" />
     <File Path="../.docs/nuget/release-notes/Onnxify.md" />
     <File Path="../.docs/nuget/release-notes/Onnxify.ML.md" />
@@ -36,6 +38,7 @@
   </Folder>
   <Folder Name="/packages/">
     <Project Path="Onnxify.CLI/Onnxify.CLI.csproj" Id="dd170c00-1934-4565-8bdb-cd1e1f58c340" />
+    <Project Path="Onnxify.HuggingFace/Onnxify.HuggingFace.csproj" Id="fe05030f-2a45-4320-b796-07693f81b8a0" />
     <Project Path="Onnxify.ML.TorchSharp/Onnxify.ML.TorchSharp.csproj" Id="46f9c991-61a8-4907-8d07-d3b927c35c01" />
     <Project Path="Onnxify.ML/Onnxify.ML.csproj" Id="ba388d6c-720a-4ab0-91ca-ba72e5b6c5a9" />
     <Project Path="Onnxify.ModelGenerator/Onnxify.ModelGenerator.csproj" Id="5703ec41-d29c-480a-a730-e79eb00d7e30" />

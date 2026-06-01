@@ -1,5 +1,8 @@
 ﻿using Onnxify.CLI;
+using Onnxify.HuggingFace;
 using Onnxify.Safetensors;
+using System.Net;
+using System.Text;
 using SafeTensorsModel = Onnxify.Safetensors.SafeTensors;
 
 namespace Onnxify.Tests;
@@ -186,10 +189,115 @@ public sealed class OnnxifyCliTests
         }
     }
 
+    [Fact]
+    public void Run_HuggingFaceDownload_CreatesFilteredOutputFiles()
+    {
+        var outputDirectoryPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}");
+
+        try
+        {
+            using var httpClient = new HttpClient(new FakeHuggingFaceHandler())
+            {
+                BaseAddress = new Uri("https://huggingface.co/")
+            };
+            var client = new HuggingFaceClient(httpClient);
+
+            var stdout = new StringWriter();
+            var stderr = new StringWriter();
+
+            var exitCode = App.Run(
+                [
+                    "hf",
+                    "download",
+                    "sample/repo",
+                    outputDirectoryPath,
+                    "--variant",
+                    "bf16",
+                    "--exclude",
+                    "*.md5",
+                    "--overwrite",
+                ],
+                stdout,
+                stderr,
+                client);
+
+            Assert.Equal(0, exitCode);
+            Assert.Equal(string.Empty, stderr.ToString());
+
+            Assert.True(File.Exists(Path.Combine(outputDirectoryPath, "onnx", "decoder_model_bf16.onnx")));
+            Assert.True(File.Exists(Path.Combine(outputDirectoryPath, "config.json")));
+            Assert.False(File.Exists(Path.Combine(outputDirectoryPath, "onnx", "decoder_model_q4f16.onnx")));
+            Assert.False(File.Exists(Path.Combine(outputDirectoryPath, "onnx", "decoder_model_bf16.onnx.md5")));
+
+            var outputText = stdout.ToString();
+            Assert.Contains("Downloaded 1/2: config.json", outputText);
+            Assert.Contains("Downloaded 2/2: onnx/decoder_model_bf16.onnx", outputText);
+            Assert.Contains("HuggingFaceDownloadResult(", outputText);
+            Assert.Contains("DownloadedFiles=2", outputText);
+        }
+        finally
+        {
+            if (Directory.Exists(outputDirectoryPath))
+            {
+                Directory.Delete(outputDirectoryPath, recursive: true);
+            }
+        }
+    }
+
     private static byte[] FloatsToBytes(params float[] values)
     {
         var bytes = new byte[values.Length * sizeof(float)];
         Buffer.BlockCopy(values, 0, bytes, 0, bytes.Length);
         return bytes;
+    }
+
+    private sealed class FakeHuggingFaceHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var path = request.RequestUri?.AbsolutePath;
+
+            if (path == "/api/models/sample/repo")
+            {
+                return RespondJson(
+                    """
+                    {
+                      "siblings": [
+                        { "rfilename": "onnx/decoder_model_bf16.onnx", "size": 4 },
+                        { "rfilename": "onnx/decoder_model_bf16.onnx.md5", "size": 4 },
+                        { "rfilename": "onnx/decoder_model_q4f16.onnx", "size": 4 },
+                        { "rfilename": "config.json", "size": 4 }
+                      ]
+                    }
+                    """);
+            }
+
+            if (path is "/sample/repo/resolve/main/onnx/decoder_model_bf16.onnx"
+                or "/sample/repo/resolve/main/config.json")
+            {
+                return RespondText("data");
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                Content = new StringContent(path ?? string.Empty)
+            });
+        }
+
+        private static Task<HttpResponseMessage> RespondJson(string json)
+        {
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            });
+        }
+
+        private static Task<HttpResponseMessage> RespondText(string text)
+        {
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(text, Encoding.UTF8, "application/octet-stream")
+            });
+        }
     }
 }

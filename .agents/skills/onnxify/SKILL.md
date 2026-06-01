@@ -1,6 +1,6 @@
 ---
 name: onnxify
-description: "Use this skill when working with the public Onnxify package family in this repository: Onnxify for loading, inspecting, creating, editing, and saving ONNX models; Onnxify.TorchSharp for exporting TorchSharp modules to ONNX; Onnxify.Safetensors for safetensors archives and tensor storage; Onnxify.ProjectGenerator for generating C# reconstruction projects from existing .onnx files; Onnxify.ModelGenerator for generating typed Microsoft.ML.OnnxRuntime wrappers from .onnx files; and Onnxify.ML / Onnxify.ML.TorchSharp for inference and training pipelines. Use it to choose the right package, implement or review behavior, and validate examples and tests across src/Onnxify*, src/Onnxify.Tests, src/Onnxify.ConsoleTest, and src/Onnxify.Examples."
+description: "Use this skill when working with the public Onnxify package family in this repository: Onnxify for loading, inspecting, creating, editing, and saving ONNX models; Onnxify.TorchSharp for exporting TorchSharp modules to ONNX; Onnxify.Safetensors for safetensors archives and tensor storage; Onnxify.HuggingFace for downloading selected Hugging Face model repository files; Onnxify.ProjectGenerator for generating C# reconstruction projects from existing .onnx files; Onnxify.ModelGenerator for generating typed Microsoft.ML.OnnxRuntime wrappers from .onnx files; and Onnxify.ML / Onnxify.ML.TorchSharp for inference and training pipelines. Use it to choose the right package, implement or review behavior, and validate examples and tests across src/Onnxify*, src/Onnxify.Tests, src/Onnxify.ConsoleTest, and src/Onnxify.Examples."
 ---
 
 # Onnxify
@@ -10,7 +10,7 @@ description: "Use this skill when working with the public Onnxify package family
 Use this skill for repository-specific work on Onnxify rather than generic ONNX advice. It is tuned for the object model in `src/Onnxify`, the TorchSharp export layer in `src/Onnxify.TorchSharp`, the current tests in `src/Onnxify.Tests`, and the example/playground projects in `src/Onnxify.ConsoleTest` and `src/Onnxify.Examples`.
 
 Read [references/api-surface.md](references/api-surface.md) when you need concrete entry points, TorchSharp export files, example model locations, or a quick reminder of which project to touch.
-Read [references/cli.md](references/cli.md) when you need to inspect `.onnx` or `.safetensors` files from the terminal, view only model inputs/outputs, or generate a C# project from an ONNX file.
+Read [references/cli.md](references/cli.md) when you need to inspect `.onnx` or `.safetensors` files from the terminal, view only model inputs/outputs, generate a C# project from an ONNX file, or download selected Hugging Face repository files.
 Read [references/inference-from-onnx.md](references/inference-from-onnx.md) when you are asked to build C# inference code for an existing `.onnx` model using `Microsoft.ML.OnnxRuntime`.
 Read [references/model-generator.md](references/model-generator.md) when you need to consume an existing `.onnx` file through generated, strongly typed `Microsoft.ML.OnnxRuntime` wrappers from the `Onnxify.ModelGenerator` NuGet package.
 Read [references/safetensors.md](references/safetensors.md) when the task is about reading, writing, inspecting, slicing, or TorchSharp state-dict round-tripping with `Onnxify.Safetensors`.
@@ -51,7 +51,8 @@ Use this section for the packages and tools that the repo itself exports outward
 - `Onnxify.ModelGenerator` (`src/Onnxify.ModelGenerator`): the public Roslyn source-generator package that turns `.onnx` files in a consuming project into typed `Microsoft.ML.OnnxRuntime` wrapper classes with generated input/output contracts.
 - `Onnxify.ML` (`src/Onnxify.ML`): the public typed pipeline foundation for ML workflows. Use it for batching, branching, orchestration, progress reporting, and reusable runtime stages that are not TorchSharp-specific.
 - `Onnxify.ML.TorchSharp` (`src/Onnxify.ML.TorchSharp`): the public TorchSharp-oriented pipeline layer. Use it for tensor collation, TorchSharp inference stages, and TorchSharp training-step orchestration inside `Onnxify.ML` pipelines.
-- `Onnxify.CLI` (`src/Onnxify.CLI`): a publishable `dotnet tool`, not a normal library package. It exposes the `onnxify` command for inspecting ONNX files and driving repo workflows such as project generation.
+- `Onnxify.HuggingFace` (`src/Onnxify.HuggingFace`): the public Hugging Face model repository download client. Use it to download repository files into a local directory with revision, access-token, include/exclude path filters, and progress callbacks.
+- `Onnxify.CLI` (`src/Onnxify.CLI`): a publishable `dotnet tool`, not a normal library package. It exposes the `onnxify` command for inspecting ONNX files and driving repo workflows such as project generation and Hugging Face downloads.
 
 ## Package Boundary Notes
 
@@ -60,6 +61,7 @@ Use this section for the packages and tools that the repo itself exports outward
 - When the user asks about generating C# from an existing `.onnx` file, default to `Onnxify.ProjectGenerator` or the `Onnxify.CLI` tool depending on whether they want an API or a command-line workflow.
 - When the user asks about generating a typed runtime wrapper around an existing `.onnx` file for `Microsoft.ML.OnnxRuntime`, default to `Onnxify.ModelGenerator`.
 - When the user asks about reusable ML workflow composition, training loops, inference pipelines, batching, branching, or progress-aware orchestration, default to `Onnxify.ML` and `Onnxify.ML.TorchSharp`.
+- When the user asks about downloading model files from Hugging Face, default to `Onnxify.HuggingFace` for library code or `Onnxify.CLI` for terminal usage. Prefer include/exclude filters for large multi-variant repositories instead of downloading every file by default.
 - Do not treat `src/Onnxify.Tests`, `src/Onnxify.Examples`, `src/Onnxify.ConsoleTest`, `src/Onnxify.AgentSkillGenerator`, or `src/Onnxify.TorchSharp.Observer` as external NuGet surfaces.
 - `src/Onnxify.SourceGenerator` is currently better treated as an internal build/generator implementation detail than as a documented standalone package surface for end users.
 
@@ -148,7 +150,8 @@ Use this section for the packages and tools that the repo itself exports outward
 - Need to refresh the generated skill docs after operator-wrapper or TorchSharp-export changes: run `src/Onnxify.AgentSkillGenerator`.
 - Generate C# from a model: inspect `src/Onnxify.ProjectGenerator`.
 - Generate typed `OnnxRuntime` wrappers from a model included in a consumer project: inspect `src/Onnxify.ModelGenerator` and read `references/model-generator.md`.
-- Need a fast no-code inspection or project scaffold from a model file: use `src/Onnxify.CLI` and read `references/cli.md`.
+- Download selected model repository files from Hugging Face: inspect `src/Onnxify.HuggingFace`, use `HuggingFaceClient.DownloadRepositoryAsync(...)`, and prefer `IncludePath`/`ExcludePath` filters for variants such as `bf16`.
+- Need a fast no-code inspection, Hugging Face download, or project scaffold from a model file: use `src/Onnxify.CLI` and read `references/cli.md`.
 - Need to write `Microsoft.ML.OnnxRuntime` inference code for an existing model file: read `references/inference-from-onnx.md`.
 - Need a manual repro with real assets: inspect `src/Onnxify.ConsoleTest/Assets` and `src/Onnxify.ConsoleTest/Program.cs`.
 

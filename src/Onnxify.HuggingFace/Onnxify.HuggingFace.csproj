@@ -9,24 +9,14 @@
     <Authors>Alexander Gluschenko</Authors>
     <Copyright>© 2026 Alexander Gluschenko</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageTags>onnx;torchsharp;dotnet;model-export;graph-builder</PackageTags>
-    <Description>TorchSharp-to-ONNX export layer for translating TorchSharp modules and model structure into explicit Onnxify graph operations.</Description>
+    <PackageTags>ml;dotnet;onnx;huggingface</PackageTags>
+    <Description>Hugging Face intergration for Onnxify.</Description>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591,1573</NoWarn>
-    <DocumentationFile>..\Onnxify.TorchSharp.xml</DocumentationFile>
+    <DocumentationFile>..\Onnxify.HuggingFace.xml</DocumentationFile>
   </PropertyGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Onnxify.Safetensors\Onnxify.Safetensors.csproj" />
-    <ProjectReference Include="..\Onnxify\Onnxify.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="ICSharpCode.Decompiler" Version="10.0.1.8346" />
-    <PackageReference Include="TorchSharp" Version="0.106.0" />
-  </ItemGroup>
 
 </Project>

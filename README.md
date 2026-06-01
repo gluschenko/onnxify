@@ -23,7 +23,45 @@ The repository currently implements the following NuGet packages. Package-specif
 | [`Onnxify.ModelGenerator`](.docs/nuget/Onnxify.ModelGenerator.md)     | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.ModelGenerator)](https://www.nuget.org/packages/Onnxify.ModelGenerator/)     |
 | [`Onnxify.ML`](.docs/nuget/Onnxify.ML.md)                             | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.ML)](https://www.nuget.org/packages/Onnxify.ML/)                             |
 | [`Onnxify.ML.TorchSharp`](.docs/nuget/Onnxify.ML.TorchSharp.md)       | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.ML.TorchSharp)](https://www.nuget.org/packages/Onnxify.ML.TorchSharp/)       |
+| [`Onnxify.HuggingFace`](.docs/nuget/Onnxify.HuggingFace.md)           | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.HuggingFace)](https://www.nuget.org/packages/Onnxify.HuggingFace/)           |
 | [`Onnxify.CLI`](.docs/nuget/Onnxify.CLI.md)                           | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.CLI)](https://www.nuget.org/packages/Onnxify.CLI/)                           |                  
+
+## Hugging Face Downloads
+
+`Onnxify.HuggingFace` downloads Hugging Face model repository files into a local directory and supports include/exclude path filters so large repositories can be narrowed to a specific variant, such as `bf16`.
+
+```csharp
+using Onnxify.HuggingFace;
+
+var client = new HuggingFaceClient();
+
+await client.DownloadRepositoryAsync(
+    "onnx-community/gemma-4-E2B-it-ONNX",
+    "models/gemma-bf16",
+    new HuggingFaceDownloadOptions
+    {
+        IncludePath = path =>
+            path.Contains("bf16", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith(".model", StringComparison.OrdinalIgnoreCase),
+        ExcludePath = path => path.EndsWith(".md5", StringComparison.OrdinalIgnoreCase),
+        ProgressCallback = progress =>
+        {
+            if (progress.Completed)
+            {
+                Console.WriteLine($"Downloaded {progress.FileIndex}/{progress.FileCount}: {progress.RepositoryPath}");
+            }
+        },
+        Overwrite = true,
+    }
+);
+```
+
+The same workflow is exposed through `Onnxify.CLI`:
+
+```powershell
+onnxify hf download onnx-community/gemma-4-E2B-it-ONNX models/gemma-bf16 --variant bf16 --exclude "*.md5" --overwrite
+```
 
 ## TorchSharp Operator Porting
 

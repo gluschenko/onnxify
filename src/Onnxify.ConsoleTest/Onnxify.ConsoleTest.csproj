@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Onnxify\Onnxify.csproj" />
+    <ProjectReference Include="..\Onnxify.HuggingFace\Onnxify.HuggingFace.csproj" />
     <ProjectReference Include="..\Onnxify.ProjectGenerator\Onnxify.ProjectGenerator.csproj" />
     <ProjectReference Include="..\Onnxify.Safetensors\Onnxify.Safetensors.csproj" />
     <ProjectReference Include="..\Onnxify.TorchSharp\Onnxify.TorchSharp.csproj" />
