@@ -4,6 +4,8 @@
 - Fixed deep export of `torch.cat([left, right], dim: ...)` when C# collection expressions decompile into compiler-generated inline-array spans.
 - Added an `ExportOnnxModel(...)` overload that lets callers provide the exported input and output name prefixes.
 - Promoted `ExportOnnxModel(...)` by removing its experimental obsolete marker.
+- Added TorchSharp tensor exporters for bitwise unary and binary operators, bit shifts, vector dot products, `xlogy`, real-valued `angle`, `atleast_1d` / `atleast_2d` / `atleast_3d`, `div(..., rounding_mode: ...)`, determinant aliases, and tensor `copy`.
+- Fixed generated TorchSharp operator coverage docs to count `[TorchOp]` `OnnxGraph` extension exporters, including `aten::addmm` coverage for ONNX `Gemm`.
 
 ## 0.1.1
 
