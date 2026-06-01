@@ -6,6 +6,8 @@
 - Promoted `ExportOnnxModel(...)` by removing its experimental obsolete marker.
 - Added TorchSharp tensor exporters for bitwise unary and binary operators, bit shifts, vector dot products, `xlogy`, real-valued `angle`, `atleast_1d` / `atleast_2d` / `atleast_3d`, `div(..., rounding_mode: ...)`, determinant aliases, and tensor `copy`.
 - Fixed generated TorchSharp operator coverage docs to count `[TorchOp]` `OnnxGraph` extension exporters, including `aten::addmm` coverage for ONNX `Gemm`.
+- Added TorchSharp tensor exporters for `_to_copy`, `empty`, `empty_like`, scalar and tensor `fill`, `heaviside`, and `new_empty` / `new_full` / `new_ones` / `new_zeros`.
+- Added TorchSharp tensor exporters for sequence `atleast_1d` / `atleast_2d` / `atleast_3d`, `empty_strided`, window creators, `logcumsumexp`, `logdet`, and `linalg_vector_norm`.
 
 ## 0.1.1
 

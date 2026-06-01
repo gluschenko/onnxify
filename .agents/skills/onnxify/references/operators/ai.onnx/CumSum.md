@@ -64,3 +64,4 @@ output = [5, 3, 0]
 | Converter | Torch ops |
 | --- | --- |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportCumSum(this OnnxGraph graph, IOnnxGraphEdge input, long dim) -> IOnnxGraphEdge` | `aten::cumsum` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportLogCumSumExp(this OnnxGraph graph, IOnnxGraphEdge input, long dim) -> IOnnxGraphEdge` | `aten::logcumsumexp` |

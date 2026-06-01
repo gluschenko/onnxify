@@ -59,6 +59,7 @@ This operator supports **multidirectional (i.e., Numpy-style) broadcasting**; fo
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportLerp(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge end, IOnnxGraphEdge weight) -> IOnnxGraphEdge` | `aten::lerp.Tensor` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportLerp(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge end, float weight) -> IOnnxGraphEdge` | `aten::lerp.Scalar` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportLinspace(this OnnxGraph graph, float start, float end, long steps) -> IOnnxGraphEdge` | `aten::linspace` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportLogCumSumExp(this OnnxGraph graph, IOnnxGraphEdge input, long dim) -> IOnnxGraphEdge` | `aten::logcumsumexp` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportLogit(this OnnxGraph graph, IOnnxGraphEdge input, Nullable<double> eps) -> IOnnxGraphEdge` | `aten::logit` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRemainder(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `aten::remainder.Tensor` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRemainder(this OnnxGraph graph, IOnnxGraphEdge input, double other) -> IOnnxGraphEdge` | `aten::remainder.Scalar` |

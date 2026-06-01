@@ -63,4 +63,6 @@ to `False` instead of `True`.
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportAny(this OnnxGraph graph, IOnnxGraphEdge input, IReadOnlyList<long> dims, bool keepdim) -> IOnnxGraphEdge` | `aten::any.dims` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportAny(this OnnxGraph graph, IOnnxGraphEdge input, long dim, bool keepdim) -> IOnnxGraphEdge` | `aten::any.dim` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportEqualAll(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `aten::equal` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportLinalgVectorNorm(this OnnxGraph graph, IOnnxGraphEdge input, double ord, Nullable<long> dim, bool keepdim, long dtype) -> IOnnxGraphEdge` | `aten::linalg_vector_norm` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportLogCumSumExp(this OnnxGraph graph, IOnnxGraphEdge input, long dim) -> IOnnxGraphEdge` | `aten::logcumsumexp` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportMax(this OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::max` |

@@ -1861,6 +1861,73 @@ public sealed class TorchTensorOperatorExtensionsTests
     }
 
     [Fact]
+    public void ExportEmptyFillNewAndHeavisideOperators_EmitExpectedNodes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 2L]));
+        var values = graph.AddInput("values", OnnxTensorType.Create<float>([2L, 2L]));
+        var longValue = graph.AddInput("long_value", OnnxTensorType.Create<long>([]));
+
+        graph.ExportToCopy(input);
+        graph.ExportToCopy(input, dtype: 7);
+        graph.ExportEmpty(new long[] { 2L, 2L });
+        graph.ExportEmptyLike(input);
+        graph.ExportFill(input, 3d);
+        graph.ExportFill(input, longValue);
+        graph.ExportNewEmpty(input, new long[] { 2L, 2L });
+        graph.ExportNewFull(input, new long[] { 2L, 2L }, 5d, dtype: 7);
+        graph.ExportNewOnes(input, new long[] { 2L, 2L });
+        graph.ExportNewZeros(input, new long[] { 2L, 2L }, dtype: 7);
+        graph.ExportHeaviside(input, values);
+
+        var opTypes = graph.Nodes.Select(x => x.OpType).ToArray();
+        Assert.Equal(1, opTypes.Count(static opType => opType == "Identity"));
+        Assert.Equal(4, opTypes.Count(static opType => opType == "Cast"));
+        Assert.Equal(2, opTypes.Count(static opType => opType == "CastLike"));
+        Assert.Equal(8, opTypes.Count(static opType => opType == "Expand"));
+        Assert.Equal(3, opTypes.Count(static opType => opType == "Shape"));
+        Assert.Contains("Less", opTypes);
+        Assert.Contains("Equal", opTypes);
+        Assert.Equal(2, opTypes.Count(static opType => opType == "Where"));
+    }
+
+    [Fact]
+    public void ExportSequenceWindowAndNormOperators_EmitExpectedNodes()
+    {
+        var graph = CreateGraph();
+        var scalar = graph.AddInput("scalar", OnnxTensorType.Create<float>([]));
+        var vector = graph.AddInput("vector", OnnxTensorType.Create<float>([4L]));
+        var matrix = graph.AddInput("matrix", OnnxTensorType.Create<float>([2L, 4L]));
+        var square = graph.AddInput("square", OnnxTensorType.Create<float>([2L, 2L]));
+
+        var atleast1d = graph.ExportAtLeast1D(new IOnnxGraphEdge[] { scalar, vector });
+        var atleast2d = graph.ExportAtLeast2D(new IOnnxGraphEdge[] { scalar, vector });
+        var atleast3d = graph.ExportAtLeast3D(new IOnnxGraphEdge[] { scalar, matrix });
+        graph.ExportEmptyStrided(new long[] { 2L, 3L }, new long[] { 3L, 1L });
+        graph.ExportBlackmanWindow(4L);
+        graph.ExportHammingWindow(4L);
+        graph.ExportHannWindow(4L);
+        graph.ExportLogCumSumExp(matrix, dim: 1L);
+        graph.ExportLogDet(square);
+        graph.ExportLinalgVectorNorm(matrix, ord: 2.0, dim: 1L, keepdim: true);
+
+        Assert.Equal(2, atleast1d.Count);
+        Assert.Equal(2, atleast2d.Count);
+        Assert.Equal(2, atleast3d.Count);
+
+        var opTypes = graph.Nodes.Select(x => x.OpType).ToArray();
+        Assert.Contains("BlackmanWindow", opTypes);
+        Assert.Contains("HammingWindow", opTypes);
+        Assert.Contains("HannWindow", opTypes);
+        Assert.Contains("CumSum", opTypes);
+        Assert.Contains("ReduceMax", opTypes);
+        Assert.Contains("Det", opTypes);
+        Assert.Contains("Log", opTypes);
+        Assert.Contains("ReduceL2", opTypes);
+        Assert.Contains("Expand", opTypes);
+    }
+
+    [Fact]
     public void TorchModuleExtensions_ExposeRequestedAliasOperators()
     {
         var coveredOperators = typeof(TorchModuleExtensions)
@@ -1987,6 +2054,26 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("aten::linalg_det", coveredOperators);
         Assert.Contains("aten::det", coveredOperators);
         Assert.Contains("aten::copy", coveredOperators);
+        Assert.Contains("aten::_to_copy", coveredOperators);
+        Assert.Contains("aten::empty.memory_format", coveredOperators);
+        Assert.Contains("aten::empty_like", coveredOperators);
+        Assert.Contains("aten::fill.Scalar", coveredOperators);
+        Assert.Contains("aten::fill.Tensor", coveredOperators);
+        Assert.Contains("aten::heaviside", coveredOperators);
+        Assert.Contains("aten::new_empty", coveredOperators);
+        Assert.Contains("aten::new_full", coveredOperators);
+        Assert.Contains("aten::new_ones", coveredOperators);
+        Assert.Contains("aten::new_zeros", coveredOperators);
+        Assert.Contains("aten::atleast_1d.Sequence", coveredOperators);
+        Assert.Contains("aten::atleast_2d.Sequence", coveredOperators);
+        Assert.Contains("aten::atleast_3d.Sequence", coveredOperators);
+        Assert.Contains("aten::empty_strided", coveredOperators);
+        Assert.Contains("aten::blackman_window", coveredOperators);
+        Assert.Contains("aten::hamming_window", coveredOperators);
+        Assert.Contains("aten::hann_window", coveredOperators);
+        Assert.Contains("aten::logcumsumexp", coveredOperators);
+        Assert.Contains("aten::logdet", coveredOperators);
+        Assert.Contains("aten::linalg_vector_norm", coveredOperators);
         Assert.Contains("aten::equal", coveredOperators);
         Assert.Contains("aten::allclose", coveredOperators);
         Assert.Contains("aten::isclose", coveredOperators);

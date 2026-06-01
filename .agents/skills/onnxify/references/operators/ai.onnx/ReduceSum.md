@@ -53,5 +53,6 @@ to `False` instead of `True`.
 | Converter | Torch ops |
 | --- | --- |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportAddBmm(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge batch1, IOnnxGraphEdge batch2, float beta, float alpha) -> IOnnxGraphEdge` | `aten::addbmm` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportLinalgVectorNorm(this OnnxGraph graph, IOnnxGraphEdge input, double ord, Nullable<long> dim, bool keepdim, long dtype) -> IOnnxGraphEdge` | `aten::linalg_vector_norm` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportSum(this OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::sum`, `prims::sum` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportSum(this OnnxGraph graph, IOnnxGraphEdge input, IReadOnlyList<long> dims, bool keepdim) -> IOnnxGraphEdge` | `aten::sum.dim_IntList` |

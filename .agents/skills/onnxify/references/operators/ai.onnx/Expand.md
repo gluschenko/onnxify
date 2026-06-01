@@ -51,11 +51,20 @@ or the shape.ndim < input.shape.ndim.
 
 | Converter | Torch ops |
 | --- | --- |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportEmpty(this OnnxGraph graph, IReadOnlyList<long> size, long dtype, string layout, string device, bool pinMemory, string memoryFormat) -> IOnnxGraphEdge` | `aten::empty.memory_format` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportEmptyLike(this OnnxGraph graph, IOnnxGraphEdge input, long dtype, string layout, string device, bool pinMemory, string memoryFormat) -> IOnnxGraphEdge` | `aten::empty_like` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportEmptyStrided(this OnnxGraph graph, IReadOnlyList<long> size, IReadOnlyList<long> stride, string layout, long dtype, string device, bool pinMemory) -> IOnnxGraphEdge` | `aten::empty_strided` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportExpand(this OnnxGraph graph, IOnnxGraphEdge input, long[] shape) -> IOnnxGraphEdge` | `aten::broadcast_to`, `aten::expand` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportExpandAs(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `aten::expand_as` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportFill(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge value) -> IOnnxGraphEdge` | `aten::fill.Tensor` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportFill(this OnnxGraph graph, IOnnxGraphEdge input, double value) -> IOnnxGraphEdge` | `aten::fill.Scalar` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportFull(this OnnxGraph graph, IReadOnlyList<long> size, double fillValue) -> IOnnxGraphEdge` | `aten::full` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportFullLike(this OnnxGraph graph, IOnnxGraphEdge input, double fillValue) -> IOnnxGraphEdge` | `aten::full_like` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportGather(this OnnxGraph graph, IOnnxGraphEdge input, long dim, IOnnxGraphEdge index) -> IOnnxGraphEdge` | `aten::gather` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportNewEmpty(this OnnxGraph graph, IOnnxGraphEdge input, IReadOnlyList<long> size, long dtype, string layout, string device, bool pinMemory) -> IOnnxGraphEdge` | `aten::new_empty` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportNewFull(this OnnxGraph graph, IOnnxGraphEdge input, IReadOnlyList<long> size, double fillValue, long dtype, string layout, string device, bool pinMemory) -> IOnnxGraphEdge` | `aten::new_full` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportNewOnes(this OnnxGraph graph, IOnnxGraphEdge input, IReadOnlyList<long> size, long dtype, string layout, string device, bool pinMemory) -> IOnnxGraphEdge` | `aten::new_ones` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportNewZeros(this OnnxGraph graph, IOnnxGraphEdge input, IReadOnlyList<long> size, long dtype, string layout, string device, bool pinMemory) -> IOnnxGraphEdge` | `aten::new_zeros` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportOnes(this OnnxGraph graph, IReadOnlyList<long> size) -> IOnnxGraphEdge` | `aten::ones` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportOnesLike(this OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::ones_like` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportZeros(this OnnxGraph graph, IReadOnlyList<long> size) -> IOnnxGraphEdge` | `aten::zeros` |
