@@ -140,6 +140,8 @@ jobs:
             project: src/Onnxify.ProjectGenerator/Onnxify.ProjectGenerator.csproj
           - id: Onnxify.ModelGenerator
             project: src/Onnxify.ModelGenerator/Onnxify.ModelGenerator.csproj
+          - id: Onnxify.HuggingFace
+            project: src/Onnxify.HuggingFace/Onnxify.HuggingFace.csproj
           - id: Onnxify.CLI
             project: src/Onnxify.CLI/Onnxify.CLI.csproj
 
