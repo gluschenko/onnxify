@@ -871,7 +871,7 @@ internal static class OperatorSkillGenerator
 
     private static bool IsTopLevelConverter(MethodBase method)
     {
-        if (!method.IsPublic || method.Name != "Export")
+        if (!method.IsPublic)
         {
             return false;
         }
@@ -887,12 +887,11 @@ internal static class OperatorSkillGenerator
             return false;
         }
 
-        if (parameters[0].ParameterType.Assembly != typeof(global::TorchSharp.torch).Assembly)
-        {
-            return false;
-        }
-
-        return method.GetCustomAttributes<TorchOpAttribute>(inherit: false).Any();
+        return method.GetCustomAttributes<TorchOpAttribute>(inherit: false).Any()
+            && (
+                parameters[0].ParameterType == typeof(OnnxGraph)
+                || (method.Name == "Export" && parameters[0].ParameterType.Assembly == typeof(global::TorchSharp.torch).Assembly)
+            );
     }
 
     private static bool IsRequiredMember(PropertyInfo property)

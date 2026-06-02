@@ -107,3 +107,5 @@ output = [
 | Converter | Torch ops |
 | --- | --- |
 | `Onnxify.TorchSharp.TorchModuleExtensions.Export(this Embedding module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::embedding` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportIndexSelect(this OnnxGraph graph, IOnnxGraphEdge input, long dim, IOnnxGraphEdge index) -> IOnnxGraphEdge` | `aten::index_select` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportSelect(this OnnxGraph graph, IOnnxGraphEdge input, long dim, long index) -> IOnnxGraphEdge` | `aten::select.int` |

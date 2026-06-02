@@ -60,3 +60,11 @@ to -1 cannot be determined uniquely.
 | `Onnxify.TorchSharp.TorchModuleExtensions.Export(this LSTM module, OnnxGraph graph, IOnnxGraphEdge input) -> LSTMOutput` | `aten::lstm.input` |
 | `Onnxify.TorchSharp.TorchModuleExtensions.Export(this PReLU module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::prelu` |
 | `Onnxify.TorchSharp.TorchModuleExtensions.Export(this Unflatten module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::unflatten.int` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportAddr(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge vec1, IOnnxGraphEdge vec2, float beta, float alpha) -> IOnnxGraphEdge` | `aten::addr` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportAtLeast1D(this OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::atleast_1d` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportAtLeast2D(this OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::atleast_2d` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportAtLeast3D(this OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::atleast_3d` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportIndexSelect(this OnnxGraph graph, IOnnxGraphEdge input, long dim, IOnnxGraphEdge index) -> IOnnxGraphEdge` | `aten::index_select` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportLinalgVectorNorm(this OnnxGraph graph, IOnnxGraphEdge input, double ord, Nullable<long> dim, bool keepdim, long dtype) -> IOnnxGraphEdge` | `aten::linalg_vector_norm` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportReshape(this OnnxGraph graph, IOnnxGraphEdge input, long[] shape) -> IOnnxGraphEdge` | `aten::reshape`, `prims::reshape` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportView(this OnnxGraph graph, IOnnxGraphEdge input, long[] shape) -> IOnnxGraphEdge` | `aten::view` |

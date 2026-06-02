@@ -59,4 +59,4 @@ This operator has **optional** inputs/outputs. See [the doc](../common/IR.md) fo
 
 | Converter | Torch ops |
 | --- | --- |
-| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this Linear module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::linear` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportAddMM(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge mat1, IOnnxGraphEdge mat2, float beta, float alpha) -> IOnnxGraphEdge` | `aten::addmm` |
