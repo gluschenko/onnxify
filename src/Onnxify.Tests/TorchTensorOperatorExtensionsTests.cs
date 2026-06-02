@@ -173,6 +173,31 @@ public sealed class TorchTensorOperatorExtensionsTests
     }
 
     [Fact]
+    public void ExportBitwiseOperators_WithBoolInput_EmitLogicalNodes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<bool>([2L, 3L]));
+        var other = graph.AddInput("other", OnnxTensorType.Create<bool>([2L, 3L]));
+
+        graph.ExportBitwiseNot(input);
+        graph.ExportBitwiseAnd(input, other);
+        graph.ExportBitwiseAnd(input, 1d);
+        graph.ExportBitwiseAnd(0d, other);
+        graph.ExportBitwiseOr(input, other);
+        graph.ExportBitwiseOr(input, 1d);
+        graph.ExportBitwiseOr(0d, other);
+        graph.ExportBitwiseXor(input, other);
+        graph.ExportBitwiseXor(input, 1d);
+        graph.ExportBitwiseXor(0d, other);
+
+        Assert.Equal(
+            ["Not", "And", "And", "And", "Or", "Or", "Or", "Xor", "Xor", "Xor"],
+            graph.Nodes.Select(static x => x.OpType).ToArray()
+        );
+        Assert.DoesNotContain(graph.Nodes, static node => node.OpType.StartsWith("Bitwise", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void ExportBitShiftOperators_EmitExpectedNodes()
     {
         var graph = CreateGraph();

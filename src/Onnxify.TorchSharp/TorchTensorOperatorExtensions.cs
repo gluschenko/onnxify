@@ -1116,6 +1116,11 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(input);
 
         EnsureBitwiseTensorType(input, "bitwise_not");
+        if (GetTensorDataType(input) == typeof(bool))
+        {
+            return graph.ExportLogicalNot(input);
+        }
+
         return ExportUnaryNode(graph, "bitwise_not", "BitwiseNot", input);
     }
 
@@ -1132,6 +1137,11 @@ public static class TorchTensorOperatorExtensions
 
         EnsureBitwiseTensorType(input, "bitwise_and");
         EnsureBitwiseTensorType(other, "bitwise_and");
+        if (GetTensorDataType(input) == typeof(bool) || GetTensorDataType(other) == typeof(bool))
+        {
+            return graph.ExportLogicalAnd(input, other);
+        }
+
         return ExportBinaryNode(graph, "bitwise_and", "BitwiseAnd", input, other);
     }
 
@@ -1146,6 +1156,11 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(input);
 
         EnsureBitwiseTensorType(input, "bitwise_and");
+        if (GetTensorDataType(input) == typeof(bool))
+        {
+            return graph.ExportLogicalAnd(input, AddScalarLike(graph, input, "bitwise_and", other));
+        }
+
         return graph.ExportBitwiseAnd(input, AddScalarLike(graph, input, "bitwise_and", other));
     }
 
@@ -1160,6 +1175,11 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(other);
 
         EnsureBitwiseTensorType(other, "bitwise_and");
+        if (GetTensorDataType(other) == typeof(bool))
+        {
+            return graph.ExportLogicalAnd(AddScalarLike(graph, other, "bitwise_and", input), other);
+        }
+
         return graph.ExportBitwiseAnd(AddScalarLike(graph, other, "bitwise_and", input), other);
     }
 
@@ -1176,6 +1196,11 @@ public static class TorchTensorOperatorExtensions
 
         EnsureBitwiseTensorType(input, "bitwise_or");
         EnsureBitwiseTensorType(other, "bitwise_or");
+        if (GetTensorDataType(input) == typeof(bool) || GetTensorDataType(other) == typeof(bool))
+        {
+            return graph.ExportLogicalOr(input, other);
+        }
+
         return ExportBinaryNode(graph, "bitwise_or", "BitwiseOr", input, other);
     }
 
@@ -1190,6 +1215,11 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(input);
 
         EnsureBitwiseTensorType(input, "bitwise_or");
+        if (GetTensorDataType(input) == typeof(bool))
+        {
+            return graph.ExportLogicalOr(input, AddScalarLike(graph, input, "bitwise_or", other));
+        }
+
         return graph.ExportBitwiseOr(input, AddScalarLike(graph, input, "bitwise_or", other));
     }
 
@@ -1204,6 +1234,11 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(other);
 
         EnsureBitwiseTensorType(other, "bitwise_or");
+        if (GetTensorDataType(other) == typeof(bool))
+        {
+            return graph.ExportLogicalOr(AddScalarLike(graph, other, "bitwise_or", input), other);
+        }
+
         return graph.ExportBitwiseOr(AddScalarLike(graph, other, "bitwise_or", input), other);
     }
 
@@ -1220,6 +1255,11 @@ public static class TorchTensorOperatorExtensions
 
         EnsureBitwiseTensorType(input, "bitwise_xor");
         EnsureBitwiseTensorType(other, "bitwise_xor");
+        if (GetTensorDataType(input) == typeof(bool) || GetTensorDataType(other) == typeof(bool))
+        {
+            return graph.ExportLogicalXor(input, other);
+        }
+
         return ExportBinaryNode(graph, "bitwise_xor", "BitwiseXor", input, other);
     }
 
@@ -1234,6 +1274,11 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(input);
 
         EnsureBitwiseTensorType(input, "bitwise_xor");
+        if (GetTensorDataType(input) == typeof(bool))
+        {
+            return graph.ExportLogicalXor(input, AddScalarLike(graph, input, "bitwise_xor", other));
+        }
+
         return graph.ExportBitwiseXor(input, AddScalarLike(graph, input, "bitwise_xor", other));
     }
 
@@ -1248,6 +1293,11 @@ public static class TorchTensorOperatorExtensions
         ArgumentNullException.ThrowIfNull(other);
 
         EnsureBitwiseTensorType(other, "bitwise_xor");
+        if (GetTensorDataType(other) == typeof(bool))
+        {
+            return graph.ExportLogicalXor(AddScalarLike(graph, other, "bitwise_xor", input), other);
+        }
+
         return graph.ExportBitwiseXor(AddScalarLike(graph, other, "bitwise_xor", input), other);
     }
 
