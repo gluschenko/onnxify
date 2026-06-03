@@ -5,6 +5,17 @@ using Onnx;
 public sealed class OnnxModelTests
 {
     [Fact]
+    public void Create_UsesModernDefaultVersions()
+    {
+        var model = OnnxModel.Create();
+
+        Assert.Equal(11, model.IrVersion);
+        var opset = Assert.Single(model.OpsetImport);
+        Assert.Equal("", opset.Domain);
+        Assert.Equal(25, opset.Version);
+    }
+
+    [Fact]
     public void Create_UsesProvidedOptions()
     {
         var model = OnnxModel.Create(new OnnxModelCreationOptions
@@ -921,5 +932,155 @@ public sealed class OnnxGraphTests
             inputs: [],
             outputs: [],
             attributes: []));
+    }
+
+    [Fact]
+    public void AddInputAndOutput_WithExistingValue_MarksAndUnmarksValue()
+    {
+        var graph = OnnxModel.Create().Graph;
+        var value = graph.AddValue("activation", OnnxTensorType.Create<float>([1, 4]));
+
+        graph.AddInput(value);
+        graph.AddOutput(value);
+
+        Assert.Equal("activation", Assert.Single(graph.Inputs).Name);
+        Assert.Equal("activation", Assert.Single(graph.Outputs).Name);
+        Assert.Empty(graph.IntermediateValues);
+
+        Assert.True(graph.RemoveInput(value));
+        Assert.True(graph.RemoveOutput("activation"));
+
+        Assert.Empty(graph.Inputs);
+        Assert.Empty(graph.Outputs);
+        Assert.Equal("activation", Assert.Single(graph.IntermediateValues).Name);
+    }
+
+    [Fact]
+    public void AddValue_WithExistingLooseEdge_RewiresNodesToTypedValue()
+    {
+        var graph = OnnxModel.Create().Graph;
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([1]));
+        var looseOutput = graph.AddEdge("typed_later");
+        var node = graph.AddNode(
+            name: "identity",
+            opType: "Identity",
+            domain: "",
+            docString: "",
+            inputs: [input],
+            outputs: [looseOutput],
+            attributes: []);
+
+        var value = graph.AddValue("typed_later", OnnxTensorType.Create<float>([1]));
+
+        Assert.Same(value, graph.GetValue("typed_later"));
+        Assert.Same(value, Assert.Single(node.Outputs));
+    }
+
+    [Fact]
+    public void ReplaceValue_ByName_RewiresNodesAndPreservesInputOutputMarkers()
+    {
+        var graph = OnnxModel.Create().Graph;
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([1]));
+        var hidden = graph.AddOutput("hidden", OnnxTensorType.Create<float>([1]));
+        var node = graph.AddNode(
+            name: "identity",
+            opType: "Identity",
+            domain: "",
+            docString: "",
+            inputs: [input],
+            outputs: [hidden],
+            attributes: []);
+        var replacement = new OnnxValue<OnnxTensorType>("renamed_hidden", OnnxTensorType.Create<float>([1]));
+
+        graph.ReplaceValue("hidden", replacement);
+
+        Assert.Null(graph.GetValue("hidden"));
+        Assert.Same(replacement, graph.GetValue("renamed_hidden"));
+        Assert.Equal("renamed_hidden", Assert.Single(graph.Outputs).Name);
+        Assert.Equal("renamed_hidden", Assert.Single(node.Outputs).Name);
+    }
+
+    [Fact]
+    public void RemoveValueTensorAndEdge_ClearNodeReferences()
+    {
+        var graph = OnnxModel.Create().Graph;
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([1]));
+        var weights = graph.AddTensor("weights", [1], [1.0f]);
+        var edge = graph.AddEdge("hidden");
+        var output = graph.AddOutput("output", OnnxTensorType.Create<float>([1]));
+        var first = graph.AddNode(
+            name: "first",
+            opType: "Custom",
+            domain: "",
+            docString: "",
+            inputs: [input, weights],
+            outputs: [edge],
+            attributes: []);
+        var second = graph.AddNode(
+            name: "second",
+            opType: "Custom",
+            domain: "",
+            docString: "",
+            inputs: [edge],
+            outputs: [output],
+            attributes: []);
+
+        Assert.True(graph.RemoveValue("input"));
+        Assert.True(graph.RemoveTensor("weights"));
+        Assert.True(graph.RemoveEdge("hidden"));
+
+        Assert.Empty(graph.Inputs);
+        Assert.Empty(first.Inputs);
+        Assert.Empty(first.Outputs);
+        Assert.Empty(second.Inputs);
+        Assert.Null(graph.GetValue("hidden"));
+    }
+
+    [Fact]
+    public void RemoveNode_PrunesUnusedLooseEdges()
+    {
+        var graph = OnnxModel.Create().Graph;
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([1]));
+        var edge = graph.AddEdge("hidden");
+        graph.AddNode(
+            name: "identity",
+            opType: "Identity",
+            domain: "",
+            docString: "",
+            inputs: [input],
+            outputs: [edge],
+            attributes: []);
+
+        Assert.True(graph.RemoveNode("identity"));
+
+        Assert.Empty(graph.Nodes);
+        Assert.Null(graph.GetValue("hidden"));
+    }
+
+    [Fact]
+    public void ReplaceNode_ByName_PreservesGraphOrder()
+    {
+        var graph = OnnxModel.Create().Graph;
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([1]));
+        var firstOutput = graph.AddEdge("first_output");
+        var middleOutput = graph.AddEdge("middle_output");
+        var output = graph.AddOutput("output", OnnxTensorType.Create<float>([1]));
+
+        graph.AddNode("first", "Identity", "", "", [input], [firstOutput], []);
+        graph.AddNode("middle", "Identity", "", "", [firstOutput], [middleOutput], []);
+        graph.AddNode("last", "Identity", "", "", [middleOutput], [output], []);
+
+        graph.ReplaceNode(
+            "middle",
+            new OnnxNode(
+                name: "replacement",
+                opType: "Relu",
+                domain: "",
+                docString: "",
+                inputs: [firstOutput],
+                outputs: [middleOutput],
+                attributes: []));
+
+        Assert.Equal(["first", "replacement", "last"], graph.Nodes.Select(x => x.Name).ToArray());
     }
 }

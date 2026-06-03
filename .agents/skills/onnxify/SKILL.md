@@ -70,14 +70,17 @@ Use this section for the packages and tools that the repo itself exports outward
 - Start with `OnnxModel.FromFile(path)` for existing models.
 - Use `await OnnxModel.FromFileAsync(path, cancellationToken: ...)` when file I/O should not block the caller.
 - Use `OnnxModel.FromStream(stream)` or `await OnnxModel.FromStreamAsync(stream, cancellationToken: ...)` when the model already comes from memory, a network response, embedded resources, or another stream source. Set `OnnxModelBaseOptions.DataLocation` when relative external tensor data still needs a filesystem base path.
-- Inspect through `model.Graph`, then walk `Inputs`, `Outputs`, `Initializers`, `Placeholders`, and `Nodes`.
+- Inspect through `model.Graph`, then walk `Inputs`, `Outputs`, `Initializers`, `IntermediateValues`, and `Nodes`.
 - Prefer repository terminology: graph values may be inputs, outputs, placeholders, initializers, or loose edges.
 - If you only need to inspect structure, avoid rewriting the model unless the task requires it.
 
 ## 2. Creating Or Editing Models
 
 - Create new models with `OnnxModel.Create(new OnnxModelCreationOptions { ... })`.
+- `OnnxModel.Create()` defaults to standard ONNX opset 25 and IR version 11. Use explicit `OnnxModelCreationOptions.Opset` and `IrVersion` when a model must target an older runtime profile.
 - Add graph members through `AddInput`, `AddOutput`, `AddValue`, `AddTensor`, `AddEdge`, and `AddNode`.
+- Promote an existing `OnnxValue` to a public contract with `AddInput(OnnxValue)` or `AddOutput(OnnxValue)`, and reverse that public-contract marker with `RemoveInput(...)` or `RemoveOutput(...)` without deleting the value metadata itself.
+- Remove or replace graph members with `RemoveNode(...)`, `ReplaceNode(...)`, `RemoveValue(...)`, `ReplaceValue(...)`, `RemoveTensor(...)`, and `RemoveEdge(...)`. Removal helpers clear matching node input/output references and prune unused loose edges so edited graphs do not keep dangling graph pieces.
 - Respect unique-name constraints. The graph helpers throw on duplicates, so preserve stable names when patching an existing graph.
 - Use `graph.NextName(prefix)` when generating new operator or edge names instead of inventing a parallel naming scheme.
 - When a task is operator-oriented, prefer existing typed helpers or wrapper classes over raw `AddNode` if the repository already exposes them.
