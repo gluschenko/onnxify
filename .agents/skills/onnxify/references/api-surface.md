@@ -7,6 +7,7 @@ Use this reference when you need concrete entry points for repository work in th
 - `src/Onnxify/OnnxModel.cs`
   - `OnnxModel.Create(...)`
   - default creation profile: standard ONNX opset 25 and IR version 11
+  - ONNX baseline: opset 25 from bundled standard-domain operator schemas; IR version 11 as the repository compatibility target for generated models
   - `OnnxModel.FromFile(path)`
   - `model.Save(path, overwrite)`
   - model metadata: `ProducerName`, `ProducerVersion`, `ModelVersion`, `IrVersion`, `Domain`, `Document`
@@ -29,6 +30,8 @@ Use this reference when you need concrete entry points for repository work in th
   - `src/Onnxify/OnnxAttribute.cs`
 
 ## TorchSharp Export Surface
+
+- Dependency baseline: `Onnxify.TorchSharp` references `TorchSharp` `0.106.0`; runtime package examples should use matching `TorchSharp-cpu` or TorchSharp CUDA runtime versions.
 
 - `src/Onnxify.TorchSharp/TorchModuleExtensions.cs`
   - dispatch entry point: `TorchModule.Export(graph, input)`

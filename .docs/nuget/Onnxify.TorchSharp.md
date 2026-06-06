@@ -6,12 +6,12 @@
 
 ```bash
 dotnet add package Onnxify.TorchSharp
-dotnet add package TorchSharp-cpu
+dotnet add package TorchSharp-cpu --version 0.106.0
 ```
 
 `Onnxify.TorchSharp` gives you the export and safetensors integration layer, but a TorchSharp runtime package is typically still needed to instantiate and run TorchSharp modules in a real application.
 
-For local CPU execution, `TorchSharp-cpu` is the simplest starting point. For GPU execution, install the appropriate TorchSharp CUDA runtime package for your environment instead.
+`Onnxify.TorchSharp` currently references `TorchSharp` `0.106.0`. For local CPU execution, `TorchSharp-cpu` `0.106.0` is the simplest starting point. For GPU execution, install the matching TorchSharp CUDA runtime package for your environment instead.
 
 ## Why This Package Exists
 

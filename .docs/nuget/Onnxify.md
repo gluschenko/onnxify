@@ -8,6 +8,12 @@
 dotnet add package Onnxify
 ```
 
+## ONNX Version Baseline
+
+New models created with `OnnxModel.Create()` use standard ONNX opset 25 and IR version 11 by default. These are the package's baseline ONNX versions: opset 25 comes from the bundled standard-domain operator schemas, and IR version 11 is the repository's current compatibility target for generated models.
+
+Set `OnnxModelCreationOptions.Opset` and `IrVersion` explicitly when you need to target an older runtime or a deployment profile with stricter ONNX support.
+
 ## Why This Package Exists
 
 ONNX is often used as a model interchange format, but in .NET there is usually an awkward gap between two extremes:
