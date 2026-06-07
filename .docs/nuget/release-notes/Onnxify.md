@@ -1,4 +1,4 @@
-## 0.1.4
+## 0.2.0
 
 - Raised the default `OnnxModel.Create()` profile to standard ONNX opset 25 and IR version 11.
 - Added graph editing APIs for marking existing `OnnxValue` instances as inputs or outputs, replacing and removing nodes and values, and removing tensors or loose edges.

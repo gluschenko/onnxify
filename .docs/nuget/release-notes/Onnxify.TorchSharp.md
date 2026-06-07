@@ -1,3 +1,13 @@
+## 0.2.0
+
+- Added `TorchTensorDataType` for public exporter `dtype` parameters, replacing numeric magic values such as `-1`, `1`, `7`, and `9` with readable enum values.
+- Added TorchSharp tensor exporters for random and sampling operators: `bernoulli`, `rand`, `rand_like`, `randn`, `randn_like`, `randint`, `randint.low`, `randint_like`, `randint_like.low_dtype`, `normal.*`, and `multinomial`.
+- Added TorchSharp tensor exporters for shape and rearrangement operators including `flip`, `roll`, `unbind.int`, `diagonal`, `repeat_interleave.self_int`, `repeat_interleave.Tensor`, and statically representable `as_strided`.
+- Added TorchSharp tensor exporters for loss, padding, pooling, and miscellaneous operators including `mse_loss`, `nll_loss`, `cross_entropy_loss`, `pad`, `max_pool2d_with_indices`, `cross`, `is_nonzero`, `tensor.bool`, `tensor.float`, `tensor.int`, and `prims::var`.
+- Added ONNXScript-style operator alias coverage for bitwise, shift, modulo, and true-division tensor operators, and lowered boolean bitwise operations to ONNX logical nodes.
+- Improved deep TorchSharp module export for functional activation calls, `torch.sigmoid`, `torch.exp`, tuple expressions, tuple-returning helper deconstruction, and explicit array-shaped `view(...)` / `reshape(...)` patterns.
+- Updated generated TorchSharp converter documentation and coverage reports for the newly covered operators.
+
 ## 0.1.2
 
 - Added async TorchSharp safetensors checkpoint helpers with `SaveStateAsSafetensorsAsync(...)` and `LoadStateFromSafetensorsAsync(...)`.
@@ -8,7 +18,6 @@
 - Fixed generated TorchSharp operator coverage docs to count `[TorchOp]` `OnnxGraph` extension exporters, including `aten::addmm` coverage for ONNX `Gemm`.
 - Added TorchSharp tensor exporters for `_to_copy`, `empty`, `empty_like`, scalar and tensor `fill`, `heaviside`, and `new_empty` / `new_full` / `new_ones` / `new_zeros`.
 - Added TorchSharp tensor exporters for sequence `atleast_1d` / `atleast_2d` / `atleast_3d`, `empty_strided`, window creators, `logcumsumexp`, `logdet`, and `linalg_vector_norm`.
-- Added TorchSharp tensor exporters for `rand`, `rand_like`, `randn`, `randn_like`, and ONNXScript operator aliases for bitwise, shift, modulo, and true-division tensor operators.
 
 ## 0.1.1
 
