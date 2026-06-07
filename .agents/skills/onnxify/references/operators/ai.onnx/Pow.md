@@ -48,7 +48,7 @@ This operator supports **multidirectional (i.e., Numpy-style) broadcasting**; fo
 | Converter | Torch ops |
 | --- | --- |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportErfcx(this OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::special_erfcx` |
-| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportLinalgVectorNorm(this OnnxGraph graph, IOnnxGraphEdge input, double ord, Nullable<long> dim, bool keepdim, long dtype) -> IOnnxGraphEdge` | `aten::linalg_vector_norm` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportLinalgVectorNorm(this OnnxGraph graph, IOnnxGraphEdge input, double ord, Nullable<long> dim, bool keepdim, TorchTensorDataType dtype) -> IOnnxGraphEdge` | `aten::linalg_vector_norm` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportLogAddExp2(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `aten::logaddexp2` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportPow(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge exponent) -> IOnnxGraphEdge` | `_operator::pow`, `aten::pow.Tensor_Tensor`, `prims::pow` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportPow(this OnnxGraph graph, IOnnxGraphEdge input, double exponent) -> IOnnxGraphEdge` | `aten::pow.Tensor_Scalar` |

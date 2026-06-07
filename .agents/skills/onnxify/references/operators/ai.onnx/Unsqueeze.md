@@ -55,4 +55,8 @@ The order of values in `axes` does not matter and can come in any order.
 | --- | --- |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportAtLeast3D(this OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::atleast_3d` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportGather(this OnnxGraph graph, IOnnxGraphEdge input, long dim, IOnnxGraphEdge index) -> IOnnxGraphEdge` | `aten::gather` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportMultinomial(this OnnxGraph graph, IOnnxGraphEdge input, long numSamples, bool replacement, TorchTensorDataType dtype) -> IOnnxGraphEdge` | `aten::multinomial` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportNllLoss(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge target, IOnnxGraphEdge weight, long reduction, long ignoreIndex) -> IOnnxGraphEdge` | `aten::nll_loss` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRepeatInterleave(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge repeats, Nullable<long> dim) -> IOnnxGraphEdge` | `aten::repeat_interleave.Tensor` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRepeatInterleave(this OnnxGraph graph, IOnnxGraphEdge input, long repeats, Nullable<long> dim) -> IOnnxGraphEdge` | `aten::repeat_interleave.self_int` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportUnsqueeze(this OnnxGraph graph, IOnnxGraphEdge input, long dim) -> IOnnxGraphEdge` | `aten::unsqueeze` |

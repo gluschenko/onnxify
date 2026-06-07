@@ -51,6 +51,7 @@ the shape. If an axis is selected with shape entry not equal to one, an error is
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportIndexSelect(this OnnxGraph graph, IOnnxGraphEdge input, long dim, IOnnxGraphEdge index) -> IOnnxGraphEdge` | `aten::index_select` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportMax(this OnnxGraph graph, IOnnxGraphEdge input, long dim, bool keepdim) -> TopKOutput` | `aten::max.dim` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportMin(this OnnxGraph graph, IOnnxGraphEdge input, long dim, bool keepdim) -> TopKOutput` | `aten::min.dim` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportMultinomial(this OnnxGraph graph, IOnnxGraphEdge input, long numSamples, bool replacement, TorchTensorDataType dtype) -> IOnnxGraphEdge` | `aten::multinomial` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportSqueeze(this OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::squeeze` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportSqueeze(this OnnxGraph graph, IOnnxGraphEdge input, IReadOnlyList<long> dims) -> IOnnxGraphEdge` | `prims::squeeze` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportSqueeze(this OnnxGraph graph, IOnnxGraphEdge input, long dim) -> IOnnxGraphEdge` | `aten::squeeze.dim` |

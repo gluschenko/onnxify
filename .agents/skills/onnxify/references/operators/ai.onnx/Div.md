@@ -66,3 +66,4 @@ This operator supports **multidirectional (i.e., Numpy-style) broadcasting**; fo
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRemainder(this OnnxGraph graph, double input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `aten::remainder.Scalar_Tensor` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRound(this OnnxGraph graph, IOnnxGraphEdge input, long decimals) -> IOnnxGraphEdge` | `aten::round.decimals` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportSinc(this OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::sinc`, `aten::special_sinc` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportVar(this OnnxGraph graph, IOnnxGraphEdge input, bool unbiased) -> IOnnxGraphEdge` | `prims::var` |
