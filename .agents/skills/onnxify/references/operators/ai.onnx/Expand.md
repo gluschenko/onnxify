@@ -51,6 +51,7 @@ or the shape.ndim < input.shape.ndim.
 
 | Converter | Torch ops |
 | --- | --- |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportBernoulli(this OnnxGraph graph, IOnnxGraphEdge input, double p, long dtype) -> IOnnxGraphEdge` | `aten::bernoulli.p` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportEmpty(this OnnxGraph graph, IReadOnlyList<long> size, long dtype, string layout, string device, bool pinMemory, string memoryFormat) -> IOnnxGraphEdge` | `aten::empty.memory_format` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportEmptyLike(this OnnxGraph graph, IOnnxGraphEdge input, long dtype, string layout, string device, bool pinMemory, string memoryFormat) -> IOnnxGraphEdge` | `aten::empty_like` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportEmptyStrided(this OnnxGraph graph, IReadOnlyList<long> size, IReadOnlyList<long> stride, string layout, long dtype, string device, bool pinMemory) -> IOnnxGraphEdge` | `aten::empty_strided` |

@@ -1,7 +1,7 @@
 # TorchSharp operator coverage
 
 Found: 83.73% (417/498)
-Coverage: 77.71% (387/498)
+Coverage: 80.72% (402/498)
 
 | ONNXScript operator | TorchSharp module | Found | Coverage |
 | --- | --- | --- | --- |
@@ -96,8 +96,8 @@ Coverage: 77.71% (387/498)
 | aten::avg_pool2d | TorchSharp.Modules.AvgPool2d | &#10003; | &#10003; |
 | aten::avg_pool3d | TorchSharp.Modules.AvgPool3d | &#10003; | &#10003; |
 | aten::baddbmm | TorchSharp.torch+Tensor.baddbmm | &#10003; | &#10003; |
-| aten::bernoulli | TorchSharp.torch+Tensor.bernoulli | &#10003; |  |
-| aten::bernoulli.p | TorchSharp.torch+Tensor.bernoulli | &#10003; |  |
+| aten::bernoulli | TorchSharp.torch+Tensor.bernoulli | &#10003; | &#10003; |
+| aten::bernoulli.p | TorchSharp.torch+Tensor.bernoulli | &#10003; | &#10003; |
 | aten::bilinear | TorchSharp.Modules.Bilinear | &#10003; |  |
 | aten::bitwise_and.Scalar | TorchSharp.torch+Tensor.bitwise_and | &#10003; | &#10003; |
 | aten::bitwise_and.Scalar_Tensor | TorchSharp.torch+Tensor.bitwise_and | &#10003; | &#10003; |
@@ -185,7 +185,7 @@ Coverage: 77.71% (387/498)
 | aten::fill.Scalar | TorchSharp.torch+Storage`1.fill_ | &#10003; | &#10003; |
 | aten::fill.Tensor | TorchSharp.torch+Storage`1.fill_ | &#10003; | &#10003; |
 | aten::flatten.using_ints | TorchSharp.Modules.Flatten | &#10003; | &#10003; |
-| aten::flip | TorchSharp.torch+Tensor.flip | &#10003; |  |
+| aten::flip | TorchSharp.torch+Tensor.flip | &#10003; | &#10003; |
 | aten::floor | TorchSharp.torch+Tensor.floor | &#10003; | &#10003; |
 | aten::floor_divide | TorchSharp.torch+Tensor.floor_divide | &#10003; | &#10003; |
 | aten::fmod.Scalar | TorchSharp.torch+Tensor.fmod | &#10003; | &#10003; |
@@ -285,7 +285,7 @@ Coverage: 77.71% (387/498)
 | aten::mse_loss | TorchSharp.Modules.MSELoss | &#10003; |  |
 | aten::mul | TorchSharp.torch+Tensor.mul | &#10003; | &#10003; |
 | aten::mul.Tensor | TorchSharp.torch+Tensor.mul | &#10003; | &#10003; |
-| aten::multinomial | TorchSharp.torch+Tensor.multinomial | &#10003; |  |
+| aten::multinomial | TorchSharp.torch+Tensor.multinomial | &#10003; | &#10003; |
 | aten::multiply.Tensor | TorchSharp.torch+Tensor.multiply | &#10003; | &#10003; |
 | aten::mv | TorchSharp.torch+Tensor.mv | &#10003; | &#10003; |
 | aten::narrow | TorchSharp.torch+Tensor.narrow | &#10003; | &#10003; |
@@ -305,14 +305,14 @@ Coverage: 77.71% (387/498)
 | aten::nll_loss | TorchSharp.Modules.NLLLoss | &#10003; |  |
 | aten::nll_loss_forward |  |  |  |
 | aten::nonzero | TorchSharp.torch+Tensor.nonzero | &#10003; | &#10003; |
-| aten::normal.Tensor_Tensor | TorchSharp.torch+Tensor.normal_ | &#10003; |  |
-| aten::normal.Tensor_float | TorchSharp.torch+Tensor.normal_ | &#10003; |  |
-| aten::normal.float_Tensor | TorchSharp.torch+Tensor.normal_ | &#10003; |  |
-| aten::normal.float_float | TorchSharp.torch+Tensor.normal_ | &#10003; |  |
+| aten::normal.Tensor_Tensor | TorchSharp.torch+Tensor.normal_ | &#10003; | &#10003; |
+| aten::normal.Tensor_float | TorchSharp.torch+Tensor.normal_ | &#10003; | &#10003; |
+| aten::normal.float_Tensor | TorchSharp.torch+Tensor.normal_ | &#10003; | &#10003; |
+| aten::normal.float_float | TorchSharp.torch+Tensor.normal_ | &#10003; | &#10003; |
 | aten::normal_functional |  |  |  |
 | aten::ones | TorchSharp.torch+Tensor.ones | &#10003; | &#10003; |
 | aten::ones_like | TorchSharp.torch+Tensor.ones_like | &#10003; | &#10003; |
-| aten::pad | TorchSharp.torch+nn+functional.pad | &#10003; |  |
+| aten::pad | TorchSharp.torch+nn+functional.pad | &#10003; | &#10003; |
 | aten::permute | TorchSharp.torch+Tensor.permute | &#10003; | &#10003; |
 | aten::pixel_shuffle | TorchSharp.Modules.PixelShuffle | &#10003; | &#10003; |
 | aten::pixel_unshuffle | TorchSharp.Modules.PixelUnshuffle | &#10003; | &#10003; |
@@ -326,10 +326,10 @@ Coverage: 77.71% (387/498)
 | aten::rad2deg | TorchSharp.torch+Tensor.rad2deg | &#10003; | &#10003; |
 | aten::rand | TorchSharp.torch.rand | &#10003; | &#10003; |
 | aten::rand_like | TorchSharp.torch+Tensor.rand_like | &#10003; | &#10003; |
-| aten::randint | TorchSharp.torch.randint | &#10003; |  |
-| aten::randint.low | TorchSharp.torch.randint | &#10003; |  |
-| aten::randint_like | TorchSharp.torch+Tensor.randint_like | &#10003; |  |
-| aten::randint_like.low_dtype | TorchSharp.torch+Tensor.randint_like | &#10003; |  |
+| aten::randint | TorchSharp.torch.randint | &#10003; | &#10003; |
+| aten::randint.low | TorchSharp.torch.randint | &#10003; | &#10003; |
+| aten::randint_like | TorchSharp.torch+Tensor.randint_like | &#10003; | &#10003; |
+| aten::randint_like.low_dtype | TorchSharp.torch+Tensor.randint_like | &#10003; | &#10003; |
 | aten::randn | TorchSharp.torch.randn | &#10003; | &#10003; |
 | aten::randn_like | TorchSharp.torch+Tensor.randn_like | &#10003; | &#10003; |
 | aten::reciprocal | TorchSharp.torch+Tensor.reciprocal | &#10003; | &#10003; |
@@ -350,7 +350,7 @@ Coverage: 77.71% (387/498)
 | aten::reshape | TorchSharp.torch+Tensor.reshape | &#10003; | &#10003; |
 | aten::resolve_conj | TorchSharp.torch+Tensor.resolve_conj | &#10003; | &#10003; |
 | aten::resolve_neg | TorchSharp.torch+Tensor.resolve_neg | &#10003; | &#10003; |
-| aten::roll | TorchSharp.torch+Tensor.roll | &#10003; |  |
+| aten::roll | TorchSharp.torch+Tensor.roll | &#10003; | &#10003; |
 | aten::round | TorchSharp.torch+Tensor.round | &#10003; | &#10003; |
 | aten::round.decimals | TorchSharp.torch+Tensor.round | &#10003; | &#10003; |
 | aten::rsqrt | TorchSharp.torch+Tensor.rsqrt | &#10003; | &#10003; |
@@ -413,7 +413,7 @@ Coverage: 77.71% (387/498)
 | aten::true_divide.Tensor | TorchSharp.torch+Tensor.true_divide | &#10003; | &#10003; |
 | aten::trunc | TorchSharp.torch+Tensor.trunc | &#10003; | &#10003; |
 | aten::type_as | TorchSharp.torch+Tensor.type_as | &#10003; | &#10003; |
-| aten::unbind.int | TorchSharp.torch+Tensor.unbind | &#10003; |  |
+| aten::unbind.int | TorchSharp.torch+Tensor.unbind | &#10003; | &#10003; |
 | aten::unflatten.int | TorchSharp.Modules.Unflatten | &#10003; | &#10003; |
 | aten::unfold | TorchSharp.Modules.Unfold | &#10003; |  |
 | aten::unique_consecutive | TorchSharp.torch+Tensor.unique_consecutive | &#10003; |  |

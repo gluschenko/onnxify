@@ -76,6 +76,10 @@ This operator supports **multidirectional (i.e., Numpy-style) broadcasting**; fo
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportLogCumSumExp(this OnnxGraph graph, IOnnxGraphEdge input, long dim) -> IOnnxGraphEdge` | `aten::logcumsumexp` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportLogit(this OnnxGraph graph, IOnnxGraphEdge input, Nullable<double> eps) -> IOnnxGraphEdge` | `aten::logit` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportMul(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `_operator::mul`, `aten::mul`, `aten::mul.Tensor`, `aten::multiply.Tensor`, `prims::mul` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportNormal(this OnnxGraph graph, IOnnxGraphEdge mean, IOnnxGraphEdge std) -> IOnnxGraphEdge` | `aten::normal.Tensor_Tensor` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportNormal(this OnnxGraph graph, IOnnxGraphEdge mean, double std) -> IOnnxGraphEdge` | `aten::normal.Tensor_float` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportNormal(this OnnxGraph graph, double mean, IOnnxGraphEdge std) -> IOnnxGraphEdge` | `aten::normal.float_Tensor` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportNormal(this OnnxGraph graph, double mean, double std, IReadOnlyList<long> size, long dtype) -> IOnnxGraphEdge` | `aten::normal.float_float` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRad2Deg(this OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::rad2deg` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRemainder(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `_operator::mod`, `aten::remainder.Tensor` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRemainder(this OnnxGraph graph, IOnnxGraphEdge input, double other) -> IOnnxGraphEdge` | `aten::remainder.Scalar` |

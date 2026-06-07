@@ -1970,6 +1970,69 @@ public sealed class TorchTensorOperatorExtensionsTests
     }
 
     [Fact]
+    public void ExportRandomSamplingOperators_EmitExpectedNodes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 3L]));
+        var std = graph.AddInput("std", OnnxTensorType.Create<float>([2L, 3L]));
+
+        graph.ExportRandInt(10L, new long[] { 2L, 3L });
+        graph.ExportRandInt(2L, 10L, new long[] { 2L, 3L });
+        graph.ExportRandIntLike(input, 10L);
+        graph.ExportRandIntLike(input, 2L, 10L);
+        graph.ExportBernoulli(input);
+        graph.ExportBernoulli(input, 0.25d);
+        graph.ExportNormal(0d, 1d, new long[] { 2L, 3L });
+        graph.ExportNormal(0d, std);
+        graph.ExportNormal(input, 2d);
+        graph.ExportNormal(input, std);
+        graph.ExportMultinomial(input, numSamples: 4L, replacement: true);
+
+        var opTypes = graph.Nodes.Select(static node => node.OpType).ToArray();
+        Assert.Equal(4, opTypes.Count(static opType => opType == "RandomUniformLike"));
+        Assert.Equal(4, opTypes.Count(static opType => opType == "RandomNormalLike"));
+        Assert.Equal(2, opTypes.Count(static opType => opType == "Bernoulli"));
+        Assert.Contains("Multinomial", opTypes);
+    }
+
+    [Fact]
+    public void ExportSimpleRearrangementOperators_EmitExpectedNodes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 3L, 4L]));
+        var repeats = graph.AddTensor<long>("repeats", [1], [2L]);
+
+        graph.ExportFlip(input, [1L]);
+        graph.ExportRoll(input, [1L], [2L]);
+        var unbound = graph.ExportUnbind(input, dim: 0);
+        graph.ExportDiagonal(input, dim1: 1, dim2: 2);
+        graph.ExportRepeatInterleave(input, repeats: 2L, dim: 1);
+        graph.ExportRepeatInterleave(input, repeats, dim: 2);
+        graph.ExportAsStrided(input, [6L, 4L], [4L, 1L]);
+
+        Assert.Equal(2, unbound.Count);
+        var opTypes = graph.Nodes.Select(static node => node.OpType).ToArray();
+        Assert.Equal(11, opTypes.Count(static opType => opType == "Slice"));
+        Assert.Equal(2, opTypes.Count(static opType => opType == "Concat"));
+        Assert.Equal(8, opTypes.Count(static opType => opType == "Squeeze"));
+        Assert.Equal(5, opTypes.Count(static opType => opType == "Unsqueeze"));
+        Assert.Equal(2, opTypes.Count(static opType => opType == "Tile"));
+        Assert.Equal(3, opTypes.Count(static opType => opType == "Reshape"));
+    }
+
+    [Fact]
+    public void ExportPad_EmitsPadNode()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([1L, 3L, 8L, 8L]));
+
+        graph.ExportPad(input, [1L, 2L, 3L, 4L], value: 0.5d);
+
+        var node = Assert.Single(graph.Nodes, static node => node.OpType == "Pad");
+        Assert.Equal(3, node.Inputs.Count);
+    }
+
+    [Fact]
     public void TorchModuleExtensions_ExposeRequestedAliasOperators()
     {
         var coveredOperators = typeof(TorchModuleExtensions)
@@ -2203,6 +2266,25 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("aten::rand_like", coveredOperators);
         Assert.Contains("aten::randn", coveredOperators);
         Assert.Contains("aten::randn_like", coveredOperators);
+        Assert.Contains("aten::bernoulli", coveredOperators);
+        Assert.Contains("aten::bernoulli.p", coveredOperators);
+        Assert.Contains("aten::normal.float_float", coveredOperators);
+        Assert.Contains("aten::normal.float_Tensor", coveredOperators);
+        Assert.Contains("aten::normal.Tensor_float", coveredOperators);
+        Assert.Contains("aten::normal.Tensor_Tensor", coveredOperators);
+        Assert.Contains("aten::randint", coveredOperators);
+        Assert.Contains("aten::randint.low", coveredOperators);
+        Assert.Contains("aten::randint_like", coveredOperators);
+        Assert.Contains("aten::randint_like.low_dtype", coveredOperators);
+        Assert.Contains("aten::multinomial", coveredOperators);
+        Assert.Contains("aten::flip", coveredOperators);
+        Assert.Contains("aten::roll", coveredOperators);
+        Assert.Contains("aten::unbind.int", coveredOperators);
+        Assert.Contains("aten::diagonal", coveredOperators);
+        Assert.Contains("aten::repeat_interleave.self_int", coveredOperators);
+        Assert.Contains("aten::repeat_interleave.Tensor", coveredOperators);
+        Assert.Contains("aten::as_strided", coveredOperators);
+        Assert.Contains("aten::pad", coveredOperators);
         Assert.Contains("_operator::abs", coveredOperators);
         Assert.Contains("_operator::add", coveredOperators);
         Assert.Contains("_operator::and_", coveredOperators);
