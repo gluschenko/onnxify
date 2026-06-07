@@ -1,15 +1,15 @@
 # TorchSharp operator coverage
 
 Found: 83.73% (417/498)
-Coverage: 75.30% (375/498)
+Coverage: 77.71% (387/498)
 
 | ONNXScript operator | TorchSharp module | Found | Coverage |
 | --- | --- | --- | --- |
-| _operator::__lshift__ |  |  |  |
-| _operator::__rshift__ |  |  |  |
+| _operator::__lshift__ |  |  | &#10003; |
+| _operator::__rshift__ |  |  | &#10003; |
 | _operator::abs | TorchSharp.torch+Tensor.abs | &#10003; | &#10003; |
 | _operator::add | TorchSharp.torch+Tensor.add | &#10003; | &#10003; |
-| _operator::and_ |  |  |  |
+| _operator::and_ |  |  | &#10003; |
 | _operator::eq | TorchSharp.torch+Tensor.eq | &#10003; | &#10003; |
 | _operator::floordiv |  |  | &#10003; |
 | _operator::ge | TorchSharp.torch+Tensor.ge | &#10003; | &#10003; |
@@ -17,16 +17,16 @@ Coverage: 75.30% (375/498)
 | _operator::gt | TorchSharp.torch+Tensor.gt | &#10003; | &#10003; |
 | _operator::le | TorchSharp.torch+Tensor.le | &#10003; | &#10003; |
 | _operator::lt | TorchSharp.torch+Tensor.lt | &#10003; | &#10003; |
-| _operator::mod |  |  |  |
+| _operator::mod |  |  | &#10003; |
 | _operator::mul | TorchSharp.torch+Tensor.mul | &#10003; | &#10003; |
 | _operator::ne | TorchSharp.torch+Tensor.ne | &#10003; | &#10003; |
 | _operator::neg | TorchSharp.torch+Tensor.neg | &#10003; | &#10003; |
-| _operator::or_ |  |  |  |
+| _operator::or_ |  |  | &#10003; |
 | _operator::pow | TorchSharp.torch+Tensor.pow | &#10003; | &#10003; |
 | _operator::sub | TorchSharp.torch+Tensor.sub | &#10003; | &#10003; |
-| _operator::truediv |  |  |  |
-| aten::__lshift__.Scalar |  |  |  |
-| aten::__rshift__.Scalar |  |  |  |
+| _operator::truediv |  |  | &#10003; |
+| aten::__lshift__.Scalar |  |  | &#10003; |
+| aten::__rshift__.Scalar |  |  | &#10003; |
 | aten::_conj | TorchSharp.torch+Tensor.conj | &#10003; | &#10003; |
 | aten::_embedding_bag | TorchSharp.Modules.EmbeddingBag | &#10003; |  |
 | aten::_embedding_bag_forward_only |  |  |  |
@@ -324,14 +324,14 @@ Coverage: 75.30% (375/498)
 | aten::prod | TorchSharp.torch+Tensor.prod | &#10003; | &#10003; |
 | aten::prod.dim_int | TorchSharp.torch+Tensor.prod | &#10003; | &#10003; |
 | aten::rad2deg | TorchSharp.torch+Tensor.rad2deg | &#10003; | &#10003; |
-| aten::rand | TorchSharp.torch.rand | &#10003; |  |
-| aten::rand_like | TorchSharp.torch+Tensor.rand_like | &#10003; |  |
+| aten::rand | TorchSharp.torch.rand | &#10003; | &#10003; |
+| aten::rand_like | TorchSharp.torch+Tensor.rand_like | &#10003; | &#10003; |
 | aten::randint | TorchSharp.torch.randint | &#10003; |  |
 | aten::randint.low | TorchSharp.torch.randint | &#10003; |  |
 | aten::randint_like | TorchSharp.torch+Tensor.randint_like | &#10003; |  |
 | aten::randint_like.low_dtype | TorchSharp.torch+Tensor.randint_like | &#10003; |  |
-| aten::randn | TorchSharp.torch.randn | &#10003; |  |
-| aten::randn_like | TorchSharp.torch+Tensor.randn_like | &#10003; |  |
+| aten::randn | TorchSharp.torch.randn | &#10003; | &#10003; |
+| aten::randn_like | TorchSharp.torch+Tensor.randn_like | &#10003; | &#10003; |
 | aten::reciprocal | TorchSharp.torch+Tensor.reciprocal | &#10003; | &#10003; |
 | aten::reflection_pad1d | TorchSharp.Modules.ReflectionPad1d | &#10003; | &#10003; |
 | aten::reflection_pad2d | TorchSharp.Modules.ReflectionPad2d | &#10003; | &#10003; |

@@ -132,6 +132,7 @@ public static class TorchTensorOperatorExtensions
     [TorchOp("aten::div.Tensor")]
     [TorchOp("aten::divide.Tensor")]
     [TorchOp("aten::true_divide.Tensor")]
+    [TorchOp("_operator::truediv")]
     [TorchOp("prims::div")]
     public static IOnnxGraphEdge ExportDiv(
         this OnnxGraph graph,
@@ -1125,6 +1126,7 @@ public static class TorchTensorOperatorExtensions
     }
 
     [TorchOp("aten::bitwise_and.Tensor")]
+    [TorchOp("_operator::and_")]
     public static IOnnxGraphEdge ExportBitwiseAnd(
         this OnnxGraph graph,
         IOnnxGraphEdge input,
@@ -1184,6 +1186,7 @@ public static class TorchTensorOperatorExtensions
     }
 
     [TorchOp("aten::bitwise_or.Tensor")]
+    [TorchOp("_operator::or_")]
     public static IOnnxGraphEdge ExportBitwiseOr(
         this OnnxGraph graph,
         IOnnxGraphEdge input,
@@ -1302,6 +1305,7 @@ public static class TorchTensorOperatorExtensions
     }
 
     [TorchOp("aten::bitwise_left_shift.Tensor")]
+    [TorchOp("_operator::__lshift__")]
     public static IOnnxGraphEdge ExportBitwiseLeftShift(
         this OnnxGraph graph,
         IOnnxGraphEdge input,
@@ -1316,6 +1320,7 @@ public static class TorchTensorOperatorExtensions
     }
 
     [TorchOp("aten::bitwise_left_shift.Tensor_Scalar")]
+    [TorchOp("aten::__lshift__.Scalar")]
     public static IOnnxGraphEdge ExportBitwiseLeftShift(
         this OnnxGraph graph,
         IOnnxGraphEdge input,
@@ -1344,6 +1349,7 @@ public static class TorchTensorOperatorExtensions
     }
 
     [TorchOp("aten::bitwise_right_shift.Tensor")]
+    [TorchOp("_operator::__rshift__")]
     public static IOnnxGraphEdge ExportBitwiseRightShift(
         this OnnxGraph graph,
         IOnnxGraphEdge input,
@@ -1358,6 +1364,7 @@ public static class TorchTensorOperatorExtensions
     }
 
     [TorchOp("aten::bitwise_right_shift.Tensor_Scalar")]
+    [TorchOp("aten::__rshift__.Scalar")]
     public static IOnnxGraphEdge ExportBitwiseRightShift(
         this OnnxGraph graph,
         IOnnxGraphEdge input,
@@ -3041,6 +3048,70 @@ public static class TorchTensorOperatorExtensions
         );
     }
 
+    [TorchOp("aten::rand")]
+    public static IOnnxGraphEdge ExportRand(
+        this OnnxGraph graph,
+        IReadOnlyList<long> size,
+        long dtype = 1
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(size);
+
+        return ExportRandomLike(
+            graph,
+            "rand",
+            "RandomUniformLike",
+            AddConstantOfShapeShaper(graph, "rand", size),
+            dtype
+        );
+    }
+
+    [TorchOp("aten::rand_like")]
+    public static IOnnxGraphEdge ExportRandLike(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        long dtype = -1
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+
+        return ExportRandomLike(graph, "rand_like", "RandomUniformLike", input, dtype);
+    }
+
+    [TorchOp("aten::randn")]
+    public static IOnnxGraphEdge ExportRandN(
+        this OnnxGraph graph,
+        IReadOnlyList<long> size,
+        long dtype = 1
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(size);
+
+        return ExportRandomLike(
+            graph,
+            "randn",
+            "RandomNormalLike",
+            AddConstantOfShapeShaper(graph, "randn", size),
+            dtype
+        );
+    }
+
+    [TorchOp("aten::randn_like")]
+    public static IOnnxGraphEdge ExportRandNLike(
+        this OnnxGraph graph,
+        IOnnxGraphEdge input,
+        long dtype = -1
+    )
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(input);
+
+        return ExportRandomLike(graph, "randn_like", "RandomNormalLike", input, dtype);
+    }
+
     [TorchOp("aten::empty.memory_format")]
     public static IOnnxGraphEdge ExportEmpty(
         this OnnxGraph graph,
@@ -3430,6 +3501,7 @@ public static class TorchTensorOperatorExtensions
     }
 
     [TorchOp("aten::remainder.Tensor")]
+    [TorchOp("_operator::mod")]
     public static IOnnxGraphEdge ExportRemainder(
         this OnnxGraph graph,
         IOnnxGraphEdge input,
@@ -4433,6 +4505,58 @@ public static class TorchTensorOperatorExtensions
             inputs: [left, right],
             outputs: [output],
             attributes: attributes ?? []
+        );
+
+        return output;
+    }
+
+    private static IOnnxGraphEdge ExportRandomLike(
+        OnnxGraph graph,
+        string prefix,
+        string opType,
+        IOnnxGraphEdge input,
+        long dtype
+    )
+    {
+        OnnxAttribute[] attributes = dtype == -1
+            ? []
+            : [new OnnxAttribute<long>("dtype", dtype)];
+        var name = graph.NextName(prefix);
+        var output = graph.AddEdge($"{name}_output");
+        graph.AddNode(
+            name: name,
+            opType: opType,
+            domain: string.Empty,
+            docString: string.Empty,
+            inputs: [input],
+            outputs: [output],
+            attributes: attributes
+        );
+
+        return output;
+    }
+
+    private static IOnnxGraphEdge AddConstantOfShapeShaper(
+        OnnxGraph graph,
+        string prefix,
+        IReadOnlyList<long> size
+    )
+    {
+        var name = graph.NextName($"{prefix}_shape");
+        var shape = graph.AddTensor<long>(
+            name: $"{name}_shape",
+            shape: [size.Count],
+            value: size.ToArray()
+        );
+        var output = graph.AddEdge($"{name}_output");
+        graph.AddNode(
+            name: name,
+            opType: "ConstantOfShape",
+            domain: string.Empty,
+            docString: string.Empty,
+            inputs: [shape],
+            outputs: [output],
+            attributes: []
         );
 
         return output;

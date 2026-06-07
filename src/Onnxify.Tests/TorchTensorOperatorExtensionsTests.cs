@@ -1953,6 +1953,23 @@ public sealed class TorchTensorOperatorExtensionsTests
     }
 
     [Fact]
+    public void ExportRandomOperators_EmitExpectedNodes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 3L]));
+
+        graph.ExportRand(new long[] { 2L, 3L });
+        graph.ExportRandLike(input);
+        graph.ExportRandN(new long[] { 2L, 3L });
+        graph.ExportRandNLike(input);
+
+        Assert.Equal(
+            ["ConstantOfShape", "RandomUniformLike", "RandomUniformLike", "ConstantOfShape", "RandomNormalLike", "RandomNormalLike"],
+            graph.Nodes.Select(static node => node.OpType).ToArray()
+        );
+    }
+
+    [Fact]
     public void TorchModuleExtensions_ExposeRequestedAliasOperators()
     {
         var coveredOperators = typeof(TorchModuleExtensions)
@@ -2182,8 +2199,15 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("aten::tril", coveredOperators);
         Assert.Contains("aten::zeros", coveredOperators);
         Assert.Contains("aten::zeros_like", coveredOperators);
+        Assert.Contains("aten::rand", coveredOperators);
+        Assert.Contains("aten::rand_like", coveredOperators);
+        Assert.Contains("aten::randn", coveredOperators);
+        Assert.Contains("aten::randn_like", coveredOperators);
         Assert.Contains("_operator::abs", coveredOperators);
         Assert.Contains("_operator::add", coveredOperators);
+        Assert.Contains("_operator::and_", coveredOperators);
+        Assert.Contains("_operator::__lshift__", coveredOperators);
+        Assert.Contains("_operator::__rshift__", coveredOperators);
         Assert.Contains("_operator::eq", coveredOperators);
         Assert.Contains("_operator::floordiv", coveredOperators);
         Assert.Contains("_operator::ge", coveredOperators);
@@ -2193,8 +2217,13 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("_operator::mul", coveredOperators);
         Assert.Contains("_operator::ne", coveredOperators);
         Assert.Contains("_operator::neg", coveredOperators);
+        Assert.Contains("_operator::or_", coveredOperators);
         Assert.Contains("_operator::pow", coveredOperators);
         Assert.Contains("_operator::sub", coveredOperators);
+        Assert.Contains("_operator::truediv", coveredOperators);
+        Assert.Contains("_operator::mod", coveredOperators);
+        Assert.Contains("aten::__lshift__.Scalar", coveredOperators);
+        Assert.Contains("aten::__rshift__.Scalar", coveredOperators);
         Assert.Contains("aten::multiply.Tensor", coveredOperators);
         Assert.Contains("aten::subtract.Tensor", coveredOperators);
         Assert.Contains("aten::subtract.Scalar", coveredOperators);

@@ -2,6 +2,8 @@
 using static TorchSharp.torch;
 using TorchModule = TorchSharp.torch.nn.Module<TorchSharp.torch.Tensor, TorchSharp.torch.Tensor>;
 
+using static TorchSharp.torch.nn.functional;
+
 namespace Onnxify.Tests;
 
 public sealed class TorchModuleDeepExportTests
@@ -276,6 +278,56 @@ public sealed class TorchModuleDeepExportTests
         );
 
         Assert.Contains(model.Graph.Nodes, node => node.OpType == "Transpose");
+    }
+
+    [Fact]
+    public void DeepExport_ForExplicitNewLongArrayShape_ResolvesTorchSharpExamplesViewSyntax()
+    {
+        using var module = new DeepExportExplicitArrayShapeModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 2, 2]),
+            output: OnnxTensorType.Create<float>([2, 4])
+        );
+
+        Assert.Equal(2, model.Graph.Nodes.Count(node => node.OpType == "Reshape"));
+        Assert.Contains(
+            model.Graph.Initializers.OfType<OnnxTensor<long>>(),
+            initializer => initializer.Value.SequenceEqual([-1L, 4L])
+        );
+    }
+
+    [Fact]
+    public void DeepExport_ForFunctionalActivationCalls_ExportsTorchSharpExamplesSyntax()
+    {
+        using var module = new DeepExportFunctionalActivationModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 3]),
+            output: OnnxTensorType.Create<float>([2, 3])
+        );
+
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Relu");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Sigmoid");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "LogSoftmax");
+    }
+
+    [Fact]
+    public void DeepExport_ForTupleReturningLocalHelper_DeconstructsVaeStyleSyntax()
+    {
+        using var module = new DeepExportTupleHelperModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 4]),
+            output: OnnxTensorType.Create<float>([2, 3])
+        );
+
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Relu");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Exp");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Add");
     }
 
     [Fact]
@@ -643,6 +695,69 @@ public sealed class TorchModuleDeepExportTests
         public override Tensor forward(Tensor input)
         {
             return input.permute([0, 2, 1]);
+        }
+    }
+
+    private sealed class DeepExportExplicitArrayShapeModule : TorchModule
+    {
+        public DeepExportExplicitArrayShapeModule()
+            : base(nameof(DeepExportExplicitArrayShapeModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            var reshaped = input.reshape(-1, 4);
+
+            return reshaped.view(new long[] { reshaped.shape[0], 4 });
+        }
+    }
+
+    private sealed class DeepExportFunctionalActivationModule : TorchModule
+    {
+        private readonly global::TorchSharp.Modules.Linear _linear;
+
+        public DeepExportFunctionalActivationModule()
+            : base(nameof(DeepExportFunctionalActivationModule))
+        {
+            _linear = nn.Linear(3, 3);
+
+            RegisterComponents();
+        }
+
+        public override Tensor forward(Tensor input)
+        {
+            var x = relu(_linear.forward(input));
+            x = global::TorchSharp.torch.sigmoid(x);
+            return log_softmax(x, dim: 1);
+        }
+    }
+
+    private sealed class DeepExportTupleHelperModule : TorchModule
+    {
+        private readonly global::TorchSharp.Modules.Linear _input;
+        private readonly global::TorchSharp.Modules.Linear _mu;
+        private readonly global::TorchSharp.Modules.Linear _logVar;
+
+        public DeepExportTupleHelperModule()
+            : base(nameof(DeepExportTupleHelperModule))
+        {
+            _input = nn.Linear(4, 5);
+            _mu = nn.Linear(5, 3);
+            _logVar = nn.Linear(5, 3);
+
+            RegisterComponents();
+        }
+
+        public override Tensor forward(Tensor input)
+        {
+            var (mu, logvar) = Encode(input);
+            return mu + global::TorchSharp.torch.exp(0.5f * logvar);
+        }
+
+        private (Tensor Mu, Tensor LogVar) Encode(Tensor input)
+        {
+            var hidden = relu(_input.forward(input));
+            return (_mu.forward(hidden), _logVar.forward(hidden));
         }
     }
 

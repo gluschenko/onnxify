@@ -8,6 +8,7 @@
 - Fixed generated TorchSharp operator coverage docs to count `[TorchOp]` `OnnxGraph` extension exporters, including `aten::addmm` coverage for ONNX `Gemm`.
 - Added TorchSharp tensor exporters for `_to_copy`, `empty`, `empty_like`, scalar and tensor `fill`, `heaviside`, and `new_empty` / `new_full` / `new_ones` / `new_zeros`.
 - Added TorchSharp tensor exporters for sequence `atleast_1d` / `atleast_2d` / `atleast_3d`, `empty_strided`, window creators, `logcumsumexp`, `logdet`, and `linalg_vector_norm`.
+- Added TorchSharp tensor exporters for `rand`, `rand_like`, `randn`, `randn_like`, and ONNXScript operator aliases for bitwise, shift, modulo, and true-division tensor operators.
 
 ## 0.1.1
 
