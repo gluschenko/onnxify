@@ -9,7 +9,7 @@ namespace Onnxify;
 /// Represents an ONNX model as editable metadata plus a single graph that can be loaded, inspected, modified, and written back to the ONNX protobuf format.
 /// </summary>
 /// <remarks>
-/// Use <see cref="FromFile"/> when preserving an existing model and <see cref="Create"/> when authoring a graph from scratch. The wrapper keeps the original protobuf data where possible, so edits to exposed collections and metadata are reflected when <see cref="Save"/> is called.
+/// Use <see cref="FromFile"/> when preserving an existing model and <see cref="Create"/> when authoring a graph from scratch. The wrapper keeps the original protobuf data where possible, so edits to exposed collections and metadata are reflected when <see cref="Save(string, bool)"/> is called.
 /// </remarks>
 public class OnnxModel
 {

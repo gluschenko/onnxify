@@ -39,4 +39,23 @@ internal class LazyDictionary<TKey, TValue> : KeyedCollection<TKey, TValue> wher
             }
         }
     }
+
+    public bool Replace(TKey key, TValue value)
+    {
+        var newKey = _keySelector(value);
+
+        if (TryGetValue(newKey, out _) && !Comparer.Equals(key, newKey))
+        {
+            throw new InvalidOperationException($"Value with key '{newKey}' is already added.");
+        }
+
+        if (!TryGetValue(key, out var existing))
+        {
+            return false;
+        }
+
+        var index = Items.IndexOf(existing);
+        SetItem(index, value);
+        return true;
+    }
 }

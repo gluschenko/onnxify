@@ -54,3 +54,5 @@ to `False` instead of `True`.
 | --- | --- |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportMean(this OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::mean` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportMean(this OnnxGraph graph, IOnnxGraphEdge input, IReadOnlyList<long> dims, bool keepdim) -> IOnnxGraphEdge` | `aten::mean.dim` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportMseLoss(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge target, long reduction) -> IOnnxGraphEdge` | `aten::mse_loss` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportVar(this OnnxGraph graph, IOnnxGraphEdge input, bool unbiased) -> IOnnxGraphEdge` | `prims::var` |

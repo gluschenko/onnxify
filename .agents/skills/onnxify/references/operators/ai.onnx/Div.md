@@ -50,7 +50,7 @@ This operator supports **multidirectional (i.e., Numpy-style) broadcasting**; fo
 | --- | --- |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportAddCDiv(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge tensor1, IOnnxGraphEdge tensor2, float value) -> IOnnxGraphEdge` | `aten::addcdiv` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportAtan2(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `aten::atan2` |
-| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportDiv(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `aten::div.Tensor`, `aten::divide.Tensor`, `aten::true_divide.Tensor`, `prims::div` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportDiv(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `_operator::truediv`, `aten::div.Tensor`, `aten::divide.Tensor`, `aten::true_divide.Tensor`, `prims::div` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportDiv(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge other, string roundingMode) -> IOnnxGraphEdge` | `aten::div.Tensor_mode` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportDiv(this OnnxGraph graph, IOnnxGraphEdge input, double other, string roundingMode) -> IOnnxGraphEdge` | `aten::div.Scalar_mode` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportDiv(this OnnxGraph graph, IOnnxGraphEdge input, float other) -> IOnnxGraphEdge` | `aten::div.Scalar`, `aten::divide.Scalar`, `aten::true_divide.Scalar` |
@@ -61,8 +61,9 @@ This operator supports **multidirectional (i.e., Numpy-style) broadcasting**; fo
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportLogAddExp2(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `aten::logaddexp2` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportLogit(this OnnxGraph graph, IOnnxGraphEdge input, Nullable<double> eps) -> IOnnxGraphEdge` | `aten::logit` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRSqrt(this OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::rsqrt` |
-| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRemainder(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `aten::remainder.Tensor` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRemainder(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `_operator::mod`, `aten::remainder.Tensor` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRemainder(this OnnxGraph graph, IOnnxGraphEdge input, double other) -> IOnnxGraphEdge` | `aten::remainder.Scalar` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRemainder(this OnnxGraph graph, double input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `aten::remainder.Scalar_Tensor` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRound(this OnnxGraph graph, IOnnxGraphEdge input, long decimals) -> IOnnxGraphEdge` | `aten::round.decimals` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportSinc(this OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::sinc`, `aten::special_sinc` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportVar(this OnnxGraph graph, IOnnxGraphEdge input, bool unbiased) -> IOnnxGraphEdge` | `prims::var` |

@@ -1,3 +1,7 @@
+## 0.2.0
+
+- Aligned the package version with the 0.2.0 Onnxify package family release.
+
 ## 0.1.2
 
 - Added a generic `SafeTensors` value API with `Set<T>(...)`, `Get<T>(...)`, and `Remove(...)` so callers can store supported CLR arrays without manually marshaling bytes into `TensorView`.

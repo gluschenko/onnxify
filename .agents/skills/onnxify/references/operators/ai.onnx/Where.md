@@ -52,11 +52,11 @@ This operator supports **multidirectional (i.e., Numpy-style) broadcasting**; fo
 | --- | --- |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportAngle(this OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::angle` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportAtan2(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `aten::atan2` |
-| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportBitwiseLeftShift(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `aten::bitwise_left_shift.Tensor` |
-| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportBitwiseLeftShift(this OnnxGraph graph, IOnnxGraphEdge input, double other) -> IOnnxGraphEdge` | `aten::bitwise_left_shift.Tensor_Scalar` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportBitwiseLeftShift(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `_operator::__lshift__`, `aten::bitwise_left_shift.Tensor` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportBitwiseLeftShift(this OnnxGraph graph, IOnnxGraphEdge input, double other) -> IOnnxGraphEdge` | `aten::__lshift__.Scalar`, `aten::bitwise_left_shift.Tensor_Scalar` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportBitwiseLeftShift(this OnnxGraph graph, double input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `aten::bitwise_left_shift.Scalar_Tensor` |
-| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportBitwiseRightShift(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `aten::bitwise_right_shift.Tensor` |
-| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportBitwiseRightShift(this OnnxGraph graph, IOnnxGraphEdge input, double other) -> IOnnxGraphEdge` | `aten::bitwise_right_shift.Tensor_Scalar` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportBitwiseRightShift(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `_operator::__rshift__`, `aten::bitwise_right_shift.Tensor` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportBitwiseRightShift(this OnnxGraph graph, IOnnxGraphEdge input, double other) -> IOnnxGraphEdge` | `aten::__rshift__.Scalar`, `aten::bitwise_right_shift.Tensor_Scalar` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportBitwiseRightShift(this OnnxGraph graph, double input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `aten::bitwise_right_shift.Scalar_Tensor` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportHeaviside(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge values) -> IOnnxGraphEdge` | `aten::heaviside` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportLerp(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge end, IOnnxGraphEdge weight) -> IOnnxGraphEdge` | `aten::lerp.Tensor` |

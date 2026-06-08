@@ -46,6 +46,23 @@ public sealed class AgentSkillGeneratorTests
     }
 
     [Fact]
+    public void BuildGeneratedFiles_ForTorchSharpConverters_PreservesExistingTorchOpSlug()
+    {
+        var existingRelativePaths = new HashSet<string>(StringComparer.Ordinal)
+        {
+            Path.Combine("torch-ops", "OnnxGraph___operator__add.md"),
+            Path.Combine("torch-ops", "OnnxGraph__aten__bitwise_and.Tensor.md"),
+        };
+
+        var files = TorchSharpConverterSkillGenerator.BuildGeneratedFiles(existingRelativePaths);
+
+        Assert.Contains(Path.Combine("torch-ops", "OnnxGraph___operator__add.md"), files.Keys);
+        Assert.DoesNotContain(Path.Combine("torch-ops", "OnnxGraph__aten__add.Tensor.md"), files.Keys);
+        Assert.Contains(Path.Combine("torch-ops", "OnnxGraph__aten__bitwise_and.Tensor.md"), files.Keys);
+        Assert.DoesNotContain(Path.Combine("torch-ops", "OnnxGraph___operator__and_.md"), files.Keys);
+    }
+
+    [Fact]
     public void BuildGeneratedFiles_ForOperators_EmitsSharedReferencesAndTableOfContents()
     {
         var files = OperatorSkillGenerator.BuildGeneratedFiles();

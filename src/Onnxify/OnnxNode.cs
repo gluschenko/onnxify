@@ -136,6 +136,67 @@ public class OnnxNode : IOnnxGraphNode
         return newNode;
     }
 
+    internal bool ReplaceEdgeReference(string name, IOnnxGraphEdge value)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        ArgumentNullException.ThrowIfNull(value);
+
+        var replaced = false;
+
+        ReplaceEdgeReference(_inputs, name, value, ref replaced);
+        ReplaceEdgeReference(_outputs, name, value, ref replaced);
+
+        return replaced;
+    }
+
+    internal bool RemoveEdgeReference(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+
+        var removed = false;
+
+        RemoveEdgeReference(_inputs, name, ref removed);
+        RemoveEdgeReference(_outputs, name, ref removed);
+
+        return removed;
+    }
+
+    private static void ReplaceEdgeReference(LazyDictionary<string, IOnnxGraphEdge> edges, string name, IOnnxGraphEdge value, ref bool replaced)
+    {
+        if (!edges.TryGetValue(name, out var existing))
+        {
+            return;
+        }
+
+        var index = edges.IndexOf(existing);
+        edges.Remove(existing);
+
+        if (edges.TryGetValue(value.Name, out var duplicate))
+        {
+            var duplicateIndex = edges.IndexOf(duplicate);
+            edges.Remove(duplicate);
+
+            if (duplicateIndex < index)
+            {
+                index--;
+            }
+        }
+
+        edges.Insert(index, value);
+        replaced = true;
+    }
+
+    private static void RemoveEdgeReference(LazyDictionary<string, IOnnxGraphEdge> edges, string name, ref bool removed)
+    {
+        if (!edges.TryGetValue(name, out var existing))
+        {
+            return;
+        }
+
+        edges.Remove(existing);
+        removed = true;
+    }
+
     internal static OnnxNode FromProto(NodeProto node, OnnxGraph graph)
     {
         var options = graph.GetOptions();

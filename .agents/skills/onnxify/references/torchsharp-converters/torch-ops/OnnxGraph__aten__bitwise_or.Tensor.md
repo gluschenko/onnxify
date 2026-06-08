@@ -8,7 +8,7 @@ Do not hand-edit this file; rerun the generator instead.
 - Source: src/Onnxify.TorchSharp/TorchTensorOperatorExtensions.cs
 - Receiver: OnnxGraph
 - Return type: IOnnxGraphEdge
-- Torch ops: aten::bitwise_or.Tensor
+- Torch ops: _operator::or_, aten::bitwise_or.Tensor
 
 ## Parameters
 

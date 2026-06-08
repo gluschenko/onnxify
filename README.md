@@ -10,6 +10,10 @@ The idea behind this repository is simple: models should be easier to work with,
 
 The core `Onnxify` package can load and save models from files or streams with both synchronous and asynchronous APIs: `OnnxModel.FromFile(...)`, `FromFileAsync(...)`, `FromStream(...)`, `FromStreamAsync(...)`, `model.Save(...)`, and `model.SaveAsync(...)`.
 
+New models created with `OnnxModel.Create()` default to standard ONNX opset 25 and IR version 11. The opset default tracks the current bundled standard-domain operator schemas, while IR 11 remains compatible with the ONNX Runtime version used by the repository tests. Override `OnnxModelCreationOptions.Opset` and `IrVersion` when targeting an older runtime or a specific deployment profile.
+
+`OnnxGraph` exposes direct editing helpers for graph structure: existing `OnnxValue` instances can be marked or unmarked as model inputs and outputs with `AddInput(OnnxValue)`, `AddOutput(OnnxValue)`, `RemoveInput(...)`, and `RemoveOutput(...)`; graph members can be added, removed, and replaced with `AddValue(...)`, `RemoveValue(...)`, `ReplaceValue(...)`, `AddNode(...)`, `RemoveNode(...)`, `ReplaceNode(...)`, `RemoveTensor(...)`, and `RemoveEdge(...)`. Removal helpers also clear related node wiring and prune unused loose edges so edited graphs do not keep dangling graph pieces.
+
 [![GitHub CI](https://github.com/gluschenko/onnxify/actions/workflows/github-ci.yml/badge.svg)](https://github.com/gluschenko/onnxify/actions/workflows/github-ci.yml)
 
 ## NuGet Packages
@@ -157,7 +161,7 @@ Restart Codex after installation so it picks up the new or refreshed skill files
 - [ ] SourceGenerator: fully-typed operator Input/Output fields (OneOf?)
 - [x] Async I/O ops
 - [ ] Graph edges in a single collection (or in two for placeholders)
-- [ ] Graph manipulations: add nodes, remove nodes, replace nodes
+- [x] Graph manipulations: add nodes, remove nodes, replace nodes
 - [ ] Graph cyclicity validation
 - [x] CLI for agents and humans (to explore ONNX files)
 - [x] Project generator generates operator nodes

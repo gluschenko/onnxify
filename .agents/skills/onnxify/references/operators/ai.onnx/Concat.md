@@ -46,4 +46,7 @@ Concatenate a list of tensors into a single tensor. All input tensors must have 
 | `Onnxify.TorchSharp.TorchModuleExtensions.Export(this GRU module, OnnxGraph graph, IOnnxGraphEdge input) -> GRUOutput` | `aten::gru.input` |
 | `Onnxify.TorchSharp.TorchModuleExtensions.Export(this LSTM module, OnnxGraph graph, IOnnxGraphEdge input) -> LSTMOutput` | `aten::lstm.input` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportConcat(this OnnxGraph graph, IReadOnlyList<IOnnxGraphEdge> inputs, long dim) -> IOnnxGraphEdge` | `aten::cat`, `aten::concat`, `aten::concatenate` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportCross(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge other, long dim) -> IOnnxGraphEdge` | `aten::cross` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportDiagonal(this OnnxGraph graph, IOnnxGraphEdge input, long offset, long dim1, long dim2) -> IOnnxGraphEdge` | `aten::diagonal` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRoll(this OnnxGraph graph, IOnnxGraphEdge input, IReadOnlyList<long> shifts, IReadOnlyList<long> dims) -> IOnnxGraphEdge` | `aten::roll` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportStack(this OnnxGraph graph, IReadOnlyList<IOnnxGraphEdge> inputs, long dim) -> IOnnxGraphEdge` | `aten::stack` |

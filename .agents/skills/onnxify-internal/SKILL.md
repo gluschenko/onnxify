@@ -76,6 +76,7 @@ Use it only when the user explicitly asks to validate, compare, audit, or check 
 - Treat `.docs/nuget` as the source of truth for package-facing Markdown that ships with or describes NuGet packages.
 - Keep one package README per published package at `.docs/nuget/<PackageName>.md`.
 - Keep one release-notes file per published package at `.docs/nuget/release-notes/<PackageName>.md`.
+- When documenting package baselines, keep README and skill wording aligned: core `Onnxify` currently uses standard ONNX opset 25 and IR version 11 by default, and `Onnxify.TorchSharp` currently references `TorchSharp` `0.106.0`.
 - Treat `.docs/nuget/release-notes` as the home for NuGet package release notes in this repository, and keep each Markdown filename aligned with the corresponding package name.
 - When changing package metadata conventions, update `src/Directory.Build.props` and `.docs` together so packaging behavior and repository docs do not drift apart.
 - If a `.docs` subfolder becomes obsolete after a metadata-layout change, remove it or document why it still exists.

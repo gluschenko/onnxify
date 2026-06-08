@@ -14,7 +14,7 @@ public class OnnxModelCreationOptions : OnnxModelBaseOptions
     /// <remarks>
     /// The value is written for the empty ONNX domain string. Choose a version supported by the runtime that will execute the model and by the operators you plan to emit.
     /// </remarks>
-    public int Opset { get; init; } = 18;
+    public int Opset { get; init; } = 25;
 
     /// <summary>
     /// Gets the ONNX IR version written to the model header.
@@ -22,7 +22,7 @@ public class OnnxModelCreationOptions : OnnxModelBaseOptions
     /// <remarks>
     /// IR version controls the container format, not individual operator schemas.
     /// </remarks>
-    public long IrVersion { get; init; } = 9;
+    public long IrVersion { get; init; } = 11;
 
     /// <summary>
     /// Gets the producer name written into model metadata for newly created models.

@@ -81,7 +81,8 @@ Output: [3]
 
 | Converter | Torch ops |
 | --- | --- |
-| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportEmptyLike(this OnnxGraph graph, IOnnxGraphEdge input, long dtype, string layout, string device, bool pinMemory, string memoryFormat) -> IOnnxGraphEdge` | `aten::empty_like` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportBernoulli(this OnnxGraph graph, IOnnxGraphEdge input, double p, TorchTensorDataType dtype) -> IOnnxGraphEdge` | `aten::bernoulli.p` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportEmptyLike(this OnnxGraph graph, IOnnxGraphEdge input, TorchTensorDataType dtype, string layout, string device, bool pinMemory, string memoryFormat) -> IOnnxGraphEdge` | `aten::empty_like` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportExpandAs(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `aten::expand_as` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportFill(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge value) -> IOnnxGraphEdge` | `aten::fill.Tensor` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportFill(this OnnxGraph graph, IOnnxGraphEdge input, double value) -> IOnnxGraphEdge` | `aten::fill.Scalar` |

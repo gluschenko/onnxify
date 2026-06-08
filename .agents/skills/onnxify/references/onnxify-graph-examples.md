@@ -39,8 +39,8 @@ public static class MobileNetLikeAuthoring
             new OnnxModelCreationOptions
             {
                 ProducerName = "onnxify-skill",
-                IrVersion = 10,
-                Opset = 22,
+                IrVersion = 11,
+                Opset = 25,
             }
         );
 
@@ -322,10 +322,9 @@ Why this is useful:
 The current public `OnnxGraph` API is strongest at:
 
 - looking up existing nodes and values
-- appending new values, nodes, and outputs
-- rebuilding or extending a suffix of the graph
-
-It does not currently expose a rich public "remove node" or "replace node in place" helper surface, so the safest edit pattern is often additive: branch from an existing value, append corrected logic, and publish that branch as a new output.
+- marking existing values as model inputs or outputs
+- appending, removing, and replacing values, nodes, tensors, and loose edges
+- keeping node input/output lists from pointing at removed graph wires
 
 ### Add A Softmax View Of Existing Logits
 
@@ -381,42 +380,67 @@ Useful public helpers:
 - `graph.GetNode(name)` to find an existing node by name
 - `graph.GetValue(name)` to find any input, output, placeholder, initializer, or loose edge by name
 - `graph.NextName(prefix)` when you are patching a graph and need collision-free names
+- `graph.AddInput(existingValue)` and `graph.AddOutput(existingValue)` to expose an already registered `OnnxValue` as part of the model contract
+- `graph.RemoveInput(...)` and `graph.RemoveOutput(...)` to unmark a value without deleting the underlying value metadata
+- `graph.RemoveNode(...)`, `graph.ReplaceNode(...)`, `graph.RemoveValue(...)`, `graph.ReplaceValue(...)`, `graph.RemoveTensor(...)`, and `graph.RemoveEdge(...)` for structural edits
 
-## Example 5: Rebuild A Patched Suffix Instead Of Mutating In Place
+### Replace A Node In Place
 
-When the exact old path is wrong and the graph API does not yet provide the remove/replace helper you want, rebuild the affected suffix from the last trustworthy edge.
+Use `ReplaceNode(...)` when the old node shape is wrong but the surrounding wires should stay stable. The replacement can keep the same name or use a new name; the graph position is preserved.
 
 ```csharp
-var logitsInput = graph.GetValue("classifier_input")
+var input = graph.GetValue("classifier_input")
     ?? throw new InvalidOperationException();
 
-var patchedLogits = graph.Gemm(
-    name: graph.NextName("classifier_patched"),
-    options: new GemmInputOptions
-    {
-        A = logitsInput,
-        B = patchedWeight,
-        C = patchedBias,
-        TransB = 1,
-    }
-);
+var logits = graph.GetValue("logits")
+    ?? throw new InvalidOperationException();
 
-var patchedOutput = graph.AddOutput(
-    name: "logits_patched",
-    type: OnnxTensorType.Create<float>(["batch", "classes"])
-);
-
-graph.Identity(
-    name: graph.NextName("logits_patched_out"),
-    options: new IdentityInputOutputOptions
-    {
-        Input = patchedLogits,
-        Output = patchedOutput,
-    }
+graph.ReplaceNode(
+    name: "classifier",
+    node: new OnnxNode(
+        name: "classifier_patched",
+        opType: "Gemm",
+        domain: "",
+        docString: "Patched classifier head",
+        inputs: [input, patchedWeight, patchedBias],
+        outputs: [logits],
+        attributes:
+        [
+            new OnnxAttribute<long>("transB", 1L),
+        ]
+    )
 );
 ```
 
-This "append a corrected suffix" strategy is often easier to validate than trying to surgically rewrite an already-loaded graph in place.
+### Replace A Value And Preserve Public Outputs
+
+Use `ReplaceValue(...)` when a graph value needs new type metadata or a new name. If the old value was marked as an input or output, that marker moves to the replacement.
+
+```csharp
+var scores = new OnnxValue<OnnxTensorType>(
+    name: "scores",
+    type: OnnxTensorType.Create<float>(["batch", "classes"])
+);
+
+graph.ReplaceValue("logits", scores);
+```
+
+### Remove Graph Pieces Without Leaving Dangling Wires
+
+Removal helpers clear references from node input/output lists and prune unused loose edges.
+
+```csharp
+graph.RemoveNode("debug_identity");
+graph.RemoveValue("obsolete_activation");
+graph.RemoveTensor("obsolete_weight");
+graph.RemoveEdge("temporary_wire");
+```
+
+When deleting an input or output marker only, use `RemoveInput(...)` or `RemoveOutput(...)`; those methods keep the value-info entry in the graph.
+
+## Example 5: Rebuild A Patched Suffix When That Is Clearer
+
+Remove and replace helpers are useful for targeted edits. For large structural rewrites, it can still be clearer to branch from the last trustworthy edge, append corrected logic, and publish that branch as a new output.
 
 ## Example 6: Use Typed Wrappers First, Raw Nodes As Fallback
 
@@ -430,9 +454,9 @@ That rule gives you the best balance of readability, schema safety, and compatib
 
 ## Current Limitations To Remember
 
-- Graph creation and additive editing are strong today.
-- Public remove/replace helpers at the graph level are still limited, so many edits are best modeled as "append a fixed branch/suffix".
-- When you need a heavy rewrite, it is often clearer to construct a fresh model or regenerate the affected subgraph than to force a deep in-place mutation strategy.
+- Graph creation and targeted in-place editing are strong today.
+- Removal helpers clear matching node input/output references, but they do not infer a replacement computation for downstream nodes; inspect the graph after removal when deleting a value used by several operators.
+- When you need a heavy rewrite, it can still be clearer to construct a fresh model or regenerate the affected subgraph than to force a deep in-place mutation strategy.
 
 ## Best Files To Read First
 

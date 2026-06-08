@@ -47,3 +47,5 @@ For example A = [[1, 2], [3, 4]], B = [1, 2], tile(A, B) = [[1, 2, 1, 2], [3, 4,
 | Converter | Torch ops |
 | --- | --- |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRepeat(this OnnxGraph graph, IOnnxGraphEdge input, long[] repeats) -> IOnnxGraphEdge` | `aten::repeat`, `aten::tile` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRepeatInterleave(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge repeats, Nullable<long> dim) -> IOnnxGraphEdge` | `aten::repeat_interleave.Tensor` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRepeatInterleave(this OnnxGraph graph, IOnnxGraphEdge input, long repeats, Nullable<long> dim) -> IOnnxGraphEdge` | `aten::repeat_interleave.self_int` |

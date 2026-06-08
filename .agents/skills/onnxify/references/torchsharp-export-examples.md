@@ -65,7 +65,8 @@ public OnnxModel Export()
     var model = OnnxModel.Create(
         new OnnxModelCreationOptions
         {
-            Opset = 22
+            Opset = 25,
+            IrVersion = 11
         }
     );
     var graph = model.Graph;

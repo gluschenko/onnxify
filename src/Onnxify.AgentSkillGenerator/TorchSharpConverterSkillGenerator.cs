@@ -24,7 +24,7 @@ internal static class TorchSharpConverterSkillGenerator
 
         string skillRoot = ResolveSkillRoot(repoRoot);
         string outputRoot = Path.Combine(skillRoot, "references", "torchsharp-converters");
-        var generatedFiles = BuildGeneratedFiles();
+        var generatedFiles = BuildGeneratedFiles(GetExistingGeneratedRelativePaths(outputRoot));
 
         RewriteGeneratedDirectory(outputRoot, generatedFiles);
 
@@ -42,7 +42,9 @@ internal static class TorchSharpConverterSkillGenerator
         return 0;
     }
 
-    internal static IReadOnlyDictionary<string, string> BuildGeneratedFiles()
+    internal static IReadOnlyDictionary<string, string> BuildGeneratedFiles(
+        IReadOnlySet<string>? existingRelativePaths = null
+    )
     {
         var converterMethods = SourceFilePaths
             .SelectMany(static entry => entry.Key
@@ -56,7 +58,7 @@ internal static class TorchSharpConverterSkillGenerator
             .ToDictionary(static group => group.Key, static group => group.Count(), StringComparer.Ordinal);
 
         var converters = converterMethods
-            .Select(x => CreateConverterDoc(x.Method, x.SourceFile, receiverCounts))
+            .Select(x => CreateConverterDoc(x.Method, x.SourceFile, receiverCounts, existingRelativePaths))
             .OrderBy(x => x.Kind)
             .ThenBy(x => x.ReceiverTypeName, StringComparer.Ordinal)
             .ThenBy(x => x.Signature, StringComparer.Ordinal)
@@ -91,7 +93,9 @@ internal static class TorchSharpConverterSkillGenerator
     private static ConverterDoc CreateConverterDoc(
         MethodInfo method,
         string sourceFile,
-        IReadOnlyDictionary<string, int> receiverCounts)
+        IReadOnlyDictionary<string, int> receiverCounts,
+        IReadOnlySet<string>? existingRelativePaths
+    )
     {
         ParameterInfo[] parameters = method.GetParameters();
         Type receiverType = parameters[0].ParameterType;
@@ -106,7 +110,7 @@ internal static class TorchSharpConverterSkillGenerator
         ConverterKind kind = GetConverterKind(receiverType, torchOps);
         string receiverTypeName = GetFriendlyTypeName(receiverType);
         string fileName = receiverCounts.TryGetValue(receiverTypeName, out int count) && count > 1
-            ? $"{SanitizeFileName(receiverTypeName)}__{SanitizeFileName(GetConverterSlug(method, torchOps))}.md"
+            ? $"{SanitizeFileName(receiverTypeName)}__{SanitizeFileName(GetConverterSlug(method, torchOps, kind, receiverTypeName, existingRelativePaths))}.md"
             : $"{SanitizeFileName(receiverTypeName)}.md";
         string relativePath = Path.Combine(GetFolderName(kind), fileName);
 
@@ -351,11 +355,40 @@ internal static class TorchSharpConverterSkillGenerator
         return builder.ToString();
     }
 
-    private static string GetConverterSlug(MethodInfo method, IReadOnlyList<string> torchOps)
+    private static string GetConverterSlug(
+        MethodInfo method,
+        IReadOnlyList<string> torchOps,
+        ConverterKind kind,
+        string receiverTypeName,
+        IReadOnlySet<string>? existingRelativePaths
+    )
     {
         if (torchOps.Count != 0)
         {
-            return torchOps[0];
+            if (existingRelativePaths is not null)
+            {
+                string folderName = GetFolderName(kind);
+                string receiverPrefix = SanitizeFileName(receiverTypeName);
+                string? existingSlug = torchOps
+                    .OrderByDescending(GetTorchOpSlugScore)
+                    .ThenBy(op => op, StringComparer.Ordinal)
+                    .FirstOrDefault(op => existingRelativePaths.Contains(
+                        Path.Combine(
+                            folderName,
+                            $"{receiverPrefix}__{SanitizeFileName(op)}.md"
+                        )
+                    ));
+
+                if (existingSlug is not null)
+                {
+                    return existingSlug;
+                }
+            }
+
+            return torchOps
+                .OrderByDescending(GetTorchOpSlugScore)
+                .ThenBy(op => op, StringComparer.Ordinal)
+                .First();
         }
 
         string parameterSuffix = string.Join(
@@ -367,6 +400,54 @@ internal static class TorchSharpConverterSkillGenerator
         return string.IsNullOrWhiteSpace(parameterSuffix)
             ? method.Name
             : $"{method.Name}_{parameterSuffix}";
+    }
+
+    private static IReadOnlySet<string> GetExistingGeneratedRelativePaths(string outputRoot)
+    {
+        if (!Directory.Exists(outputRoot))
+        {
+            return new HashSet<string>(StringComparer.Ordinal);
+        }
+
+        return Directory
+            .EnumerateFiles(outputRoot, "*.md", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(outputRoot, path))
+            .ToHashSet(StringComparer.Ordinal);
+    }
+
+    private static int GetTorchOpSlugScore(string torchOp)
+    {
+        int score = 0;
+
+        int namespaceSeparatorIndex = torchOp.IndexOf("::", StringComparison.Ordinal);
+        string opName = namespaceSeparatorIndex >= 0
+            ? torchOp[(namespaceSeparatorIndex + 2)..]
+            : torchOp;
+
+        if (opName.Contains('.', StringComparison.Ordinal))
+        {
+            score += 100;
+        }
+
+        if (!opName.StartsWith("__", StringComparison.Ordinal))
+        {
+            score += 10;
+        }
+
+        if (torchOp.StartsWith("aten::", StringComparison.Ordinal))
+        {
+            score += 3;
+        }
+        else if (torchOp.StartsWith("prims::", StringComparison.Ordinal))
+        {
+            score += 2;
+        }
+        else if (!torchOp.StartsWith("_operator::", StringComparison.Ordinal))
+        {
+            score += 1;
+        }
+
+        return score;
     }
 
     private static string GetConverterDisplaySignature(MethodInfo method)

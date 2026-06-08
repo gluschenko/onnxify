@@ -108,5 +108,7 @@ result = [
 
 | Converter | Torch ops |
 | --- | --- |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportFlip(this OnnxGraph graph, IOnnxGraphEdge input, IReadOnlyList<long> dims) -> IOnnxGraphEdge` | `aten::flip` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportNarrow(this OnnxGraph graph, IOnnxGraphEdge input, long dim, long start, long length) -> IOnnxGraphEdge` | `aten::narrow` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRoll(this OnnxGraph graph, IOnnxGraphEdge input, IReadOnlyList<long> shifts, IReadOnlyList<long> dims) -> IOnnxGraphEdge` | `aten::roll` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportSlice(this OnnxGraph graph, IOnnxGraphEdge input, long dim, Nullable<long> start, Nullable<long> end, long step) -> IOnnxGraphEdge` | `aten::slice.Tensor` |

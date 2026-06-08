@@ -1,3 +1,9 @@
+## 0.2.0
+
+- Raised the default `OnnxModel.Create()` profile to standard ONNX opset 25 and IR version 11.
+- Added graph editing APIs for marking existing `OnnxValue` instances as inputs or outputs, replacing and removing nodes and values, and removing tensors or loose edges.
+- Removal helpers now clear matching node input/output references and prune unused loose edges to avoid dangling graph pieces after edits.
+
 ## 0.1.2
 
 - Added async ONNX model file I/O with `OnnxModel.FromFileAsync(...)` and `SaveAsync(...)`.

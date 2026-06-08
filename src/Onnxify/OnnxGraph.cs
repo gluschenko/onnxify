@@ -256,6 +256,23 @@ public class OnnxGraph
     }
 
     /// <summary>
+    /// Removes an initializer tensor and clears node input or output references to the same graph wire.
+    /// </summary>
+    /// <param name="name">Initializer name to remove.</param>
+    /// <returns><see langword="true"/> when a tensor or node reference was removed.</returns>
+    public bool RemoveTensor(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+
+        var removed = _initializers.Remove(name);
+        removed |= _edges.Remove(name);
+        removed |= RemoveNodeEdgeReferences(name);
+        PruneUnusedLooseEdges();
+
+        return removed;
+    }
+
+    /// <summary>
     /// Adds a graph input with explicit ONNX type information.
     /// </summary>
     /// <typeparam name="T">Concrete value-type descriptor, typically <see cref="OnnxTensorType"/>.</typeparam>
@@ -271,9 +288,47 @@ public class OnnxGraph
         }
 
         var value = new OnnxValue<T>(name, type, null);
-        _values.Add(value);
+        AddValue(value);
         _inputs.Add(value.Name);
         return value;
+    }
+
+    /// <summary>
+    /// Marks an existing graph value as a model input.
+    /// </summary>
+    /// <param name="value">Previously added graph value.</param>
+    /// <returns>The registered graph value.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the value is not registered in the graph.</exception>
+    public OnnxValue AddInput(OnnxValue value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        var registeredValue = GetRegisteredValue(value.Name);
+        _inputs.Add(registeredValue.Name);
+
+        return registeredValue;
+    }
+
+    /// <summary>
+    /// Removes a graph value from the model input list without deleting the value-info entry itself.
+    /// </summary>
+    /// <param name="name">Input name to unmark.</param>
+    /// <returns><see langword="true"/> when the value was marked as an input.</returns>
+    public bool RemoveInput(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        return _inputs.Remove(name);
+    }
+
+    /// <summary>
+    /// Removes a graph value from the model input list without deleting the value-info entry itself.
+    /// </summary>
+    /// <param name="value">Input value to unmark.</param>
+    /// <returns><see langword="true"/> when the value was marked as an input.</returns>
+    public bool RemoveInput(OnnxValue value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        return RemoveInput(value.Name);
     }
 
     /// <summary>
@@ -292,9 +347,47 @@ public class OnnxGraph
         }
 
         var value = new OnnxValue<T>(name, type, null);
-        _values.Add(value);
+        AddValue(value);
         _outputs.Add(value.Name);
         return value;
+    }
+
+    /// <summary>
+    /// Marks an existing graph value as a model output.
+    /// </summary>
+    /// <param name="value">Previously added graph value.</param>
+    /// <returns>The registered graph value.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the value is not registered in the graph.</exception>
+    public OnnxValue AddOutput(OnnxValue value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        var registeredValue = GetRegisteredValue(value.Name);
+        _outputs.Add(registeredValue.Name);
+
+        return registeredValue;
+    }
+
+    /// <summary>
+    /// Removes a graph value from the model output list without deleting the value-info entry itself.
+    /// </summary>
+    /// <param name="name">Output name to unmark.</param>
+    /// <returns><see langword="true"/> when the value was marked as an output.</returns>
+    public bool RemoveOutput(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        return _outputs.Remove(name);
+    }
+
+    /// <summary>
+    /// Removes a graph value from the model output list without deleting the value-info entry itself.
+    /// </summary>
+    /// <param name="value">Output value to unmark.</param>
+    /// <returns><see langword="true"/> when the value was marked as an output.</returns>
+    public bool RemoveOutput(OnnxValue value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        return RemoveOutput(value.Name);
     }
 
     /// <summary>
@@ -307,14 +400,102 @@ public class OnnxGraph
     /// <exception cref="InvalidOperationException">Thrown when another intermediate value already uses <paramref name="name"/>.</exception>
     public OnnxValue AddValue<T>(string name, T type) where T : OnnxValueType
     {
-        if (_values.Contains(name))
+        var intermediateValue = new OnnxValue<T>(name, type, null);
+        return AddValue(intermediateValue);
+    }
+
+    /// <summary>
+    /// Adds prepared value-info metadata and rewires matching loose-edge references to the typed value.
+    /// </summary>
+    /// <param name="value">Graph value to add.</param>
+    /// <returns>The same value instance after registration.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when another value already uses <paramref name="value"/>'s name.</exception>
+    public OnnxValue AddValue(OnnxValue value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        if (_values.Contains(value.Name))
         {
-            throw new InvalidOperationException($"Value '{name}' is already added into graph");
+            throw new InvalidOperationException($"Value '{value.Name}' is already added into graph");
         }
 
-        var intermediateValue = new OnnxValue<T>(name, type, null);
-        _values.Add(intermediateValue);
-        return intermediateValue;
+        _values.Add(value);
+        ReplaceNodeEdgeReferences(value.Name, value);
+        _edges.Remove(value.Name);
+
+        return value;
+    }
+
+    /// <summary>
+    /// Replaces a graph value by name and updates input, output, and node wiring to the replacement value.
+    /// </summary>
+    /// <param name="name">Existing value name to replace.</param>
+    /// <param name="value">Replacement graph value.</param>
+    /// <returns>The replacement value.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the target value is missing or the replacement name collides.</exception>
+    public OnnxValue ReplaceValue(string name, OnnxValue value)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        ArgumentNullException.ThrowIfNull(value);
+
+        if (!_values.Contains(name))
+        {
+            throw new InvalidOperationException($"No graph value found for '{name}'.");
+        }
+
+        if (_values.Contains(value.Name) && !StringComparer.Ordinal.Equals(name, value.Name))
+        {
+            throw new InvalidOperationException($"Value '{value.Name}' is already added into graph");
+        }
+
+        var wasInput = _inputs.Remove(name);
+        var wasOutput = _outputs.Remove(name);
+
+        _values.Replace(name, value);
+        ReplaceNodeEdgeReferences(name, value);
+        _edges.Remove(value.Name);
+
+        if (wasInput)
+        {
+            _inputs.Add(value.Name);
+        }
+
+        if (wasOutput)
+        {
+            _outputs.Add(value.Name);
+        }
+
+        return value;
+    }
+
+    /// <summary>
+    /// Removes value-info metadata and clears node input or output references to the same graph wire.
+    /// </summary>
+    /// <param name="name">Value name to remove.</param>
+    /// <returns><see langword="true"/> when a value or node reference was removed.</returns>
+    public bool RemoveValue(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+
+        var removed = _values.Remove(name);
+        _inputs.Remove(name);
+        _outputs.Remove(name);
+        removed |= _edges.Remove(name);
+        removed |= RemoveNodeEdgeReferences(name);
+        PruneUnusedLooseEdges();
+
+        return removed;
+    }
+
+    /// <summary>
+    /// Removes value-info metadata and clears node input or output references to the same graph wire.
+    /// </summary>
+    /// <param name="value">Value to remove.</param>
+    /// <returns><see langword="true"/> when a value or node reference was removed.</returns>
+    public bool RemoveValue(OnnxValue value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        return RemoveValue(value.Name);
     }
 
     /// <summary>
@@ -333,6 +514,33 @@ public class OnnxGraph
         var edge = new OnnxEdge(name);
         _edges.Add(edge);
         return edge;
+    }
+
+    /// <summary>
+    /// Removes a loose edge and clears node input or output references to the same graph wire.
+    /// </summary>
+    /// <param name="name">Edge name to remove.</param>
+    /// <returns><see langword="true"/> when a loose edge or node reference was removed.</returns>
+    public bool RemoveEdge(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+
+        var removed = _edges.Remove(name);
+        removed |= RemoveNodeEdgeReferences(name);
+        PruneUnusedLooseEdges();
+
+        return removed;
+    }
+
+    /// <summary>
+    /// Removes a loose edge and clears node input or output references to the same graph wire.
+    /// </summary>
+    /// <param name="edge">Edge to remove.</param>
+    /// <returns><see langword="true"/> when a loose edge or node reference was removed.</returns>
+    public bool RemoveEdge(OnnxEdge edge)
+    {
+        ArgumentNullException.ThrowIfNull(edge);
+        return RemoveEdge(edge.Name);
     }
 
     /// <summary>
@@ -378,6 +586,8 @@ public class OnnxGraph
     /// <exception cref="InvalidOperationException">Thrown when another node already uses <paramref name="node"/>'s name.</exception>
     public OnnxNode AddNode(OnnxNode node)
     {
+        ArgumentNullException.ThrowIfNull(node);
+
         if (_nodes.Contains(node.Name))
         {
             throw new InvalidOperationException($"Node '{node.Name}' is already added into graph");
@@ -385,6 +595,104 @@ public class OnnxGraph
 
         _nodes.Add(node);
         return node;
+    }
+
+    /// <summary>
+    /// Replaces a node by name while preserving its graph position.
+    /// </summary>
+    /// <param name="name">Existing node name to replace.</param>
+    /// <param name="node">Replacement node.</param>
+    /// <returns>The replacement node.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the target node is missing or the replacement name collides.</exception>
+    public OnnxNode ReplaceNode(string name, OnnxNode node)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        ArgumentNullException.ThrowIfNull(node);
+
+        if (!_nodes.Replace(name, node))
+        {
+            throw new InvalidOperationException($"No graph node found for '{name}'.");
+        }
+
+        PruneUnusedLooseEdges();
+
+        return node;
+    }
+
+    /// <summary>
+    /// Removes a graph node and prunes loose edges that are no longer referenced by any remaining node.
+    /// </summary>
+    /// <param name="name">Node name to remove.</param>
+    /// <returns><see langword="true"/> when a node was removed.</returns>
+    public bool RemoveNode(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+
+        var removed = _nodes.Remove(name);
+        PruneUnusedLooseEdges();
+
+        return removed;
+    }
+
+    /// <summary>
+    /// Removes a graph node and prunes loose edges that are no longer referenced by any remaining node.
+    /// </summary>
+    /// <param name="node">Node to remove.</param>
+    /// <returns><see langword="true"/> when a node was removed.</returns>
+    public bool RemoveNode(OnnxNode node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        return RemoveNode(node.Name);
+    }
+
+    private OnnxValue GetRegisteredValue(string name)
+    {
+        if (_values.TryGetValue(name, out var registeredValue))
+        {
+            return registeredValue;
+        }
+
+        throw new InvalidOperationException($"No graph value found for '{name}'.");
+    }
+
+    private bool ReplaceNodeEdgeReferences(string name, IOnnxGraphEdge value)
+    {
+        var replaced = false;
+
+        foreach (var node in _nodes)
+        {
+            replaced |= node.ReplaceEdgeReference(name, value);
+        }
+
+        return replaced;
+    }
+
+    private bool RemoveNodeEdgeReferences(string name)
+    {
+        var removed = false;
+
+        foreach (var node in _nodes)
+        {
+            removed |= node.RemoveEdgeReference(name);
+        }
+
+        return removed;
+    }
+
+    private void PruneUnusedLooseEdges()
+    {
+        var usedEdgeNames = _nodes
+            .SelectMany(x => x.Inputs.Concat(x.Outputs))
+            .Select(x => x.Name)
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var edge in _edges.ToArray())
+        {
+            if (!usedEdgeNames.Contains(edge.Name))
+            {
+                _edges.Remove(edge);
+            }
+        }
     }
 
     internal GraphProto ToProto()

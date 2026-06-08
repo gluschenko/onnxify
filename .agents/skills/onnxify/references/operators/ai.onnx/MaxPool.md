@@ -83,3 +83,4 @@ MaxPool consumes an input tensor X and applies max pooling across
 | `Onnxify.TorchSharp.TorchModuleExtensions.Export(this MaxPool1d module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::max_pool1d` |
 | `Onnxify.TorchSharp.TorchModuleExtensions.Export(this MaxPool2d module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::max_pool2d` |
 | `Onnxify.TorchSharp.TorchModuleExtensions.Export(this MaxPool3d module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::max_pool3d` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportMaxPool2dWithIndices(this OnnxGraph graph, IOnnxGraphEdge input, IReadOnlyList<long> kernelSize, IReadOnlyList<long> stride, IReadOnlyList<long> padding, IReadOnlyList<long> dilation, bool ceilMode) -> MaxPoolOutput` | `aten::max_pool2d_with_indices` |

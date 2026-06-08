@@ -70,14 +70,17 @@ Use this section for the packages and tools that the repo itself exports outward
 - Start with `OnnxModel.FromFile(path)` for existing models.
 - Use `await OnnxModel.FromFileAsync(path, cancellationToken: ...)` when file I/O should not block the caller.
 - Use `OnnxModel.FromStream(stream)` or `await OnnxModel.FromStreamAsync(stream, cancellationToken: ...)` when the model already comes from memory, a network response, embedded resources, or another stream source. Set `OnnxModelBaseOptions.DataLocation` when relative external tensor data still needs a filesystem base path.
-- Inspect through `model.Graph`, then walk `Inputs`, `Outputs`, `Initializers`, `Placeholders`, and `Nodes`.
+- Inspect through `model.Graph`, then walk `Inputs`, `Outputs`, `Initializers`, `IntermediateValues`, and `Nodes`.
 - Prefer repository terminology: graph values may be inputs, outputs, placeholders, initializers, or loose edges.
 - If you only need to inspect structure, avoid rewriting the model unless the task requires it.
 
 ## 2. Creating Or Editing Models
 
 - Create new models with `OnnxModel.Create(new OnnxModelCreationOptions { ... })`.
+- `OnnxModel.Create()` defaults to standard ONNX opset 25 and IR version 11. Treat these as the current Onnxify ONNX baseline versions: opset 25 comes from the bundled standard-domain operator schemas, and IR version 11 is the repository compatibility target for generated models. Use explicit `OnnxModelCreationOptions.Opset` and `IrVersion` when a model must target an older runtime profile.
 - Add graph members through `AddInput`, `AddOutput`, `AddValue`, `AddTensor`, `AddEdge`, and `AddNode`.
+- Promote an existing `OnnxValue` to a public contract with `AddInput(OnnxValue)` or `AddOutput(OnnxValue)`, and reverse that public-contract marker with `RemoveInput(...)` or `RemoveOutput(...)` without deleting the value metadata itself.
+- Remove or replace graph members with `RemoveNode(...)`, `ReplaceNode(...)`, `RemoveValue(...)`, `ReplaceValue(...)`, `RemoveTensor(...)`, and `RemoveEdge(...)`. Removal helpers clear matching node input/output references and prune unused loose edges so edited graphs do not keep dangling graph pieces.
 - Respect unique-name constraints. The graph helpers throw on duplicates, so preserve stable names when patching an existing graph.
 - Use `graph.NextName(prefix)` when generating new operator or edge names instead of inventing a parallel naming scheme.
 - When a task is operator-oriented, prefer existing typed helpers or wrapper classes over raw `AddNode` if the repository already exposes them.
@@ -94,6 +97,7 @@ Use this section for the packages and tools that the repo itself exports outward
 
 ## 2B. Onnxify.TorchSharp Principles
 
+- `Onnxify.TorchSharp` currently references `TorchSharp` `0.106.0`; examples that add `TorchSharp-cpu` or a CUDA runtime package should use the matching TorchSharp runtime version unless the project has intentionally moved to a newer dependency.
 - Treat TorchSharp export as inference-oriented graph synthesis, not as runtime tracing or training-time execution.
 - Prefer implementing support as `Export(...)` extension methods on concrete TorchSharp module types in `TorchModuleExtensions.cs`.
 - Keep `TorchModule.Export(graph, input)` as the public dispatch entry point and extend its module switch consistently when adding support.

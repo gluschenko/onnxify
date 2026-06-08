@@ -415,6 +415,13 @@ public static class TorchModuleExportExtensions
             case InvocationExpression invocation:
                 return ExportInvocation(context, invocation);
 
+            case TupleExpression tuple:
+                return new ExportValue(
+                    tuple.Elements
+                        .Select(element => ExportExpression(context, UnwrapNamedArgument(element)).Value)
+                        .ToArray()
+                );
+
             case MemberReferenceExpression memberReference:
                 return ExportMemberReference(context, memberReference);
 
@@ -498,6 +505,12 @@ public static class TorchModuleExportExtensions
             return ExportTorchConcat(context, invocation);
         }
 
+        if (invocation.Target is IdentifierExpression functionalIdentifier
+            && TryExportTorchFunctionalInvocation(context, functionalIdentifier.Identifier, invocation, out var functionalResult))
+        {
+            return functionalResult;
+        }
+
         if (invocation.Target is not MemberReferenceExpression memberReference)
         {
             throw new NotSupportedException($"Unsupported invocation target: {invocation}");
@@ -538,6 +551,18 @@ public static class TorchModuleExportExtensions
             return ExportTorchSoftmax(context, invocation);
         }
 
+        if (string.Equals(memberReference.MemberName, "sigmoid", StringComparison.Ordinal)
+            && IsTorchReference(memberReference.Target))
+        {
+            return ExportTorchSigmoid(context, invocation);
+        }
+
+        if (string.Equals(memberReference.MemberName, "exp", StringComparison.Ordinal)
+            && IsTorchReference(memberReference.Target))
+        {
+            return ExportTorchExp(context, invocation);
+        }
+
         if (string.Equals(memberReference.MemberName, "arange", StringComparison.Ordinal)
             && IsTorchReference(memberReference.Target))
         {
@@ -568,7 +593,36 @@ public static class TorchModuleExportExtensions
             return ExportTorchInterpolate(context, invocation);
         }
 
+        if (string.Equals(memberReference.MemberName, "relu", StringComparison.Ordinal)
+            && IsTorchFunctionalReference(memberReference.Target))
+        {
+            return ExportTorchRelu(context, invocation);
+        }
+
+        if (string.Equals(memberReference.MemberName, "log_softmax", StringComparison.Ordinal)
+            && IsTorchFunctionalReference(memberReference.Target))
+        {
+            return ExportTorchLogSoftmax(context, invocation);
+        }
+
         throw new NotSupportedException($"Unsupported forward invocation: {invocation}");
+    }
+
+    private static bool TryExportTorchFunctionalInvocation(
+        ForwardExportContext context,
+        string name,
+        InvocationExpression invocation,
+        out ExportValue result
+    )
+    {
+        result = name switch
+        {
+            "relu" => ExportTorchRelu(context, invocation),
+            "log_softmax" => ExportTorchLogSoftmax(context, invocation),
+            _ => default,
+        };
+
+        return result.Value is not null;
     }
 
     private static bool IsTensorMethod(string methodName)
@@ -1137,6 +1191,93 @@ public static class TorchModuleExportExtensions
             context.Graph.Softmax(
                 name: context.Graph.NextName("softmax"),
                 options: new SoftmaxInputOptions
+                {
+                    Input = ExportExpression(context, invocation.Arguments.ElementAt(0)).GetRequiredEdge(invocation),
+                    Axis = axis,
+                }
+            )
+        );
+    }
+
+    private static ExportValue ExportTorchRelu(
+        ForwardExportContext context,
+        InvocationExpression invocation
+    )
+    {
+        if (invocation.Arguments.Count != 1)
+        {
+            throw new NotSupportedException($"Unsupported relu argument count: {invocation}");
+        }
+
+        return new ExportValue(
+            context.Graph.Relu(
+                name: context.Graph.NextName("relu"),
+                options: new ReluInputOptions
+                {
+                    X = ExportExpression(context, invocation.Arguments.Single()).GetRequiredEdge(invocation),
+                }
+            )
+        );
+    }
+
+    private static ExportValue ExportTorchSigmoid(
+        ForwardExportContext context,
+        InvocationExpression invocation
+    )
+    {
+        if (invocation.Arguments.Count != 1)
+        {
+            throw new NotSupportedException($"Unsupported sigmoid argument count: {invocation}");
+        }
+
+        return new ExportValue(
+            context.Graph.Sigmoid(
+                name: context.Graph.NextName("sigmoid"),
+                options: new SigmoidInputOptions
+                {
+                    X = ExportExpression(context, invocation.Arguments.Single()).GetRequiredEdge(invocation),
+                }
+            )
+        );
+    }
+
+    private static ExportValue ExportTorchExp(
+        ForwardExportContext context,
+        InvocationExpression invocation
+    )
+    {
+        if (invocation.Arguments.Count != 1)
+        {
+            throw new NotSupportedException($"Unsupported exp argument count: {invocation}");
+        }
+
+        return new ExportValue(
+            context.Graph.ExportExp(
+                ExportExpression(context, invocation.Arguments.Single()).GetRequiredEdge(invocation)
+            )
+        );
+    }
+
+    private static ExportValue ExportTorchLogSoftmax(
+        ForwardExportContext context,
+        InvocationExpression invocation
+    )
+    {
+        if (invocation.Arguments.Count < 1 || invocation.Arguments.Count > 2)
+        {
+            throw new NotSupportedException($"Unsupported log_softmax argument count: {invocation}");
+        }
+
+        var axis = GetNamedArgument(invocation, "dim") is { } namedDim
+            ? ResolveLongArgument(context, namedDim)
+            : invocation.Arguments.Count == 2
+                ? ResolveLongArgument(context, invocation.Arguments.ElementAt(1))
+                : -1;
+
+        return new ExportValue(
+            context.Graph.LogSoftmax(
+                name: context.Graph.NextName("log_softmax"),
+                options: new LogSoftmaxInputOptions
                 {
                     Input = ExportExpression(context, invocation.Arguments.ElementAt(0)).GetRequiredEdge(invocation),
                     Axis = axis,
@@ -2689,6 +2830,11 @@ public static class TorchModuleExportExtensions
         if (value.Value is ITuple tuple && index < tuple.Length)
         {
             return new ExportValue(tuple[index]);
+        }
+
+        if (value.Value is object?[] array && index < array.Length)
+        {
+            return new ExportValue(array[index]);
         }
 
         throw new NotSupportedException($"Cannot read deconstruction item {index} from '{value.Value.GetType().FullName}'.");

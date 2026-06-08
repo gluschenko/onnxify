@@ -173,6 +173,31 @@ public sealed class TorchTensorOperatorExtensionsTests
     }
 
     [Fact]
+    public void ExportBitwiseOperators_WithBoolInput_EmitLogicalNodes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<bool>([2L, 3L]));
+        var other = graph.AddInput("other", OnnxTensorType.Create<bool>([2L, 3L]));
+
+        graph.ExportBitwiseNot(input);
+        graph.ExportBitwiseAnd(input, other);
+        graph.ExportBitwiseAnd(input, 1d);
+        graph.ExportBitwiseAnd(0d, other);
+        graph.ExportBitwiseOr(input, other);
+        graph.ExportBitwiseOr(input, 1d);
+        graph.ExportBitwiseOr(0d, other);
+        graph.ExportBitwiseXor(input, other);
+        graph.ExportBitwiseXor(input, 1d);
+        graph.ExportBitwiseXor(0d, other);
+
+        Assert.Equal(
+            ["Not", "And", "And", "And", "Or", "Or", "Or", "Xor", "Xor", "Xor"],
+            graph.Nodes.Select(static x => x.OpType).ToArray()
+        );
+        Assert.DoesNotContain(graph.Nodes, static node => node.OpType.StartsWith("Bitwise", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void ExportBitShiftOperators_EmitExpectedNodes()
     {
         var graph = CreateGraph();
@@ -1869,15 +1894,15 @@ public sealed class TorchTensorOperatorExtensionsTests
         var longValue = graph.AddInput("long_value", OnnxTensorType.Create<long>([]));
 
         graph.ExportToCopy(input);
-        graph.ExportToCopy(input, dtype: 7);
+        graph.ExportToCopy(input, dtype: TorchTensorDataType.Int64);
         graph.ExportEmpty(new long[] { 2L, 2L });
         graph.ExportEmptyLike(input);
         graph.ExportFill(input, 3d);
         graph.ExportFill(input, longValue);
         graph.ExportNewEmpty(input, new long[] { 2L, 2L });
-        graph.ExportNewFull(input, new long[] { 2L, 2L }, 5d, dtype: 7);
+        graph.ExportNewFull(input, new long[] { 2L, 2L }, 5d, dtype: TorchTensorDataType.Int64);
         graph.ExportNewOnes(input, new long[] { 2L, 2L });
-        graph.ExportNewZeros(input, new long[] { 2L, 2L }, dtype: 7);
+        graph.ExportNewZeros(input, new long[] { 2L, 2L }, dtype: TorchTensorDataType.Int64);
         graph.ExportHeaviside(input, values);
 
         var opTypes = graph.Nodes.Select(x => x.OpType).ToArray();
@@ -1925,6 +1950,142 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("Log", opTypes);
         Assert.Contains("ReduceL2", opTypes);
         Assert.Contains("Expand", opTypes);
+    }
+
+    [Fact]
+    public void ExportRandomOperators_EmitExpectedNodes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 3L]));
+
+        graph.ExportRand(new long[] { 2L, 3L });
+        graph.ExportRandLike(input);
+        graph.ExportRandN(new long[] { 2L, 3L });
+        graph.ExportRandNLike(input);
+
+        Assert.Equal(
+            ["ConstantOfShape", "RandomUniformLike", "RandomUniformLike", "ConstantOfShape", "RandomNormalLike", "RandomNormalLike"],
+            graph.Nodes.Select(static node => node.OpType).ToArray()
+        );
+    }
+
+    [Fact]
+    public void ExportRandomSamplingOperators_EmitExpectedNodes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 3L]));
+        var std = graph.AddInput("std", OnnxTensorType.Create<float>([2L, 3L]));
+
+        graph.ExportRandInt(10L, new long[] { 2L, 3L });
+        graph.ExportRandInt(2L, 10L, new long[] { 2L, 3L });
+        graph.ExportRandIntLike(input, 10L);
+        graph.ExportRandIntLike(input, 2L, 10L);
+        graph.ExportBernoulli(input);
+        graph.ExportBernoulli(input, 0.25d);
+        graph.ExportNormal(0d, 1d, new long[] { 2L, 3L });
+        graph.ExportNormal(0d, std);
+        graph.ExportNormal(input, 2d);
+        graph.ExportNormal(input, std);
+        graph.ExportMultinomial(input, numSamples: 4L, replacement: true);
+
+        var opTypes = graph.Nodes.Select(static node => node.OpType).ToArray();
+        Assert.Equal(4, opTypes.Count(static opType => opType == "RandomUniformLike"));
+        Assert.Equal(4, opTypes.Count(static opType => opType == "RandomNormalLike"));
+        Assert.Equal(2, opTypes.Count(static opType => opType == "Bernoulli"));
+        Assert.Equal(4, opTypes.Count(static opType => opType == "Floor"));
+        Assert.Equal(2, opTypes.Count(static opType => opType == "Cast"));
+        Assert.Equal(2, opTypes.Count(static opType => opType == "CastLike"));
+        Assert.Contains("Log", opTypes);
+        Assert.Contains("Multinomial", opTypes);
+    }
+
+    [Fact]
+    public void ExportSimpleRearrangementOperators_EmitExpectedNodes()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([2L, 3L, 4L]));
+        var repeats = graph.AddTensor<long>("repeats", [1], [2L]);
+
+        graph.ExportFlip(input, [1L]);
+        graph.ExportRoll(input, [1L], [2L]);
+        var unbound = graph.ExportUnbind(input, dim: 0);
+        graph.ExportDiagonal(input, dim1: 1, dim2: 2);
+        graph.ExportRepeatInterleave(input, repeats: 2L, dim: 1);
+        graph.ExportRepeatInterleave(input, repeats, dim: 2);
+        graph.ExportAsStrided(input, [6L, 4L], [4L, 1L]);
+
+        Assert.Equal(2, unbound.Count);
+        var opTypes = graph.Nodes.Select(static node => node.OpType).ToArray();
+        Assert.Equal(8, opTypes.Count(static opType => opType == "Slice"));
+        Assert.Equal(2, opTypes.Count(static opType => opType == "Concat"));
+        Assert.Equal(5, opTypes.Count(static opType => opType == "Squeeze"));
+        Assert.Equal(5, opTypes.Count(static opType => opType == "Unsqueeze"));
+        Assert.Equal(2, opTypes.Count(static opType => opType == "Tile"));
+        Assert.Equal(3, opTypes.Count(static opType => opType == "Reshape"));
+    }
+
+    [Fact]
+    public void ExportLossMiscAndPoolingOperators_EmitExpectedNodes()
+    {
+        var graph = CreateGraph();
+        var logits = graph.AddInput("logits", OnnxTensorType.Create<float>([2L, 3L]));
+        var target = graph.AddInput("target", OnnxTensorType.Create<long>([2L]));
+        var other = graph.AddInput("other", OnnxTensorType.Create<float>([2L, 3L]));
+        var single = graph.AddInput("single", OnnxTensorType.Create<float>([1L]));
+        var image = graph.AddInput("image", OnnxTensorType.Create<float>([1L, 1L, 4L, 4L]));
+
+        graph.ExportMseLoss(logits, other, reduction: 1);
+        graph.ExportNllLoss(logits, target, reduction: 2, ignoreIndex: -1);
+        graph.ExportCrossEntropyLoss(logits, target, reduction: 0);
+        graph.ExportCross(logits, other, dim: 1);
+        graph.ExportIsNonZero(single);
+        graph.ExportVar(logits, unbiased: false);
+        graph.ExportTensor(true, dtype: TorchTensorDataType.Bool);
+        graph.ExportTensor(1.5d, dtype: TorchTensorDataType.Float);
+        graph.ExportTensor(3L, dtype: TorchTensorDataType.Int64);
+        var pooled = graph.ExportMaxPool2dWithIndices(
+            image,
+            kernelSize: [2L, 2L],
+            stride: [1L, 1L],
+            padding: [0L, 0L],
+            dilation: [1L, 1L],
+            ceilMode: true
+        );
+
+        Assert.NotNull(pooled.Y);
+        Assert.NotNull(pooled.Indices);
+        var opTypes = graph.Nodes.Select(static node => node.OpType).ToArray();
+        Assert.Contains("NegativeLogLikelihoodLoss", opTypes);
+        Assert.Contains("SoftmaxCrossEntropyLoss", opTypes);
+        Assert.Contains("MaxPool", opTypes);
+        Assert.Equal(2, opTypes.Count(static opType => opType == "Split"));
+        Assert.Contains("Concat", opTypes);
+        Assert.True(opTypes.Count(static opType => opType == "Cast") >= 4);
+        Assert.True(opTypes.Count(static opType => opType == "ReduceMean") >= 2);
+        Assert.True(opTypes.Count(static opType => opType == "ReduceSum") >= 1);
+
+        var nllLoss = Assert.Single(graph.Nodes, static node => node.OpType == "NegativeLogLikelihoodLoss");
+        Assert.Equal("sum", Assert.IsType<string>(nllLoss.Attributes.Single(x => x.Name == "reduction").GetValue()));
+        Assert.Equal(-1L, Assert.IsType<long>(nllLoss.Attributes.Single(x => x.Name == "ignore_index").GetValue()));
+
+        var crossEntropy = Assert.Single(graph.Nodes, static node => node.OpType == "SoftmaxCrossEntropyLoss");
+        Assert.Equal("none", Assert.IsType<string>(crossEntropy.Attributes.Single(x => x.Name == "reduction").GetValue()));
+
+        var maxPool = Assert.Single(graph.Nodes, static node => node.OpType == "MaxPool");
+        Assert.Equal(2, maxPool.Outputs.Count);
+        Assert.Equal(1L, Assert.IsType<long>(maxPool.Attributes.Single(x => x.Name == "ceil_mode").GetValue()));
+    }
+
+    [Fact]
+    public void ExportPad_EmitsPadNode()
+    {
+        var graph = CreateGraph();
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([1L, 3L, 8L, 8L]));
+
+        graph.ExportPad(input, [1L, 2L, 3L, 4L], value: 0.5d);
+
+        var node = Assert.Single(graph.Nodes, static node => node.OpType == "Pad");
+        Assert.Equal(3, node.Inputs.Count);
     }
 
     [Fact]
@@ -2157,8 +2318,43 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("aten::tril", coveredOperators);
         Assert.Contains("aten::zeros", coveredOperators);
         Assert.Contains("aten::zeros_like", coveredOperators);
+        Assert.Contains("aten::rand", coveredOperators);
+        Assert.Contains("aten::rand_like", coveredOperators);
+        Assert.Contains("aten::randn", coveredOperators);
+        Assert.Contains("aten::randn_like", coveredOperators);
+        Assert.Contains("aten::bernoulli", coveredOperators);
+        Assert.Contains("aten::bernoulli.p", coveredOperators);
+        Assert.Contains("aten::normal.float_float", coveredOperators);
+        Assert.Contains("aten::normal.float_Tensor", coveredOperators);
+        Assert.Contains("aten::normal.Tensor_float", coveredOperators);
+        Assert.Contains("aten::normal.Tensor_Tensor", coveredOperators);
+        Assert.Contains("aten::randint", coveredOperators);
+        Assert.Contains("aten::randint.low", coveredOperators);
+        Assert.Contains("aten::randint_like", coveredOperators);
+        Assert.Contains("aten::randint_like.low_dtype", coveredOperators);
+        Assert.Contains("aten::multinomial", coveredOperators);
+        Assert.Contains("aten::flip", coveredOperators);
+        Assert.Contains("aten::roll", coveredOperators);
+        Assert.Contains("aten::unbind.int", coveredOperators);
+        Assert.Contains("aten::diagonal", coveredOperators);
+        Assert.Contains("aten::repeat_interleave.self_int", coveredOperators);
+        Assert.Contains("aten::repeat_interleave.Tensor", coveredOperators);
+        Assert.Contains("aten::as_strided", coveredOperators);
+        Assert.Contains("aten::pad", coveredOperators);
+        Assert.Contains("aten::mse_loss", coveredOperators);
+        Assert.Contains("aten::nll_loss", coveredOperators);
+        Assert.Contains("aten::cross_entropy_loss", coveredOperators);
+        Assert.Contains("aten::cross", coveredOperators);
+        Assert.Contains("aten::is_nonzero", coveredOperators);
+        Assert.Contains("aten::tensor.bool", coveredOperators);
+        Assert.Contains("aten::tensor.float", coveredOperators);
+        Assert.Contains("aten::tensor.int", coveredOperators);
+        Assert.Contains("aten::max_pool2d_with_indices", coveredOperators);
         Assert.Contains("_operator::abs", coveredOperators);
         Assert.Contains("_operator::add", coveredOperators);
+        Assert.Contains("_operator::and_", coveredOperators);
+        Assert.Contains("_operator::__lshift__", coveredOperators);
+        Assert.Contains("_operator::__rshift__", coveredOperators);
         Assert.Contains("_operator::eq", coveredOperators);
         Assert.Contains("_operator::floordiv", coveredOperators);
         Assert.Contains("_operator::ge", coveredOperators);
@@ -2168,8 +2364,13 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("_operator::mul", coveredOperators);
         Assert.Contains("_operator::ne", coveredOperators);
         Assert.Contains("_operator::neg", coveredOperators);
+        Assert.Contains("_operator::or_", coveredOperators);
         Assert.Contains("_operator::pow", coveredOperators);
         Assert.Contains("_operator::sub", coveredOperators);
+        Assert.Contains("_operator::truediv", coveredOperators);
+        Assert.Contains("_operator::mod", coveredOperators);
+        Assert.Contains("aten::__lshift__.Scalar", coveredOperators);
+        Assert.Contains("aten::__rshift__.Scalar", coveredOperators);
         Assert.Contains("aten::multiply.Tensor", coveredOperators);
         Assert.Contains("aten::subtract.Tensor", coveredOperators);
         Assert.Contains("aten::subtract.Scalar", coveredOperators);
@@ -2216,6 +2417,7 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Contains("prims::tan", coveredOperators);
         Assert.Contains("prims::tanh", coveredOperators);
         Assert.Contains("prims::transpose", coveredOperators);
+        Assert.Contains("prims::var", coveredOperators);
         Assert.Contains("prims::where", coveredOperators);
     }
 

@@ -67,3 +67,11 @@ This operator supports **multidirectional (i.e., Numpy-style) broadcasting**; fo
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportLogAddExp(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `aten::logaddexp` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportLogAddExp2(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `aten::logaddexp2` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportLogCumSumExp(this OnnxGraph graph, IOnnxGraphEdge input, long dim) -> IOnnxGraphEdge` | `aten::logcumsumexp` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportNormal(this OnnxGraph graph, IOnnxGraphEdge mean, IOnnxGraphEdge std) -> IOnnxGraphEdge` | `aten::normal.Tensor_Tensor` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportNormal(this OnnxGraph graph, IOnnxGraphEdge mean, double std) -> IOnnxGraphEdge` | `aten::normal.Tensor_float` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportNormal(this OnnxGraph graph, double mean, IOnnxGraphEdge std) -> IOnnxGraphEdge` | `aten::normal.float_Tensor` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportNormal(this OnnxGraph graph, double mean, double std, IReadOnlyList<long> size, TorchTensorDataType dtype) -> IOnnxGraphEdge` | `aten::normal.float_float` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRandInt(this OnnxGraph graph, long high, IReadOnlyList<long> size, TorchTensorDataType dtype) -> IOnnxGraphEdge` | `aten::randint` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRandInt(this OnnxGraph graph, long low, long high, IReadOnlyList<long> size, TorchTensorDataType dtype) -> IOnnxGraphEdge` | `aten::randint.low` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRandIntLike(this OnnxGraph graph, IOnnxGraphEdge input, long high, TorchTensorDataType dtype) -> IOnnxGraphEdge` | `aten::randint_like` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportRandIntLike(this OnnxGraph graph, IOnnxGraphEdge input, long low, long high, TorchTensorDataType dtype) -> IOnnxGraphEdge` | `aten::randint_like.low_dtype` |
