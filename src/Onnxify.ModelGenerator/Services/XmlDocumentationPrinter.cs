@@ -79,7 +79,7 @@ internal sealed class XmlDocumentationPrinter
     {
         var paragraphs = new List<string>
         {
-            $"Load compatible initializer values with {FormatCode("LoadWeightsFromOnnx(string modelPath)")}."
+            $"Load compatible initializer values with {FormatCode("LoadWeightsFromOnnx(string modelPath)")} or {FormatCode("LoadWeightsFromOnnx(OnnxModel model)")}."
         };
 
         if (specification.Inputs.Length == 1)
@@ -103,7 +103,7 @@ internal sealed class XmlDocumentationPrinter
         return XmlDocumentation(
             $"Creates a {torchClassName} TorchSharp module with graph-compatible child modules and registered ONNX initializers.",
             [
-                $"Call {FormatCode("LoadWeightsFromOnnx(string modelPath)")} before inference or training when weights should be initialized from an ONNX model file."
+                $"Call {FormatCode("LoadWeightsFromOnnx(string modelPath)")} or {FormatCode("LoadWeightsFromOnnx(OnnxModel model)")} before inference or training when weights should be initialized from an ONNX model."
             ]
         );
     }
@@ -113,6 +113,14 @@ internal sealed class XmlDocumentationPrinter
         return $$"""
         {{XmlSummary("Loads compatible initializer tensors from an ONNX model file into this TorchSharp module.")}}
         {{XmlParam("modelPath", "Path to an ONNX model with a graph-compatible initializer layout.")}}
+        """;
+    }
+
+    internal string TorchModuleLoadWeightsFromModel()
+    {
+        return $$"""
+        {{XmlSummary("Loads compatible initializer tensors from an ONNX model into this TorchSharp module.")}}
+        {{XmlParam("model", "ONNX model with a graph-compatible initializer layout.")}}
         """;
     }
 

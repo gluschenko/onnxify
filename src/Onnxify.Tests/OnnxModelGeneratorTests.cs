@@ -201,6 +201,9 @@ public sealed class OnnxModelGeneratorTests
             Assert.Contains("var biasParameter = new global::TorchSharp.Modules.Parameter(torch.empty(new long[] { 1L, 2L }, dtype: ScalarType.Float32));", generatedSource);
             Assert.Contains("register_parameter(\"bias\", biasParameter);", generatedSource);
             Assert.Contains("public void LoadWeightsFromOnnx(string modelPath)", generatedSource);
+            Assert.Contains("LoadWeightsFromOnnx(model);", generatedSource);
+            Assert.Contains("public void LoadWeightsFromOnnx(Onnxify.OnnxModel model)", generatedSource);
+            Assert.Contains("throw new ArgumentNullException(nameof(model));", generatedSource);
             Assert.Contains("var output = input + _bias;", generatedSource);
             Assert.Contains("return output;", generatedSource);
             Assert.DoesNotContain("InferenceSession", generatedSource, StringComparison.Ordinal);

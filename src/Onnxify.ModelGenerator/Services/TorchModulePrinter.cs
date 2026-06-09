@@ -124,6 +124,17 @@ internal sealed class TorchModulePrinter
                     }
                 );
 
+                LoadWeightsFromOnnx(model);
+            }
+
+            {{Indent(_documentationPrinter.TorchModuleLoadWeightsFromModel(), 1)}}
+            public void LoadWeightsFromOnnx(Onnxify.OnnxModel model)
+            {
+                if (model is null)
+                {
+                    throw new ArgumentNullException(nameof(model));
+                }
+
                 var tensors = model.Graph.Initializers.ToDictionary(static x => x.Name, StringComparer.Ordinal);
                 {{Indent(loadCalls, 2)}}
             }
