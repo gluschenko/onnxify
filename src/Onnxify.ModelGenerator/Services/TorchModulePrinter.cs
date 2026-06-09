@@ -325,10 +325,12 @@ internal sealed class TorchModulePrinter
             torchModule.ModuleNodes.Select(static x => x.NodeName),
             StringComparer.Ordinal
         );
+
         var inputUseCounts = torchModule.Nodes
             .SelectMany(static x => x.Inputs)
             .GroupBy(static x => x, StringComparer.Ordinal)
             .ToDictionary(static x => x.Key, static x => x.Count(), StringComparer.Ordinal);
+
         var groups = ImmutableArray.CreateBuilder<TorchForwardGroupSpecification>();
         var index = 0;
 
@@ -371,12 +373,15 @@ internal sealed class TorchModulePrinter
                     immutableGroupNodes[0].Inputs[0],
                     immutableGroupNodes[immutableGroupNodes.Length - 1].Outputs[0]
                 );
+
                 var kind = residualAddNode is null
                     ? TorchForwardGroupKind.Sequential
                     : TorchForwardGroupKind.Residual;
+
                 var name = kind == TorchForwardGroupKind.Sequential
                     ? $"ForwardBlock{groups.Count}"
                     : $"ResidualBlock{groups.Count}";
+
                 groups.Add(
                     new TorchForwardGroupSpecification(
                         name,
@@ -472,8 +477,7 @@ internal sealed class TorchModulePrinter
                 {
                     {{Indent(fields, 1)}}
 
-                    public {{group.TypeName}}()
-                        : base(nameof({{group.TypeName}}))
+                    public {{group.TypeName}}() : base(nameof({{group.TypeName}}))
                     {
                         {{Indent(initializers, 2)}}
                     }
