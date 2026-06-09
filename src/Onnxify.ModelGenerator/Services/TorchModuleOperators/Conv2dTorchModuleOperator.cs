@@ -4,7 +4,7 @@ using static Onnxify.ModelGenerator.OnnxModelGenerator;
 
 namespace Onnxify.ModelGenerator.Services.TorchModuleOperators;
 
-[TorchOp("Conv2d")]
+[TorchSharpOp("Conv2d")]
 internal sealed class Conv2dTorchModuleOperator : TorchModuleOperator
 {
     internal override string OnnxOpType => "Conv";

@@ -3,7 +3,7 @@ using static Onnxify.ModelGenerator.OnnxModelGenerator;
 
 namespace Onnxify.ModelGenerator.Services.TorchModuleOperators;
 
-[TorchOp("ReLU6")]
+[TorchSharpOp("ReLU6")]
 internal sealed class Relu6TorchModuleOperator : TorchModuleOperator
 {
     internal override string OnnxOpType => "Clip";

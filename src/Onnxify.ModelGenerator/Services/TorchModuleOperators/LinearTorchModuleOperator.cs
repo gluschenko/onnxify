@@ -4,7 +4,7 @@ using static Onnxify.ModelGenerator.OnnxModelGenerator;
 
 namespace Onnxify.ModelGenerator.Services.TorchModuleOperators;
 
-[TorchOp("Linear")]
+[TorchSharpOp("Linear")]
 internal sealed class LinearTorchModuleOperator : TorchModuleOperator
 {
     internal override string OnnxOpType => "Gemm";

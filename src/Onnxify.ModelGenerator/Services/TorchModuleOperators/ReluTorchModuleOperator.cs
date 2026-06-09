@@ -3,7 +3,7 @@ using static Onnxify.ModelGenerator.OnnxModelGenerator;
 
 namespace Onnxify.ModelGenerator.Services.TorchModuleOperators;
 
-[TorchOp("ReLU")]
+[TorchSharpOp("ReLU")]
 internal sealed class ReluTorchModuleOperator : TorchModuleOperator
 {
     internal override string OnnxOpType => "Relu";

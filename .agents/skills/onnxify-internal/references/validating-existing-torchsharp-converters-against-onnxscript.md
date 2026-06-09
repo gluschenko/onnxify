@@ -25,7 +25,7 @@ Read the row this way:
 
 - `ONNXScript operator`: the exact Torch op name to validate, such as `aten::addmm` or `aten::layer_norm`
 - `TorchSharp module`: the TorchSharp API or module surface the observer matched
-- `Coverage`: whether `Onnxify.TorchSharp` currently claims support through `[TorchOp(...)]`
+- `Onnxify.TorchSharp coverage`: whether `Onnxify.TorchSharp` currently claims support through `[TorchOp(...)]`
 
 This step matters because validation should always use the exact operator spelling from the report, including overload suffixes such as:
 
@@ -277,7 +277,7 @@ Then open:
 ## 11. Common Pitfalls
 
 - Do not validate against a guessed Torch op spelling. Use the exact observer row.
-- Do not treat `Coverage = yes` in the observer report as proof of semantic parity. It only proves `[TorchOp(...)]` coverage exists.
+- Do not treat `Onnxify.TorchSharp coverage = yes` in the observer report as proof of semantic parity. It only proves `[TorchOp(...)]` coverage exists.
 - Do not stop at the generated converter page. It gives the signature, not the full behavior.
 - Do not ignore helper methods that change dtype, rank, branching, or tuple outputs.
 - Do not compare only the first ONNX node emitted. Many converters differ in surrounding casts, reshapes, or reduction behavior.

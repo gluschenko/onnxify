@@ -4,7 +4,7 @@ using static Onnxify.ModelGenerator.OnnxModelGenerator;
 
 namespace Onnxify.ModelGenerator.Services.TorchModuleOperators;
 
-[TorchOp("BatchNormalization")]
+[TorchSharpOp("BatchNormalization")]
 internal sealed class BatchNorm2dTorchModuleOperator : TorchModuleOperator
 {
     internal override string OnnxOpType => "BatchNormalization";

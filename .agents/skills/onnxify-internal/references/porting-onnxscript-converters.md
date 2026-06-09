@@ -21,8 +21,9 @@ By default it rewrites:
 Open `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md` and inspect the table.
 
 - `Found` means the observer found a corresponding TorchSharp API or module surface.
-- `Coverage` means `Onnxify.TorchSharp` already declares support for that ONNXScript operator through `[TorchOp(...)]`.
-- The best porting targets are usually rows where `Found` is checked and `Coverage` is empty.
+- `Onnxify.TorchSharp coverage` means `Onnxify.TorchSharp` already declares support for that ONNXScript operator through `[TorchOp(...)]`.
+- `Onnxify.ModelGenerator coverage` means the reverse ONNX-to-TorchSharp ModelGenerator path declares support through `[TorchSharpOp(...)]`; it is useful context, but it does not mean the TorchSharp-to-ONNX exporter exists.
+- The best porting targets are usually rows where `Found` is checked and `Onnxify.TorchSharp coverage` is missing.
 
 That combination usually means TorchSharp already exposes the operator, but `Onnxify.TorchSharp` still lacks a converter.
 
@@ -171,7 +172,7 @@ Before finishing:
 
 ## Heuristics
 
-- Prefer candidates with `Found = yes` and `Coverage = no` before adding brand-new TorchSharp surface area.
+- Prefer candidates with `Found = yes` and `Onnxify.TorchSharp coverage = no` before adding brand-new TorchSharp surface area.
 - Match the ONNXScript behavior semantically, not line-for-line. Reuse existing C# helpers where the repo already has them.
 - Keep the `TorchOp` names aligned with ONNXScript operator names, including overload suffixes when relevant.
 - If the Python version handles more cases than the current C# export layer can support safely, implement the safe subset first and fail clearly for the rest.

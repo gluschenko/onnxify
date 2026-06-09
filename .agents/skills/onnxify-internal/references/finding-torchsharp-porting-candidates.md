@@ -15,12 +15,13 @@ Open:
 Treat the columns as follows:
 
 - `Found` means the observer discovered a matching TorchSharp surface.
-- `Coverage` means `Onnxify.TorchSharp` already declares converter coverage through `[TorchOp(...)]`.
+- `Onnxify.TorchSharp coverage` means `Onnxify.TorchSharp` already declares export converter coverage through `[TorchOp(...)]`.
+- `Onnxify.ModelGenerator coverage` means `Onnxify.ModelGenerator` declares reverse TorchModule reconstruction support through `[TorchSharpOp(...)]`. Use it to reason about ONNX-to-TorchSharp generation gaps, not TorchSharp-to-ONNX exporter gaps.
 
 Your main candidate pool is usually:
 
 - `Found = yes`
-- `Coverage = no`
+- `Onnxify.TorchSharp coverage = no`
 
 That combination means TorchSharp already exposes the operator, but `Onnxify.TorchSharp` does not yet claim export support.
 
@@ -120,7 +121,7 @@ If a missing operator would remove custom export code from one of these examples
 
 Before you declare an operator missing, verify all three views agree:
 
-- the observer report still shows `Coverage = no`
+- the observer report still shows `Onnxify.TorchSharp coverage = no`
 - there is no matching `[TorchOp(...)]` in `TorchModuleExtensions.cs`
 - there is no matching `[TorchOp(...)]` in `TorchTensorOperatorExtensions.cs`
 
@@ -148,7 +149,7 @@ This is usually enough to choose between "quick win", "high impact", and "needs 
 
 ## Heuristics
 
-- Prefer `Found = yes` and `Coverage = no` before inventing brand-new TorchSharp surface area.
+- Prefer `Found = yes` and `Onnxify.TorchSharp coverage = no` before inventing brand-new TorchSharp surface area.
 - Prefer candidates that remove manual ONNX graph construction already present in the repo.
 - Prefer tensor composition, masking, indexing, and reduction ops over obscure math aliases when prioritizing model-export value.
 - Prefer operators that unlock transformer, sequence, and detection workflows already visible in `src/Onnxify.Examples`.
