@@ -9,7 +9,7 @@ namespace Onnxify.AgentSkillGenerator;
 internal static class TorchSharpConverterSkillGenerator
 {
     private const string NEW_LINE = "\n";
-    private static readonly IReadOnlyDictionary<Type, string> SourceFilePaths =
+    private static readonly IReadOnlyDictionary<Type, string> _sourceFilePaths =
         new Dictionary<Type, string>
         {
             [typeof(TorchModuleExtensions)] = "src/Onnxify.TorchSharp/TorchModuleExtensions.cs",
@@ -34,7 +34,7 @@ internal static class TorchSharpConverterSkillGenerator
         Console.WriteLine($"Repository root: {MakeRelative(repoRoot, repoRoot)}");
         Console.WriteLine($"Skill root: {MakeRelative(repoRoot, skillRoot)}");
         Console.WriteLine(
-            $"TorchSharp converter sources: {string.Join(", ", SourceFilePaths.Values.OrderBy(static x => x, StringComparer.Ordinal))}");
+            $"TorchSharp converter sources: {string.Join(", ", _sourceFilePaths.Values.OrderBy(static x => x, StringComparer.Ordinal))}");
         Console.WriteLine($"Generated converter files: {converterCount}");
         Console.WriteLine($"Torch-op-backed converter files: {torchOpFileCount}");
         Console.WriteLine($"Index file: {MakeRelative(repoRoot, Path.Combine(outputRoot, "index.md"))}");
@@ -46,7 +46,7 @@ internal static class TorchSharpConverterSkillGenerator
         IReadOnlySet<string>? existingRelativePaths = null
     )
     {
-        var converterMethods = SourceFilePaths
+        var converterMethods = _sourceFilePaths
             .SelectMany(static entry => entry.Key
                 .GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly)
                 .Where(IsPublicExportExtension)
@@ -201,7 +201,7 @@ internal static class TorchSharpConverterSkillGenerator
         builder.AppendLine($"- Torch-op-backed converters: {converters.Count(x => x.Kind == ConverterKind.TorchOpBacked)}");
         builder.AppendLine($"- Distinct Torch ops declared through [TorchOp]: {converters.SelectMany(x => x.TorchOps).Distinct(StringComparer.Ordinal).Count()}");
         builder.AppendLine(
-            $"- Source files: {string.Join(", ", SourceFilePaths.Values.OrderBy(static x => x, StringComparer.Ordinal))}");
+            $"- Source files: {string.Join(", ", _sourceFilePaths.Values.OrderBy(static x => x, StringComparer.Ordinal))}");
         builder.AppendLine();
 
         foreach (ConverterKind kind in Enum.GetValues<ConverterKind>())

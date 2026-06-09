@@ -76,10 +76,17 @@ public sealed class AgentSkillGeneratorTests
         Assert.Contains("# Onnxify Operator Instructions", indexMarkdown);
         Assert.Contains("## Table of Contents", indexMarkdown);
         Assert.Contains("- `ai.onnx` - ", indexMarkdown);
+        Assert.Contains("ModelGenerator TorchModule", indexMarkdown);
+        Assert.Contains("- Operators with at least one Onnxify.ModelGenerator TorchModule path: `", indexMarkdown);
 
         var addMarkdown = files[Path.Combine("ai.onnx", "Add.md")];
+        Assert.Contains("- Onnxify.ModelGenerator TorchModule coverage: `not detected`", addMarkdown);
         Assert.Contains("(../common/Broadcasting.md)", addMarkdown);
         Assert.DoesNotContain("(Broadcasting.md)", addMarkdown);
+
+        var convMarkdown = files[Path.Combine("ai.onnx", "Conv.md")];
+        Assert.Contains("- Onnxify.ModelGenerator TorchModule coverage: `available`", convMarkdown);
+        Assert.Contains("Conv2dTorchModuleOperator", convMarkdown);
 
         var batchNormalizationMarkdown = files[Path.Combine("ai.onnx", "BatchNormalization.md")];
         Assert.Contains("(../common/IR.md)", batchNormalizationMarkdown);
