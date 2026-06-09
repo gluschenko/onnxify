@@ -25,7 +25,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <OnnxModel Include="Assets\mobilenetv2-12.onnx" />
+    <OnnxModel Include="Assets\mobilenetv2-12.onnx"
+               OnnxifyModelImportType="OnnxRuntimeInference,TorchModule" />
     <OnnxModel Include="Assets\gpt-oss_q4f16.onnx" />
     <OnnxModel Include="Assets\bvlcalexnet-12-qdq.onnx" />
     <OnnxModel Include="Assets\real_esrgan_x4plus-onnx-float\real_esrgan_x4plus.onnx" />
