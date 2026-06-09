@@ -24,13 +24,6 @@ namespace Onnxify.ConsoleTest
             Console.InputEncoding = Encoding.UTF8;
             Console.OutputEncoding = Encoding.UTF8;
 
-            if (args.Contains("mobilenet-roundtrip", StringComparer.OrdinalIgnoreCase))
-            {
-                Test11();
-                return;
-            }
-
-            await Test10();
             Test0();
             Test1();
             Test2();
@@ -38,6 +31,8 @@ namespace Onnxify.ConsoleTest
             Test7();
             Test8();
             Test9();
+            // await Test10();
+            Test11();
 
             if (!Console.IsInputRedirected)
             {

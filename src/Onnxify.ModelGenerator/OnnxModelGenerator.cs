@@ -6,6 +6,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Onnx;
 using Onnxify.ModelGenerator.Services;
+using Onnxify.ModelGenerator.Services.TorchModuleOperators;
 using static Onnxify.ModelGenerator.Helpers.TextHelper;
 
 namespace Onnxify.ModelGenerator;
@@ -24,7 +25,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
     private const string ADDITIONAL_FILE_NAMESPACE_KEY = "build_metadata.additionalfiles.OnnxifyModelNamespace";
     private const string ADDITIONAL_FILE_IMPORT_TYPE_KEY = "build_metadata.additionalfiles.OnnxifyModelImportType";
 
-    private static readonly ImmutableDictionary<string, TorchModuleLowering> _torchModuleLowerings = CreateTorchModuleLowerings();
+    private static readonly ImmutableDictionary<string, TorchModuleOperator> _torchModuleOperators = TorchModuleOperatorRegistry.Create();
 
     private static readonly DiagnosticDescriptor _invalidModelDescriptor = new(
         id: "OMG001",
@@ -292,48 +293,6 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             }
         }
     }
-
-
-
-    private static bool IsRelu6Clip(
-        TorchNodeSpecification node,
-        IReadOnlyDictionary<string, TorchInitializerSpecification> initializers
-    )
-    {
-        if (node.OpType != "Clip")
-        {
-            return false;
-        }
-
-        float? min = null;
-        float? max = null;
-        if (node.Attributes.TryGetValue("min", out var minAttribute))
-        {
-            min = Convert.ToSingle(minAttribute);
-        }
-
-        if (node.Attributes.TryGetValue("max", out var maxAttribute))
-        {
-            max = Convert.ToSingle(maxAttribute);
-        }
-
-        if (node.Inputs.Length > 1
-            && initializers.TryGetValue(node.Inputs[1], out var minInitializer))
-        {
-            min = minInitializer.ScalarFloatValue;
-        }
-
-        if (node.Inputs.Length > 2
-            && initializers.TryGetValue(node.Inputs[2], out var maxInitializer))
-        {
-            max = maxInitializer.ScalarFloatValue;
-        }
-
-        return min == 0f && max == 6f;
-    }
-
-
-
     private static bool TryCreateTensorContract(
         string ownerFileName,
         ValueInfoProto valueInfo,
@@ -668,7 +627,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             StringComparer.Ordinal
         );
 
-        foreach (var opType in _torchModuleLowerings.Keys)
+        foreach (var opType in _torchModuleOperators.Keys)
         {
             supportedOps.Add(opType);
         }
@@ -758,282 +717,14 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         out ImmutableArray<string> consumedInitializers
     )
     {
-        if (!_torchModuleLowerings.TryGetValue(node.OpType, out var lowering))
+        if (!_torchModuleOperators.TryGetValue(node.OpType, out var @operator))
         {
             module = null!;
             consumedInitializers = [];
             return false;
         }
 
-        return lowering.TryLower(node, initializers, usedFieldNames, out module, out consumedInitializers);
-    }
-
-    private static ImmutableDictionary<string, TorchModuleLowering> CreateTorchModuleLowerings()
-    {
-        var builder = ImmutableDictionary.CreateBuilder<string, TorchModuleLowering>(StringComparer.Ordinal);
-        Add("Conv", TryCreateConv2dModuleNode);
-        Add("BatchNormalization", TryCreateBatchNorm2dModuleNode);
-        Add("Gemm", TryCreateLinearModuleNode);
-        Add("GlobalAveragePool", TryCreateAdaptiveAvgPool2dModuleNode);
-        Add("Relu", TryCreateReluModuleNode);
-        Add("Clip", TryCreateRelu6ModuleNode);
-        return builder.ToImmutable();
-
-        void Add(string opType, TorchModuleLoweringDelegate lowering)
-        {
-            builder[opType] = new TorchModuleLowering(opType, lowering);
-        }
-    }
-
-    private static bool TryCreateConv2dModuleNode(
-        TorchNodeSpecification node,
-        IReadOnlyDictionary<string, TorchInitializerSpecification> initializers,
-        HashSet<string> usedFieldNames,
-        out TorchModuleNodeSpecification module,
-        out ImmutableArray<string> consumedInitializers
-    )
-    {
-        module = null!;
-        consumedInitializers = [];
-        if (node.Inputs.Length < 2
-            || !initializers.TryGetValue(node.Inputs[1], out var weight)
-            || weight.ClrTypeName != "float"
-            || weight.Shape.Length != 4)
-        {
-            return false;
-        }
-
-        TorchInitializerSpecification? bias = null;
-        if (node.Inputs.Length > 2
-            && (!initializers.TryGetValue(node.Inputs[2], out bias) || bias.ClrTypeName != "float"))
-        {
-            return false;
-        }
-
-        var pads = GetLongArrayAttribute(node, "pads", [0L, 0L, 0L, 0L]);
-        if (pads.Length != 4 || pads[0] != pads[2] || pads[1] != pads[3])
-        {
-            return false;
-        }
-
-        var strides = GetLongArrayAttribute(node, "strides", [1L, 1L]);
-        var dilations = GetLongArrayAttribute(node, "dilations", [1L, 1L]);
-        var group = GetLongAttribute(node, "group", 1L);
-        var fieldName = MakeUniqueIdentifier("_" + ToCamelIdentifier(node.Name, "conv"), usedFieldNames, "_module");
-        var constructor = $"Conv2d({weight.Shape[1] * group}, {weight.Shape[0]}, kernel_size: {FormatModuleArgument(weight.Shape.Skip(2))}, stride: {FormatModuleArgument(strides)}, padding: {FormatModuleArgument(pads.Take(2))}, dilation: {FormatModuleArgument(dilations)}, groups: {group}L, bias: {FormatBool(bias is not null)})";
-
-        module = new TorchModuleNodeSpecification(
-            node.Name,
-            TorchModuleNodeKind.Conv2d,
-            fieldName,
-            "TorchModules.Conv2d",
-            constructor,
-            TransposeInput: false,
-            [
-                $"LoadFloatTensor(tensors, \"{Escape(weight.OnnxName)}\", {fieldName}.weight);",
-                .. bias is null
-                    ? []
-                    : new[] { $"LoadFloatTensor(tensors, \"{Escape(bias.OnnxName)}\", {fieldName}.bias!);" },
-            ]
-        );
-        consumedInitializers = bias is null ? [weight.OnnxName] : [weight.OnnxName, bias.OnnxName];
-        return true;
-    }
-
-    private static bool TryCreateBatchNorm2dModuleNode(
-        TorchNodeSpecification node,
-        IReadOnlyDictionary<string, TorchInitializerSpecification> initializers,
-        HashSet<string> usedFieldNames,
-        out TorchModuleNodeSpecification module,
-        out ImmutableArray<string> consumedInitializers
-    )
-    {
-        module = null!;
-        consumedInitializers = [];
-        if (node.Inputs.Length < 5
-            || !initializers.TryGetValue(node.Inputs[1], out var scale)
-            || !initializers.TryGetValue(node.Inputs[2], out var bias)
-            || !initializers.TryGetValue(node.Inputs[3], out var mean)
-            || !initializers.TryGetValue(node.Inputs[4], out var variance)
-            || scale.Shape.Length != 1
-            || scale.ClrTypeName != "float"
-            || bias.ClrTypeName != "float"
-            || mean.ClrTypeName != "float"
-            || variance.ClrTypeName != "float")
-        {
-            return false;
-        }
-
-        var fieldName = MakeUniqueIdentifier("_" + ToCamelIdentifier(node.Name, "batchNorm"), usedFieldNames, "_module");
-        module = new TorchModuleNodeSpecification(
-            node.Name,
-            TorchModuleNodeKind.BatchNorm2d,
-            fieldName,
-            "TorchModules.BatchNorm2d",
-            $"BatchNorm2d({scale.Shape[0]})",
-            TransposeInput: false,
-            [
-                $"LoadFloatTensor(tensors, \"{Escape(scale.OnnxName)}\", {fieldName}.weight!);",
-                $"LoadFloatTensor(tensors, \"{Escape(bias.OnnxName)}\", {fieldName}.bias!);",
-                $"LoadFloatTensor(tensors, \"{Escape(mean.OnnxName)}\", {fieldName}.running_mean);",
-                $"LoadFloatTensor(tensors, \"{Escape(variance.OnnxName)}\", {fieldName}.running_var);",
-            ]
-        );
-        consumedInitializers = [scale.OnnxName, bias.OnnxName, mean.OnnxName, variance.OnnxName];
-        return true;
-    }
-
-    private static bool TryCreateLinearModuleNode(
-        TorchNodeSpecification node,
-        IReadOnlyDictionary<string, TorchInitializerSpecification> initializers,
-        HashSet<string> usedFieldNames,
-        out TorchModuleNodeSpecification module,
-        out ImmutableArray<string> consumedInitializers
-    )
-    {
-        module = null!;
-        consumedInitializers = [];
-        if (node.Inputs.Length < 2
-            || !initializers.TryGetValue(node.Inputs[1], out var weight)
-            || weight.Shape.Length != 2
-            || weight.ClrTypeName != "float"
-            || GetFloatAttribute(node, "alpha", 1f) != 1f
-            || GetFloatAttribute(node, "beta", 1f) != 1f)
-        {
-            return false;
-        }
-
-        var transA = GetLongAttribute(node, "transA", 0L) != 0;
-        var transB = GetLongAttribute(node, "transB", 0L) != 0;
-        if (transA)
-        {
-            return false;
-        }
-
-        TorchInitializerSpecification? bias = null;
-        if (node.Inputs.Length > 2
-            && (!initializers.TryGetValue(node.Inputs[2], out bias) || bias.ClrTypeName != "float" || bias.Shape.Length != 1))
-        {
-            return false;
-        }
-
-        var inputFeatures = transB ? weight.Shape[1] : weight.Shape[0];
-        var outputFeatures = transB ? weight.Shape[0] : weight.Shape[1];
-        var fieldName = MakeUniqueIdentifier("_" + ToCamelIdentifier(node.Name, "linear"), usedFieldNames, "_module");
-        module = new TorchModuleNodeSpecification(
-            node.Name,
-            TorchModuleNodeKind.Linear,
-            fieldName,
-            "TorchModules.Linear",
-            $"Linear({inputFeatures}, {outputFeatures}, hasBias: {FormatBool(bias is not null)})",
-            TransposeInput: false,
-            [
-                transB
-                    ? $"LoadFloatTensor(tensors, \"{Escape(weight.OnnxName)}\", {fieldName}.weight);"
-                    : $"LoadFloatTensorTransposed2D(tensors, \"{Escape(weight.OnnxName)}\", {fieldName}.weight);",
-                .. bias is null
-                    ? []
-                    : new[] { $"LoadFloatTensor(tensors, \"{Escape(bias.OnnxName)}\", {fieldName}.bias!);" },
-            ]
-        );
-        consumedInitializers = bias is null ? [weight.OnnxName] : [weight.OnnxName, bias.OnnxName];
-        return true;
-    }
-
-    private static bool TryCreateAdaptiveAvgPool2dModuleNode(
-        TorchNodeSpecification node,
-        IReadOnlyDictionary<string, TorchInitializerSpecification> initializers,
-        HashSet<string> usedFieldNames,
-        out TorchModuleNodeSpecification module,
-        out ImmutableArray<string> consumedInitializers
-    )
-    {
-        consumedInitializers = [];
-        return TryCreateStatelessModuleNode(
-            node,
-            TorchModuleNodeKind.AdaptiveAvgPool2d,
-            "TorchModules.AdaptiveAvgPool2d",
-            "AdaptiveAvgPool2d(1)",
-            usedFieldNames,
-            out module
-        );
-    }
-
-    private static bool TryCreateReluModuleNode(
-        TorchNodeSpecification node,
-        IReadOnlyDictionary<string, TorchInitializerSpecification> initializers,
-        HashSet<string> usedFieldNames,
-        out TorchModuleNodeSpecification module,
-        out ImmutableArray<string> consumedInitializers
-    )
-    {
-        consumedInitializers = [];
-        return TryCreateStatelessModuleNode(
-            node,
-            TorchModuleNodeKind.ReLU,
-            "TorchModules.ReLU",
-            "ReLU()",
-            usedFieldNames,
-            out module
-        );
-    }
-
-    private static bool TryCreateRelu6ModuleNode(
-        TorchNodeSpecification node,
-        IReadOnlyDictionary<string, TorchInitializerSpecification> initializers,
-        HashSet<string> usedFieldNames,
-        out TorchModuleNodeSpecification module,
-        out ImmutableArray<string> consumedInitializers
-    )
-    {
-        module = null!;
-        consumedInitializers = [];
-        if (!IsRelu6Clip(node, initializers))
-        {
-            return false;
-        }
-
-        var consumed = ImmutableArray.CreateBuilder<string>();
-        if (node.Inputs.Length > 1 && initializers.ContainsKey(node.Inputs[1]))
-        {
-            consumed.Add(node.Inputs[1]);
-        }
-
-        if (node.Inputs.Length > 2 && initializers.ContainsKey(node.Inputs[2]))
-        {
-            consumed.Add(node.Inputs[2]);
-        }
-
-        consumedInitializers = consumed.ToImmutable();
-        return TryCreateStatelessModuleNode(
-            node,
-            TorchModuleNodeKind.ReLU6,
-            "TorchModules.ReLU6",
-            "ReLU6()",
-            usedFieldNames,
-            out module
-        );
-    }
-
-    private static bool TryCreateStatelessModuleNode(
-        TorchNodeSpecification node,
-        TorchModuleNodeKind kind,
-        string fieldTypeName,
-        string constructorExpression,
-        HashSet<string> usedFieldNames,
-        out TorchModuleNodeSpecification module
-    )
-    {
-        module = new TorchModuleNodeSpecification(
-            node.Name,
-            kind,
-            MakeUniqueIdentifier("_" + ToCamelIdentifier(node.Name, "module"), usedFieldNames, "_module"),
-            fieldTypeName,
-            constructorExpression,
-            TransposeInput: false,
-            []
-        );
-        return true;
+        return @operator.TryCreateModuleNode(node, initializers, usedFieldNames, out module, out consumedInitializers);
     }
 
     private static bool TryCreateTorchInitializer(
@@ -1593,19 +1284,6 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         Sequential = 1,
         Residual = 2,
     }
-
-    internal sealed record TorchModuleLowering(
-        string OpType,
-        TorchModuleLoweringDelegate TryLower
-    );
-
-    internal delegate bool TorchModuleLoweringDelegate(
-        TorchNodeSpecification node,
-        IReadOnlyDictionary<string, TorchInitializerSpecification> initializers,
-        HashSet<string> usedFieldNames,
-        out TorchModuleNodeSpecification module,
-        out ImmutableArray<string> consumedInitializers
-    );
 
     internal enum TorchModuleNodeKind
     {
