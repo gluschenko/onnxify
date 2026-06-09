@@ -137,6 +137,258 @@ public sealed class OnnxModelGeneratorTests
     }
 
     [Fact]
+    public void Generate_WithTorchModuleImportType_ProducesGraphShapedTorchModule()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, "add-bias.onnx");
+
+        try
+        {
+            var model = new ModelProto
+            {
+                Graph = new GraphProto()
+            };
+            model.Graph.Input.Add(CreateTensorValueInfo("input", TensorProto.Types.DataType.Float, 1L, 2L));
+            model.Graph.Output.Add(CreateTensorValueInfo("output", TensorProto.Types.DataType.Float, 1L, 2L));
+            model.Graph.Initializer.Add(new TensorProto
+            {
+                Name = "bias",
+                DataType = (int)TensorProto.Types.DataType.Float,
+                Dims = { 1L, 2L },
+                FloatData = { 1.0f, 2.0f },
+            });
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "add_bias",
+                OpType = "Add",
+                Input = { "input", "bias" },
+                Output = { "output" },
+            });
+
+            File.WriteAllBytes(modelPath, model.ToByteArray());
+
+            var driver = CreateDriver(
+                additionalFiles: [new BinaryAdditionalText(modelPath)],
+                globalOptions: new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["build_property.ProjectDir"] = tempRoot + Path.DirectorySeparatorChar,
+                    ["build_property.RootNamespace"] = "Demo.App",
+                },
+                fileOptions: new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal)
+                {
+                    [modelPath] = new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["build_metadata.additionalfiles.OnnxifyModelImportType"] = "TorchModule",
+                    }
+                });
+
+            var compilation = CreateCompilation();
+            driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var updatedCompilation, out var generatorDiagnostics);
+
+            Assert.DoesNotContain(generatorDiagnostics, static x => x.Severity == DiagnosticSeverity.Error);
+            Assert.DoesNotContain(updatedCompilation.GetDiagnostics(), static x => x.Severity == DiagnosticSeverity.Error);
+
+            var generatedSources = driver.GetRunResult()
+                .Results
+                .SelectMany(static x => x.GeneratedSources)
+                .Select(static x => x.SourceText.ToString())
+                .ToArray();
+
+            var generatedSource = Assert.Single(generatedSources);
+            Assert.Contains("public sealed class AddBiasModelTorchModule : torch.nn.Module<Tensor, Tensor>", generatedSource);
+            Assert.Contains("var biasParameter = new global::TorchSharp.Modules.Parameter(torch.empty(new long[] { 1L, 2L }, dtype: ScalarType.Float32));", generatedSource);
+            Assert.Contains("register_parameter(\"bias\", biasParameter);", generatedSource);
+            Assert.Contains("public void LoadWeightsFromOnnx(string modelPath)", generatedSource);
+            Assert.Contains("var output = input + _bias;", generatedSource);
+            Assert.Contains("return output;", generatedSource);
+            Assert.DoesNotContain("InferenceSession", generatedSource, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Generate_WithTorchModuleImportType_EmitsConv2dModuleFields()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, "conv.onnx");
+
+        try
+        {
+            var model = new ModelProto
+            {
+                Graph = new GraphProto()
+            };
+            model.Graph.Input.Add(CreateTensorValueInfo("input", TensorProto.Types.DataType.Float, 1L, 3L, 5L, 5L));
+            model.Graph.Output.Add(CreateTensorValueInfo("output", TensorProto.Types.DataType.Float, 1L, 2L, 5L, 5L));
+            var weight = new TensorProto
+            {
+                Name = "conv.weight",
+                DataType = (int)TensorProto.Types.DataType.Float,
+                Dims = { 2L, 3L, 3L, 3L },
+            };
+            weight.FloatData.AddRange(Enumerable.Repeat(0.1f, 54));
+            model.Graph.Initializer.Add(weight);
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "conv1",
+                OpType = "Conv",
+                Input = { "input", "conv.weight" },
+                Output = { "conv.output" },
+                Attribute =
+                {
+                    new AttributeProto { Name = "strides", Type = AttributeProto.Types.AttributeType.Ints, Ints = { 1L, 1L } },
+                    new AttributeProto { Name = "pads", Type = AttributeProto.Types.AttributeType.Ints, Ints = { 1L, 1L, 1L, 1L } },
+                    new AttributeProto { Name = "dilations", Type = AttributeProto.Types.AttributeType.Ints, Ints = { 1L, 1L } },
+                    new AttributeProto { Name = "group", Type = AttributeProto.Types.AttributeType.Int, I = 1L },
+                },
+            });
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "relu1",
+                OpType = "Relu",
+                Input = { "conv.output" },
+                Output = { "output" },
+            });
+
+            File.WriteAllBytes(modelPath, model.ToByteArray());
+
+            var driver = CreateDriver(
+                additionalFiles: [new BinaryAdditionalText(modelPath)],
+                globalOptions: new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["build_property.ProjectDir"] = tempRoot + Path.DirectorySeparatorChar,
+                    ["build_property.RootNamespace"] = "Demo.App",
+                },
+                fileOptions: new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal)
+                {
+                    [modelPath] = new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["build_metadata.additionalfiles.OnnxifyModelImportType"] = "TorchModule",
+                    }
+                });
+
+            var compilation = CreateCompilation();
+            driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var updatedCompilation, out var generatorDiagnostics);
+
+            Assert.DoesNotContain(generatorDiagnostics, static x => x.Severity == DiagnosticSeverity.Error);
+            Assert.DoesNotContain(updatedCompilation.GetDiagnostics(), static x => x.Severity == DiagnosticSeverity.Error);
+
+            var generatedSource = Assert.Single(driver.GetRunResult()
+                .Results
+                .SelectMany(static x => x.GeneratedSources)
+                .Select(static x => x.SourceText.ToString()));
+
+            Assert.Contains("private readonly TorchModules.Conv2d _conv1;", generatedSource);
+            Assert.Contains("private readonly TorchModules.ReLU _relu1;", generatedSource);
+            Assert.Contains("private readonly ForwardBlock0Module _forwardBlock0;", generatedSource);
+            Assert.Contains("private sealed class ForwardBlock0Module : torch.nn.Module<Tensor, Tensor>", generatedSource);
+            Assert.Contains("_conv1 = Conv2d(3, 2, kernel_size: 3L, stride: 1L, padding: 1L, dilation: 1L, groups: 1L, bias: false);", generatedSource);
+            Assert.Contains("_relu1 = ReLU();", generatedSource);
+            Assert.Contains("LoadFloatTensor(tensors, \"conv.weight\", _conv1.weight);", generatedSource);
+            Assert.Contains("var output = _forwardBlock0.forward(input);", generatedSource);
+            Assert.Contains("var convOutput = _conv1.forward(input);", generatedSource);
+            Assert.Contains("var output = _relu1.forward(convOutput);", generatedSource);
+            Assert.DoesNotContain("functional.conv2d", generatedSource, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Generate_WithTorchModuleImportType_EmitsBatchNorm2dModuleFields()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, "batch-norm.onnx");
+
+        try
+        {
+            var model = new ModelProto
+            {
+                Graph = new GraphProto()
+            };
+            model.Graph.Input.Add(CreateTensorValueInfo("input", TensorProto.Types.DataType.Float, 1L, 2L, 4L, 4L));
+            model.Graph.Output.Add(CreateTensorValueInfo("output", TensorProto.Types.DataType.Float, 1L, 2L, 4L, 4L));
+            AddFloatInitializer(model.Graph, "scale", [2L], [1f, 1f]);
+            AddFloatInitializer(model.Graph, "bias", [2L], [0f, 0f]);
+            AddFloatInitializer(model.Graph, "mean", [2L], [0f, 0f]);
+            AddFloatInitializer(model.Graph, "var", [2L], [1f, 1f]);
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "bn1",
+                OpType = "BatchNormalization",
+                Input = { "input", "scale", "bias", "mean", "var" },
+                Output = { "output" },
+                Attribute =
+                {
+                    new AttributeProto { Name = "epsilon", Type = AttributeProto.Types.AttributeType.Float, F = 1e-5f },
+                    new AttributeProto { Name = "momentum", Type = AttributeProto.Types.AttributeType.Float, F = 0.9f },
+                },
+            });
+
+            File.WriteAllBytes(modelPath, model.ToByteArray());
+
+            var driver = CreateDriver(
+                additionalFiles: [new BinaryAdditionalText(modelPath)],
+                globalOptions: new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["build_property.ProjectDir"] = tempRoot + Path.DirectorySeparatorChar,
+                    ["build_property.RootNamespace"] = "Demo.App",
+                },
+                fileOptions: new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal)
+                {
+                    [modelPath] = new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["build_metadata.additionalfiles.OnnxifyModelImportType"] = "TorchModule",
+                    }
+                });
+
+            var compilation = CreateCompilation();
+            driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var updatedCompilation, out var generatorDiagnostics);
+
+            Assert.DoesNotContain(generatorDiagnostics, static x => x.Severity == DiagnosticSeverity.Error);
+            Assert.DoesNotContain(updatedCompilation.GetDiagnostics(), static x => x.Severity == DiagnosticSeverity.Error);
+
+            var generatedSource = Assert.Single(driver.GetRunResult()
+                .Results
+                .SelectMany(static x => x.GeneratedSources)
+                .Select(static x => x.SourceText.ToString()));
+
+            Assert.Contains("private readonly TorchModules.BatchNorm2d _bn1;", generatedSource);
+            Assert.Contains("_bn1 = BatchNorm2d(2);", generatedSource);
+            Assert.Contains("LoadFloatTensor(tensors, \"scale\", _bn1.weight!);", generatedSource);
+            Assert.Contains("LoadFloatTensor(tensors, \"bias\", _bn1.bias!);", generatedSource);
+            Assert.Contains("LoadFloatTensor(tensors, \"mean\", _bn1.running_mean);", generatedSource);
+            Assert.Contains("LoadFloatTensor(tensors, \"var\", _bn1.running_var);", generatedSource);
+            Assert.Contains("var output = _bn1.forward(input);", generatedSource);
+            Assert.DoesNotContain("functional.batch_norm", generatedSource, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void Generate_OptionalInputsUseNullablePropertiesAndSortedRunParameters()
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
@@ -501,6 +753,23 @@ public sealed class OnnxModelGeneratorTests
         };
     }
 
+    private static void AddFloatInitializer(
+        GraphProto graph,
+        string name,
+        IEnumerable<long> shape,
+        IEnumerable<float> values
+    )
+    {
+        var tensor = new TensorProto
+        {
+            Name = name,
+            DataType = (int)TensorProto.Types.DataType.Float,
+        };
+        tensor.Dims.AddRange(shape);
+        tensor.FloatData.AddRange(values);
+        graph.Initializer.Add(tensor);
+    }
+
     private static CSharpCompilation CreateCompilation()
     {
         var syntaxTree = CSharpSyntaxTree.ParseText("""
@@ -519,6 +788,7 @@ public sealed class OnnxModelGeneratorTests
 
         trustedPlatformAssemblies.Add(MetadataReference.CreateFromFile(typeof(global::Microsoft.ML.OnnxRuntime.InferenceSession).Assembly.Location));
         trustedPlatformAssemblies.Add(MetadataReference.CreateFromFile(typeof(OnnxModel).Assembly.Location));
+        trustedPlatformAssemblies.Add(MetadataReference.CreateFromFile(typeof(global::TorchSharp.torch).Assembly.Location));
 
         return CSharpCompilation.Create(
             assemblyName: "GeneratedModelTests",

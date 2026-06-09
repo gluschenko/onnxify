@@ -54,11 +54,15 @@ dotnet add package Microsoft.ML.OnnxRuntime
 
 The packaged `.targets` file forwards `OnnxModel` items to Roslyn as additional files and keeps the model copied to the output directory by default.
 
+`OnnxifyModelImportType` controls which source shape is emitted. Omit it for the default `OnnxRuntimeInference` wrapper, or set a comma-separated value such as `OnnxRuntimeInference,TorchModule` when you also want a graph-shaped TorchSharp module.
+
 With the configuration above, the generator emits types like:
 
 - `MyApp.Models.SampleClassifierModel`
 - `MyApp.Models.SampleClassifierModelInputs`
 - `MyApp.Models.SampleClassifierModelOutputs`
+
+When `TorchModule` is enabled, the generator also emits `SampleClassifierModelTorchModule`. The MVP TorchSharp backend reconstructs a single-input/single-output float32 ONNX graph from supported primitive operators, stores float32 initializers as registered parameters, stores int64 constants as buffers, and provides `LoadWeightsFromOnnx(string modelPath)` to copy initializer values from a compatible ONNX file.
 
 ## Example: Run Inference With `SessionOptions` And `RunOptions`
 

@@ -1,6 +1,7 @@
 ## 0.2.0
 
 - Aligned the package version with the 0.2.0 Onnxify package family release.
+- Added `OnnxifyModelImportType`, with `OnnxRuntimeInference` as the default and an opt-in `TorchModule` mode that emits a graph-shaped TorchSharp module for supported single-input/single-output float32 ONNX graphs.
 
 ## 0.1.2
 
