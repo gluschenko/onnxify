@@ -2,7 +2,7 @@
 
 Found: 83.73% (417/498)
 Onnxify.TorchSharp coverage: 83.53% (416/498)
-Onnxify.ModelGenerator coverage: 0.80% (4/498)
+Onnxify.ModelGenerator coverage: 1.00% (5/498)
 
 ## Coverage Columns
 
@@ -278,7 +278,7 @@ Onnxify.ModelGenerator coverage: 0.80% (4/498)
 | aten::max.dim | TorchSharp.torch+Tensor.max | ✅ | ✅ | ❌ |
 | aten::max_pool1d | TorchSharp.Modules.MaxPool1d | ✅ | ✅ | ❌ |
 | aten::max_pool1d_with_indices | TorchSharp.torch+nn+functional.max_pool1d_with_indices | ✅ | ❌ | ❌ |
-| aten::max_pool2d | TorchSharp.Modules.MaxPool2d | ✅ | ✅ | ❌ |
+| aten::max_pool2d | TorchSharp.Modules.MaxPool2d | ✅ | ✅ | ✅ |
 | aten::max_pool2d_with_indices | TorchSharp.torch+nn+functional.max_pool2d_with_indices | ✅ | ✅ | ❌ |
 | aten::max_pool3d | TorchSharp.Modules.MaxPool3d | ✅ | ✅ | ❌ |
 | aten::max_pool3d_with_indices | TorchSharp.torch+nn+functional.max_pool3d_with_indices | ✅ | ❌ | ❌ |

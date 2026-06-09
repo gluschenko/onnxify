@@ -218,6 +218,93 @@ public sealed class OnnxModelGeneratorTests
     }
 
     [Fact]
+    public void Generate_WithTorchModuleImportType_AllowsUint8Initializers()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, "uint8-initializer.onnx");
+
+        try
+        {
+            var model = new ModelProto
+            {
+                Graph = new GraphProto()
+            };
+
+            model.Graph.Input.Add(CreateTensorValueInfo("input", TensorProto.Types.DataType.Float, 1L, 2L));
+            model.Graph.ValueInfo.Add(CreateTensorValueInfo("quantized", TensorProto.Types.DataType.Uint8, 1L, 2L));
+            model.Graph.Output.Add(CreateTensorValueInfo("output", TensorProto.Types.DataType.Float, 1L, 2L));
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "quantize",
+                OpType = "QuantizeLinear",
+                Input = { "input", "data_0_scale", "data_0_zero_point" },
+                Output = { "quantized" },
+            });
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "dequantize",
+                OpType = "DequantizeLinear",
+                Input = { "quantized", "data_0_scale", "data_0_zero_point" },
+                Output = { "output" },
+            });
+            var scale = new TensorProto
+            {
+                Name = "data_0_scale",
+                DataType = (int)TensorProto.Types.DataType.Float,
+                Dims = { 1L },
+                FloatData = { 0.05f },
+            };
+            var zeroPoint = new TensorProto
+            {
+                Name = "data_0_zero_point",
+                DataType = (int)TensorProto.Types.DataType.Uint8,
+                Dims = { 1L },
+                Int32Data = { 128 },
+            };
+            model.Graph.Initializer.Add(scale);
+            model.Graph.Initializer.Add(zeroPoint);
+            File.WriteAllBytes(modelPath, model.ToByteArray());
+
+            var driver = CreateDriver(
+                additionalFiles: [new BinaryAdditionalText(modelPath)],
+                globalOptions: new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["build_property.ProjectDir"] = tempRoot + Path.DirectorySeparatorChar,
+                    ["build_property.RootNamespace"] = "Demo.App",
+                },
+                fileOptions: new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal)
+                {
+                    [modelPath] = new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["build_metadata.additionalfiles.OnnxifyModelImportType"] = "TorchModule",
+                    }
+                });
+
+            var compilation = CreateCompilation();
+            driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var updatedCompilation, out var generatorDiagnostics);
+
+            Assert.DoesNotContain(generatorDiagnostics, static x => x.Severity == DiagnosticSeverity.Error);
+            Assert.DoesNotContain(updatedCompilation.GetDiagnostics(), static x => x.Severity == DiagnosticSeverity.Error);
+
+            var generatedSource = GetGeneratedSource(driver);
+            Assert.Contains("torch.empty(new long[] { 1L }, dtype: ScalarType.Byte)", generatedSource);
+            Assert.Contains("LoadTensor<byte>(tensors, \"data_0_zero_point\", _data0ZeroPoint, ScalarType.Byte);", generatedSource);
+            Assert.Contains("QuantizeLinearTensor(input, _data0Scale, _data0ZeroPoint, 1L)", generatedSource);
+            Assert.Contains("DequantizeLinearTensor(quantized, _data0Scale, _data0ZeroPoint, 1L)", generatedSource);
+            Assert.DoesNotContain("unsupported tensor data type 'Uint8'", generatedSource, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void Generate_WithTorchModuleImportType_EmitsConv2dModuleFields()
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
@@ -302,6 +389,71 @@ public sealed class OnnxModelGeneratorTests
             Assert.Contains("var convOutput = _conv1.forward(input);", generatedSource);
             Assert.Contains("var output = _relu1.forward(convOutput);", generatedSource);
             Assert.DoesNotContain("functional.conv2d", generatedSource, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Generate_WithTorchModuleImportType_EmitsMaxPool2dModuleFields()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, "maxpool.onnx");
+
+        try
+        {
+            var model = new ModelProto
+            {
+                Graph = new GraphProto()
+            };
+            model.Graph.Input.Add(CreateTensorValueInfo("input", TensorProto.Types.DataType.Float, 1L, 3L, 8L, 8L));
+            model.Graph.Output.Add(CreateTensorValueInfo("output", TensorProto.Types.DataType.Float, 1L, 3L, 3L, 3L));
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "pool1",
+                OpType = "MaxPool",
+                Input = { "input" },
+                Output = { "output" },
+                Attribute =
+                {
+                    new AttributeProto { Name = "kernel_shape", Type = AttributeProto.Types.AttributeType.Ints, Ints = { 3L, 3L } },
+                    new AttributeProto { Name = "strides", Type = AttributeProto.Types.AttributeType.Ints, Ints = { 2L, 2L } },
+                },
+            });
+            File.WriteAllBytes(modelPath, model.ToByteArray());
+
+            var driver = CreateDriver(
+                additionalFiles: [new BinaryAdditionalText(modelPath)],
+                globalOptions: new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["build_property.ProjectDir"] = tempRoot + Path.DirectorySeparatorChar,
+                    ["build_property.RootNamespace"] = "Demo.App",
+                },
+                fileOptions: new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal)
+                {
+                    [modelPath] = new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["build_metadata.additionalfiles.OnnxifyModelImportType"] = "TorchModule",
+                    }
+                });
+
+            var compilation = CreateCompilation();
+            driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var updatedCompilation, out var generatorDiagnostics);
+
+            Assert.DoesNotContain(generatorDiagnostics, static x => x.Severity == DiagnosticSeverity.Error);
+            Assert.DoesNotContain(updatedCompilation.GetDiagnostics(), static x => x.Severity == DiagnosticSeverity.Error);
+
+            var generatedSource = GetGeneratedSource(driver);
+            Assert.Contains("private readonly TorchModules.MaxPool2d _pool1;", generatedSource);
+            Assert.Contains("MaxPool2d(", generatedSource);
+            Assert.Contains("stride:", generatedSource);
         }
         finally
         {

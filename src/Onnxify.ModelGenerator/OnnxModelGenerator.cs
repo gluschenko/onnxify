@@ -613,16 +613,20 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
                 "Div",
                 "Sigmoid",
                 "Tanh",
+                "Softmax",
                 "Identity",
                 "MatMul",
                 "Reshape",
                 "Flatten",
+                "LRN",
                 "Transpose",
                 "Shape",
                 "Gather",
                 "Unsqueeze",
                 "Concat",
                 "Constant",
+                "QuantizeLinear",
+                "DequantizeLinear",
             ],
             StringComparer.Ordinal
         );
@@ -738,14 +742,20 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         var mapping = dataType switch
         {
             TensorProto.Types.DataType.Float => ("float", "ScalarType.Float32", true),
+            TensorProto.Types.DataType.Double => ("double", "ScalarType.Float64", false),
+            TensorProto.Types.DataType.Uint8 => ("byte", "ScalarType.Byte", false),
+            TensorProto.Types.DataType.Int8 => ("sbyte", "ScalarType.Int8", false),
+            TensorProto.Types.DataType.Int16 => ("short", "ScalarType.Int16", false),
+            TensorProto.Types.DataType.Int32 => ("int", "ScalarType.Int32", false),
             TensorProto.Types.DataType.Int64 => ("long", "ScalarType.Int64", false),
+            TensorProto.Types.DataType.Bool => ("bool", "ScalarType.Bool", false),
             _ => default,
         };
 
         if (mapping == default)
         {
             specification = null!;
-            error = $"initializer '{tensor.Name}' uses unsupported tensor data type '{dataType}'. The MVP TorchModule backend supports float32 and int64 initializers.";
+            error = $"initializer '{tensor.Name}' uses unsupported tensor data type '{dataType}'. The TorchModule backend supports float32, float64, uint8, int8, int16, int32, int64, and bool initializers.";
             return false;
         }
 
@@ -816,6 +826,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         {
             AttributeProto.Types.AttributeType.Float => attribute.F,
             AttributeProto.Types.AttributeType.Int => attribute.I,
+            AttributeProto.Types.AttributeType.String => attribute.S.ToStringUtf8(),
             AttributeProto.Types.AttributeType.Floats => attribute.Floats.ToArray(),
             AttributeProto.Types.AttributeType.Ints => attribute.Ints.ToArray(),
             AttributeProto.Types.AttributeType.Tensor => attribute.T,
@@ -1293,6 +1304,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         AdaptiveAvgPool2d = 4,
         ReLU = 5,
         ReLU6 = 6,
+        MaxPool2d = 7,
     }
 
     internal sealed record TorchNodeSpecification(

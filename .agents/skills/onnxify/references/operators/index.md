@@ -5,7 +5,7 @@ Do not hand-edit files in this directory; rerun the generator instead.
 
 - Total reflected Onnxify operators: `473`
 - Operators with at least one Onnxify.TorchSharp converter path: `64`
-- Operators with at least one Onnxify.ModelGenerator TorchModule path: `6`
+- Operators with at least one Onnxify.ModelGenerator TorchModule path: `7`
 - Operator schema source: `src/Onnxify/Assets/onnx_operators.json`
 
 ## Table of Contents
@@ -124,7 +124,7 @@ Do not hand-edit files in this directory; rerun the generator instead.
 | MatMul | 13 | yes | no | [MatMul](ai.onnx/MatMul.md) |
 | MatMulInteger | 10 | no | no | [MatMulInteger](ai.onnx/MatMulInteger.md) |
 | Max | 13 | no | no | [Max](ai.onnx/Max.md) |
-| MaxPool | 22 | yes | no | [MaxPool](ai.onnx/MaxPool.md) |
+| MaxPool | 22 | yes | yes | [MaxPool](ai.onnx/MaxPool.md) |
 | MaxPoolGrad | 9 | no | no | [MaxPoolGrad](ai.onnx/MaxPoolGrad.md) |
 | MaxRoiPool | 22 | no | no | [MaxRoiPool](ai.onnx/MaxRoiPool.md) |
 | MaxUnpool | 22 | no | no | [MaxUnpool](ai.onnx/MaxUnpool.md) |

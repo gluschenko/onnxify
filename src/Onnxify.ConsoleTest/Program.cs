@@ -31,7 +31,7 @@ namespace Onnxify.ConsoleTest
             Test7();
             Test8();
             Test9();
-            // await Test10();
+            await Test10();
             Test11();
 
             if (!Console.IsInputRedirected)
@@ -456,13 +456,13 @@ namespace Onnxify.ConsoleTest
 
         private static async Task Test10()
         {
-            var repositoryId = "onnx-community/gemma-4-E2B-it-ONNX";
+            var repositoryId = "gluschenko/higgs-audio-v2-tokenizer-onnx";
             var outputDirectoryPath = Path.Combine(
                 AppDomain.CurrentDomain.BaseDirectory,
                 "Assets",
                 "Generated",
                 "HuggingFace",
-                "gemma-4-E2B-it-ONNX-bf16"
+                "higgs-audio-v2-tokenizer-onnx"
             );
             var revision = "main";
             var variant = ".onnx";

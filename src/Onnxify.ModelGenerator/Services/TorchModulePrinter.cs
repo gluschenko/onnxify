@@ -86,9 +86,7 @@ internal sealed class TorchModulePrinter
                 .SelectMany(static module => module.LoadStatements)
                 )
                 .Concat(torchModule.Initializers.Select(static initializer =>
-                    initializer.ClrTypeName == "float"
-                        ? $"LoadFloatTensor(tensors, \"{Escape(initializer.OnnxName)}\", {initializer.FieldName});"
-                        : $"LoadLongTensor(tensors, \"{Escape(initializer.OnnxName)}\", {initializer.FieldName});")));
+                    $"LoadTensor<{initializer.ClrTypeName}>(tensors, \"{Escape(initializer.OnnxName)}\", {initializer.FieldName}, {initializer.ScalarTypeExpression});")));
 
         var forwardBody = BuildTorchForwardBody(specification, torchModule, forwardGroups);
         var forwardGroupTypes = BuildForwardGroupTypes(forwardGroups, torchModule);
@@ -186,6 +184,52 @@ internal sealed class TorchModulePrinter
                 return torch.cat(aligned, axis);
             }
 
+            private static Tensor QuantizeLinearTensor(Tensor input, Tensor scale, Tensor? zeroPoint, long axis)
+            {
+                var alignedScale = AlignQuantizationParameter(scale, input, axis);
+                var scaled = input / alignedScale;
+                var shifted = zeroPoint is null
+                    ? scaled
+                    : scaled + AlignQuantizationParameter(zeroPoint, input, axis).to(ScalarType.Float32);
+                var rounded = shifted.round();
+                return (zeroPoint?.dtype ?? ScalarType.Byte) switch
+                {
+                    ScalarType.Byte => rounded.clamp(0, 255).to(ScalarType.Byte),
+                    ScalarType.Int8 => rounded.clamp(-128, 127).to(ScalarType.Int8),
+                    ScalarType.Int32 => rounded.to(ScalarType.Int32),
+                    _ => throw new NotSupportedException($"Unsupported QuantizeLinear zero-point tensor data type: {zeroPoint!.dtype}."),
+                };
+            }
+
+            private static Tensor DequantizeLinearTensor(Tensor input, Tensor scale, Tensor? zeroPoint, long axis)
+            {
+                var alignedScale = AlignQuantizationParameter(scale, input, axis);
+                var shifted = zeroPoint is null
+                    ? input.to(ScalarType.Float32)
+                    : input.to(ScalarType.Float32) - AlignQuantizationParameter(zeroPoint, input, axis).to(ScalarType.Float32);
+                return shifted * alignedScale;
+            }
+
+            private static Tensor AlignQuantizationParameter(Tensor parameter, Tensor input, long axis)
+            {
+                var parameterShape = parameter.shape;
+                if (parameterShape.Length == 0 || parameterShape.Aggregate(1L, static (product, dim) => product * dim) == 1L)
+                {
+                    return parameter;
+                }
+
+                var inputRank = input.shape.Length;
+                var normalizedAxis = axis < 0 ? axis + inputRank : axis;
+                if (normalizedAxis < 0 || normalizedAxis >= inputRank)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(axis), axis, "Quantization axis is outside the input tensor rank.");
+                }
+
+                var shape = Enumerable.Repeat(1L, inputRank).ToArray();
+                shape[normalizedAxis] = parameterShape[0];
+                return parameter.reshape(shape);
+            }
+
             private static void LoadFloatTensor(
                 IReadOnlyDictionary<string, Onnxify.OnnxTensor> tensors,
                 string name,
@@ -223,6 +267,39 @@ internal sealed class TorchModulePrinter
                 }
 
                 using var source = torch.tensor(typedTensor.Value.ToArray(), typedTensor.Shape, dtype: ScalarType.Int64, device: target.device);
+                target.detach().copy_(source);
+            }
+
+            private static void LoadTensor<T>(
+                IReadOnlyDictionary<string, Onnxify.OnnxTensor> tensors,
+                string name,
+                Tensor target,
+                ScalarType scalarType
+            )
+            {
+                if (!tensors.TryGetValue(name, out var tensor))
+                {
+                    throw new KeyNotFoundException($"The ONNX model does not contain initializer '{name}'.");
+                }
+
+                if (tensor is not Onnxify.OnnxTensor<T> typedTensor)
+                {
+                    throw new InvalidOperationException($"Initializer '{name}' is not a {typeof(T).Name} tensor.");
+                }
+
+                var values = typedTensor.Value.ToArray();
+                using var source = scalarType switch
+                {
+                    ScalarType.Byte => torch.tensor((byte[])(object)values, typedTensor.Shape, dtype: ScalarType.Byte, device: target.device),
+                    ScalarType.Int8 => torch.tensor((sbyte[])(object)values, typedTensor.Shape, dtype: ScalarType.Int8, device: target.device),
+                    ScalarType.Int16 => torch.tensor((short[])(object)values, typedTensor.Shape, dtype: ScalarType.Int16, device: target.device),
+                    ScalarType.Int32 => torch.tensor((int[])(object)values, typedTensor.Shape, dtype: ScalarType.Int32, device: target.device),
+                    ScalarType.Int64 => torch.tensor((long[])(object)values, typedTensor.Shape, dtype: ScalarType.Int64, device: target.device),
+                    ScalarType.Float32 => torch.tensor((float[])(object)values, typedTensor.Shape, dtype: ScalarType.Float32, device: target.device),
+                    ScalarType.Float64 => torch.tensor((double[])(object)values, typedTensor.Shape, dtype: ScalarType.Float64, device: target.device),
+                    ScalarType.Bool => torch.tensor((bool[])(object)values, typedTensor.Shape, dtype: ScalarType.Bool, device: target.device),
+                    _ => throw new NotSupportedException($"Unsupported Torch tensor data type for ONNX initializer import: {scalarType}."),
+                };
                 target.detach().copy_(source);
             }
 
@@ -544,14 +621,17 @@ internal sealed class TorchModulePrinter
             "Relu" => $"{Input(0)}.relu()",
             "Sigmoid" => $"{Input(0)}.sigmoid()",
             "Tanh" => $"{Input(0)}.tanh()",
+            "Softmax" => $"{Input(0)}.softmax({GetLongAttribute(node, "axis", -1L)}L)",
             "Identity" => Input(0),
             "MatMul" => $"torch.matmul({Input(0)}, {Input(1)})",
             "Gemm" => EmitTorchGemm(node, Input(0), Input(1), node.Inputs.Length > 2 ? Input(2) : null),
             "Reshape" => $"{Input(0)}.reshape({Input(1)}.data<long>().ToArray())",
             "Flatten" => $"{Input(0)}.flatten({GetLongAttribute(node, "axis", 1L)})",
+            "LRN" => EmitTorchLocalResponseNorm(node, Input(0)),
             "Transpose" => $"{Input(0)}.permute({FormatLongArray(GetLongArrayAttribute(node, "perm", []))})",
             "Clip" => EmitTorchClip(node, Input(0), node.Inputs.Length > 1 ? Input(1) : null, node.Inputs.Length > 2 ? Input(2) : null),
             "Conv" => EmitTorchConv(node, Input(0), Input(1), node.Inputs.Length > 2 ? Input(2) : "null"),
+            "MaxPool" => EmitTorchMaxPool2d(node, Input(0)),
             "BatchNormalization" => EmitTorchBatchNormalization(node, Input(0), Input(3), Input(4), Input(1), Input(2)),
             "GlobalAveragePool" => $"torch.nn.functional.adaptive_avg_pool2d({Input(0)}, new long[] {{ 1L, 1L }})",
             "Shape" => $"CreateShapeTensor({Input(0)})",
@@ -561,8 +641,29 @@ internal sealed class TorchModulePrinter
                 : $"UnsqueezeTensor({Input(0)}, {FormatLongArray(GetLongArrayAttribute(node, "axes", []))})",
             "Concat" => $"ConcatTensors(new Tensor[] {{ {string.Join(", ", node.Inputs.Select(x => values[x]))} }}, {GetLongAttribute(node, "axis", 0L)}L)",
             "Constant" => EmitTorchConstant(node),
+            "QuantizeLinear" => $"QuantizeLinearTensor({Input(0)}, {Input(1)}, {(node.Inputs.Length > 2 ? Input(2) : "null")}, {GetLongAttribute(node, "axis", 1L)}L)",
+            "DequantizeLinear" => $"DequantizeLinearTensor({Input(0)}, {Input(1)}, {(node.Inputs.Length > 2 ? Input(2) : "null")}, {GetLongAttribute(node, "axis", 1L)}L)",
             _ => throw new NotSupportedException($"Unsupported TorchModule node op '{node.OpType}'."),
         };
+    }
+
+    private static string EmitTorchMaxPool2d(TorchNodeSpecification node, string input)
+    {
+        var kernelShape = GetLongArrayAttribute(node, "kernel_shape", []);
+        var strides = GetLongArrayAttribute(node, "strides", kernelShape);
+        var pads = GetLongArrayAttribute(node, "pads", [0L, 0L, 0L, 0L]);
+        var dilations = GetLongArrayAttribute(node, "dilations", [1L, 1L]);
+        var ceilMode = GetLongAttribute(node, "ceil_mode", 0L) != 0L;
+        return $"torch.nn.functional.max_pool2d({input}, kernel_size: {FormatModuleArgument(kernelShape)}, stride: {FormatModuleArgument(strides)}, padding: {FormatModuleArgument(pads.Take(2))}, dilation: {FormatModuleArgument(dilations)}, ceil_mode: {FormatBool(ceilMode)})";
+    }
+
+    private static string EmitTorchLocalResponseNorm(TorchNodeSpecification node, string input)
+    {
+        var size = GetLongAttribute(node, "size", 0L);
+        var alpha = GetFloatAttribute(node, "alpha", 0.0001f);
+        var beta = GetFloatAttribute(node, "beta", 0.75f);
+        var bias = GetFloatAttribute(node, "bias", 1.0f);
+        return $"torch.nn.functional.local_response_norm({input}, {size}L, alpha: {FormatFloat(alpha)}f, beta: {FormatFloat(beta)}f, k: {FormatFloat(bias)}f)";
     }
 
     private static string EmitTorchGemm(
