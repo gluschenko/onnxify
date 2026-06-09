@@ -1,8 +1,9 @@
-using System.Collections.Immutable;
+﻿using System.Collections.Immutable;
 using static Onnxify.ModelGenerator.OnnxModelGenerator;
 
 namespace Onnxify.ModelGenerator.Services.TorchModuleOperators;
 
+[TorchOp("AdaptiveAvgPool2d")]
 internal sealed class AdaptiveAvgPool2dTorchModuleOperator : TorchModuleOperator
 {
     internal override string OnnxOpType => "GlobalAveragePool";

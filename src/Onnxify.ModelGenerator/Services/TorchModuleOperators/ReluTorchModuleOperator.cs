@@ -1,8 +1,9 @@
-using System.Collections.Immutable;
+﻿using System.Collections.Immutable;
 using static Onnxify.ModelGenerator.OnnxModelGenerator;
 
 namespace Onnxify.ModelGenerator.Services.TorchModuleOperators;
 
+[TorchOp("ReLU")]
 internal sealed class ReluTorchModuleOperator : TorchModuleOperator
 {
     internal override string OnnxOpType => "Relu";

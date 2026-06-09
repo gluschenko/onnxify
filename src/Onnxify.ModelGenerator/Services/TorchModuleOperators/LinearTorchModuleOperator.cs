@@ -1,9 +1,10 @@
-using System.Collections.Immutable;
+﻿using System.Collections.Immutable;
 using static Onnxify.ModelGenerator.Helpers.TextHelper;
 using static Onnxify.ModelGenerator.OnnxModelGenerator;
 
 namespace Onnxify.ModelGenerator.Services.TorchModuleOperators;
 
+[TorchOp("Linear")]
 internal sealed class LinearTorchModuleOperator : TorchModuleOperator
 {
     internal override string OnnxOpType => "Gemm";

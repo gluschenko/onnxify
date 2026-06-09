@@ -1,7 +1,6 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <Import Project="..\Onnxify.ModelGenerator\Onnxify.ModelGenerator.props"
-          Condition="Exists('..\Onnxify.ModelGenerator\Onnxify.ModelGenerator.props')" />
+  <Import Project="..\Onnxify.ModelGenerator\Onnxify.ModelGenerator.props" Condition="Exists('..\Onnxify.ModelGenerator\Onnxify.ModelGenerator.props')" />
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -25,10 +24,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <OnnxModel Include="Assets\mobilenetv2-12.onnx"
-               OnnxifyModelImportType="OnnxRuntimeInference,TorchModule" />
+    <OnnxModel Include="Assets\mobilenetv2-12.onnx" OnnxifyModelImportType="OnnxRuntimeInference,TorchModule" />
     <OnnxModel Include="Assets\gpt-oss_q4f16.onnx" />
-    <OnnxModel Include="Assets\bvlcalexnet-12-qdq.onnx" />
+    <OnnxModel Include="Assets\bvlcalexnet-12-qdq.onnx" OnnxifyModelImportType="OnnxRuntimeInference,TorchModule"  />
     <OnnxModel Include="Assets\real_esrgan_x4plus-onnx-float\real_esrgan_x4plus.onnx" />
     <OnnxModel Include="Assets\gtcrn_simple.onnx" />
   </ItemGroup>
@@ -39,7 +37,6 @@
     </None>
   </ItemGroup>
 
-  <Import Project="..\Onnxify.ModelGenerator\Onnxify.ModelGenerator.targets"
-          Condition="Exists('..\Onnxify.ModelGenerator\Onnxify.ModelGenerator.targets')" />
+  <Import Project="..\Onnxify.ModelGenerator\Onnxify.ModelGenerator.targets" Condition="Exists('..\Onnxify.ModelGenerator\Onnxify.ModelGenerator.targets')" />
 
 </Project>

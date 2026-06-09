@@ -1,9 +1,10 @@
-using System.Collections.Immutable;
+﻿using System.Collections.Immutable;
 using static Onnxify.ModelGenerator.Helpers.TextHelper;
 using static Onnxify.ModelGenerator.OnnxModelGenerator;
 
 namespace Onnxify.ModelGenerator.Services.TorchModuleOperators;
 
+[TorchOp("BatchNormalization")]
 internal sealed class BatchNorm2dTorchModuleOperator : TorchModuleOperator
 {
     internal override string OnnxOpType => "BatchNormalization";
