@@ -5,6 +5,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Onnx;
+using Onnxify.ModelGenerator.Services.TorchModuleInlineOperators;
 using Onnxify.ModelGenerator.Services;
 using Onnxify.ModelGenerator.Services.TorchModuleOperators;
 using static Onnxify.ModelGenerator.Helpers.TextHelper;
@@ -25,6 +26,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
     private const string ADDITIONAL_FILE_NAMESPACE_KEY = "build_metadata.additionalfiles.OnnxifyModelNamespace";
     private const string ADDITIONAL_FILE_IMPORT_TYPE_KEY = "build_metadata.additionalfiles.OnnxifyModelImportType";
 
+    private static readonly ImmutableDictionary<string, TorchModuleInlineOperator> _torchModuleInlineOperators = TorchModuleInlineOperatorRegistry.Create();
     private static readonly ImmutableDictionary<string, TorchModuleOperator> _torchModuleOperators = TorchModuleOperatorRegistry.Create();
 
     private static readonly DiagnosticDescriptor _invalidModelDescriptor = new(
@@ -605,36 +607,8 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             allInitializers[specification.OnnxName] = specification;
         }
 
-        var supportedOps = new HashSet<string>(
-            [
-                "Add",
-                "Sub",
-                "Mul",
-                "Div",
-                "Sigmoid",
-                "Tanh",
-                "Softmax",
-                "Identity",
-                "MatMul",
-                "Reshape",
-                "Flatten",
-                "LRN",
-                "Transpose",
-                "Shape",
-                "Gather",
-                "Unsqueeze",
-                "Concat",
-                "Constant",
-                "QuantizeLinear",
-                "DequantizeLinear",
-            ],
-            StringComparer.Ordinal
-        );
-
-        foreach (var opType in _torchModuleOperators.Keys)
-        {
-            supportedOps.Add(opType);
-        }
+        var supportedOps = new HashSet<string>(_torchModuleInlineOperators.Keys, StringComparer.Ordinal);
+        supportedOps.UnionWith(_torchModuleOperators.Keys);
 
         var nodes = new List<TorchNodeSpecification>();
         var moduleNodes = new List<TorchModuleNodeSpecification>();
@@ -892,12 +866,27 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         };
     }
 
+    internal static long[]? GetLongArrayAttributeOrNull(
+        TorchNodeSpecification node,
+        string name
+    )
+    {
+        return node.Attributes.ContainsKey(name)
+            ? GetLongArrayAttribute(node, name, [])
+            : null;
+    }
+
     internal static string FormatLongArray(IEnumerable<long> values)
     {
         var array = values.ToArray();
         return array.Length == 0
             ? "Array.Empty<long>()"
             : $"new long[] {{ {string.Join(", ", array.Select(static x => $"{x}L"))} }}";
+    }
+
+    internal static string FormatNullableLongArray(IEnumerable<long>? values)
+    {
+        return values is null ? "null" : FormatLongArray(values);
     }
 
     internal static string FormatModuleArgument(IEnumerable<long> values)

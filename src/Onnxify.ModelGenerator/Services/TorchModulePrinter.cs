@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using Onnx;
+using Onnxify.ModelGenerator.Services.TorchModuleInlineOperators;
 using static Onnxify.ModelGenerator.Helpers.TextHelper;
 using static Onnxify.ModelGenerator.OnnxModelGenerator;
 
@@ -8,6 +9,7 @@ namespace Onnxify.ModelGenerator.Services;
 internal sealed class TorchModulePrinter
 {
     private static readonly XmlDocumentationPrinter _documentationPrinter = new();
+    private static readonly IReadOnlyDictionary<string, TorchModuleInlineOperator> _inlineOperators = TorchModuleInlineOperatorRegistry.Create();
 
     internal string GenerateSource(ModelGenerationSpecification specification)
     {
@@ -172,6 +174,27 @@ internal sealed class TorchModulePrinter
                 return result;
             }
 
+            private static Tensor SqueezeTensor(Tensor input, Tensor axes)
+            {
+                return SqueezeTensor(input, axes.data<long>().ToArray());
+            }
+
+            private static Tensor SqueezeTensor(Tensor input, long[] axes)
+            {
+                if (axes.Length == 0)
+                {
+                    return input.squeeze();
+                }
+
+                var result = input;
+                foreach (var axis in NormalizeAxes(axes, input.shape.Length).OrderByDescending(static x => x))
+                {
+                    result = result.squeeze(axis);
+                }
+
+                return result;
+            }
+
             private static Tensor ConcatTensors(Tensor[] tensors, long axis)
             {
                 if (tensors.Length == 0)
@@ -182,6 +205,40 @@ internal sealed class TorchModulePrinter
                 var device = tensors[0].device;
                 var aligned = tensors.Select(x => x.device == device ? x : x.to(device)).ToArray();
                 return torch.cat(aligned, axis);
+            }
+
+            private static Tensor ReduceMeanTensor(Tensor input, Tensor? axes, bool keepDims)
+            {
+                return ReduceMeanTensor(input, axes?.data<long>().ToArray(), keepDims);
+            }
+
+            private static Tensor ReduceMeanTensor(Tensor input, long[]? axes, bool keepDims)
+            {
+                return input.mean(ResolveReductionAxes(axes, input.shape.Length), keepDims);
+            }
+
+            private static Tensor ReduceSumTensor(Tensor input, Tensor? axes, bool keepDims)
+            {
+                return ReduceSumTensor(input, axes?.data<long>().ToArray(), keepDims);
+            }
+
+            private static Tensor ReduceSumTensor(Tensor input, long[]? axes, bool keepDims)
+            {
+                return input.sum(ResolveReductionAxes(axes, input.shape.Length), keepDims);
+            }
+
+            private static long[] ResolveReductionAxes(long[]? axes, int rank)
+            {
+                return axes is null || axes.Length == 0
+                    ? Enumerable.Range(0, rank).Select(static x => (long)x).ToArray()
+                    : NormalizeAxes(axes, rank);
+            }
+
+            private static long[] NormalizeAxes(long[] axes, int rank)
+            {
+                return axes
+                    .Select(axis => axis < 0 ? axis + rank : axis)
+                    .ToArray();
             }
 
             private static Tensor QuantizeLinearTensor(Tensor input, Tensor scale, Tensor? zeroPoint, long axis)
@@ -602,158 +659,12 @@ internal sealed class TorchModulePrinter
         IReadOnlyDictionary<string, string> values
     )
     {
-        string Input(int index)
+        if (!_inlineOperators.TryGetValue(node.OpType, out var @operator))
         {
-            if (index >= node.Inputs.Length)
-            {
-                throw new InvalidOperationException($"Node '{node.Name}' does not have input {index}.");
-            }
-
-            return values[node.Inputs[index]];
+            throw new NotSupportedException($"Unsupported TorchModule node op '{node.OpType}'.");
         }
 
-        return node.OpType switch
-        {
-            "Add" => $"{Input(0)} + {Input(1)}",
-            "Sub" => $"{Input(0)} - {Input(1)}",
-            "Mul" => $"{Input(0)} * {Input(1)}",
-            "Div" => $"{Input(0)} / {Input(1)}",
-            "Relu" => $"{Input(0)}.relu()",
-            "Sigmoid" => $"{Input(0)}.sigmoid()",
-            "Tanh" => $"{Input(0)}.tanh()",
-            "Softmax" => $"{Input(0)}.softmax({GetLongAttribute(node, "axis", -1L)}L)",
-            "Identity" => Input(0),
-            "MatMul" => $"torch.matmul({Input(0)}, {Input(1)})",
-            "Gemm" => EmitTorchGemm(node, Input(0), Input(1), node.Inputs.Length > 2 ? Input(2) : null),
-            "Reshape" => $"{Input(0)}.reshape({Input(1)}.data<long>().ToArray())",
-            "Flatten" => $"{Input(0)}.flatten({GetLongAttribute(node, "axis", 1L)})",
-            "LRN" => EmitTorchLocalResponseNorm(node, Input(0)),
-            "Transpose" => $"{Input(0)}.permute({FormatLongArray(GetLongArrayAttribute(node, "perm", []))})",
-            "Clip" => EmitTorchClip(node, Input(0), node.Inputs.Length > 1 ? Input(1) : null, node.Inputs.Length > 2 ? Input(2) : null),
-            "Conv" => EmitTorchConv(node, Input(0), Input(1), node.Inputs.Length > 2 ? Input(2) : "null"),
-            "MaxPool" => EmitTorchMaxPool2d(node, Input(0)),
-            "BatchNormalization" => EmitTorchBatchNormalization(node, Input(0), Input(3), Input(4), Input(1), Input(2)),
-            "GlobalAveragePool" => $"torch.nn.functional.adaptive_avg_pool2d({Input(0)}, new long[] {{ 1L, 1L }})",
-            "Shape" => $"CreateShapeTensor({Input(0)})",
-            "Gather" => $"GatherTensor({Input(0)}, {Input(1)}, {GetLongAttribute(node, "axis", 0L)}L)",
-            "Unsqueeze" => node.Inputs.Length > 1
-                ? $"UnsqueezeTensor({Input(0)}, {Input(1)})"
-                : $"UnsqueezeTensor({Input(0)}, {FormatLongArray(GetLongArrayAttribute(node, "axes", []))})",
-            "Concat" => $"ConcatTensors(new Tensor[] {{ {string.Join(", ", node.Inputs.Select(x => values[x]))} }}, {GetLongAttribute(node, "axis", 0L)}L)",
-            "Constant" => EmitTorchConstant(node),
-            "QuantizeLinear" => $"QuantizeLinearTensor({Input(0)}, {Input(1)}, {(node.Inputs.Length > 2 ? Input(2) : "null")}, {GetLongAttribute(node, "axis", 1L)}L)",
-            "DequantizeLinear" => $"DequantizeLinearTensor({Input(0)}, {Input(1)}, {(node.Inputs.Length > 2 ? Input(2) : "null")}, {GetLongAttribute(node, "axis", 1L)}L)",
-            _ => throw new NotSupportedException($"Unsupported TorchModule node op '{node.OpType}'."),
-        };
-    }
-
-    private static string EmitTorchMaxPool2d(TorchNodeSpecification node, string input)
-    {
-        var kernelShape = GetLongArrayAttribute(node, "kernel_shape", []);
-        var strides = GetLongArrayAttribute(node, "strides", kernelShape);
-        var pads = GetLongArrayAttribute(node, "pads", [0L, 0L, 0L, 0L]);
-        var dilations = GetLongArrayAttribute(node, "dilations", [1L, 1L]);
-        var ceilMode = GetLongAttribute(node, "ceil_mode", 0L) != 0L;
-        return $"torch.nn.functional.max_pool2d({input}, kernel_size: {FormatModuleArgument(kernelShape)}, stride: {FormatModuleArgument(strides)}, padding: {FormatModuleArgument(pads.Take(2))}, dilation: {FormatModuleArgument(dilations)}, ceil_mode: {FormatBool(ceilMode)})";
-    }
-
-    private static string EmitTorchLocalResponseNorm(TorchNodeSpecification node, string input)
-    {
-        var size = GetLongAttribute(node, "size", 0L);
-        var alpha = GetFloatAttribute(node, "alpha", 0.0001f);
-        var beta = GetFloatAttribute(node, "beta", 0.75f);
-        var bias = GetFloatAttribute(node, "bias", 1.0f);
-        return $"torch.nn.functional.local_response_norm({input}, {size}L, alpha: {FormatFloat(alpha)}f, beta: {FormatFloat(beta)}f, k: {FormatFloat(bias)}f)";
-    }
-
-    private static string EmitTorchGemm(
-        TorchNodeSpecification node,
-        string a,
-        string b,
-        string? c
-    )
-    {
-        var alpha = GetFloatAttribute(node, "alpha", 1f);
-        var beta = GetFloatAttribute(node, "beta", 1f);
-        var transA = GetLongAttribute(node, "transA", 0L) != 0;
-        var transB = GetLongAttribute(node, "transB", 0L) != 0;
-        var left = transA ? $"{a}.transpose(0, 1)" : a;
-        var right = transB ? $"{b}.transpose(0, 1)" : b;
-        var expression = $"torch.matmul({left}, {right})";
-
-        if (alpha != 1f)
-        {
-            expression = $"({FormatFloat(alpha)}f * {expression})";
-        }
-
-        if (c is not null)
-        {
-            var bias = beta == 1f ? c : $"({FormatFloat(beta)}f * {c})";
-            expression = $"({expression} + {bias})";
-        }
-
-        return expression;
-    }
-
-    private static string EmitTorchClip(
-        TorchNodeSpecification node,
-        string input,
-        string? min,
-        string? max
-    )
-    {
-        if (min is null && node.Attributes.TryGetValue("min", out var minAttribute))
-        {
-            min = FormatAttributeScalar(minAttribute);
-        }
-
-        if (max is null && node.Attributes.TryGetValue("max", out var maxAttribute))
-        {
-            max = FormatAttributeScalar(maxAttribute);
-        }
-
-        return $"{input}.clamp({min ?? "null"}, {max ?? "null"})";
-    }
-
-    private static string EmitTorchConv(
-        TorchNodeSpecification node,
-        string input,
-        string weight,
-        string bias
-    )
-    {
-        var strides = GetLongArrayAttribute(node, "strides", [1L, 1L]);
-        var pads = GetLongArrayAttribute(node, "pads", [0L, 0L, 0L, 0L]);
-        var dilations = GetLongArrayAttribute(node, "dilations", [1L, 1L]);
-        var group = GetLongAttribute(node, "group", 1L);
-        var padding = pads.Length >= 2 ? pads.Take(pads.Length / 2).ToArray() : pads;
-
-        return $"torch.nn.functional.conv2d({input}, {weight}, {bias}, {FormatLongArray(strides)}, {FormatLongArray(padding)}, {FormatLongArray(dilations)}, {group}L)";
-    }
-
-    private static string EmitTorchBatchNormalization(
-        TorchNodeSpecification node,
-        string input,
-        string runningMean,
-        string runningVar,
-        string weight,
-        string bias
-    )
-    {
-        var epsilon = GetFloatAttribute(node, "epsilon", 1e-5f);
-        var momentum = GetFloatAttribute(node, "momentum", 0.9f);
-
-        return $"torch.nn.functional.batch_norm({input}, {runningMean}, {runningVar}, {weight}, {bias}, training: false, momentum: {FormatFloat(momentum)}f, eps: {FormatFloat(epsilon)}f)";
-    }
-
-    private static string EmitTorchConstant(TorchNodeSpecification node)
-    {
-        if (!node.Attributes.TryGetValue("value", out var value) || value is not TensorProto tensor)
-        {
-            throw new NotSupportedException($"Constant node '{node.Name}' does not contain a tensor value attribute.");
-        }
-
-        return FormatTensorProtoExpression(tensor);
+        return @operator.Emit(node, values);
     }
 
 }

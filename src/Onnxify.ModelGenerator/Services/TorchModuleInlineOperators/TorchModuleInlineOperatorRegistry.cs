@@ -1,0 +1,68 @@
+using System.Collections.Immutable;
+
+namespace Onnxify.ModelGenerator.Services.TorchModuleInlineOperators;
+
+internal static class TorchModuleInlineOperatorRegistry
+{
+    internal static ImmutableDictionary<string, TorchModuleInlineOperator> Create()
+    {
+        var builder = ImmutableDictionary.CreateBuilder<string, TorchModuleInlineOperator>(StringComparer.Ordinal);
+        Add(new AddTorchModuleInlineOperator());
+        Add(new SubTorchModuleInlineOperator());
+        Add(new MulTorchModuleInlineOperator());
+        Add(new DivTorchModuleInlineOperator());
+        Add(new PowTorchModuleInlineOperator());
+        Add(new AbsTorchModuleInlineOperator());
+        Add(new NegTorchModuleInlineOperator());
+        Add(new ExpTorchModuleInlineOperator());
+        Add(new LogTorchModuleInlineOperator());
+        Add(new SqrtTorchModuleInlineOperator());
+        Add(new FloorTorchModuleInlineOperator());
+        Add(new CeilTorchModuleInlineOperator());
+        Add(new SinTorchModuleInlineOperator());
+        Add(new CosTorchModuleInlineOperator());
+        Add(new TanTorchModuleInlineOperator());
+        Add(new ErfTorchModuleInlineOperator());
+        Add(new ReciprocalTorchModuleInlineOperator());
+        Add(new SigmoidTorchModuleInlineOperator());
+        Add(new TanhTorchModuleInlineOperator());
+        Add(new EluTorchModuleInlineOperator());
+        Add(new HardSigmoidTorchModuleInlineOperator());
+        Add(new LeakyReluTorchModuleInlineOperator());
+        Add(new SoftmaxTorchModuleInlineOperator());
+        Add(new IdentityTorchModuleInlineOperator());
+        Add(new CastTorchModuleInlineOperator());
+        Add(new MatMulTorchModuleInlineOperator());
+        Add(new GemmTorchModuleInlineOperator());
+        Add(new ReshapeTorchModuleInlineOperator());
+        Add(new FlattenTorchModuleInlineOperator());
+        Add(new LrnTorchModuleInlineOperator());
+        Add(new AveragePoolTorchModuleInlineOperator());
+        Add(new TransposeTorchModuleInlineOperator());
+        Add(new ClipTorchModuleInlineOperator());
+        Add(new ConvTorchModuleInlineOperator());
+        Add(new MaxPoolTorchModuleInlineOperator());
+        Add(new BatchNormalizationTorchModuleInlineOperator());
+        Add(new GlobalAveragePoolTorchModuleInlineOperator());
+        Add(new ShapeTorchModuleInlineOperator());
+        Add(new GatherTorchModuleInlineOperator());
+        Add(new SqueezeTorchModuleInlineOperator());
+        Add(new UnsqueezeTorchModuleInlineOperator());
+        Add(new ConcatTorchModuleInlineOperator());
+        Add(new ReduceMeanTorchModuleInlineOperator());
+        Add(new ReduceSumTorchModuleInlineOperator());
+        Add(new GreaterTorchModuleInlineOperator());
+        Add(new LessTorchModuleInlineOperator());
+        Add(new EqualTorchModuleInlineOperator());
+        Add(new WhereTorchModuleInlineOperator());
+        Add(new ConstantTorchModuleInlineOperator());
+        Add(new QuantizeLinearTorchModuleInlineOperator());
+        Add(new DequantizeLinearTorchModuleInlineOperator());
+        return builder.ToImmutable();
+
+        void Add(TorchModuleInlineOperator @operator)
+        {
+            builder[@operator.OnnxOpType] = @operator;
+        }
+    }
+}

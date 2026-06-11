@@ -218,6 +218,328 @@ public sealed class OnnxModelGeneratorTests
     }
 
     [Fact]
+    public void Generate_WithTorchModuleImportType_EmitsCommonUnaryMathOperators()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, "common-unary.onnx");
+
+        try
+        {
+            var model = new ModelProto
+            {
+                Graph = new GraphProto()
+            };
+            model.Graph.Input.Add(CreateTensorValueInfo("input", TensorProto.Types.DataType.Float, 1L, 2L));
+            model.Graph.Output.Add(CreateTensorValueInfo("output", TensorProto.Types.DataType.Float, 1L, 2L));
+            model.Graph.Initializer.Add(new TensorProto
+            {
+                Name = "pow_exp",
+                DataType = (int)TensorProto.Types.DataType.Float,
+                Dims = { 1L },
+                FloatData = { 2f },
+            });
+            AddUnary("abs", "Abs", "input", "abs_out");
+            AddUnary("neg", "Neg", "abs_out", "neg_out");
+            AddUnary("exp", "Exp", "neg_out", "exp_out");
+            AddUnary("log", "Log", "exp_out", "log_out");
+            AddUnary("sqrt", "Sqrt", "log_out", "sqrt_out");
+            AddUnary("floor", "Floor", "sqrt_out", "floor_out");
+            AddUnary("ceil", "Ceil", "floor_out", "ceil_out");
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "pow",
+                OpType = "Pow",
+                Input = { "ceil_out", "pow_exp" },
+                Output = { "output" },
+            });
+            File.WriteAllBytes(modelPath, model.ToByteArray());
+
+            var generatedSource = GenerateSingleTorchModuleSource(tempRoot, modelPath);
+
+            Assert.Contains(".abs()", generatedSource);
+            Assert.Contains(".exp()", generatedSource);
+            Assert.Contains(".log()", generatedSource);
+            Assert.Contains(".sqrt()", generatedSource);
+            Assert.Contains(".floor()", generatedSource);
+            Assert.Contains(".ceil()", generatedSource);
+            Assert.Contains(".pow(_powExp)", generatedSource);
+
+            void AddUnary(string name, string opType, string input, string output)
+            {
+                model.Graph.Node.Add(new NodeProto
+                {
+                    Name = name,
+                    OpType = opType,
+                    Input = { input },
+                    Output = { output },
+                });
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Generate_WithTorchModuleImportType_EmitsCommonPoolingShapeAndReductionOperators()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, "common-pool-reduce.onnx");
+
+        try
+        {
+            var model = new ModelProto
+            {
+                Graph = new GraphProto()
+            };
+            model.Graph.Input.Add(CreateTensorValueInfo("input", TensorProto.Types.DataType.Float, 1L, 3L, 8L, 8L));
+            model.Graph.Output.Add(CreateTensorValueInfo("output", TensorProto.Types.DataType.Float, 1L));
+            model.Graph.Initializer.Add(new TensorProto
+            {
+                Name = "squeeze_axes",
+                DataType = (int)TensorProto.Types.DataType.Int64,
+                Dims = { 2L },
+                Int64Data = { 2L, 3L },
+            });
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "average_pool",
+                OpType = "AveragePool",
+                Input = { "input" },
+                Output = { "pooled" },
+                Attribute =
+                {
+                    new AttributeProto { Name = "kernel_shape", Type = AttributeProto.Types.AttributeType.Ints, Ints = { 2L, 2L } },
+                    new AttributeProto { Name = "strides", Type = AttributeProto.Types.AttributeType.Ints, Ints = { 2L, 2L } },
+                },
+            });
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "leaky_relu",
+                OpType = "LeakyRelu",
+                Input = { "pooled" },
+                Output = { "activated" },
+                Attribute =
+                {
+                    new AttributeProto { Name = "alpha", Type = AttributeProto.Types.AttributeType.Float, F = 0.2f },
+                },
+            });
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "reduce_mean",
+                OpType = "ReduceMean",
+                Input = { "activated" },
+                Output = { "mean" },
+                Attribute =
+                {
+                    new AttributeProto { Name = "axes", Type = AttributeProto.Types.AttributeType.Ints, Ints = { 2L, 3L } },
+                    new AttributeProto { Name = "keepdims", Type = AttributeProto.Types.AttributeType.Int, I = 1L },
+                },
+            });
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "squeeze",
+                OpType = "Squeeze",
+                Input = { "mean", "squeeze_axes" },
+                Output = { "squeezed" },
+            });
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "reduce_sum",
+                OpType = "ReduceSum",
+                Input = { "squeezed" },
+                Output = { "output" },
+                Attribute =
+                {
+                    new AttributeProto { Name = "axes", Type = AttributeProto.Types.AttributeType.Ints, Ints = { 1L } },
+                    new AttributeProto { Name = "keepdims", Type = AttributeProto.Types.AttributeType.Int, I = 0L },
+                },
+            });
+            File.WriteAllBytes(modelPath, model.ToByteArray());
+
+            var generatedSource = GenerateSingleTorchModuleSource(tempRoot, modelPath);
+
+            Assert.Contains("torch.nn.functional.avg_pool2d", generatedSource);
+            Assert.Contains("torch.nn.functional.leaky_relu", generatedSource);
+            Assert.Contains("ReduceMeanTensor", generatedSource);
+            Assert.Contains("SqueezeTensor", generatedSource);
+            Assert.Contains("ReduceSumTensor", generatedSource);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Generate_WithTorchModuleImportType_EmitsAdditionalMathAndActivationOperators()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, "additional-math-activations.onnx");
+
+        try
+        {
+            var model = new ModelProto
+            {
+                Graph = new GraphProto()
+            };
+            model.Graph.Input.Add(CreateTensorValueInfo("input", TensorProto.Types.DataType.Float, 1L, 2L));
+            model.Graph.Output.Add(CreateTensorValueInfo("output", TensorProto.Types.DataType.Float, 1L, 2L));
+            AddUnary("sin", "Sin", "input", "sin_out");
+            AddUnary("cos", "Cos", "sin_out", "cos_out");
+            AddUnary("tan", "Tan", "cos_out", "tan_out");
+            AddUnary("erf", "Erf", "tan_out", "erf_out");
+            AddUnary("reciprocal", "Reciprocal", "erf_out", "reciprocal_out");
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "elu",
+                OpType = "Elu",
+                Input = { "reciprocal_out" },
+                Output = { "elu_out" },
+                Attribute =
+                {
+                    new AttributeProto { Name = "alpha", Type = AttributeProto.Types.AttributeType.Float, F = 1.25f },
+                },
+            });
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "hard_sigmoid",
+                OpType = "HardSigmoid",
+                Input = { "elu_out" },
+                Output = { "output" },
+                Attribute =
+                {
+                    new AttributeProto { Name = "alpha", Type = AttributeProto.Types.AttributeType.Float, F = 0.2f },
+                    new AttributeProto { Name = "beta", Type = AttributeProto.Types.AttributeType.Float, F = 0.5f },
+                },
+            });
+            File.WriteAllBytes(modelPath, model.ToByteArray());
+
+            var generatedSource = GenerateSingleTorchModuleSource(tempRoot, modelPath);
+
+            Assert.Contains(".sin()", generatedSource);
+            Assert.Contains(".cos()", generatedSource);
+            Assert.Contains(".tan()", generatedSource);
+            Assert.Contains(".erf()", generatedSource);
+            Assert.Contains(".reciprocal()", generatedSource);
+            Assert.Contains("torch.nn.functional.elu", generatedSource);
+            Assert.Contains(".clamp(0.0f, 1.0f)", generatedSource);
+
+            void AddUnary(string name, string opType, string input, string output)
+            {
+                model.Graph.Node.Add(new NodeProto
+                {
+                    Name = name,
+                    OpType = opType,
+                    Input = { input },
+                    Output = { output },
+                });
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Generate_WithTorchModuleImportType_EmitsCompareSelectAndCastOperators()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, "compare-select-cast.onnx");
+
+        try
+        {
+            var model = new ModelProto
+            {
+                Graph = new GraphProto()
+            };
+            model.Graph.Input.Add(CreateTensorValueInfo("input", TensorProto.Types.DataType.Float, 1L, 2L));
+            model.Graph.Output.Add(CreateTensorValueInfo("output", TensorProto.Types.DataType.Float, 1L, 2L));
+            model.Graph.Initializer.Add(new TensorProto
+            {
+                Name = "threshold",
+                DataType = (int)TensorProto.Types.DataType.Float,
+                Dims = { 1L, 2L },
+                FloatData = { 0.25f, 0.75f },
+            });
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "greater",
+                OpType = "Greater",
+                Input = { "input", "threshold" },
+                Output = { "greater_out" },
+            });
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "less",
+                OpType = "Less",
+                Input = { "input", "threshold" },
+                Output = { "less_out" },
+            });
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "equal",
+                OpType = "Equal",
+                Input = { "input", "threshold" },
+                Output = { "equal_out" },
+            });
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "where",
+                OpType = "Where",
+                Input = { "greater_out", "input", "threshold" },
+                Output = { "selected" },
+            });
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "cast",
+                OpType = "Cast",
+                Input = { "selected" },
+                Output = { "output" },
+                Attribute =
+                {
+                    new AttributeProto { Name = "to", Type = AttributeProto.Types.AttributeType.Int, I = (long)TensorProto.Types.DataType.Float },
+                },
+            });
+            File.WriteAllBytes(modelPath, model.ToByteArray());
+
+            var generatedSource = GenerateSingleTorchModuleSource(tempRoot, modelPath);
+
+            Assert.Contains(".gt(_threshold)", generatedSource);
+            Assert.Contains(".lt(_threshold)", generatedSource);
+            Assert.Contains(".eq(_threshold)", generatedSource);
+            Assert.Contains("torch.where", generatedSource);
+            Assert.Contains(".to(ScalarType.Float32)", generatedSource);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void Generate_WithTorchModuleImportType_AllowsUint8Initializers()
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
@@ -923,6 +1245,32 @@ public sealed class OnnxModelGeneratorTests
         tensor.Dims.AddRange(shape);
         tensor.FloatData.AddRange(values);
         graph.Initializer.Add(tensor);
+    }
+
+    private static string GenerateSingleTorchModuleSource(string tempRoot, string modelPath)
+    {
+        var driver = CreateDriver(
+            additionalFiles: [new BinaryAdditionalText(modelPath)],
+            globalOptions: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["build_property.ProjectDir"] = tempRoot + Path.DirectorySeparatorChar,
+                ["build_property.RootNamespace"] = "Demo.App",
+            },
+            fileOptions: new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal)
+            {
+                [modelPath] = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["build_metadata.additionalfiles.OnnxifyModelImportType"] = "TorchModule",
+                }
+            });
+
+        var compilation = CreateCompilation();
+        driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var updatedCompilation, out var generatorDiagnostics);
+
+        Assert.DoesNotContain(generatorDiagnostics, static x => x.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(updatedCompilation.GetDiagnostics(), static x => x.Severity == DiagnosticSeverity.Error);
+
+        return GetGeneratedSource(driver);
     }
 
     private static CSharpCompilation CreateCompilation()
