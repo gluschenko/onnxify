@@ -14,6 +14,7 @@ internal static class TorchModuleOperatorRegistry
         Add(new MaxPool2dTorchModuleOperator());
         Add(new ReluTorchModuleOperator());
         Add(new Relu6TorchModuleOperator());
+        Add(new LstmTorchModuleOperator());
         return builder.ToImmutable();
 
         void Add(TorchModuleOperator @operator)

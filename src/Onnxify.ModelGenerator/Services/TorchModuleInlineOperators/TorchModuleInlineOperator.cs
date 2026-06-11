@@ -148,17 +148,11 @@ internal abstract class TorchModuleInlineOperator
 
     protected static string FormatScalarType(TensorProto.Types.DataType dataType)
     {
-        return dataType switch
+        if (TryFormatTorchModuleScalarType(dataType, out var scalarTypeExpression))
         {
-            TensorProto.Types.DataType.Float => "ScalarType.Float32",
-            TensorProto.Types.DataType.Double => "ScalarType.Float64",
-            TensorProto.Types.DataType.Uint8 => "ScalarType.Byte",
-            TensorProto.Types.DataType.Int8 => "ScalarType.Int8",
-            TensorProto.Types.DataType.Int16 => "ScalarType.Int16",
-            TensorProto.Types.DataType.Int32 => "ScalarType.Int32",
-            TensorProto.Types.DataType.Int64 => "ScalarType.Int64",
-            TensorProto.Types.DataType.Bool => "ScalarType.Bool",
-            _ => throw new NotSupportedException($"Unsupported Cast target tensor data type '{dataType}'."),
-        };
+            return scalarTypeExpression;
+        }
+
+        throw new NotSupportedException($"Unsupported Cast target tensor data type '{dataType}'.");
     }
 }

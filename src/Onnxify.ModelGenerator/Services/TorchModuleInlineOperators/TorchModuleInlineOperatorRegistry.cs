@@ -19,9 +19,17 @@ internal static class TorchModuleInlineOperatorRegistry
         Add(new SqrtTorchModuleInlineOperator());
         Add(new FloorTorchModuleInlineOperator());
         Add(new CeilTorchModuleInlineOperator());
+        Add(new RoundTorchModuleInlineOperator());
+        Add(new SignTorchModuleInlineOperator());
         Add(new SinTorchModuleInlineOperator());
         Add(new CosTorchModuleInlineOperator());
         Add(new TanTorchModuleInlineOperator());
+        Add(new AcosTorchModuleInlineOperator());
+        Add(new AcoshTorchModuleInlineOperator());
+        Add(new AsinTorchModuleInlineOperator());
+        Add(new AsinhTorchModuleInlineOperator());
+        Add(new AtanTorchModuleInlineOperator());
+        Add(new AtanhTorchModuleInlineOperator());
         Add(new ErfTorchModuleInlineOperator());
         Add(new ReciprocalTorchModuleInlineOperator());
         Add(new SigmoidTorchModuleInlineOperator());
@@ -33,6 +41,8 @@ internal static class TorchModuleInlineOperatorRegistry
         Add(new IdentityTorchModuleInlineOperator());
         Add(new CastTorchModuleInlineOperator());
         Add(new MatMulTorchModuleInlineOperator());
+        Add(new MaxTorchModuleInlineOperator());
+        Add(new MinTorchModuleInlineOperator());
         Add(new GemmTorchModuleInlineOperator());
         Add(new ReshapeTorchModuleInlineOperator());
         Add(new FlattenTorchModuleInlineOperator());
@@ -53,8 +63,11 @@ internal static class TorchModuleInlineOperatorRegistry
         Add(new ReduceSumTorchModuleInlineOperator());
         Add(new GreaterTorchModuleInlineOperator());
         Add(new LessTorchModuleInlineOperator());
+        Add(new GreaterOrEqualTorchModuleInlineOperator());
+        Add(new LessOrEqualTorchModuleInlineOperator());
         Add(new EqualTorchModuleInlineOperator());
         Add(new WhereTorchModuleInlineOperator());
+        Add(new NotTorchModuleInlineOperator());
         Add(new ConstantTorchModuleInlineOperator());
         Add(new QuantizeLinearTorchModuleInlineOperator());
         Add(new DequantizeLinearTorchModuleInlineOperator());

@@ -299,6 +299,9 @@ namespace Onnxify.ConsoleTest
                 using var gptModel = new GptOssQ4f16Model();
                 using var alexNetModel = new Bvlcalexnet12QdqModel();
                 using var realEsrganModel = new RealEsrganX4plusModel();
+
+                using var yy = new PanlingoLstmModel();
+                using var xx = new PanlingoLstmModelTorchModule();
             }
             catch (Exception ex)
             {

@@ -2,7 +2,7 @@
 
 Found: 83.73% (417/498)
 Onnxify.TorchSharp coverage: 83.53% (416/498)
-Onnxify.ModelGenerator coverage: 1.00% (5/498)
+Onnxify.ModelGenerator coverage: 5.22% (26/498)
 
 ## Coverage Columns
 
@@ -62,8 +62,8 @@ Onnxify.ModelGenerator coverage: 1.00% (5/498)
 | aten::_upsample_bicubic2d_aa |  | ❌ | ❌ | ❌ |
 | aten::_upsample_bilinear2d_aa |  | ❌ | ❌ | ❌ |
 | aten::abs | TorchSharp.torch+Tensor.abs | ✅ | ✅ | ❌ |
-| aten::acos | TorchSharp.torch+Tensor.acos | ✅ | ✅ | ❌ |
-| aten::acosh | TorchSharp.torch+Tensor.acosh | ✅ | ✅ | ❌ |
+| aten::acos | TorchSharp.torch+Tensor.acos | ✅ | ✅ | ✅ |
+| aten::acosh | TorchSharp.torch+Tensor.acosh | ✅ | ✅ | ✅ |
 | aten::add.Scalar | TorchSharp.torch+Tensor.add | ✅ | ✅ | ❌ |
 | aten::add.Tensor | TorchSharp.torch+Tensor.add | ✅ | ✅ | ❌ |
 | aten::addbmm | TorchSharp.torch+Tensor.addbmm | ✅ | ✅ | ❌ |
@@ -89,11 +89,11 @@ Onnxify.ModelGenerator coverage: 1.00% (5/498)
 | aten::argmax | TorchSharp.torch+Tensor.argmax | ✅ | ✅ | ❌ |
 | aten::argmin | TorchSharp.torch+Tensor.argmin | ✅ | ✅ | ❌ |
 | aten::as_strided | TorchSharp.torch+Tensor.as_strided | ✅ | ✅ | ❌ |
-| aten::asin | TorchSharp.torch+Tensor.asin | ✅ | ✅ | ❌ |
-| aten::asinh | TorchSharp.torch+Tensor.asinh | ✅ | ✅ | ❌ |
-| aten::atan | TorchSharp.torch+Tensor.atan | ✅ | ✅ | ❌ |
+| aten::asin | TorchSharp.torch+Tensor.asin | ✅ | ✅ | ✅ |
+| aten::asinh | TorchSharp.torch+Tensor.asinh | ✅ | ✅ | ✅ |
+| aten::atan | TorchSharp.torch+Tensor.atan | ✅ | ✅ | ✅ |
 | aten::atan2 | TorchSharp.torch+Tensor.atan2 | ✅ | ✅ | ❌ |
-| aten::atanh | TorchSharp.torch+Tensor.atanh | ✅ | ✅ | ❌ |
+| aten::atanh | TorchSharp.torch+Tensor.atanh | ✅ | ✅ | ✅ |
 | aten::atleast_1d | TorchSharp.torch+Tensor.atleast_1d | ✅ | ✅ | ❌ |
 | aten::atleast_1d.Sequence | TorchSharp.torch+Tensor.atleast_1d | ✅ | ✅ | ❌ |
 | aten::atleast_2d | TorchSharp.torch+Tensor.atleast_2d | ✅ | ✅ | ❌ |
@@ -265,7 +265,7 @@ Onnxify.ModelGenerator coverage: 1.00% (5/498)
 | aten::logical_xor | TorchSharp.torch+Tensor.logical_xor | ✅ | ✅ | ❌ |
 | aten::logit | TorchSharp.torch+Tensor.logit | ✅ | ✅ | ❌ |
 | aten::logsumexp | TorchSharp.torch+Tensor.logsumexp | ✅ | ✅ | ❌ |
-| aten::lstm.input | TorchSharp.Modules.LSTM | ✅ | ✅ | ❌ |
+| aten::lstm.input | TorchSharp.Modules.LSTM | ✅ | ✅ | ✅ |
 | aten::lt.Scalar | TorchSharp.torch+Tensor.lt | ✅ | ✅ | ❌ |
 | aten::lt.Tensor | TorchSharp.torch+Tensor.lt | ✅ | ✅ | ❌ |
 | aten::mH |  | ❌ | ❌ | ❌ |
@@ -274,8 +274,8 @@ Onnxify.ModelGenerator coverage: 1.00% (5/498)
 | aten::masked_fill.Tensor | TorchSharp.torch+Tensor.masked_fill | ✅ | ✅ | ❌ |
 | aten::masked_scatter | TorchSharp.torch+Tensor.masked_scatter | ✅ | ❌ | ❌ |
 | aten::matmul | TorchSharp.torch+Tensor.matmul | ✅ | ✅ | ❌ |
-| aten::max | TorchSharp.torch+Tensor.max | ✅ | ✅ | ❌ |
-| aten::max.dim | TorchSharp.torch+Tensor.max | ✅ | ✅ | ❌ |
+| aten::max | TorchSharp.torch+Tensor.max | ✅ | ✅ | ✅ |
+| aten::max.dim | TorchSharp.torch+Tensor.max | ✅ | ✅ | ✅ |
 | aten::max_pool1d | TorchSharp.Modules.MaxPool1d | ✅ | ✅ | ❌ |
 | aten::max_pool1d_with_indices | TorchSharp.torch+nn+functional.max_pool1d_with_indices | ✅ | ❌ | ❌ |
 | aten::max_pool2d | TorchSharp.Modules.MaxPool2d | ✅ | ✅ | ✅ |
@@ -285,8 +285,8 @@ Onnxify.ModelGenerator coverage: 1.00% (5/498)
 | aten::maximum | TorchSharp.torch+Tensor.maximum | ✅ | ✅ | ❌ |
 | aten::mean | TorchSharp.torch+Tensor.mean | ✅ | ✅ | ❌ |
 | aten::mean.dim | TorchSharp.torch+Tensor.mean | ✅ | ✅ | ❌ |
-| aten::min | TorchSharp.torch+Tensor.min | ✅ | ✅ | ❌ |
-| aten::min.dim | TorchSharp.torch+Tensor.min | ✅ | ✅ | ❌ |
+| aten::min | TorchSharp.torch+Tensor.min | ✅ | ✅ | ✅ |
+| aten::min.dim | TorchSharp.torch+Tensor.min | ✅ | ✅ | ✅ |
 | aten::minimum | TorchSharp.torch+Tensor.minimum | ✅ | ✅ | ❌ |
 | aten::mish | TorchSharp.Modules.Mish | ✅ | ✅ | ❌ |
 | aten::mm | TorchSharp.torch+Tensor.mm | ✅ | ✅ | ❌ |
@@ -359,8 +359,8 @@ Onnxify.ModelGenerator coverage: 1.00% (5/498)
 | aten::resolve_conj | TorchSharp.torch+Tensor.resolve_conj | ✅ | ✅ | ❌ |
 | aten::resolve_neg | TorchSharp.torch+Tensor.resolve_neg | ✅ | ✅ | ❌ |
 | aten::roll | TorchSharp.torch+Tensor.roll | ✅ | ✅ | ❌ |
-| aten::round | TorchSharp.torch+Tensor.round | ✅ | ✅ | ❌ |
-| aten::round.decimals | TorchSharp.torch+Tensor.round | ✅ | ✅ | ❌ |
+| aten::round | TorchSharp.torch+Tensor.round | ✅ | ✅ | ✅ |
+| aten::round.decimals | TorchSharp.torch+Tensor.round | ✅ | ✅ | ✅ |
 | aten::rsqrt | TorchSharp.torch+Tensor.rsqrt | ✅ | ✅ | ❌ |
 | aten::scalar_tensor |  | ❌ | ❌ | ❌ |
 | aten::scaled_dot_product_attention | TorchSharp.torch+nn+functional.scaled_dot_product_attention | ✅ | ❌ | ❌ |
@@ -372,7 +372,7 @@ Onnxify.ModelGenerator coverage: 1.00% (5/498)
 | aten::select_scatter | TorchSharp.torch+Tensor.select_scatter | ✅ | ❌ | ❌ |
 | aten::selu | TorchSharp.Modules.SELU | ✅ | ✅ | ❌ |
 | aten::sigmoid | TorchSharp.Modules.Sigmoid | ✅ | ✅ | ❌ |
-| aten::sign | TorchSharp.torch+Tensor.sign | ✅ | ✅ | ❌ |
+| aten::sign | TorchSharp.torch+Tensor.sign | ✅ | ✅ | ✅ |
 | aten::signbit | TorchSharp.torch+Tensor.signbit | ✅ | ✅ | ❌ |
 | aten::silu | TorchSharp.Modules.SiLU | ✅ | ✅ | ❌ |
 | aten::sin | TorchSharp.torch+Tensor.sin | ✅ | ✅ | ❌ |
@@ -461,13 +461,13 @@ Onnxify.ModelGenerator coverage: 1.00% (5/498)
 | math::floor | TorchSharp.torch+Tensor.floor | ✅ | ✅ | ❌ |
 | math::trunc | TorchSharp.torch+Tensor.trunc | ✅ | ✅ | ❌ |
 | prims::abs | TorchSharp.torch+Tensor.abs | ✅ | ✅ | ❌ |
-| prims::acos | TorchSharp.torch+Tensor.acos | ✅ | ✅ | ❌ |
-| prims::acosh | TorchSharp.torch+Tensor.acosh | ✅ | ✅ | ❌ |
+| prims::acos | TorchSharp.torch+Tensor.acos | ✅ | ✅ | ✅ |
+| prims::acosh | TorchSharp.torch+Tensor.acosh | ✅ | ✅ | ✅ |
 | prims::add | TorchSharp.torch+Tensor.add | ✅ | ✅ | ❌ |
-| prims::asin | TorchSharp.torch+Tensor.asin | ✅ | ✅ | ❌ |
-| prims::asinh | TorchSharp.torch+Tensor.asinh | ✅ | ✅ | ❌ |
-| prims::atan | TorchSharp.torch+Tensor.atan | ✅ | ✅ | ❌ |
-| prims::atanh | TorchSharp.torch+Tensor.atanh | ✅ | ✅ | ❌ |
+| prims::asin | TorchSharp.torch+Tensor.asin | ✅ | ✅ | ✅ |
+| prims::asinh | TorchSharp.torch+Tensor.asinh | ✅ | ✅ | ✅ |
+| prims::atan | TorchSharp.torch+Tensor.atan | ✅ | ✅ | ✅ |
+| prims::atanh | TorchSharp.torch+Tensor.atanh | ✅ | ✅ | ✅ |
 | prims::broadcast_in_dim |  | ❌ | ❌ | ❌ |
 | prims::ceil | TorchSharp.torch+Tensor.ceil | ✅ | ✅ | ❌ |
 | prims::convert_element_type |  | ❌ | ❌ | ❌ |
@@ -490,7 +490,7 @@ Onnxify.ModelGenerator coverage: 1.00% (5/498)
 | prims::pow | TorchSharp.torch+Tensor.pow | ✅ | ✅ | ❌ |
 | prims::reshape | TorchSharp.torch+Tensor.reshape | ✅ | ✅ | ❌ |
 | prims::resize |  | ❌ | ❌ | ❌ |
-| prims::round | TorchSharp.torch+Tensor.round | ✅ | ✅ | ❌ |
+| prims::round | TorchSharp.torch+Tensor.round | ✅ | ✅ | ✅ |
 | prims::sin | TorchSharp.torch+Tensor.sin | ✅ | ✅ | ❌ |
 | prims::sinh | TorchSharp.torch+Tensor.sinh | ✅ | ✅ | ❌ |
 | prims::sqrt | TorchSharp.torch+Tensor.sqrt | ✅ | ✅ | ❌ |

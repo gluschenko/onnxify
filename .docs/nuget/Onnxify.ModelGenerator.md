@@ -62,7 +62,7 @@ With the configuration above, the generator emits types like:
 - `MyApp.Models.SampleClassifierModelInputs`
 - `MyApp.Models.SampleClassifierModelOutputs`
 
-When `TorchModule` is enabled, the generator also emits `SampleClassifierModelTorchModule`. The MVP TorchSharp backend reconstructs a single-input/single-output float32 ONNX graph from supported primitive operators, stores float32 initializers as registered parameters, stores int64 constants as buffers, and provides `LoadWeightsFromOnnx(string modelPath)` to copy initializer values from a compatible ONNX file.
+When `TorchModule` is enabled, the generator also emits `SampleClassifierModelTorchModule`. The TorchSharp backend reconstructs a single-input/single-output ONNX graph from supported primitive operators and runtime tensor data types that map to TorchSharp `ScalarType`, stores float32 initializers as registered parameters, stores int64 constants as buffers, and provides `LoadWeightsFromOnnx(string modelPath)` to copy initializer values from a compatible ONNX file.
 
 ## Example: Run Inference With `SessionOptions` And `RunOptions`
 

@@ -166,43 +166,46 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         var inputMethodParameterNames = new HashSet<string>(StringComparer.Ordinal);
 
         var inputs = new List<ModelTensorContract>();
-        foreach (var input in graph?.Input ?? Enumerable.Empty<ValueInfoProto>())
-        {
-            if (!TryCreateTensorContract(
-                ownerFileName: fileName,
-                valueInfo: input,
-                kind: "input",
-                hasDefaultInitializer: initializerNames.Contains(input.Name),
-                usedPropertyNames: inputPropertyNames,
-                usedMethodParameterNames: inputMethodParameterNames,
-                diagnostics: diagnostics,
-                contract: out var contract
-            ))
-            {
-                return new ModelAnalysisResult(null, diagnostics.ToImmutableArray());
-            }
-
-            inputs.Add(contract ?? throw new InvalidOperationException("Failed to create input tensor contract."));
-        }
-
         var outputs = new List<ModelTensorContract>();
-        foreach (var output in graph?.Output ?? Enumerable.Empty<ValueInfoProto>())
+        if (importTypes.HasFlag(ModelImportType.OnnxRuntimeInference))
         {
-            if (!TryCreateTensorContract(
-                ownerFileName: fileName,
-                valueInfo: output,
-                kind: "output",
-                hasDefaultInitializer: false,
-                usedPropertyNames: outputPropertyNames,
-                usedMethodParameterNames: null,
-                diagnostics: diagnostics,
-                contract: out var contract
-            ))
+            foreach (var input in graph?.Input ?? Enumerable.Empty<ValueInfoProto>())
             {
-                return new ModelAnalysisResult(null, diagnostics.ToImmutableArray());
+                if (!TryCreateTensorContract(
+                    ownerFileName: fileName,
+                    valueInfo: input,
+                    kind: "input",
+                    hasDefaultInitializer: initializerNames.Contains(input.Name),
+                    usedPropertyNames: inputPropertyNames,
+                    usedMethodParameterNames: inputMethodParameterNames,
+                    diagnostics: diagnostics,
+                    contract: out var contract
+                ))
+                {
+                    return new ModelAnalysisResult(null, diagnostics.ToImmutableArray());
+                }
+
+                inputs.Add(contract ?? throw new InvalidOperationException("Failed to create input tensor contract."));
             }
 
-            outputs.Add(contract ?? throw new InvalidOperationException("Failed to create output tensor contract."));
+            foreach (var output in graph?.Output ?? Enumerable.Empty<ValueInfoProto>())
+            {
+                if (!TryCreateTensorContract(
+                    ownerFileName: fileName,
+                    valueInfo: output,
+                    kind: "output",
+                    hasDefaultInitializer: false,
+                    usedPropertyNames: outputPropertyNames,
+                    usedMethodParameterNames: null,
+                    diagnostics: diagnostics,
+                    contract: out var contract
+                ))
+                {
+                    return new ModelAnalysisResult(null, diagnostics.ToImmutableArray());
+                }
+
+                outputs.Add(contract ?? throw new InvalidOperationException("Failed to create output tensor contract."));
+            }
         }
 
         if (graph?.Initializer.Any(HasExternalData) == true)
@@ -572,25 +575,25 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
 
         if (runtimeInputs.Length != 1)
         {
-            ReportUnsupportedTorchModule(fileName, "the MVP TorchModule backend supports exactly one non-initializer graph input.", diagnostics);
+            ReportUnsupportedTorchModule(fileName, "the TorchModule backend supports exactly one non-initializer graph input.", diagnostics);
             return null;
         }
 
         if (graph.Output.Count != 1)
         {
-            ReportUnsupportedTorchModule(fileName, "the MVP TorchModule backend supports exactly one graph output.", diagnostics);
+            ReportUnsupportedTorchModule(fileName, "the TorchModule backend supports exactly one graph output.", diagnostics);
             return null;
         }
 
-        if (!TryGetTensorElementType(runtimeInputs[0], out var inputElementType) || inputElementType != TensorProto.Types.DataType.Float)
+        if (!TryGetTensorElementType(runtimeInputs[0], out var inputElementType) || !IsSupportedTorchModuleRuntimeTensorType(inputElementType))
         {
-            ReportUnsupportedTorchModule(fileName, "the MVP TorchModule backend supports only float32 runtime tensor inputs.", diagnostics);
+            ReportUnsupportedTorchModule(fileName, "the TorchModule backend supports only runtime tensor input data types that map to TorchSharp ScalarType.", diagnostics);
             return null;
         }
 
-        if (!TryGetTensorElementType(graph.Output[0], out var outputElementType) || outputElementType != TensorProto.Types.DataType.Float)
+        if (!TryGetTensorElementType(graph.Output[0], out var outputElementType) || !IsSupportedTorchModuleRuntimeTensorType(outputElementType))
         {
-            ReportUnsupportedTorchModule(fileName, "the MVP TorchModule backend supports only float32 runtime tensor outputs.", diagnostics);
+            ReportUnsupportedTorchModule(fileName, "the TorchModule backend supports only runtime tensor output data types that map to TorchSharp ScalarType.", diagnostics);
             return null;
         }
 
@@ -630,9 +633,9 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             }
 
             var outputs = node.Output.Where(static x => !string.IsNullOrWhiteSpace(x)).ToArray();
-            if (outputs.Length != 1)
+            if (outputs.Length != 1 && !string.Equals(node.OpType, "LSTM", StringComparison.Ordinal))
             {
-                ReportUnsupportedTorchModule(fileName, $"operator '{node.OpType}' in node '{FormatNodeName(node)}' must have exactly one output for the MVP TorchModule backend.", diagnostics);
+                ReportUnsupportedTorchModule(fileName, $"operator '{node.OpType}' in node '{FormatNodeName(node)}' must have exactly one output for the TorchModule backend.", diagnostics);
                 return null;
             }
 
@@ -685,6 +688,36 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             moduleNodes.ToImmutableArray(),
             nodes.ToImmutableArray()
         );
+    }
+
+    private static bool IsSupportedTorchModuleRuntimeTensorType(TensorProto.Types.DataType dataType)
+    {
+        return TryFormatTorchModuleScalarType(dataType, out _);
+    }
+
+    internal static bool TryFormatTorchModuleScalarType(
+        TensorProto.Types.DataType dataType,
+        out string scalarTypeExpression
+    )
+    {
+        scalarTypeExpression = dataType switch
+        {
+            TensorProto.Types.DataType.Float => "ScalarType.Float32",
+            TensorProto.Types.DataType.Double => "ScalarType.Float64",
+            TensorProto.Types.DataType.Uint8 => "ScalarType.Byte",
+            TensorProto.Types.DataType.Int8 => "ScalarType.Int8",
+            TensorProto.Types.DataType.Int16 => "ScalarType.Int16",
+            TensorProto.Types.DataType.Int32 => "ScalarType.Int32",
+            TensorProto.Types.DataType.Int64 => "ScalarType.Int64",
+            TensorProto.Types.DataType.Bool => "ScalarType.Bool",
+            TensorProto.Types.DataType.Float16 => "ScalarType.Float16",
+            TensorProto.Types.DataType.Bfloat16 => "ScalarType.BFloat16",
+            TensorProto.Types.DataType.Complex64 => "ScalarType.ComplexFloat32",
+            TensorProto.Types.DataType.Complex128 => "ScalarType.ComplexFloat64",
+            _ => string.Empty,
+        };
+
+        return scalarTypeExpression.Length > 0;
     }
 
     private static bool TryCreateTorchModuleNode(
@@ -843,6 +876,24 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             float floatValue => floatValue,
             double doubleValue => (float)doubleValue,
             _ => Convert.ToSingle(value),
+        };
+    }
+
+    internal static string GetStringAttribute(
+        TorchNodeSpecification node,
+        string name,
+        string defaultValue
+    )
+    {
+        if (!node.Attributes.TryGetValue(name, out var value))
+        {
+            return defaultValue;
+        }
+
+        return value switch
+        {
+            string stringValue => stringValue,
+            _ => Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) ?? defaultValue,
         };
     }
 
@@ -1266,7 +1317,8 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         string FieldTypeName,
         string ConstructorExpression,
         bool TransposeInput,
-        ImmutableArray<string> LoadStatements
+        ImmutableArray<string> LoadStatements,
+        string? ForwardExpression = null
     );
 
     internal sealed record TorchForwardGroupSpecification(
@@ -1294,6 +1346,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         ReLU = 5,
         ReLU6 = 6,
         MaxPool2d = 7,
+        LSTM = 8,
     }
 
     internal sealed record TorchNodeSpecification(

@@ -207,6 +207,38 @@ internal sealed class TorchModulePrinter
                 return torch.cat(aligned, axis);
             }
 
+            private static Tensor MaxTensors(Tensor[] tensors)
+            {
+                if (tensors.Length == 0)
+                {
+                    throw new ArgumentException("At least one tensor is required.", nameof(tensors));
+                }
+
+                var result = tensors[0];
+                foreach (var tensor in tensors.Skip(1))
+                {
+                    result = torch.maximum(result, tensor);
+                }
+
+                return result;
+            }
+
+            private static Tensor MinTensors(Tensor[] tensors)
+            {
+                if (tensors.Length == 0)
+                {
+                    throw new ArgumentException("At least one tensor is required.", nameof(tensors));
+                }
+
+                var result = tensors[0];
+                foreach (var tensor in tensors.Skip(1))
+                {
+                    result = torch.minimum(result, tensor);
+                }
+
+                return result;
+            }
+
             private static Tensor ReduceMeanTensor(Tensor input, Tensor? axes, bool keepDims)
             {
                 return ReduceMeanTensor(input, axes?.data<long>().ToArray(), keepDims);
@@ -239,6 +271,19 @@ internal sealed class TorchModulePrinter
                 return axes
                     .Select(axis => axis < 0 ? axis + rank : axis)
                     .ToArray();
+            }
+
+            private static Tensor ToOnnxLstmY(Tensor torchY, long numDirections, long hiddenSize)
+            {
+                var shape = torchY.shape;
+                if (shape.Length != 3)
+                {
+                    throw new InvalidOperationException($"TorchSharp LSTM output must have rank 3. Got rank {shape.Length}.");
+                }
+
+                return torchY
+                    .reshape(new long[] { shape[0], shape[1], numDirections, hiddenSize })
+                    .permute(0, 2, 1, 3);
             }
 
             private static Tensor QuantizeLinearTensor(Tensor input, Tensor scale, Tensor? zeroPoint, long axis)
@@ -378,6 +423,157 @@ internal sealed class TorchModulePrinter
 
                 using var source = torch.tensor(typedTensor.Value.ToArray(), typedTensor.Shape, dtype: ScalarType.Float32, device: target.device).transpose(0, 1).contiguous();
                 target.detach().copy_(source);
+            }
+
+            private static void LoadOnnxLstmWeights(
+                IReadOnlyDictionary<string, Onnxify.OnnxTensor> tensors,
+                string wName,
+                string rName,
+                string? bName,
+                TorchModules.LSTM module,
+                long hiddenSize,
+                long inputSize,
+                long numDirections
+            )
+            {
+                var w = GetFloatTensor(tensors, wName);
+                var r = GetFloatTensor(tensors, rName);
+                var b = bName is null ? null : GetFloatTensor(tensors, bName);
+                var state = module.state_dict();
+
+                for (var direction = 0L; direction < numDirections; direction++)
+                {
+                    var suffix = direction == 1L ? "_reverse" : string.Empty;
+                    CopyOnnxLstmGateMatrix(
+                        w,
+                        direction,
+                        hiddenSize,
+                        inputSize,
+                        GetRequiredStateTensor(state, $"weight_ih_l0{suffix}")
+                    );
+                    CopyOnnxLstmGateMatrix(
+                        r,
+                        direction,
+                        hiddenSize,
+                        hiddenSize,
+                        GetRequiredStateTensor(state, $"weight_hh_l0{suffix}")
+                    );
+
+                    if (b is not null)
+                    {
+                        CopyOnnxLstmGateVector(
+                            b,
+                            direction,
+                            hiddenSize,
+                            offset: 0L,
+                            GetRequiredStateTensor(state, $"bias_ih_l0{suffix}")
+                        );
+                        CopyOnnxLstmGateVector(
+                            b,
+                            direction,
+                            hiddenSize,
+                            offset: 4L * hiddenSize,
+                            GetRequiredStateTensor(state, $"bias_hh_l0{suffix}")
+                        );
+                    }
+                }
+            }
+
+            private static Onnxify.OnnxTensor<float> GetFloatTensor(
+                IReadOnlyDictionary<string, Onnxify.OnnxTensor> tensors,
+                string name
+            )
+            {
+                if (!tensors.TryGetValue(name, out var tensor))
+                {
+                    throw new KeyNotFoundException($"The ONNX model does not contain initializer '{name}'.");
+                }
+
+                return tensor as Onnxify.OnnxTensor<float>
+                    ?? throw new InvalidOperationException($"Initializer '{name}' is not a float32 tensor.");
+            }
+
+            private static Tensor GetRequiredStateTensor(
+                IReadOnlyDictionary<string, Tensor> state,
+                string name
+            )
+            {
+                if (!state.TryGetValue(name, out var tensor) || tensor is null || tensor.IsInvalid)
+                {
+                    throw new KeyNotFoundException($"The TorchSharp LSTM state does not contain tensor '{name}'.");
+                }
+
+                return tensor;
+            }
+
+            private static void CopyOnnxLstmGateMatrix(
+                Onnxify.OnnxTensor<float> source,
+                long direction,
+                long hiddenSize,
+                long width,
+                Tensor target
+            )
+            {
+                var data = source.Value.ToArray();
+                var gateBlockLength = hiddenSize * width;
+                var reordered = ReorderOnnxLstmGateData(
+                    data,
+                    direction,
+                    gateBlockLength,
+                    directionStride: 4L * gateBlockLength,
+                    offset: 0L
+                );
+                using var tensor = torch.tensor(reordered, new long[] { 4L * hiddenSize, width }, dtype: ScalarType.Float32, device: target.device);
+                target.detach().copy_(tensor);
+            }
+
+            private static void CopyOnnxLstmGateVector(
+                Onnxify.OnnxTensor<float> source,
+                long direction,
+                long hiddenSize,
+                long offset,
+                Tensor target
+            )
+            {
+                var data = source.Value.ToArray();
+                var reordered = ReorderOnnxLstmGateData(
+                    data,
+                    direction,
+                    gateBlockLength: hiddenSize,
+                    directionStride: 8L * hiddenSize,
+                    offset
+                );
+                using var tensor = torch.tensor(reordered, new long[] { 4L * hiddenSize }, dtype: ScalarType.Float32, device: target.device);
+                target.detach().copy_(tensor);
+            }
+
+            private static float[] ReorderOnnxLstmGateData(
+                float[] source,
+                long direction,
+                long gateBlockLength,
+                long directionStride,
+                long offset
+            )
+            {
+                var directionOffset = (direction * directionStride) + offset;
+                var result = new float[checked((int)(4L * gateBlockLength))];
+
+                CopyGateBlock(source, result, directionOffset + 0L * gateBlockLength, 0L * gateBlockLength, gateBlockLength);
+                CopyGateBlock(source, result, directionOffset + 2L * gateBlockLength, 1L * gateBlockLength, gateBlockLength);
+                CopyGateBlock(source, result, directionOffset + 3L * gateBlockLength, 2L * gateBlockLength, gateBlockLength);
+                CopyGateBlock(source, result, directionOffset + 1L * gateBlockLength, 3L * gateBlockLength, gateBlockLength);
+                return result;
+            }
+
+            private static void CopyGateBlock(
+                float[] source,
+                float[] target,
+                long sourceOffset,
+                long targetOffset,
+                long length
+            )
+            {
+                Array.Copy(source, checked((int)sourceOffset), target, checked((int)targetOffset), checked((int)length));
             }
         }
         """;
@@ -649,6 +845,11 @@ internal sealed class TorchModulePrinter
     )
     {
         var input = values[node.Inputs[0]];
+        if (module.ForwardExpression is not null)
+        {
+            return string.Format(System.Globalization.CultureInfo.InvariantCulture, module.ForwardExpression, input);
+        }
+
         return module.Kind == TorchModuleNodeKind.Linear && module.TransposeInput
             ? $"{module.FieldName}.forward({input}.transpose(0, 1))"
             : $"{module.FieldName}.forward({input})";

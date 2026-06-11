@@ -5,7 +5,7 @@ Do not hand-edit files in this directory; rerun the generator instead.
 
 - Total reflected Onnxify operators: `473`
 - Operators with at least one Onnxify.TorchSharp converter path: `64`
-- Operators with at least one Onnxify.ModelGenerator TorchModule path: `7`
+- Operators with at least one Onnxify.ModelGenerator TorchModule path: `21`
 - Operator schema source: `src/Onnxify/Assets/onnx_operators.json`
 
 ## Table of Contents
@@ -21,18 +21,18 @@ Do not hand-edit files in this directory; rerun the generator instead.
 | Operator | Since | TorchSharp converter | ModelGenerator TorchModule | File |
 | --- | --- | --- | --- | --- |
 | Abs | 13 | no | no | [Abs](ai.onnx/Abs.md) |
-| Acos | 22 | no | no | [Acos](ai.onnx/Acos.md) |
-| Acosh | 22 | no | no | [Acosh](ai.onnx/Acosh.md) |
+| Acos | 22 | no | yes | [Acos](ai.onnx/Acos.md) |
+| Acosh | 22 | no | yes | [Acosh](ai.onnx/Acosh.md) |
 | Add | 14 | yes | no | [Add](ai.onnx/Add.md) |
 | Affine | 10 | no | no | [Affine](ai.onnx/Affine.md) |
 | AffineGrid | 20 | no | no | [AffineGrid](ai.onnx/AffineGrid.md) |
 | And | 7 | no | no | [And](ai.onnx/And.md) |
 | ArgMax | 13 | yes | no | [ArgMax](ai.onnx/ArgMax.md) |
 | ArgMin | 13 | yes | no | [ArgMin](ai.onnx/ArgMin.md) |
-| Asin | 22 | no | no | [Asin](ai.onnx/Asin.md) |
-| Asinh | 22 | no | no | [Asinh](ai.onnx/Asinh.md) |
-| Atan | 22 | no | no | [Atan](ai.onnx/Atan.md) |
-| Atanh | 22 | no | no | [Atanh](ai.onnx/Atanh.md) |
+| Asin | 22 | no | yes | [Asin](ai.onnx/Asin.md) |
+| Asinh | 22 | no | yes | [Asinh](ai.onnx/Asinh.md) |
+| Atan | 22 | no | yes | [Atan](ai.onnx/Atan.md) |
+| Atanh | 22 | no | yes | [Atanh](ai.onnx/Atanh.md) |
 | Attention | 24 | no | no | [Attention](ai.onnx/Attention.md) |
 | AveragePool | 22 | yes | no | [AveragePool](ai.onnx/AveragePool.md) |
 | AveragePoolGrad | 9 | no | no | [AveragePoolGrad](ai.onnx/AveragePoolGrad.md) |
@@ -95,7 +95,7 @@ Do not hand-edit files in this directory; rerun the generator instead.
 | GlobalLpPool | 22 | no | no | [GlobalLpPool](ai.onnx/GlobalLpPool.md) |
 | GlobalMaxPool | 22 | no | no | [GlobalMaxPool](ai.onnx/GlobalMaxPool.md) |
 | Greater | 13 | no | no | [Greater](ai.onnx/Greater.md) |
-| GreaterOrEqual | 16 | no | no | [GreaterOrEqual](ai.onnx/GreaterOrEqual.md) |
+| GreaterOrEqual | 16 | no | yes | [GreaterOrEqual](ai.onnx/GreaterOrEqual.md) |
 | GridSample | 22 | no | no | [GridSample](ai.onnx/GridSample.md) |
 | GroupNormalization | 21 | yes | no | [GroupNormalization](ai.onnx/GroupNormalization.md) |
 | HammingWindow | 17 | no | no | [HammingWindow](ai.onnx/HammingWindow.md) |
@@ -111,11 +111,11 @@ Do not hand-edit files in this directory; rerun the generator instead.
 | IsInf | 20 | no | no | [IsInf](ai.onnx/IsInf.md) |
 | IsNaN | 20 | no | no | [IsNaN](ai.onnx/IsNaN.md) |
 | LRN | 13 | no | no | [LRN](ai.onnx/LRN.md) |
-| LSTM | 22 | yes | no | [LSTM](ai.onnx/LSTM.md) |
+| LSTM | 22 | yes | yes | [LSTM](ai.onnx/LSTM.md) |
 | LayerNormalization | 17 | yes | no | [LayerNormalization](ai.onnx/LayerNormalization.md) |
 | LeakyRelu | 16 | yes | no | [LeakyRelu](ai.onnx/LeakyRelu.md) |
 | Less | 13 | no | no | [Less](ai.onnx/Less.md) |
-| LessOrEqual | 16 | no | no | [LessOrEqual](ai.onnx/LessOrEqual.md) |
+| LessOrEqual | 16 | no | yes | [LessOrEqual](ai.onnx/LessOrEqual.md) |
 | Log | 13 | yes | no | [Log](ai.onnx/Log.md) |
 | LogSoftmax | 13 | yes | no | [LogSoftmax](ai.onnx/LogSoftmax.md) |
 | Loop | 25 | no | no | [Loop](ai.onnx/Loop.md) |
@@ -123,7 +123,7 @@ Do not hand-edit files in this directory; rerun the generator instead.
 | LpPool | 22 | no | no | [LpPool](ai.onnx/LpPool.md) |
 | MatMul | 13 | yes | no | [MatMul](ai.onnx/MatMul.md) |
 | MatMulInteger | 10 | no | no | [MatMulInteger](ai.onnx/MatMulInteger.md) |
-| Max | 13 | no | no | [Max](ai.onnx/Max.md) |
+| Max | 13 | no | yes | [Max](ai.onnx/Max.md) |
 | MaxPool | 22 | yes | yes | [MaxPool](ai.onnx/MaxPool.md) |
 | MaxPoolGrad | 9 | no | no | [MaxPoolGrad](ai.onnx/MaxPoolGrad.md) |
 | MaxRoiPool | 22 | no | no | [MaxRoiPool](ai.onnx/MaxRoiPool.md) |
@@ -133,7 +133,7 @@ Do not hand-edit files in this directory; rerun the generator instead.
 | MelWeightMatrix | 17 | no | no | [MelWeightMatrix](ai.onnx/MelWeightMatrix.md) |
 | MemcpyFromHost | 1 | no | no | [MemcpyFromHost](ai.onnx/MemcpyFromHost.md) |
 | MemcpyToHost | 1 | no | no | [MemcpyToHost](ai.onnx/MemcpyToHost.md) |
-| Min | 13 | no | no | [Min](ai.onnx/Min.md) |
+| Min | 13 | no | yes | [Min](ai.onnx/Min.md) |
 | Mish | 22 | yes | no | [Mish](ai.onnx/Mish.md) |
 | Mod | 13 | no | no | [Mod](ai.onnx/Mod.md) |
 | Mul | 14 | yes | no | [Mul](ai.onnx/Mul.md) |
@@ -143,7 +143,7 @@ Do not hand-edit files in this directory; rerun the generator instead.
 | NegativeLogLikelihoodLoss | 22 | no | no | [NegativeLogLikelihoodLoss](ai.onnx/NegativeLogLikelihoodLoss.md) |
 | NonMaxSuppression | 11 | no | no | [NonMaxSuppression](ai.onnx/NonMaxSuppression.md) |
 | NonZero | 13 | no | no | [NonZero](ai.onnx/NonZero.md) |
-| Not | 1 | no | no | [Not](ai.onnx/Not.md) |
+| Not | 1 | no | yes | [Not](ai.onnx/Not.md) |
 | OneHot | 11 | no | no | [OneHot](ai.onnx/OneHot.md) |
 | Optional | 15 | no | no | [Optional](ai.onnx/Optional.md) |
 | OptionalGetElement | 18 | no | no | [OptionalGetElement](ai.onnx/OptionalGetElement.md) |
@@ -182,7 +182,7 @@ Do not hand-edit files in this directory; rerun the generator instead.
 | ReverseSequence | 10 | no | no | [ReverseSequence](ai.onnx/ReverseSequence.md) |
 | RoiAlign | 22 | no | no | [RoiAlign](ai.onnx/RoiAlign.md) |
 | RotaryEmbedding | 23 | no | no | [RotaryEmbedding](ai.onnx/RotaryEmbedding.md) |
-| Round | 22 | no | no | [Round](ai.onnx/Round.md) |
+| Round | 22 | no | yes | [Round](ai.onnx/Round.md) |
 | STFT | 17 | no | no | [STFT](ai.onnx/STFT.md) |
 | Scale | 10 | no | no | [Scale](ai.onnx/Scale.md) |
 | ScaledTanh | 10 | no | no | [ScaledTanh](ai.onnx/ScaledTanh.md) |
@@ -201,7 +201,7 @@ Do not hand-edit files in this directory; rerun the generator instead.
 | Shape | 25 | yes | no | [Shape](ai.onnx/Shape.md) |
 | Shrink | 9 | no | no | [Shrink](ai.onnx/Shrink.md) |
 | Sigmoid | 13 | yes | no | [Sigmoid](ai.onnx/Sigmoid.md) |
-| Sign | 13 | no | no | [Sign](ai.onnx/Sign.md) |
+| Sign | 13 | no | yes | [Sign](ai.onnx/Sign.md) |
 | SimplifiedLayerNormalization | 1 | no | no | [SimplifiedLayerNormalization](ai.onnx/SimplifiedLayerNormalization.md) |
 | Sin | 22 | no | no | [Sin](ai.onnx/Sin.md) |
 | Sinh | 22 | no | no | [Sinh](ai.onnx/Sinh.md) |

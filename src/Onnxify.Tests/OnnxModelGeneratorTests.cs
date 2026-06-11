@@ -218,6 +218,200 @@ public sealed class OnnxModelGeneratorTests
     }
 
     [Fact]
+    public void Generate_WithTorchModuleImportType_AllowsInt64RuntimeInput()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, "int64-input.onnx");
+
+        try
+        {
+            var model = new ModelProto
+            {
+                Graph = new GraphProto()
+            };
+            model.Graph.Input.Add(CreateTensorValueInfo("tokens", TensorProto.Types.DataType.Int64, 1L, 4L));
+            model.Graph.Output.Add(CreateTensorValueInfo("output", TensorProto.Types.DataType.Float, 1L, 4L));
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "cast_tokens",
+                OpType = "Cast",
+                Input = { "tokens" },
+                Output = { "output" },
+                Attribute =
+                {
+                    new AttributeProto { Name = "to", Type = AttributeProto.Types.AttributeType.Int, I = (long)TensorProto.Types.DataType.Float },
+                },
+            });
+            File.WriteAllBytes(modelPath, model.ToByteArray());
+
+            var generatedSource = GenerateSingleTorchModuleSource(tempRoot, modelPath);
+
+            Assert.Contains("public override Tensor forward(Tensor tokens)", generatedSource);
+            Assert.Contains(".to(ScalarType.Float32)", generatedSource);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(9)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(5)]
+    [InlineData(6)]
+    [InlineData(7)]
+    [InlineData(10)]
+    [InlineData(16)]
+    [InlineData(1)]
+    [InlineData(11)]
+    [InlineData(14)]
+    [InlineData(15)]
+    public void Generate_WithTorchModuleImportType_AllowsTorchSharpRuntimeTensorTypes(int dataTypeValue)
+    {
+        var dataType = (TensorProto.Types.DataType)dataTypeValue;
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, $"{dataType.ToString().ToLowerInvariant()}-identity.onnx");
+
+        try
+        {
+            var model = new ModelProto
+            {
+                Graph = new GraphProto()
+            };
+            model.Graph.Input.Add(CreateTensorValueInfo("input", dataType, 1L, 4L));
+            model.Graph.Output.Add(CreateTensorValueInfo("output", dataType, 1L, 4L));
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "identity",
+                OpType = "Identity",
+                Input = { "input" },
+                Output = { "output" },
+            });
+            File.WriteAllBytes(modelPath, model.ToByteArray());
+
+            var generatedSource = GenerateSingleTorchModuleSource(tempRoot, modelPath);
+
+            Assert.Contains("public override Tensor forward(Tensor input)", generatedSource);
+            Assert.Contains("var output = input;", generatedSource);
+            Assert.Contains("return output;", generatedSource);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(10, "ScalarType.Float16")]
+    [InlineData(16, "ScalarType.BFloat16")]
+    [InlineData(14, "ScalarType.ComplexFloat32")]
+    [InlineData(15, "ScalarType.ComplexFloat64")]
+    public void Generate_WithTorchModuleImportType_EmitsTorchSharpCastRuntimeTensorTypes(
+        int outputDataTypeValue,
+        string expectedScalarType
+    )
+    {
+        var outputDataType = (TensorProto.Types.DataType)outputDataTypeValue;
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, $"{outputDataType.ToString().ToLowerInvariant()}-cast.onnx");
+
+        try
+        {
+            var model = new ModelProto
+            {
+                Graph = new GraphProto()
+            };
+            model.Graph.Input.Add(CreateTensorValueInfo("input", TensorProto.Types.DataType.Float, 1L, 4L));
+            model.Graph.Output.Add(CreateTensorValueInfo("output", outputDataType, 1L, 4L));
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "cast",
+                OpType = "Cast",
+                Input = { "input" },
+                Output = { "output" },
+                Attribute =
+                {
+                    new AttributeProto { Name = "to", Type = AttributeProto.Types.AttributeType.Int, I = (long)outputDataType },
+                },
+            });
+            File.WriteAllBytes(modelPath, model.ToByteArray());
+
+            var generatedSource = GenerateSingleTorchModuleSource(tempRoot, modelPath);
+
+            Assert.Contains($".to({expectedScalarType})", generatedSource);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Generate_WithTorchModuleImportType_EmitsLstmModuleFields()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, "lstm.onnx");
+
+        try
+        {
+            var model = new ModelProto
+            {
+                Graph = new GraphProto()
+            };
+            model.Graph.Input.Add(CreateTensorValueInfo("input", TensorProto.Types.DataType.Float, 3L, 2L, 4L));
+            model.Graph.Output.Add(CreateTensorValueInfo("output", TensorProto.Types.DataType.Float, 3L, 1L, 2L, 5L));
+            AddFloatInitializer(model.Graph, "lstm_W", [1L, 20L, 4L], Enumerable.Repeat(0.01f, 80));
+            AddFloatInitializer(model.Graph, "lstm_R", [1L, 20L, 5L], Enumerable.Repeat(0.02f, 100));
+            AddFloatInitializer(model.Graph, "lstm_B", [1L, 40L], Enumerable.Repeat(0.0f, 40));
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "lstm",
+                OpType = "LSTM",
+                Input = { "input", "lstm_W", "lstm_R", "lstm_B" },
+                Output = { "output", "output_h", "output_c" },
+                Attribute =
+                {
+                    new AttributeProto { Name = "hidden_size", Type = AttributeProto.Types.AttributeType.Int, I = 5L },
+                },
+            });
+            File.WriteAllBytes(modelPath, model.ToByteArray());
+
+            var generatedSource = GenerateSingleTorchModuleSource(tempRoot, modelPath);
+
+            Assert.Contains("private readonly TorchModules.LSTM _lstm;", generatedSource);
+            Assert.Contains("LSTM(4, 5, numLayers: 1, bidirectional: false, batchFirst: false)", generatedSource);
+            Assert.Contains("LoadOnnxLstmWeights(tensors, \"lstm_W\", \"lstm_R\", \"lstm_B\", _lstm, 5L, 4L, 1L);", generatedSource);
+            Assert.Contains("ToOnnxLstmY(_lstm.forward(input).Item1, 1L, 5L)", generatedSource);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void Generate_WithTorchModuleImportType_EmitsCommonUnaryMathOperators()
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
@@ -437,6 +631,88 @@ public sealed class OnnxModelGeneratorTests
             Assert.Contains(".reciprocal()", generatedSource);
             Assert.Contains("torch.nn.functional.elu", generatedSource);
             Assert.Contains(".clamp(0.0f, 1.0f)", generatedSource);
+
+            void AddUnary(string name, string opType, string input, string output)
+            {
+                model.Graph.Node.Add(new NodeProto
+                {
+                    Name = name,
+                    OpType = opType,
+                    Input = { input },
+                    Output = { output },
+                });
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Generate_WithTorchModuleImportType_EmitsAdditionalUnaryAndComparisonOperators()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, "additional-unary-comparison.onnx");
+
+        try
+        {
+            var model = new ModelProto
+            {
+                Graph = new GraphProto()
+            };
+            model.Graph.Input.Add(CreateTensorValueInfo("input", TensorProto.Types.DataType.Float, 1L, 2L));
+            model.Graph.Output.Add(CreateTensorValueInfo("output", TensorProto.Types.DataType.Float, 1L, 2L));
+            AddFloatInitializer(model.Graph, "threshold", [1L, 2L], [0.0f, 1.0f]);
+
+            AddUnary("acos", "Acos", "input", "acos_out");
+            AddUnary("acosh", "Acosh", "acos_out", "acosh_out");
+            AddUnary("asin", "Asin", "acosh_out", "asin_out");
+            AddUnary("asinh", "Asinh", "asin_out", "asinh_out");
+            AddUnary("atan", "Atan", "asinh_out", "atan_out");
+            AddUnary("atanh", "Atanh", "atan_out", "atanh_out");
+            AddUnary("round", "Round", "atanh_out", "round_out");
+            AddUnary("sign", "Sign", "round_out", "sign_out");
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "greater_or_equal",
+                OpType = "GreaterOrEqual",
+                Input = { "sign_out", "threshold" },
+                Output = { "greater_or_equal_out" },
+            });
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "less_or_equal",
+                OpType = "LessOrEqual",
+                Input = { "sign_out", "threshold" },
+                Output = { "less_or_equal_out" },
+            });
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "where",
+                OpType = "Where",
+                Input = { "greater_or_equal_out", "sign_out", "threshold" },
+                Output = { "output" },
+            });
+            File.WriteAllBytes(modelPath, model.ToByteArray());
+
+            var generatedSource = GenerateSingleTorchModuleSource(tempRoot, modelPath);
+
+            Assert.Contains(".acos()", generatedSource);
+            Assert.Contains(".acosh()", generatedSource);
+            Assert.Contains(".asin()", generatedSource);
+            Assert.Contains(".asinh()", generatedSource);
+            Assert.Contains(".atan()", generatedSource);
+            Assert.Contains(".atanh()", generatedSource);
+            Assert.Contains(".round()", generatedSource);
+            Assert.Contains(".sign()", generatedSource);
+            Assert.Contains(".ge(_threshold)", generatedSource);
+            Assert.Contains(".le(_threshold)", generatedSource);
 
             void AddUnary(string name, string opType, string input, string output)
             {

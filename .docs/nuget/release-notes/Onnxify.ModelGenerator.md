@@ -1,7 +1,9 @@
 ## 0.2.0
 
 - Aligned the package version with the 0.2.0 Onnxify package family release.
-- Added `OnnxifyModelImportType`, with `OnnxRuntimeInference` as the default and an opt-in `TorchModule` mode that emits a graph-shaped TorchSharp module for supported single-input/single-output float32 ONNX graphs.
+- Added `OnnxifyModelImportType`, with `OnnxRuntimeInference` as the default and an opt-in `TorchModule` mode that emits a graph-shaped TorchSharp module for supported single-input/single-output ONNX graphs.
+- Added TorchModule import support for ONNX `Acos`, `Acosh`, `Asin`, `Asinh`, `Atan`, `Atanh`, `Round`, `Sign`, `GreaterOrEqual`, and `LessOrEqual` operators.
+- Added TorchModule import support for runtime input and output tensor data types that map to TorchSharp `ScalarType`, plus ONNX `LSTM`, `Not`, `Max`, and `Min`, including LSTM gate-order conversion when loading ONNX weights into TorchSharp.
 
 ## 0.1.2
 
