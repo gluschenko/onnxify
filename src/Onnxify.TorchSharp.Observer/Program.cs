@@ -31,8 +31,8 @@ internal static partial class Program
         CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
         Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
         Console.Title = nameof(Onnxify);
-        Console.InputEncoding = Encoding.Unicode;
-        Console.OutputEncoding = Encoding.Unicode;
+        Console.InputEncoding = Encoding.UTF8;
+        Console.OutputEncoding = Encoding.UTF8;
 
         var repoRoot = FindRepositoryRoot(AppContext.BaseDirectory)
             ?? throw new DirectoryNotFoundException("Repository root was not found.");
@@ -53,10 +53,11 @@ internal static partial class Program
 
         var operators = LoadOperators(opsDirectory);
         var candidates = LoadTorchSharpCandidates();
-        var coveredOperators = LoadCoveredOperators();
+        var torchSharpCoveredOperators = LoadTorchSharpCoveredOperators();
+        var modelGeneratorCoveredOperators = LoadModelGeneratorCoveredOperators();
 
         var rows = operators
-            .Select(op => CreateRow(op, candidates, coveredOperators))
+            .Select(op => CreateRow(op, candidates, torchSharpCoveredOperators, modelGeneratorCoveredOperators))
             .OrderBy(row => row.Operator, StringComparer.Ordinal)
             .ToArray();
 
@@ -195,7 +196,7 @@ internal static partial class Program
         return candidates.Values.ToArray();
     }
 
-    private static IReadOnlySet<string> LoadCoveredOperators()
+    private static IReadOnlySet<string> LoadTorchSharpCoveredOperators()
     {
         const BindingFlags ALL_MEMBERS =
             BindingFlags.Public |
@@ -233,6 +234,61 @@ internal static partial class Program
         return coveredOperators;
     }
 
+    private static IReadOnlySet<string> LoadModelGeneratorCoveredOperators()
+    {
+        const BindingFlags ALL_MEMBERS =
+            BindingFlags.Public |
+            BindingFlags.NonPublic |
+            BindingFlags.Static |
+            BindingFlags.Instance;
+
+        var assembly = typeof(global::Onnxify.ModelGenerator.TorchSharpOpAttribute).Assembly;
+        var coveredOperators = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var type in GetLoadableTypes(assembly))
+        {
+            foreach (global::Onnxify.ModelGenerator.TorchSharpOpAttribute attribute in
+                type.GetCustomAttributes<global::Onnxify.ModelGenerator.TorchSharpOpAttribute>(inherit: false))
+            {
+                AddModelGeneratorCoverage(coveredOperators, attribute.Name);
+            }
+
+            foreach (var method in type.GetMethods(ALL_MEMBERS))
+            {
+                foreach (global::Onnxify.ModelGenerator.TorchSharpOpAttribute attribute in
+                    method.GetCustomAttributes<global::Onnxify.ModelGenerator.TorchSharpOpAttribute>(inherit: false))
+                {
+                    AddModelGeneratorCoverage(coveredOperators, attribute.Name);
+                }
+            }
+        }
+
+        return coveredOperators;
+    }
+
+    private static IEnumerable<Type> GetLoadableTypes(Assembly assembly)
+    {
+        try
+        {
+            return assembly.GetTypes();
+        }
+        catch (ReflectionTypeLoadException ex)
+        {
+            return ex.Types.Where(static type => type is not null)!;
+        }
+    }
+
+    private static void AddModelGeneratorCoverage(ISet<string> coveredOperators, string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+
+        coveredOperators.Add(name);
+        coveredOperators.Add(NormalizeTorchSharpName(name));
+    }
+
     private static bool IsModuleType(Type type)
     {
         for (var current = type; current is not null; current = current.BaseType)
@@ -263,17 +319,23 @@ internal static partial class Program
     private static ReportRow CreateRow(
         OperatorRecord op,
         IReadOnlyList<TorchSharpCandidate> candidates,
-        IReadOnlySet<string> coveredOperators)
+        IReadOnlySet<string> torchSharpCoveredOperators,
+        IReadOnlySet<string> modelGeneratorCoveredOperators)
     {
         string normalizedOperator = NormalizeOperatorName(op.Name, op.SourceModule);
         TorchSharpCandidate? match = candidates.FirstOrDefault(candidate =>
             string.Equals(candidate.NormalizedName, normalizedOperator, StringComparison.OrdinalIgnoreCase));
+        var modelGeneratorCovered =
+            modelGeneratorCoveredOperators.Contains(op.Name) ||
+            modelGeneratorCoveredOperators.Contains(normalizedOperator) ||
+            (match is not null && modelGeneratorCoveredOperators.Contains(match.NormalizedName));
 
         return new ReportRow(
             op.Name,
             match?.Path ?? string.Empty,
             match is not null,
-            coveredOperators.Contains(op.Name));
+            torchSharpCoveredOperators.Contains(op.Name),
+            modelGeneratorCovered);
     }
 
     private static string NormalizeOperatorName(string operatorName, string sourceModule)
@@ -341,16 +403,25 @@ internal static partial class Program
         ReportRow[] rowArray = rows.ToArray();
         int total = rowArray.Length;
         int foundCount = rowArray.Count(static row => row.Found);
-        int coveredCount = rowArray.Count(static row => row.Covered);
+        int torchSharpCoveredCount = rowArray.Count(static row => row.TorchSharpCovered);
+        int modelGeneratorCoveredCount = rowArray.Count(static row => row.ModelGeneratorCovered);
 
         var builder = new StringBuilder();
         builder.AppendLine("# TorchSharp operator coverage");
         builder.AppendLine();
         builder.AppendLine($"Found: {FormatPercentage(foundCount, total)} ({foundCount}/{total})");
-        builder.AppendLine($"Coverage: {FormatPercentage(coveredCount, total)} ({coveredCount}/{total})");
+        builder.AppendLine($"Onnxify.TorchSharp coverage: {FormatPercentage(torchSharpCoveredCount, total)} ({torchSharpCoveredCount}/{total})");
+        builder.AppendLine($"Onnxify.ModelGenerator coverage: {FormatPercentage(modelGeneratorCoveredCount, total)} ({modelGeneratorCoveredCount}/{total})");
         builder.AppendLine();
-        builder.AppendLine("| ONNXScript operator | TorchSharp module | Found | Coverage |");
-        builder.AppendLine("| --- | --- | --- | --- |");
+        builder.AppendLine("## Coverage Columns");
+        builder.AppendLine();
+        builder.AppendLine("- `Found` means the observer found a likely matching public TorchSharp API or module for the ONNXScript Torch operator name. This is a discovery signal, not an Onnxify implementation guarantee.");
+        builder.AppendLine("- `Onnxify.TorchSharp coverage` means `Onnxify.TorchSharp` declares exporter support for that Torch operator through `[TorchOp(...)]`, so TorchSharp code can be exported to ONNX through that converter path.");
+        builder.AppendLine("- `Onnxify.ModelGenerator coverage` means `Onnxify.ModelGenerator` declares reverse TorchModule reconstruction support through `[TorchSharpOp(...)]` for the matched TorchSharp API/module name or operator name, so an ONNX graph pattern can be regenerated as a TorchSharp module for that family.");
+        builder.AppendLine("- `✅` means the category is covered/found. `❌` means it is not covered/found.");
+        builder.AppendLine();
+        builder.AppendLine("| ONNXScript operator | TorchSharp module | Found | Onnxify.TorchSharp coverage | Onnxify.ModelGenerator coverage |");
+        builder.AppendLine("| --- | --- | --- | --- | --- |");
 
         foreach (ReportRow row in rowArray)
         {
@@ -360,9 +431,11 @@ internal static partial class Program
                 .Append(" | ")
                 .Append(EscapeMarkdown(row.TorchSharpModule))
                 .Append(" | ")
-                .Append(row.Found ? "&#10003;" : string.Empty)
+                .Append(FormatMarker(row.Found))
                 .Append(" | ")
-                .Append(row.Covered ? "&#10003;" : string.Empty)
+                .Append(FormatMarker(row.TorchSharpCovered))
+                .Append(" | ")
+                .Append(FormatMarker(row.ModelGeneratorCovered))
                 .AppendLine(" |");
         }
 
@@ -377,6 +450,11 @@ internal static partial class Program
         }
 
         return (count * 100.0 / total).ToString("F2", CultureInfo.InvariantCulture) + "%";
+    }
+
+    private static string FormatMarker(bool value)
+    {
+        return value ? "✅" : "❌";
     }
 
     private static string EscapeMarkdown(string value)
@@ -394,5 +472,11 @@ internal static partial class Program
 
     private sealed record TorchSharpCandidate(string NormalizedName, string Path);
 
-    private sealed record ReportRow(string Operator, string TorchSharpModule, bool Found, bool Covered);
+    private sealed record ReportRow(
+        string Operator,
+        string TorchSharpModule,
+        bool Found,
+        bool TorchSharpCovered,
+        bool ModelGeneratorCovered
+    );
 }

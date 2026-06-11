@@ -645,6 +645,43 @@ public class OnnxGraph
         return RemoveNode(node.Name);
     }
 
+    /// <summary>
+    /// Reorders graph nodes, initializers, loose edges, and value-info entries into a deterministic topological order.
+    /// </summary>
+    /// <remarks>
+    /// The method does not rename graph members and does not reorder the schema-defined inputs or outputs on individual nodes.
+    /// Sorting is based on producer-consumer dependencies first, then on structural metadata such as operator type, attributes,
+    /// tensor type, and shape. Existing graph order is used only as the final tie-breaker for structurally indistinguishable
+    /// graph members.
+    /// </remarks>
+    public void SortTopologically()
+    {
+        var sortedNodes = GetTopologicallySortedNodes();
+        Reorder(_nodes, sortedNodes);
+
+        var edgeOrder = BuildEdgeOrder(sortedNodes);
+        Reorder(_initializers, _initializers
+            .Select((value, index) => new OrderedMember<OnnxTensor>(value, index))
+            .OrderBy(x => GetOrder(edgeOrder, x.Value.Name))
+            .ThenBy(x => GetTensorSignature(x.Value), StringComparer.Ordinal)
+            .ThenBy(x => x.Index)
+            .Select(x => x.Value));
+
+        Reorder(_values, _values
+            .Select((value, index) => new OrderedMember<OnnxValue>(value, index))
+            .OrderBy(x => GetValueCategory(x.Value.Name))
+            .ThenBy(x => GetOrder(edgeOrder, x.Value.Name))
+            .ThenBy(x => GetValueSignature(x.Value), StringComparer.Ordinal)
+            .ThenBy(x => x.Index)
+            .Select(x => x.Value));
+
+        Reorder(_edges, _edges
+            .Select((value, index) => new OrderedMember<OnnxEdge>(value, index))
+            .OrderBy(x => GetOrder(edgeOrder, x.Value.Name))
+            .ThenBy(x => x.Index)
+            .Select(x => x.Value));
+    }
+
     private OnnxValue GetRegisteredValue(string name)
     {
         if (_values.TryGetValue(name, out var registeredValue))
@@ -695,6 +732,182 @@ public class OnnxGraph
         }
     }
 
+    private IReadOnlyList<OnnxNode> GetTopologicallySortedNodes()
+    {
+        var originalIndexes = _nodes
+            .Select((node, index) => (node, index))
+            .ToDictionary(x => x.node, x => x.index);
+        var producerByValue = new Dictionary<string, OnnxNode>(StringComparer.Ordinal);
+
+        foreach (var node in _nodes)
+        {
+            foreach (var output in node.Outputs)
+            {
+                if (!producerByValue.TryAdd(output.Name, node))
+                {
+                    throw new InvalidOperationException($"Graph value '{output.Name}' is produced by more than one node.");
+                }
+            }
+        }
+
+        var depthByNode = new Dictionary<OnnxNode, int>();
+        var visiting = new HashSet<OnnxNode>();
+        foreach (var node in _nodes)
+        {
+            GetDepth(node);
+        }
+
+        return _nodes
+            .OrderBy(node => depthByNode[node])
+            .ThenBy(GetNodeStructuralSignature, StringComparer.Ordinal)
+            .ThenBy(node => originalIndexes[node])
+            .ToArray();
+
+        int GetDepth(OnnxNode node)
+        {
+            if (depthByNode.TryGetValue(node, out var depth))
+            {
+                return depth;
+            }
+
+            if (!visiting.Add(node))
+            {
+                throw new InvalidOperationException("Graph contains a cycle and cannot be sorted topologically.");
+            }
+
+            depth = 0;
+            foreach (var input in node.Inputs)
+            {
+                if (producerByValue.TryGetValue(input.Name, out var producer))
+                {
+                    depth = Math.Max(depth, GetDepth(producer) + 1);
+                }
+            }
+
+            visiting.Remove(node);
+            depthByNode[node] = depth;
+            return depth;
+        }
+    }
+
+    private Dictionary<string, int> BuildEdgeOrder(IReadOnlyList<OnnxNode> nodes)
+    {
+        var order = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        foreach (var node in nodes)
+        {
+            foreach (var input in node.Inputs)
+            {
+                Add(input.Name);
+            }
+
+            foreach (var output in node.Outputs)
+            {
+                Add(output.Name);
+            }
+        }
+
+        return order;
+
+        void Add(string name)
+        {
+            if (!order.ContainsKey(name))
+            {
+                order[name] = order.Count;
+            }
+        }
+    }
+
+    private int GetValueCategory(string name)
+    {
+        if (_inputs.Contains(name))
+        {
+            return 0;
+        }
+
+        if (_outputs.Contains(name))
+        {
+            return 2;
+        }
+
+        return 1;
+    }
+
+    private static int GetOrder(IReadOnlyDictionary<string, int> order, string name)
+    {
+        return order.TryGetValue(name, out var value) ? value : int.MaxValue;
+    }
+
+    private static string GetNodeStructuralSignature(OnnxNode node)
+    {
+        var attributes = string.Join(
+            ";",
+            node.Attributes
+                .Select(GetAttributeSignature)
+                .OrderBy(static x => x, StringComparer.Ordinal));
+
+        return string.Join(
+            "|",
+            node.Domain,
+            node.OpType,
+            node.Inputs.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            node.Outputs.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            attributes);
+    }
+
+    private static string GetAttributeSignature(OnnxAttribute attribute)
+    {
+        var value = attribute.GetValue();
+        return $"{attribute.Name}:{value?.GetType().FullName}:{FormatAttributeValue(value)}";
+    }
+
+    private static string FormatAttributeValue(object? value)
+    {
+        if (value is null)
+        {
+            return string.Empty;
+        }
+
+        if (value is System.Collections.IEnumerable enumerable && value is not string)
+        {
+            return string.Join(",", enumerable.Cast<object>().Select(FormatAttributeValue));
+        }
+
+        return Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty;
+    }
+
+    private static string GetTensorSignature(OnnxTensor tensor)
+    {
+        return $"{tensor.DataType.FullName}[{string.Join(",", tensor.Shape)}]";
+    }
+
+    private static string GetValueSignature(OnnxValue value)
+    {
+        return $"{value.GetType().FullName}:{value.Type}";
+    }
+
+    private static void Reorder<T>(LazyDictionary<string, T> collection, IEnumerable<T> values) where T : IOnnxGraphEdge
+    {
+        var sorted = values.ToArray();
+        collection.Clear();
+
+        foreach (var value in sorted)
+        {
+            collection.Add(value);
+        }
+    }
+
+    private static void Reorder(LazyDictionary<string, OnnxNode> collection, IEnumerable<OnnxNode> values)
+    {
+        var sorted = values.ToArray();
+        collection.Clear();
+
+        foreach (var value in sorted)
+        {
+            collection.Add(value);
+        }
+    }
+
     internal GraphProto ToProto()
     {
         var newGraph = _graph.Clone();
@@ -736,6 +949,8 @@ public class OnnxGraph
             ]
             """;
     }
+
+    private readonly record struct OrderedMember<T>(T Value, int Index);
 }
 
 /// <summary>

@@ -5,9 +5,11 @@
                                  MetadataName="OnnxifyModelClassName" />
     <CompilerVisibleItemMetadata Include="AdditionalFiles"
                                  MetadataName="OnnxifyModelNamespace" />
+    <CompilerVisibleItemMetadata Include="AdditionalFiles"
+                                 MetadataName="OnnxifyModelImportType" />
 
     <AdditionalFiles Include="@(OnnxModel)"
-                     KeepMetadata="OnnxifyModelClassName;OnnxifyModelNamespace" />
+                     KeepMetadata="OnnxifyModelClassName;OnnxifyModelNamespace;OnnxifyModelImportType" />
 
     <None Update="@(OnnxModel)">
       <CopyToOutputDirectory Condition="'%(OnnxModel.CopyToOutputDirectory)' != ''">%(OnnxModel.CopyToOutputDirectory)</CopyToOutputDirectory>

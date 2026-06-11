@@ -5,6 +5,10 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Onnx;
+using Onnxify.ModelGenerator.Services.TorchModuleInlineOperators;
+using Onnxify.ModelGenerator.Services;
+using Onnxify.ModelGenerator.Services.TorchModuleOperators;
+using static Onnxify.ModelGenerator.Helpers.TextHelper;
 
 namespace Onnxify.ModelGenerator;
 
@@ -20,6 +24,10 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
     private const string GLOBAL_ASSEMBLY_NAME_KEY = "build_property.AssemblyName";
     private const string ADDITIONAL_FILE_CLASS_NAME_KEY = "build_metadata.additionalfiles.OnnxifyModelClassName";
     private const string ADDITIONAL_FILE_NAMESPACE_KEY = "build_metadata.additionalfiles.OnnxifyModelNamespace";
+    private const string ADDITIONAL_FILE_IMPORT_TYPE_KEY = "build_metadata.additionalfiles.OnnxifyModelImportType";
+
+    private static readonly ImmutableDictionary<string, TorchModuleInlineOperator> _torchModuleInlineOperators = TorchModuleInlineOperatorRegistry.Create();
+    private static readonly ImmutableDictionary<string, TorchModuleOperator> _torchModuleOperators = TorchModuleOperatorRegistry.Create();
 
     private static readonly DiagnosticDescriptor _invalidModelDescriptor = new(
         id: "OMG001",
@@ -54,6 +62,24 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         messageFormat: "Model '{0}' references external tensor data. The generated wrapper can load the .onnx file, but runtime inference also requires any sibling external data files to be deployed alongside it.",
         category: "Onnxify.ModelGenerator",
         defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true
+    );
+
+    private static readonly DiagnosticDescriptor _invalidImportTypeDescriptor = new(
+        id: "OMG005",
+        title: "Invalid ONNX model import type",
+        messageFormat: "Model '{0}' uses invalid OnnxifyModelImportType value '{1}'. Supported values are OnnxRuntimeInference and TorchModule.",
+        category: "Onnxify.ModelGenerator",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
+
+    private static readonly DiagnosticDescriptor _unsupportedTorchModuleDescriptor = new(
+        id: "OMG006",
+        title: "Unsupported ONNX graph for TorchModule generation",
+        messageFormat: "Model '{0}' cannot generate a TorchModule: {1}",
+        category: "Onnxify.ModelGenerator",
+        defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true
     );
 
@@ -127,50 +153,59 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
 
         var namespaceName = ResolveNamespace(file, optionsProvider);
         var className = ResolveClassName(file, optionsProvider);
+        var importTypes = ResolveImportTypes(file, optionsProvider, diagnostics);
         var projectRelativePath = ResolveProjectRelativePath(file.Path, optionsProvider);
+
+        if (importTypes == ModelImportType.None)
+        {
+            return new ModelAnalysisResult(null, diagnostics.ToImmutableArray());
+        }
 
         var inputPropertyNames = new HashSet<string>(StringComparer.Ordinal);
         var outputPropertyNames = new HashSet<string>(StringComparer.Ordinal);
         var inputMethodParameterNames = new HashSet<string>(StringComparer.Ordinal);
 
         var inputs = new List<ModelTensorContract>();
-        foreach (var input in graph?.Input ?? Enumerable.Empty<ValueInfoProto>())
-        {
-            if (!TryCreateTensorContract(
-                ownerFileName: fileName,
-                valueInfo: input,
-                kind: "input",
-                hasDefaultInitializer: initializerNames.Contains(input.Name),
-                usedPropertyNames: inputPropertyNames,
-                usedMethodParameterNames: inputMethodParameterNames,
-                diagnostics: diagnostics,
-                contract: out var contract
-            ))
-            {
-                return new ModelAnalysisResult(null, diagnostics.ToImmutableArray());
-            }
-
-            inputs.Add(contract ?? throw new InvalidOperationException("Failed to create input tensor contract."));
-        }
-
         var outputs = new List<ModelTensorContract>();
-        foreach (var output in graph?.Output ?? Enumerable.Empty<ValueInfoProto>())
+        if (importTypes.HasFlag(ModelImportType.OnnxRuntimeInference))
         {
-            if (!TryCreateTensorContract(
-                ownerFileName: fileName,
-                valueInfo: output,
-                kind: "output",
-                hasDefaultInitializer: false,
-                usedPropertyNames: outputPropertyNames,
-                usedMethodParameterNames: null,
-                diagnostics: diagnostics,
-                contract: out var contract
-            ))
+            foreach (var input in graph?.Input ?? Enumerable.Empty<ValueInfoProto>())
             {
-                return new ModelAnalysisResult(null, diagnostics.ToImmutableArray());
+                if (!TryCreateTensorContract(
+                    ownerFileName: fileName,
+                    valueInfo: input,
+                    kind: "input",
+                    hasDefaultInitializer: initializerNames.Contains(input.Name),
+                    usedPropertyNames: inputPropertyNames,
+                    usedMethodParameterNames: inputMethodParameterNames,
+                    diagnostics: diagnostics,
+                    contract: out var contract
+                ))
+                {
+                    return new ModelAnalysisResult(null, diagnostics.ToImmutableArray());
+                }
+
+                inputs.Add(contract ?? throw new InvalidOperationException("Failed to create input tensor contract."));
             }
 
-            outputs.Add(contract ?? throw new InvalidOperationException("Failed to create output tensor contract."));
+            foreach (var output in graph?.Output ?? Enumerable.Empty<ValueInfoProto>())
+            {
+                if (!TryCreateTensorContract(
+                    ownerFileName: fileName,
+                    valueInfo: output,
+                    kind: "output",
+                    hasDefaultInitializer: false,
+                    usedPropertyNames: outputPropertyNames,
+                    usedMethodParameterNames: null,
+                    diagnostics: diagnostics,
+                    contract: out var contract
+                ))
+                {
+                    return new ModelAnalysisResult(null, diagnostics.ToImmutableArray());
+                }
+
+                outputs.Add(contract ?? throw new InvalidOperationException("Failed to create output tensor contract."));
+            }
         }
 
         if (graph?.Initializer.Any(HasExternalData) == true)
@@ -184,13 +219,27 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             );
         }
 
+        TorchModuleGenerationSpecification? torchModule = null;
+        if (importTypes.HasFlag(ModelImportType.TorchModule))
+        {
+            var canonicalModel = model.Clone();
+            SortGraphTopologically(canonicalModel.Graph);
+            torchModule = AnalyzeTorchModuleGraph(fileName, canonicalModel, diagnostics);
+            if (torchModule is null)
+            {
+                return new ModelAnalysisResult(null, diagnostics.ToImmutableArray());
+            }
+        }
+
         var specification = new ModelGenerationSpecification(
             fileName,
             projectRelativePath,
             namespaceName,
             className,
+            importTypes,
             inputs.ToImmutableArray(),
-            outputs.ToImmutableArray()
+            outputs.ToImmutableArray(),
+            torchModule
         );
 
         return new ModelAnalysisResult(specification, diagnostics.ToImmutableArray());
@@ -240,477 +289,17 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
                 continue;
             }
 
-            context.AddSource($"{specification.ClassName}.g.cs", GenerateSource(specification));
-        }
-    }
-
-    private static string GenerateSource(ModelGenerationSpecification specification)
-    {
-        var inputTypeName = $"{specification.ClassName}Inputs";
-        var outputTypeName = $"{specification.ClassName}Outputs";
-
-        return $$"""
-        // <auto-generated/>
-        #nullable enable
-        
-        using System;
-        using System.Collections.Generic;
-        using System.IO;
-        using Microsoft.ML.OnnxRuntime;
-        using Microsoft.ML.OnnxRuntime.Tensors;
-
-        namespace {{specification.NamespaceName}}
-        {
-            {{Indent(BuildWrapperType(specification, inputTypeName, outputTypeName), 1)}}
-
-            {{Indent(BuildInputType(specification, inputTypeName), 1)}}
-
-            {{Indent(BuildOutputType(specification, outputTypeName), 1)}}
-        }
-
-        #nullable restore
-        """;
-    }
-
-    private static string BuildInputType(
-        ModelGenerationSpecification specification,
-        string inputTypeName
-    )
-    {
-        var props = specification.Inputs
-            .Select(static input =>
+            if (specification.ImportTypes.HasFlag(ModelImportType.OnnxRuntimeInference))
             {
-                return $$"""
-                {{BuildInputPropertyDocumentation(input)}}
-                public {{(input.IsRequired ? "required " : string.Empty)}}Tensor<{{input.ElementClrTypeName}}>{{(input.IsRequired ? string.Empty : "?")}} {{input.PropertyName}} { get; init; }
-                """;
-            })
-            .ToArray();
-
-        var code = string.Join("\n\n", props);
-
-        return $$"""
-        {{BuildTensorCollectionTypeDocumentation(
-            summary: $"Collects the tensors supplied to {specification.ClassName}.",
-            tensors: specification.Inputs,
-            roleLabel: "Input property"
-        )}}
-        public sealed class {{inputTypeName}}
-        {
-            {{Indent(code, 1)}}
-        }
-        """;
-    }
-
-    private static string BuildOutputType(
-        ModelGenerationSpecification specification,
-        string outputTypeName
-    )
-    {
-        var props = specification.Outputs
-            .Select(static output =>
-            {
-                return $$"""
-                {{BuildOutputPropertyDocumentation(output)}}
-                public Tensor<{{output.ElementClrTypeName}}> {{output.PropertyName}} => GetTensor<{{output.ElementClrTypeName}}>("{{Escape(output.OnnxName)}}");
-                """;
-            })
-            .ToArray();
-
-        var code = string.Join("\n\n", props);
-
-        return $$"""
-        {{BuildTensorCollectionTypeDocumentation(
-            summary: $"Provides typed access to the outputs produced by {specification.ClassName}.",
-            tensors: specification.Outputs,
-            roleLabel: "Output property"
-        )}}
-        public sealed class {{outputTypeName}} : IDisposable
-        {
-            private readonly IDisposableReadOnlyCollection<DisposableNamedOnnxValue> _results;
-            private readonly Dictionary<string, DisposableNamedOnnxValue> _values;
-
-            internal {{outputTypeName}}(IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results)
-            {
-                if (results is null)
-                {
-                    throw new ArgumentNullException(nameof(results));
-                }
-
-                _results = results;
-                _values = new Dictionary<string, DisposableNamedOnnxValue>(StringComparer.Ordinal);
-                foreach (var value in results)
-                {
-                    _values[value.Name] = value;
-                }
+                context.AddSource($"{specification.ClassName}.g.cs", new OnnxRuntimeInferencePrinter().GenerateSource(specification));
             }
 
-            {{Indent(XmlSummary("Gets the raw ONNX Runtime outputs returned by the inference session."), 1)}}
-            public IDisposableReadOnlyCollection<DisposableNamedOnnxValue> Raw => _results;
-            
-            {{Indent(code, 1)}}
-
-            {{Indent(BuildGetTensorDocumentation(), 1)}}
-            public Tensor<T> GetTensor<T>(string name)
+            if (specification.ImportTypes.HasFlag(ModelImportType.TorchModule))
             {
-                if (string.IsNullOrWhiteSpace(name))
-                {
-                    throw new ArgumentException("Output name must be provided.", nameof(name));
-                }
-
-                if (!_values.TryGetValue(name, out var value))
-                {
-                    throw new KeyNotFoundException($"The output '{name}' was not returned by the model.");
-                }
-
-                var tensor = value.AsTensor<T>();
-                if (tensor is null)
-                {
-                    throw new InvalidOperationException($"The output '{name}' is not a tensor of the requested type {typeof(T).FullName}.");
-                }
-
-                return tensor;
-            }
-
-            {{Indent(XmlSummary("Releases the native ONNX Runtime output values for this inference result."), 1)}}
-            public void Dispose()
-            {
-                _results.Dispose();
+                context.AddSource($"{specification.ClassName}TorchModule.g.cs", new TorchModulePrinter().GenerateSource(specification));
             }
         }
-        """;
     }
-
-    private static string BuildWrapperType(
-        ModelGenerationSpecification specification,
-        string inputTypeName,
-        string outputTypeName
-    )
-    {
-        var outputNames = string.Join(
-            "\n",
-            specification.Outputs.Select(static output => $"\"{Escape(output.OnnxName)}\","));
-
-        var constructors = $$"""
-        {{XmlSummary($"Creates a {specification.ClassName} that loads the model from DefaultModelPath.")}}
-        public {{specification.ClassName}}()
-            : this(DefaultModelPath, null)
-        {
-        }
-
-        {{XmlSummary($"Creates a {specification.ClassName} that loads the model from DefaultModelPath.")}}
-        {{XmlParam("sessionOptions", "Optional ONNX Runtime session options used when constructing the inference session.")}}
-        public {{specification.ClassName}}(SessionOptions? sessionOptions)
-            : this(DefaultModelPath, sessionOptions)
-        {
-        }
-
-        {{XmlSummary($"Creates a {specification.ClassName} from an ONNX model file path.")}}
-        {{XmlParam("modelPath", "Path to the ONNX model file to load.")}}
-        public {{specification.ClassName}}(string modelPath)
-            : this(modelPath, null)
-        {
-        }
-
-        {{XmlSummary($"Creates a {specification.ClassName} from an ONNX model file path.")}}
-        {{XmlParam("modelPath", "Path to the ONNX model file to load.")}}
-        {{XmlParam("sessionOptions", "Optional ONNX Runtime session options used when constructing the inference session.")}}
-        public {{specification.ClassName}}(string modelPath, SessionOptions? sessionOptions)
-        {
-            if (string.IsNullOrWhiteSpace(modelPath))
-            {
-                throw new ArgumentException("Model path must be provided.", nameof(modelPath));
-            }
-
-            Session = sessionOptions is null
-                ? new InferenceSession(modelPath)
-                : new InferenceSession(modelPath, sessionOptions);
-        }
-
-        {{XmlSummary($"Creates a {specification.ClassName} from the raw bytes of an ONNX model.")}}
-        {{XmlParam("modelBytes", "The raw ONNX model bytes to load into the inference session.")}}
-        public {{specification.ClassName}}(byte[] modelBytes)
-            : this(modelBytes, null)
-        {
-        }
-
-        {{XmlSummary($"Creates a {specification.ClassName} from the raw bytes of an ONNX model.")}}
-        {{XmlParam("modelBytes", "The raw ONNX model bytes to load into the inference session.")}}
-        {{XmlParam("sessionOptions", "Optional ONNX Runtime session options used when constructing the inference session.")}}
-        public {{specification.ClassName}}(byte[] modelBytes, SessionOptions? sessionOptions)
-        {
-            if (modelBytes is null)
-            {
-                throw new ArgumentNullException(nameof(modelBytes));
-            }
-
-            Session = sessionOptions is null
-                ? new InferenceSession(modelBytes)
-                : new InferenceSession(modelBytes, sessionOptions);
-        }
-        """;
-
-        var runMethods = specification.Inputs.Length == 0
-            ? BuildParameterlessRunMethods(outputTypeName)
-            : BuildInputRunMethods(specification, inputTypeName, outputTypeName);
-
-        return $$"""
-        {{XmlSummary($"Provides a typed ONNX Runtime wrapper for the model file '{specification.FileName}'.")}}
-        public sealed class {{specification.ClassName}} : IDisposable
-        {
-            {{Indent(XmlSummary("Gets the model path relative to the consuming project directory."), 1)}}
-            public const string MODEL_PROJECT_RELATIVE_PATH = {{ToVerbatimStringLiteral(specification.ProjectRelativePath)}};
-
-            {{Indent(XmlSummary("Gets the default runtime path used to locate the ONNX model beside the application output."), 1)}}
-            public static string DefaultModelPath => GetDefaultModelPath();
-
-            {{Indent(BuildMetadataCollectionDocumentation("input", specification.Inputs), 1)}}
-            public static IReadOnlyList<Onnxify.OnnxValue> Inputs { get; } = CreateInputs();
-
-            {{Indent(BuildMetadataCollectionDocumentation("output", specification.Outputs), 1)}}
-            public static IReadOnlyList<Onnxify.OnnxValue> Outputs { get; } = CreateOutputs();
-
-            {{Indent(XmlSummary("Gets the output names requested from ONNX Runtime during inference."), 1)}}
-            public static IReadOnlyList<string> OutputNames { get; } = new string[]
-            {
-                {{Indent(outputNames, 2)}}
-            };
-
-            {{Indent(XmlSummary("Gets the underlying ONNX Runtime inference session used by this wrapper."), 1)}}
-            public InferenceSession Session { get; }
-
-            private static IReadOnlyList<Onnxify.OnnxValue> CreateInputs()
-            {
-                {{Indent(BuildOnnxValueMetadata(specification.Inputs), 2)}}
-            }
-
-            private static IReadOnlyList<Onnxify.OnnxValue> CreateOutputs()
-            {
-                {{Indent(BuildOnnxValueMetadata(specification.Outputs), 2)}}
-            }
-
-            private static string GetDefaultModelPath()
-            {
-                return Path.Combine(
-                    AppContext.BaseDirectory,
-                    MODEL_PROJECT_RELATIVE_PATH
-                        .Replace('\\', Path.DirectorySeparatorChar)
-                        .Replace('/', Path.DirectorySeparatorChar)
-                );
-            }
-
-            {{Indent(constructors, 1)}}
-
-            {{Indent(runMethods, 1)}}
-
-            {{Indent(XmlSummary("Releases the underlying ONNX Runtime inference session."), 1)}}
-            public void Dispose()
-            {
-                Session.Dispose();
-            }
-        }
-        """;
-    }
-
-    private static string BuildParameterlessRunMethods(string outputTypeName)
-    {
-        return $$"""
-        {{XmlSummary("Runs inference for a model with no required inputs.")}}
-        {{XmlReturns($"The typed {outputTypeName} wrapper over the ONNX Runtime outputs.")}}
-        public {{outputTypeName}} Run()
-        {
-            return Run(null);
-        }
-
-        {{XmlSummary("Runs inference for a model with no required inputs.")}}
-        {{XmlParam("runOptions", "Optional ONNX Runtime run options applied to this inference invocation.")}}
-        {{XmlReturns($"The typed {outputTypeName} wrapper over the ONNX Runtime outputs.")}}
-        public {{outputTypeName}} Run(RunOptions? runOptions)
-        {
-            var namedInputs = new List<NamedOnnxValue>(0);
-            {{Indent(BuildRunInvocation(outputTypeName), 1)}}
-        }
-        """;
-    }
-
-    private static string BuildInputRunMethods(
-        ModelGenerationSpecification specification,
-        string inputTypeName,
-        string outputTypeName
-    )
-    {
-        var orderedInputs = specification.Inputs
-            .OrderByDescending(static x => x.IsRequired)
-            .ToArray();
-
-        var namedInputs = string.Join(
-            "\n",
-            specification.Inputs.Select(static input =>
-                input.IsRequired
-                    ? $"namedInputs.Add(NamedOnnxValue.CreateFromTensor(\"{Escape(input.OnnxName)}\", inputs.{input.PropertyName} ?? throw new InvalidOperationException(\"Model input '{Escape(input.OnnxName)}' must be provided.\")));"
-                    : $$"""
-                    if (inputs.{{input.PropertyName}} is not null)
-                    {
-                        namedInputs.Add(NamedOnnxValue.CreateFromTensor("{{Escape(input.OnnxName)}}", inputs.{{input.PropertyName}}));
-                    }
-                    """));
-
-        var signature = string.Join(", ", orderedInputs.Select(BuildTensorMethodParameterSignature));
-        var signatureWithRunOptions = BuildRunMethodSignatureWithRunOptions(orderedInputs);
-        var assignments = string.Join(
-            "\n",
-            orderedInputs.Select(static x => $"{x.PropertyName} = {x.MethodParameterName},"));
-
-        return $$"""
-        {{XmlSummary("Runs inference using the supplied input object.")}}
-        {{XmlParam("inputs", $"The {inputTypeName} instance containing tensors for each required model input.")}}
-        {{XmlReturns($"The typed {outputTypeName} wrapper over the ONNX Runtime outputs.")}}
-        public {{outputTypeName}} Run({{inputTypeName}} inputs)
-        {
-            return Run(inputs, null);
-        }
-
-        {{XmlSummary("Runs inference using the supplied input object.")}}
-        {{XmlParam("inputs", $"The {inputTypeName} instance containing tensors for each required model input.")}}
-        {{XmlParam("runOptions", "Optional ONNX Runtime run options applied to this inference invocation.")}}
-        {{XmlReturns($"The typed {outputTypeName} wrapper over the ONNX Runtime outputs.")}}
-        public {{outputTypeName}} Run({{inputTypeName}} inputs, RunOptions? runOptions)
-        {
-            if (inputs is null)
-            {
-                throw new ArgumentNullException(nameof(inputs));
-            }
-
-            var namedInputs = new List<NamedOnnxValue>({{specification.Inputs.Length}});
-            {{Indent(namedInputs, 1)}}
-
-            {{Indent(BuildRunInvocation(outputTypeName), 1)}}
-        }
-
-        {{XmlSummary("Runs inference using individual tensor arguments for each model input.")}}
-        {{BuildTensorParameterDocumentation(orderedInputs)}}
-        {{XmlReturns($"The typed {outputTypeName} wrapper over the ONNX Runtime outputs.")}}
-        public {{outputTypeName}} Run({{signature}})
-        {
-            return Run(
-                inputs: new {{inputTypeName}}
-                {
-                    {{Indent(assignments, 3)}}
-                }, 
-                runOptions: null
-            );
-        }
-
-        {{XmlSummary("Runs inference using individual tensor arguments for each model input.")}}
-        {{BuildTensorParameterDocumentation(orderedInputs)}}
-        {{XmlParam("runOptions", "Optional ONNX Runtime run options applied to this inference invocation.")}}
-        {{XmlReturns($"The typed {outputTypeName} wrapper over the ONNX Runtime outputs.")}}
-        public {{outputTypeName}} Run({{signatureWithRunOptions}})
-        {
-            return Run(
-                inputs: new {{inputTypeName}}
-                {
-                    {{Indent(assignments, 3)}}
-                }, 
-                runOptions: runOptions
-            );
-        }
-        """;
-    }
-
-    private static string BuildRunInvocation(string outputTypeName)
-    {
-        return $$"""
-        IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results;
-        if (runOptions is null)
-        {
-            results = OutputNames.Count == 0
-                ? Session.Run(namedInputs)
-                : Session.Run(namedInputs, OutputNames);
-        }
-        else
-        {
-            results = Session.Run(namedInputs, OutputNames, runOptions);
-        }
-
-        return new {{outputTypeName}}(results);
-        """;
-    }
-
-    private static string BuildOnnxValueMetadata(
-        ImmutableArray<ModelTensorContract> tensors
-    )
-    {
-        if (tensors.Length == 0)
-        {
-            return "return Array.Empty<Onnxify.OnnxValue>();";
-        }
-
-        var entries = string.Join("\n", tensors.Select(BuildOnnxValueMetadataEntry));
-
-        return $$"""
-        return new Onnxify.OnnxValue[]
-        {
-            {{Indent(entries, 1)}}
-        };
-        """;
-    }
-
-    private static string BuildOnnxValueMetadataEntry(
-        ModelTensorContract tensor
-    )
-    {
-        var tensorTypeExpression = BuildOnnxTensorTypeExpression(tensor);
-
-        return $$"""
-        new Onnxify.OnnxValue<Onnxify.OnnxTensorType>(
-            name: "{{Escape(tensor.OnnxName)}}",
-            type: {{Indent(tensorTypeExpression, 1)}}
-        ),
-        """;
-    }
-
-    private static string BuildOnnxTensorTypeExpression(ModelTensorContract tensor)
-    {
-        if (tensor.Shape.Any(static x => x.IsUnknown))
-        {
-            return $$"""
-                new Onnxify.OnnxTensorType(
-                    type: typeof({{tensor.ElementClrTypeName}}),
-                    shape: null,
-                    denotation: {{tensor.DenotationLiteral}}
-                )
-                """;
-        }
-
-        var dimensions = string.Join("\n", tensor.Shape.Select(BuildOnnxDimensionExpression));
-
-        return $$"""
-        Onnxify.OnnxTensorType.Create<{{tensor.ElementClrTypeName}}>(
-            shape: new Onnxify.OnnxDimension[]
-            {
-                {{Indent(dimensions, 2)}}
-            },
-            denotation: {{tensor.DenotationLiteral}}
-        )
-        """;
-    }
-
-    private static string BuildOnnxDimensionExpression(ModelDimensionContract dimension)
-    {
-        if (dimension.NumericValueLiteral is not null)
-        {
-            return $"{dimension.NumericValueLiteral},";
-        }
-
-        if (dimension.SymbolicNameLiteral is not null)
-        {
-            return $"{dimension.SymbolicNameLiteral},";
-        }
-
-        throw new InvalidOperationException("Unknown ONNX dimensions cannot be expressed through the public Onnxify OnnxDimension API.");
-    }
-
     private static bool TryCreateTensorContract(
         string ownerFileName,
         ValueInfoProto valueInfo,
@@ -914,7 +503,732 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         return baseName.EndsWith("Model", StringComparison.Ordinal) ? baseName : $"{baseName}Model";
     }
 
-    private static string ResolveProjectRelativePath(
+    private static ModelImportType ResolveImportTypes(
+        AdditionalText file,
+        AnalyzerConfigOptionsProvider optionsProvider,
+        List<Diagnostic> diagnostics
+    )
+    {
+        var fileOptions = optionsProvider.GetOptions(file);
+        if (!fileOptions.TryGetValue(ADDITIONAL_FILE_IMPORT_TYPE_KEY, out var importTypeText) || string.IsNullOrWhiteSpace(importTypeText))
+        {
+            return ModelImportType.OnnxRuntimeInference;
+        }
+
+        var importTypes = ModelImportType.None;
+        foreach (var part in importTypeText.Split(','))
+        {
+            var value = part.Trim();
+            if (string.IsNullOrEmpty(value))
+            {
+                continue;
+            }
+
+            if (string.Equals(value, "OnnxRuntimeInference", StringComparison.OrdinalIgnoreCase))
+            {
+                importTypes |= ModelImportType.OnnxRuntimeInference;
+                continue;
+            }
+
+            if (string.Equals(value, "TorchModule", StringComparison.OrdinalIgnoreCase))
+            {
+                importTypes |= ModelImportType.TorchModule;
+                continue;
+            }
+
+            diagnostics.Add(
+                Diagnostic.Create(
+                    _invalidImportTypeDescriptor,
+                    location: Location.None,
+                    Path.GetFileName(file.Path),
+                    importTypeText
+                )
+            );
+
+            return ModelImportType.None;
+        }
+
+        return importTypes == ModelImportType.None
+            ? ModelImportType.OnnxRuntimeInference
+            : importTypes;
+    }
+
+    private static TorchModuleGenerationSpecification? AnalyzeTorchModuleGraph(
+        string fileName,
+        ModelProto model,
+        List<Diagnostic> diagnostics
+    )
+    {
+        var graph = model.Graph;
+        if (graph is null)
+        {
+            ReportUnsupportedTorchModule(fileName, "the model does not contain a graph.", diagnostics);
+            return null;
+        }
+
+        var initializerNames = new HashSet<string>(
+            graph.Initializer.Select(static x => x.Name),
+            StringComparer.Ordinal
+        );
+
+        var runtimeInputs = graph.Input
+            .Where(input => !initializerNames.Contains(input.Name))
+            .ToArray();
+
+        if (runtimeInputs.Length != 1)
+        {
+            ReportUnsupportedTorchModule(fileName, "the TorchModule backend supports exactly one non-initializer graph input.", diagnostics);
+            return null;
+        }
+
+        if (graph.Output.Count != 1)
+        {
+            ReportUnsupportedTorchModule(fileName, "the TorchModule backend supports exactly one graph output.", diagnostics);
+            return null;
+        }
+
+        if (!TryGetTensorElementType(runtimeInputs[0], out var inputElementType) || !IsSupportedTorchModuleRuntimeTensorType(inputElementType))
+        {
+            ReportUnsupportedTorchModule(fileName, "the TorchModule backend supports only runtime tensor input data types that map to TorchSharp ScalarType.", diagnostics);
+            return null;
+        }
+
+        if (!TryGetTensorElementType(graph.Output[0], out var outputElementType) || !IsSupportedTorchModuleRuntimeTensorType(outputElementType))
+        {
+            ReportUnsupportedTorchModule(fileName, "the TorchModule backend supports only runtime tensor output data types that map to TorchSharp ScalarType.", diagnostics);
+            return null;
+        }
+
+        var initializerFieldNames = new HashSet<string>(StringComparer.Ordinal);
+        var allInitializers = new Dictionary<string, TorchInitializerSpecification>(StringComparer.Ordinal);
+        for (var initializerIndex = 0; initializerIndex < graph.Initializer.Count; initializerIndex++)
+        {
+            var initializer = graph.Initializer[initializerIndex];
+            if (!TryCreateTorchInitializer(initializer, initializerIndex, initializerFieldNames, out var specification, out var error))
+            {
+                ReportUnsupportedTorchModule(fileName, error, diagnostics);
+                return null;
+            }
+
+            allInitializers[specification.OnnxName] = specification;
+        }
+
+        var supportedOps = new HashSet<string>(_torchModuleInlineOperators.Keys, StringComparer.Ordinal);
+        supportedOps.UnionWith(_torchModuleOperators.Keys);
+
+        var nodes = new List<TorchNodeSpecification>();
+        var moduleNodes = new List<TorchModuleNodeSpecification>();
+        var consumedModuleInitializerNames = new HashSet<string>(StringComparer.Ordinal);
+        var moduleFieldNames = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var node in graph.Node)
+        {
+            if (!string.IsNullOrWhiteSpace(node.Domain))
+            {
+                ReportUnsupportedTorchModule(fileName, $"node '{FormatNodeName(node)}' uses non-default ONNX domain '{node.Domain}'.", diagnostics);
+                return null;
+            }
+
+            if (!supportedOps.Contains(node.OpType))
+            {
+                ReportUnsupportedTorchModule(fileName, $"operator '{node.OpType}' in node '{FormatNodeName(node)}' is not supported yet.", diagnostics);
+                return null;
+            }
+
+            var outputs = node.Output.Where(static x => !string.IsNullOrWhiteSpace(x)).ToArray();
+            if (outputs.Length != 1 && !IsSupportedTorchModuleMultiOutputOperator(node.OpType))
+            {
+                ReportUnsupportedTorchModule(fileName, $"operator '{node.OpType}' in node '{FormatNodeName(node)}' must have exactly one output for the TorchModule backend.", diagnostics);
+                return null;
+            }
+
+            Dictionary<string, object> attributes;
+            try
+            {
+                attributes = node.Attribute.ToDictionary(static x => x.Name, ReadAttributeValue, StringComparer.Ordinal);
+            }
+            catch (NotSupportedException ex)
+            {
+                ReportUnsupportedTorchModule(fileName, ex.Message, diagnostics);
+                return null;
+            }
+
+            var nodeSpecification = new TorchNodeSpecification(
+                FormatNodeName(node),
+                node.OpType,
+                node.Input.Where(static x => !string.IsNullOrWhiteSpace(x)).ToImmutableArray(),
+                outputs.ToImmutableArray(),
+                attributes
+            );
+            nodes.Add(nodeSpecification);
+
+            if (TryCreateTorchModuleNode(
+                nodeSpecification,
+                allInitializers,
+                moduleFieldNames,
+                out var moduleNode,
+                out var consumedInitializers
+            ))
+            {
+                moduleNodes.Add(moduleNode);
+                foreach (var consumedInitializer in consumedInitializers)
+                {
+                    consumedModuleInitializerNames.Add(consumedInitializer);
+                }
+            }
+        }
+
+        var initializers = allInitializers
+            .Values
+            .Where(initializer => !consumedModuleInitializerNames.Contains(initializer.OnnxName))
+            .ToImmutableArray();
+
+        return new TorchModuleGenerationSpecification(
+            runtimeInputs[0].Name,
+            ToCamelIdentifier(runtimeInputs[0].Name, "input"),
+            graph.Output[0].Name,
+            initializers,
+            moduleNodes.ToImmutableArray(),
+            nodes.ToImmutableArray()
+        );
+    }
+
+    private static bool IsSupportedTorchModuleRuntimeTensorType(TensorProto.Types.DataType dataType)
+    {
+        return TryFormatTorchModuleScalarType(dataType, out _);
+    }
+
+    private static bool IsSupportedTorchModuleMultiOutputOperator(string opType)
+    {
+        return opType is "LSTM" or "GRU" or "Split" or "TopK";
+    }
+
+    internal static bool TryFormatTorchModuleScalarType(
+        TensorProto.Types.DataType dataType,
+        out string scalarTypeExpression
+    )
+    {
+        scalarTypeExpression = dataType switch
+        {
+            TensorProto.Types.DataType.Float => "ScalarType.Float32",
+            TensorProto.Types.DataType.Double => "ScalarType.Float64",
+            TensorProto.Types.DataType.Uint8 => "ScalarType.Byte",
+            TensorProto.Types.DataType.Int8 => "ScalarType.Int8",
+            TensorProto.Types.DataType.Int16 => "ScalarType.Int16",
+            TensorProto.Types.DataType.Int32 => "ScalarType.Int32",
+            TensorProto.Types.DataType.Int64 => "ScalarType.Int64",
+            TensorProto.Types.DataType.Bool => "ScalarType.Bool",
+            TensorProto.Types.DataType.Float16 => "ScalarType.Float16",
+            TensorProto.Types.DataType.Bfloat16 => "ScalarType.BFloat16",
+            TensorProto.Types.DataType.Complex64 => "ScalarType.ComplexFloat32",
+            TensorProto.Types.DataType.Complex128 => "ScalarType.ComplexFloat64",
+            _ => string.Empty,
+        };
+
+        return scalarTypeExpression.Length > 0;
+    }
+
+    private static bool TryCreateTorchModuleNode(
+        TorchNodeSpecification node,
+        IReadOnlyDictionary<string, TorchInitializerSpecification> initializers,
+        HashSet<string> usedFieldNames,
+        out TorchModuleNodeSpecification module,
+        out ImmutableArray<string> consumedInitializers
+    )
+    {
+        if (!_torchModuleOperators.TryGetValue(node.OpType, out var @operator))
+        {
+            module = null!;
+            consumedInitializers = [];
+            return false;
+        }
+
+        return @operator.TryCreateModuleNode(node, initializers, usedFieldNames, out module, out consumedInitializers);
+    }
+
+    private static bool TryCreateTorchInitializer(
+        TensorProto tensor,
+        int canonicalIndex,
+        HashSet<string> usedFieldNames,
+        out TorchInitializerSpecification specification,
+        out string error
+    )
+    {
+        var dataType = (TensorProto.Types.DataType)tensor.DataType;
+        var mapping = dataType switch
+        {
+            TensorProto.Types.DataType.Float => ("float", "ScalarType.Float32", true),
+            TensorProto.Types.DataType.Double => ("double", "ScalarType.Float64", false),
+            TensorProto.Types.DataType.Uint8 => ("byte", "ScalarType.Byte", false),
+            TensorProto.Types.DataType.Int8 => ("sbyte", "ScalarType.Int8", false),
+            TensorProto.Types.DataType.Int16 => ("short", "ScalarType.Int16", false),
+            TensorProto.Types.DataType.Int32 => ("int", "ScalarType.Int32", false),
+            TensorProto.Types.DataType.Int64 => ("long", "ScalarType.Int64", false),
+            TensorProto.Types.DataType.Bool => ("bool", "ScalarType.Bool", false),
+            _ => default,
+        };
+
+        if (mapping == default)
+        {
+            specification = null!;
+            error = $"initializer '{tensor.Name}' uses unsupported tensor data type '{dataType}'. The TorchModule backend supports float32, float64, uint8, int8, int16, int32, int64, and bool initializers.";
+            return false;
+        }
+
+        var baseName = "_" + ToCamelIdentifier(tensor.Name, "initializer");
+        var fieldName = MakeUniqueIdentifier(baseName, usedFieldNames, "_initializer");
+        var stateName = SanitizeStateName(tensor.Name);
+        specification = new TorchInitializerSpecification(
+            tensor.Name,
+            canonicalIndex,
+            stateName,
+            fieldName,
+            tensor.Dims.ToImmutableArray(),
+            TryReadScalarFloatValue(tensor),
+            FormatLongArray(tensor.Dims.ToArray()),
+            mapping.Item1,
+            mapping.Item2,
+            mapping.Item3
+        );
+        error = string.Empty;
+        return true;
+    }
+
+    private static void SortGraphTopologically(GraphProto? graph)
+    {
+        if (graph is null)
+        {
+            return;
+        }
+
+        var nodes = graph.Node.ToArray();
+        var producerByValue = new Dictionary<string, NodeProto>(StringComparer.Ordinal);
+        foreach (var node in nodes)
+        {
+            foreach (var output in node.Output.Where(static x => !string.IsNullOrWhiteSpace(x)))
+            {
+                if (!producerByValue.ContainsKey(output))
+                {
+                    producerByValue[output] = node;
+                }
+            }
+        }
+
+        var depthByNode = new Dictionary<NodeProto, int>();
+        var visiting = new HashSet<NodeProto>();
+        foreach (var node in nodes)
+        {
+            GetDepth(node);
+        }
+
+        var originalNodeIndexes = nodes
+            .Select((node, index) => (node, index))
+            .ToDictionary(static x => x.node, static x => x.index);
+        var sortedNodes = nodes
+            .OrderBy(node => depthByNode[node])
+            .ThenBy(GetNodeStructuralSignature, StringComparer.Ordinal)
+            .ThenBy(node => originalNodeIndexes[node])
+            .ToArray();
+
+        graph.Node.Clear();
+        graph.Node.AddRange(sortedNodes);
+
+        var edgeOrder = BuildEdgeOrder(sortedNodes);
+
+        var initializers = graph.Initializer
+            .Select((value, index) => new OrderedMember<TensorProto>(value, index))
+            .OrderBy(x => GetOrder(edgeOrder, x.Value.Name))
+            .ThenBy(x => GetTensorSignature(x.Value), StringComparer.Ordinal)
+            .ThenBy(x => x.Index)
+            .Select(x => x.Value)
+            .ToArray();
+        graph.Initializer.Clear();
+        graph.Initializer.AddRange(initializers);
+
+        var valueInfo = graph.ValueInfo
+            .Select((value, index) => new OrderedMember<ValueInfoProto>(value, index))
+            .OrderBy(x => GetOrder(edgeOrder, x.Value.Name))
+            .ThenBy(x => GetValueInfoSignature(x.Value), StringComparer.Ordinal)
+            .ThenBy(x => x.Index)
+            .Select(x => x.Value)
+            .ToArray();
+        graph.ValueInfo.Clear();
+        graph.ValueInfo.AddRange(valueInfo);
+
+        int GetDepth(NodeProto node)
+        {
+            if (depthByNode.TryGetValue(node, out var depth))
+            {
+                return depth;
+            }
+
+            if (!visiting.Add(node))
+            {
+                throw new InvalidOperationException("Graph contains a cycle and cannot be sorted topologically.");
+            }
+
+            depth = 0;
+            foreach (var input in node.Input)
+            {
+                if (producerByValue.TryGetValue(input, out var producer))
+                {
+                    depth = Math.Max(depth, GetDepth(producer) + 1);
+                }
+            }
+
+            visiting.Remove(node);
+            depthByNode[node] = depth;
+            return depth;
+        }
+    }
+
+    private static Dictionary<string, int> BuildEdgeOrder(IEnumerable<NodeProto> nodes)
+    {
+        var order = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var node in nodes)
+        {
+            foreach (var input in node.Input.Where(static x => !string.IsNullOrWhiteSpace(x)))
+            {
+                Add(input);
+            }
+
+            foreach (var output in node.Output.Where(static x => !string.IsNullOrWhiteSpace(x)))
+            {
+                Add(output);
+            }
+        }
+
+        return order;
+
+        void Add(string name)
+        {
+            if (!order.ContainsKey(name))
+            {
+                order[name] = order.Count;
+            }
+        }
+    }
+
+    private static int GetOrder(IReadOnlyDictionary<string, int> order, string name)
+    {
+        return order.TryGetValue(name, out var value) ? value : int.MaxValue;
+    }
+
+    private static string GetNodeStructuralSignature(NodeProto node)
+    {
+        var attributes = string.Join(
+            ";",
+            node.Attribute
+                .Select(GetAttributeSignature)
+                .OrderBy(static x => x, StringComparer.Ordinal));
+
+        return string.Join(
+            "|",
+            node.Domain,
+            node.OpType,
+            node.Input.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            node.Output.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            attributes);
+    }
+
+    private static string GetAttributeSignature(AttributeProto attribute)
+    {
+        return attribute.Type switch
+        {
+            AttributeProto.Types.AttributeType.Float => $"{attribute.Name}:Float:{FormatFloat(attribute.F)}",
+            AttributeProto.Types.AttributeType.Int => $"{attribute.Name}:Int:{attribute.I}",
+            AttributeProto.Types.AttributeType.String => $"{attribute.Name}:String:{attribute.S.ToStringUtf8()}",
+            AttributeProto.Types.AttributeType.Floats => $"{attribute.Name}:Floats:{string.Join(",", attribute.Floats.Select(FormatFloat))}",
+            AttributeProto.Types.AttributeType.Ints => $"{attribute.Name}:Ints:{string.Join(",", attribute.Ints)}",
+            AttributeProto.Types.AttributeType.Tensor => $"{attribute.Name}:Tensor:{GetTensorSignature(attribute.T)}",
+            _ => $"{attribute.Name}:{attribute.Type}",
+        };
+    }
+
+    private static string GetTensorSignature(TensorProto tensor)
+    {
+        return $"{tensor.DataType}[{string.Join(",", tensor.Dims)}]";
+    }
+
+    private static string GetValueInfoSignature(ValueInfoProto value)
+    {
+        return $"{value.Type?.ValueCase}:{value.Type?.TensorType?.ElemType}:{string.Join(",", value.Type?.TensorType?.Shape?.Dim.Select(GetDimensionSignature) ?? Enumerable.Empty<string>())}";
+    }
+
+    private static string GetDimensionSignature(TensorShapeProto.Types.Dimension dimension)
+    {
+        return dimension.ValueCase switch
+        {
+            TensorShapeProto.Types.Dimension.ValueOneofCase.DimValue => dimension.DimValue.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            TensorShapeProto.Types.Dimension.ValueOneofCase.DimParam => dimension.DimParam,
+            _ => "?",
+        };
+    }
+
+    private static float? TryReadScalarFloatValue(TensorProto tensor)
+    {
+        if ((TensorProto.Types.DataType)tensor.DataType != TensorProto.Types.DataType.Float
+            || tensor.Dims.Aggregate(1L, static (product, dim) => product * dim) > 1)
+        {
+            return null;
+        }
+
+        var values = ReadFloatTensorValues(tensor);
+        return values.Length == 1 ? values[0] : null;
+    }
+
+    private static bool TryGetTensorElementType(
+        ValueInfoProto value,
+        out TensorProto.Types.DataType dataType
+    )
+    {
+        if (value.Type.ValueCase == TypeProto.ValueOneofCase.TensorType)
+        {
+            dataType = (TensorProto.Types.DataType)value.Type.TensorType.ElemType;
+            return true;
+        }
+
+        dataType = default;
+        return false;
+    }
+
+    private static void ReportUnsupportedTorchModule(
+        string fileName,
+        string message,
+        List<Diagnostic> diagnostics
+    )
+    {
+        diagnostics.Add(
+            Diagnostic.Create(
+                _unsupportedTorchModuleDescriptor,
+                location: Location.None,
+                fileName,
+                message
+            )
+        );
+    }
+
+    private static object ReadAttributeValue(AttributeProto attribute)
+    {
+        return attribute.Type switch
+        {
+            AttributeProto.Types.AttributeType.Float => attribute.F,
+            AttributeProto.Types.AttributeType.Int => attribute.I,
+            AttributeProto.Types.AttributeType.String => attribute.S.ToStringUtf8(),
+            AttributeProto.Types.AttributeType.Floats => attribute.Floats.ToArray(),
+            AttributeProto.Types.AttributeType.Ints => attribute.Ints.ToArray(),
+            AttributeProto.Types.AttributeType.Tensor => attribute.T,
+            _ => throw new NotSupportedException($"Unsupported TorchModule attribute type '{attribute.Type}' for attribute '{attribute.Name}'."),
+        };
+    }
+
+    internal static long GetLongAttribute(
+        TorchNodeSpecification node,
+        string name,
+        long defaultValue
+    )
+    {
+        if (!node.Attributes.TryGetValue(name, out var value))
+        {
+            return defaultValue;
+        }
+
+        return value switch
+        {
+            long longValue => longValue,
+            int intValue => intValue,
+            _ => Convert.ToInt64(value),
+        };
+    }
+
+    internal static float GetFloatAttribute(
+        TorchNodeSpecification node,
+        string name,
+        float defaultValue
+    )
+    {
+        if (!node.Attributes.TryGetValue(name, out var value))
+        {
+            return defaultValue;
+        }
+
+        return value switch
+        {
+            float floatValue => floatValue,
+            double doubleValue => (float)doubleValue,
+            _ => Convert.ToSingle(value),
+        };
+    }
+
+    internal static string GetStringAttribute(
+        TorchNodeSpecification node,
+        string name,
+        string defaultValue
+    )
+    {
+        if (!node.Attributes.TryGetValue(name, out var value))
+        {
+            return defaultValue;
+        }
+
+        return value switch
+        {
+            string stringValue => stringValue,
+            _ => Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) ?? defaultValue,
+        };
+    }
+
+    internal static long[] GetLongArrayAttribute(
+        TorchNodeSpecification node,
+        string name,
+        long[] defaultValue
+    )
+    {
+        if (!node.Attributes.TryGetValue(name, out var value))
+        {
+            return defaultValue;
+        }
+
+        return value switch
+        {
+            long[] longValues => longValues,
+            int[] intValues => intValues.Select(static x => (long)x).ToArray(),
+            IEnumerable<long> longValues => longValues.ToArray(),
+            _ => defaultValue,
+        };
+    }
+
+    internal static long[]? GetLongArrayAttributeOrNull(
+        TorchNodeSpecification node,
+        string name
+    )
+    {
+        return node.Attributes.ContainsKey(name)
+            ? GetLongArrayAttribute(node, name, [])
+            : null;
+    }
+
+    internal static string FormatLongArray(IEnumerable<long> values)
+    {
+        var array = values.ToArray();
+        return array.Length == 0
+            ? "Array.Empty<long>()"
+            : $"new long[] {{ {string.Join(", ", array.Select(static x => $"{x}L"))} }}";
+    }
+
+    internal static string FormatNullableLongArray(IEnumerable<long>? values)
+    {
+        return values is null ? "null" : FormatLongArray(values);
+    }
+
+    internal static string FormatModuleArgument(IEnumerable<long> values)
+    {
+        var array = values.ToArray();
+        return array.Length > 0 && array.All(x => x == array[0])
+            ? $"{array[0]}L"
+            : FormatLongArray(array);
+    }
+
+    internal static string FormatBool(bool value)
+    {
+        return value ? "true" : "false";
+    }
+
+    internal static string FormatFloat(float value)
+    {
+        return value.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    internal static string FormatAttributeScalar(object value)
+    {
+        return value switch
+        {
+            float floatValue => $"{FormatFloat(floatValue)}f",
+            double doubleValue => $"{FormatFloat((float)doubleValue)}f",
+            long longValue => $"{longValue}L",
+            int intValue => $"{intValue}",
+            _ => throw new NotSupportedException($"Unsupported TorchModule scalar attribute value '{value}'."),
+        };
+    }
+
+    internal static string FormatTensorProtoExpression(TensorProto tensor)
+    {
+        var dataType = (TensorProto.Types.DataType)tensor.DataType;
+        var shapeExpression = FormatLongArray(tensor.Dims.ToArray());
+
+        return dataType switch
+        {
+            TensorProto.Types.DataType.Float => $"torch.tensor(new float[] {{ {string.Join(", ", ReadFloatTensorValues(tensor).Select(static x => $"{FormatFloat(x)}f"))} }}, {shapeExpression}, dtype: ScalarType.Float32)",
+            TensorProto.Types.DataType.Int64 => $"torch.tensor(new long[] {{ {string.Join(", ", ReadLongTensorValues(tensor).Select(static x => $"{x}L"))} }}, {shapeExpression}, dtype: ScalarType.Int64)",
+            _ => throw new NotSupportedException($"Unsupported Constant tensor data type '{dataType}'."),
+        };
+    }
+
+    internal static float[] ReadFloatTensorValues(TensorProto tensor)
+    {
+        if (tensor.FloatData.Count > 0)
+        {
+            return tensor.FloatData.ToArray();
+        }
+
+        if (!tensor.RawData.IsEmpty)
+        {
+            var bytes = tensor.RawData.ToByteArray();
+            var values = new float[bytes.Length / sizeof(float)];
+            for (var index = 0; index < values.Length; index++)
+            {
+                values[index] = BitConverter.ToSingle(bytes, index * sizeof(float));
+            }
+
+            return values;
+        }
+
+        return [];
+    }
+
+    internal static long[] ReadLongTensorValues(TensorProto tensor)
+    {
+        if (tensor.Int64Data.Count > 0)
+        {
+            return tensor.Int64Data.ToArray();
+        }
+
+        if (!tensor.RawData.IsEmpty)
+        {
+            var bytes = tensor.RawData.ToByteArray();
+            var values = new long[bytes.Length / sizeof(long)];
+            for (var index = 0; index < values.Length; index++)
+            {
+                values[index] = BitConverter.ToInt64(bytes, index * sizeof(long));
+            }
+
+            return values;
+        }
+
+        return [];
+    }
+
+    internal static string FormatNodeName(NodeProto node)
+    {
+        return string.IsNullOrWhiteSpace(node.Name)
+            ? node.OpType
+            : node.Name;
+    }
+
+    internal static string SanitizeStateName(string value)
+    {
+        var builder = new StringBuilder(value.Length);
+        foreach (var character in value)
+        {
+            builder.Append(char.IsLetterOrDigit(character) || character == '_' || character == '.'
+                ? character
+                : '_');
+        }
+
+        return builder.Length == 0 ? "initializer" : builder.ToString();
+    }
+
+    internal static string ResolveProjectRelativePath(
         string filePath,
         AnalyzerConfigOptionsProvider optionsProvider
     )
@@ -937,7 +1251,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         return NormalizeGeneratedPath(Path.GetFileName(filePath));
     }
 
-    private static bool TryGetProjectDirectory(
+    internal static bool TryGetProjectDirectory(
         AnalyzerConfigOptionsProvider optionsProvider,
         out string projectDirectory
     )
@@ -958,7 +1272,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         return false;
     }
 
-    private static string NormalizeNamespace(string namespaceName)
+    internal static string NormalizeNamespace(string namespaceName)
     {
         var segments = namespaceName
             .Split(['.'], StringSplitOptions.RemoveEmptyEntries)
@@ -970,7 +1284,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             : string.Join(".", segments);
     }
 
-    private static string ToPascalIdentifier(string? value, string fallback)
+    internal static string ToPascalIdentifier(string? value, string fallback)
     {
         if (value is null || string.IsNullOrWhiteSpace(value))
         {
@@ -1013,7 +1327,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         return result;
     }
 
-    private static void AppendToken(StringBuilder builder, StringBuilder token)
+    internal static void AppendToken(StringBuilder builder, StringBuilder token)
     {
         if (token.Length == 0)
         {
@@ -1029,7 +1343,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         token.Clear();
     }
 
-    private static string ToCamelIdentifier(string value)
+    internal static string ToCamelIdentifier(string value)
     {
         if (string.IsNullOrEmpty(value))
         {
@@ -1048,7 +1362,12 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         return result;
     }
 
-    private static string MakeUniqueIdentifier(
+    internal static string ToCamelIdentifier(string value, string fallback)
+    {
+        return ToCamelIdentifier(ToPascalIdentifier(value, fallback));
+    }
+
+    internal static string MakeUniqueIdentifier(
         string baseName,
         HashSet<string> usedNames,
         string fallbackBaseName
@@ -1069,12 +1388,12 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         return candidate + counter.ToString();
     }
 
-    private static bool HasExternalData(TensorProto tensor)
+    internal static bool HasExternalData(TensorProto tensor)
     {
         return tensor.DataLocation == TensorProto.Types.DataLocation.External || tensor.ExternalData.Count > 0;
     }
 
-    private static bool TryMapElementType(
+    internal static bool TryMapElementType(
         TensorProto.Types.DataType dataType,
         out string? clrTypeName
     )
@@ -1101,73 +1420,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         return clrTypeName is not null;
     }
 
-    private static string Escape(string value)
-    {
-        var builder = new StringBuilder(value.Length);
-        foreach (var ch in value)
-        {
-            switch (ch)
-            {
-                case '\\':
-                    builder.Append("\\\\");
-                    break;
-                case '\"':
-                    builder.Append("\\\"");
-                    break;
-                case '\0':
-                    builder.Append("\\0");
-                    break;
-                case '\a':
-                    builder.Append("\\a");
-                    break;
-                case '\b':
-                    builder.Append("\\b");
-                    break;
-                case '\f':
-                    builder.Append("\\f");
-                    break;
-                case '\n':
-                    builder.Append("\\n");
-                    break;
-                case '\r':
-                    builder.Append("\\r");
-                    break;
-                case '\t':
-                    builder.Append("\\t");
-                    break;
-                case '\v':
-                    builder.Append("\\v");
-                    break;
-                default:
-                    if (char.IsControl(ch))
-                    {
-                        builder.Append("\\u");
-                        builder.Append(((int)ch).ToString("x4"));
-                    }
-                    else
-                    {
-                        builder.Append(ch);
-                    }
-
-                    break;
-            }
-        }
-
-        return builder.ToString();
-    }
-
-    private static string ToVerbatimStringLiteral(string value)
-    {
-        return "@\"" + value.Replace("\"", "\"\"") + "\"";
-    }
-
-    private static string Indent(string text, int tabs)
-    {
-        var indent = new string(' ', tabs * 4);
-        return text.Trim().Replace("\n", $"\n{indent}").Trim();
-    }
-
-    private static string GetProjectRelativePath(string projectDirectory, string filePath)
+    internal static string GetProjectRelativePath(string projectDirectory, string filePath)
     {
         var normalizedProjectDirectory = Path.GetFullPath(projectDirectory);
         if (!normalizedProjectDirectory.EndsWith(Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal))
@@ -1184,291 +1437,110 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         return filePath;
     }
 
-    private static string NormalizeGeneratedPath(string path)
+    internal static string NormalizeGeneratedPath(string path)
     {
         return path.Replace('/', '\\');
     }
 
-    private static string BuildInputPropertyDocumentation(ModelTensorContract input)
-    {
-        return BuildTensorPropertyDocumentation(
-            summary: input.IsRequired
-                ? $"Gets or initializes the tensor supplied for model input '{input.OnnxName}'."
-                : $"Gets or initializes the optional tensor supplied for model input '{input.OnnxName}'.",
-            tensor: input
-        );
-    }
 
-    private static string BuildOutputPropertyDocumentation(ModelTensorContract output)
-    {
-        return BuildTensorPropertyDocumentation(
-            summary: $"Gets the tensor returned for model output '{output.OnnxName}'.",
-            tensor: output
-        );
-    }
-
-    private static string BuildGetTensorDocumentation()
-    {
-        return $$"""
-        {{XmlSummary("Gets a typed tensor from the raw ONNX Runtime output collection by output name.")}}
-        {{XmlParam("name", "The ONNX output name to resolve from the inference result.")}}
-        {{XmlReturns("The tensor value for the requested output name.")}}
-        """;
-    }
-
-    private static string BuildTensorParameterDocumentation(
-        IEnumerable<ModelTensorContract> tensors
-    )
-    {
-        var x = tensors.Select(static tensor =>
-        {
-            return XmlParamXml(
-                tensor.MethodParameterName!,
-                BuildTensorMethodParameterDescription(tensor)
-            );
-        });
-
-        return string.Join("\n", x);
-    }
-
-    private static string XmlSummary(string text)
-    {
-        return $$"""
-        /// <summary>
-        /// {{EscapeXml(text)}}
-        /// </summary>
-        """;
-    }
-
-    private static string XmlParam(string name, string text)
-    {
-        return $"""/// <param name="{name}">{EscapeXml(text)}</param>""";
-    }
-
-    private static string XmlParamXml(string name, string xml)
-    {
-        return $"""/// <param name="{name}">{xml}</param>""";
-    }
-
-    private static string XmlReturns(string text)
-    {
-        return $"""/// <returns>{EscapeXml(text)}</returns>""";
-    }
-
-    private static string BuildTensorPropertyDocumentation(
-        string summary,
-        ModelTensorContract tensor
-    )
-    {
-        return BuildXmlDocumentation(
-            summary,
-            BuildTensorDocumentationParagraphs(tensor)
-        );
-    }
-
-    private static string BuildMetadataCollectionDocumentation(
-        string kind,
-        ImmutableArray<ModelTensorContract> tensors
-    )
-    {
-        var summary = $"Describes the generated ONNX model {kind}s using Onnxify metadata objects.";
-
-        return BuildXmlDocumentation(
-            summary,
-            tensors.Select(BuildMetadataParagraph)
-        );
-    }
-
-    private static string BuildTensorCollectionTypeDocumentation(
-        string summary,
-        ImmutableArray<ModelTensorContract> tensors,
-        string roleLabel
-    )
-    {
-        return BuildXmlDocumentation(
-            summary,
-            tensors.Select(tensor => BuildTensorCollectionParagraph(tensor, roleLabel))
-        );
-    }
-
-    private static IEnumerable<string> BuildTensorDocumentationParagraphs(
-        ModelTensorContract tensor
-    )
-    {
-        yield return $"Tensor type: {FormatCode($"Tensor<{tensor.ElementClrTypeName}>")}";
-        yield return $"Element type: {FormatCode(tensor.ElementClrTypeName)}";
-        yield return $"Shape: {FormatCode(FormatTensorShape(tensor.Shape))}";
-
-        if (!string.IsNullOrWhiteSpace(tensor.Denotation))
-        {
-            yield return $"Denotation: {FormatCode(tensor.Denotation!)}";
-        }
-    }
-
-    private static string BuildMetadataParagraph(ModelTensorContract tensor)
-    {
-        var builder = new StringBuilder();
-        builder.Append($"{FormatCode(tensor.OnnxName)}: {FormatCode($"Tensor<{tensor.ElementClrTypeName}>")}, shape {FormatCode(FormatTensorShape(tensor.Shape))}");
-
-        if (!string.IsNullOrWhiteSpace(tensor.Denotation))
-        {
-            builder.Append($", denotation {FormatCode(tensor.Denotation!)}");
-        }
-
-        return builder.ToString();
-    }
-
-    private static string BuildTensorCollectionParagraph(
-        ModelTensorContract tensor,
-        string roleLabel
-    )
-    {
-        var builder = new StringBuilder();
-        builder.Append($"{roleLabel} {FormatCode(tensor.PropertyName)} maps to ONNX name {FormatCode(tensor.OnnxName)}");
-        builder.Append($"; tensor type {FormatCode($"Tensor<{tensor.ElementClrTypeName}>")}");
-        builder.Append($"; shape {FormatCode(FormatTensorShape(tensor.Shape))}");
-
-        if (!string.IsNullOrWhiteSpace(tensor.Denotation))
-        {
-            builder.Append($"; denotation {FormatCode(tensor.Denotation!)}");
-        }
-
-        return builder.ToString();
-    }
-
-    private static string BuildTensorMethodParameterDescription(ModelTensorContract tensor)
-    {
-        var builder = new StringBuilder();
-        builder.Append($"{(tensor.IsRequired ? "Tensor" : "Optional tensor")} value for model input {FormatCode(tensor.OnnxName)}");
-        builder.Append($"; parameter type {FormatCode(BuildInputTensorTypeName(tensor))}");
-        builder.Append($"; shape {FormatCode(FormatTensorShape(tensor.Shape))}");
-
-        if (!string.IsNullOrWhiteSpace(tensor.Denotation))
-        {
-            builder.Append($"; denotation {FormatCode(tensor.Denotation!)}");
-        }
-
-        if (!tensor.IsRequired)
-        {
-            builder.Append(tensor.HasDefaultInitializer
-                ? "; pass null to omit this input and let the model use its initializer-backed default"
-                : "; pass null to omit this optional ONNX input");
-        }
-
-        return builder.ToString();
-    }
-
-    private static string BuildTensorMethodParameterSignature(ModelTensorContract tensor)
-    {
-        return tensor.IsRequired
-            ? $"Tensor<{tensor.ElementClrTypeName}> {tensor.MethodParameterName}"
-            : $"Tensor<{tensor.ElementClrTypeName}>? {tensor.MethodParameterName} = null";
-    }
-
-    private static string BuildRunMethodSignatureWithRunOptions(
-        IReadOnlyList<ModelTensorContract> orderedInputs
-    )
-    {
-        var requiredInputs = orderedInputs
-            .Where(static x => x.IsRequired)
-            .Select(BuildTensorMethodParameterSignature);
-        var optionalInputs = orderedInputs
-            .Where(static x => !x.IsRequired)
-            .Select(BuildTensorMethodParameterSignature);
-
-        return string.Join(
-            ", ",
-            requiredInputs
-                .Concat(["RunOptions? runOptions"])
-                .Concat(optionalInputs)
-        );
-    }
-
-    private static string BuildInputTensorTypeName(ModelTensorContract tensor)
-    {
-        return tensor.IsRequired
-            ? $"Tensor<{tensor.ElementClrTypeName}>"
-            : $"Tensor<{tensor.ElementClrTypeName}>?";
-    }
-
-    private static string BuildXmlDocumentation(
-        string summary,
-        IEnumerable<string> paragraphs
-    )
-    {
-        var lines = new List<string>
-        {
-            "/// <summary>",
-            $"/// {EscapeXml(summary)}",
-        };
-
-        foreach (var paragraph in paragraphs)
-        {
-            lines.Add($"/// <para>{paragraph}</para>");
-        }
-
-        lines.Add("/// </summary>");
-        return string.Join("\n", lines);
-    }
-
-    private static string FormatTensorShape(ImmutableArray<ModelDimensionContract> shape)
-    {
-        if (shape.Length == 0)
-        {
-            return "[]";
-        }
-
-        var dimensions = shape.Select(static dimension =>
-        {
-            if (dimension.NumericValueLiteral is not null)
-            {
-                return dimension.NumericValueLiteral.EndsWith("L", StringComparison.Ordinal)
-                    ? dimension.NumericValueLiteral.Substring(0, dimension.NumericValueLiteral.Length - 1)
-                    : dimension.NumericValueLiteral;
-            }
-
-            if (dimension.SymbolicNameLiteral is not null)
-            {
-                return dimension.SymbolicNameLiteral.Trim('"');
-            }
-
-            return "?";
-        });
-
-        return $"[{string.Join(", ", dimensions)}]";
-    }
-
-    private static string FormatCode(string text)
-    {
-        return $"<c>{EscapeXml(text)}</c>";
-    }
-
-    private static string EscapeXml(string text)
-    {
-        return text
-            .Replace("&", "&amp;")
-            .Replace("<", "&lt;")
-            .Replace(">", "&gt;");
-    }
-
-    private sealed record ModelAnalysisResult(
+    internal sealed record ModelAnalysisResult(
         ModelGenerationSpecification? Specification,
         ImmutableArray<Diagnostic> Diagnostics
     );
 
-    private sealed record ModelGenerationSpecification(
+    internal sealed record ModelGenerationSpecification(
         string FileName,
         string ProjectRelativePath,
         string NamespaceName,
         string ClassName,
+        ModelImportType ImportTypes,
         ImmutableArray<ModelTensorContract> Inputs,
-        ImmutableArray<ModelTensorContract> Outputs
+        ImmutableArray<ModelTensorContract> Outputs,
+        TorchModuleGenerationSpecification? TorchModule
     )
     {
         public string FullyQualifiedClassName => $"{NamespaceName}.{ClassName}";
     }
 
-    private sealed record ModelTensorContract(
+    [Flags]
+    internal enum ModelImportType
+    {
+        None = 0,
+        OnnxRuntimeInference = 1,
+        TorchModule = 2,
+    }
+
+    internal sealed record TorchModuleGenerationSpecification(
+        string InputOnnxName,
+        string InputParameterName,
+        string OutputOnnxName,
+        ImmutableArray<TorchInitializerSpecification> Initializers,
+        ImmutableArray<TorchModuleNodeSpecification> ModuleNodes,
+        ImmutableArray<TorchNodeSpecification> Nodes
+    );
+
+    internal sealed record TorchInitializerSpecification(
+        string OnnxName,
+        int CanonicalIndex,
+        string StateName,
+        string FieldName,
+        ImmutableArray<long> Shape,
+        float? ScalarFloatValue,
+        string ShapeExpression,
+        string ClrTypeName,
+        string ScalarTypeExpression,
+        bool IsParameter
+    );
+
+    internal sealed record TorchModuleNodeSpecification(
+        string NodeName,
+        TorchModuleNodeKind Kind,
+        string FieldName,
+        string FieldTypeName,
+        string ConstructorExpression,
+        bool TransposeInput,
+        ImmutableArray<string> LoadStatements,
+        string? ForwardExpression = null
+    );
+
+    internal sealed record TorchForwardGroupSpecification(
+        string Name,
+        string FieldName,
+        string TypeName,
+        TorchForwardGroupKind Kind,
+        ImmutableArray<TorchNodeSpecification> Nodes,
+        TorchNodeSpecification? ResidualAddNode,
+        string OutputOnnxName
+    );
+
+    internal enum TorchForwardGroupKind
+    {
+        Sequential = 1,
+        Residual = 2,
+    }
+
+    internal enum TorchModuleNodeKind
+    {
+        Conv2d = 1,
+        BatchNorm2d = 2,
+        Linear = 3,
+        AdaptiveAvgPool2d = 4,
+        ReLU = 5,
+        ReLU6 = 6,
+        MaxPool2d = 7,
+        LSTM = 8,
+        GRU = 9,
+    }
+
+    internal sealed record TorchNodeSpecification(
+        string Name,
+        string OpType,
+        ImmutableArray<string> Inputs,
+        ImmutableArray<string> Outputs,
+        IReadOnlyDictionary<string, object> Attributes
+    );
+
+    internal sealed record ModelTensorContract(
         string OnnxName,
         string PropertyName,
         string? MethodParameterName,
@@ -1481,9 +1553,11 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         bool HasDefaultInitializer
     );
 
-    private sealed record ModelDimensionContract(
+    internal sealed record ModelDimensionContract(
         string? NumericValueLiteral,
         string? SymbolicNameLiteral,
         bool IsUnknown
     );
+
+    private readonly record struct OrderedMember<T>(T Value, int Index);
 }

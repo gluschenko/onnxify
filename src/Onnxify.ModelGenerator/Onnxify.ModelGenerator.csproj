@@ -4,12 +4,12 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <RepositoryUrl>https://github.com/gluschenko/onnxify</RepositoryUrl>
     <Authors>Alexander Gluschenko</Authors>
     <Copyright>© 2026 Alexander Gluschenko</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageTags>onnx;onnxruntime;dotnet;source-generator;roslyn-analyzer</PackageTags>
+    <PackageTags>onnx;onnxruntime;dotnet;machine-learning;ai;source-generator;roslyn;roslyn-analyzer;code-generation;typed-client;inference;torchsharp;torchmodule;model-wrapper;onnx-model</PackageTags>
     <Description>Source generator that emits typed Microsoft.ML.OnnxRuntime wrappers for ONNX models added to a project as OnnxModel items or AdditionalFiles.</Description>
     
     <EmitCompilerGeneratedFiles Condition="'$(OnnxifyEmitCompilerGeneratedFiles)'=='true'">true</EmitCompilerGeneratedFiles>

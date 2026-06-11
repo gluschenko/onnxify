@@ -1,15 +1,20 @@
 ﻿using System.Globalization;
 using System.Text;
+using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using Onnxify.HuggingFace;
 using Onnxify.ProjectGenerator;
 using Onnxify.Safetensors;
+using Onnxify.TorchSharp;
+using TorchSharp;
+using static TorchSharp.torch;
+using TorchTensor = TorchSharp.torch.Tensor;
 
 namespace Onnxify.ConsoleTest
 {
     internal class Program
     {
-        static async Task Main()
+        static async Task Main(string[] args)
         {
             CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
             CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
@@ -19,7 +24,6 @@ namespace Onnxify.ConsoleTest
             Console.InputEncoding = Encoding.UTF8;
             Console.OutputEncoding = Encoding.UTF8;
 
-            await Test10();
             Test0();
             Test1();
             Test2();
@@ -27,6 +31,8 @@ namespace Onnxify.ConsoleTest
             Test7();
             Test8();
             Test9();
+            await Test10();
+            Test11();
 
             if (!Console.IsInputRedirected)
             {
@@ -293,6 +299,9 @@ namespace Onnxify.ConsoleTest
                 using var gptModel = new GptOssQ4f16Model();
                 using var alexNetModel = new Bvlcalexnet12QdqModel();
                 using var realEsrganModel = new RealEsrganX4plusModel();
+
+                using var yy = new PanlingoLstmModel();
+                using var xx = new PanlingoLstmModelTorchModule();
             }
             catch (Exception ex)
             {
@@ -331,6 +340,111 @@ namespace Onnxify.ConsoleTest
             }
         }
 
+        private static void Test11()
+        {
+            var originalModelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "mobilenetv2-12.onnx");
+            var roundtripModelPath = Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory,
+                "Assets",
+                "Generated",
+                "MobileNetTorchRoundtrip",
+                "mobilenetv2-12-trained-roundtrip.onnx"
+            );
+            Directory.CreateDirectory(Path.GetDirectoryName(roundtripModelPath)!);
+
+            torch.random.manual_seed(12_345);
+
+            using var torchModule = new Mobilenetv212ModelTorchModule();
+            torchModule.LoadWeightsFromOnnx(originalModelPath);
+            torchModule.train();
+
+            using var trainingInput = torch.randn([1, 3, 224, 224], dtype: ScalarType.Float32);
+            using var trainingTarget = torch.randn([1, 1000], dtype: ScalarType.Float32);
+            using var optimizer = torch.optim.SGD(torchModule.parameters(), 1e-5);
+
+            for (var step = 0; step < 10; step++)
+            {
+                optimizer.zero_grad();
+                using var prediction = torchModule.forward(trainingInput);
+                using var loss = torch.nn.functional.mse_loss(prediction, trainingTarget);
+                loss.backward();
+                optimizer.step();
+
+                Console.WriteLine($"MobileNet Torch training step {step + 1}: loss={loss.item<float>():F6}");
+            }
+
+            torchModule.eval();
+
+            using var evaluationInput = torch.randn([1, 3, 224, 224], dtype: ScalarType.Float32);
+            var denseInput = ToDenseTensor(evaluationInput);
+
+            using var originalWrapper = new Mobilenetv212Model(originalModelPath);
+            using var originalOutputs = originalWrapper.Run(denseInput);
+            var original = originalOutputs.Output.ToArray();
+
+            using var torchOutput = torchModule.forward(evaluationInput);
+            var torchValues = ToFloatArray(torchOutput);
+
+            var exported = torchModule.ExportOnnxModel(
+                inputName: "input",
+                outputName: "output",
+                input: OnnxTensorType.Create<float>([1, 3, 224, 224]),
+                output: OnnxTensorType.Create<float>([1, 1000]),
+                options: new OnnxModelCreationOptions
+                {
+                    Opset = 22,
+                    ProducerName = "onnxify-console-test",
+                }
+            );
+            exported.Save(roundtripModelPath, overwrite: true);
+
+            using var roundtripWrapper = new Mobilenetv212Model(roundtripModelPath);
+            using var roundtripOutputs = roundtripWrapper.Run(denseInput);
+            var roundtrip = roundtripOutputs.Output.ToArray();
+
+            PrintDifference("original ONNX vs trained TorchModule", original, torchValues);
+            PrintDifference("trained TorchModule vs exported ONNX", torchValues, roundtrip);
+            PrintDifference("original ONNX vs exported ONNX", original, roundtrip);
+            Console.WriteLine($"MobileNet trained roundtrip ONNX: {roundtripModelPath}");
+        }
+
+        private static DenseTensor<float> ToDenseTensor(TorchTensor tensor)
+        {
+            using var detached = tensor.detach();
+            using var cpu = detached.cpu();
+            return new DenseTensor<float>(
+                cpu.data<float>().ToArray(),
+                cpu.shape.Select(static x => (int)x).ToArray()
+            );
+        }
+
+        private static float[] ToFloatArray(TorchTensor tensor)
+        {
+            using var detached = tensor.detach();
+            using var cpu = detached.cpu();
+            return cpu.data<float>().ToArray();
+        }
+
+        private static void PrintDifference(
+            string label,
+            IReadOnlyList<float> left,
+            IReadOnlyList<float> right
+        )
+        {
+            var count = Math.Min(left.Count, right.Count);
+            var max = 0f;
+            var sum = 0d;
+
+            for (var index = 0; index < count; index++)
+            {
+                var difference = MathF.Abs(left[index] - right[index]);
+                max = Math.Max(max, difference);
+                sum += difference;
+            }
+
+            Console.WriteLine($"{label}: max_abs={max:E6}; mean_abs={(sum / count):E6}; count={count}");
+        }
+
         private static IReadOnlyList<(int Index, float Score)> GetTopK(Tensor<float> output, int k)
         {
             var classCount = output.Dimensions[1];
@@ -345,13 +459,13 @@ namespace Onnxify.ConsoleTest
 
         private static async Task Test10()
         {
-            var repositoryId = "onnx-community/gemma-4-E2B-it-ONNX";
+            var repositoryId = "gluschenko/higgs-audio-v2-tokenizer-onnx";
             var outputDirectoryPath = Path.Combine(
                 AppDomain.CurrentDomain.BaseDirectory,
                 "Assets",
                 "Generated",
                 "HuggingFace",
-                "gemma-4-E2B-it-ONNX-bf16"
+                "higgs-audio-v2-tokenizer-onnx"
             );
             var revision = "main";
             var variant = ".onnx";

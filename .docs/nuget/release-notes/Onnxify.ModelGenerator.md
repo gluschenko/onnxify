@@ -1,6 +1,17 @@
+## 0.3.0
+
+- Expanded TorchModule import support for ONNX graphs with broader runtime tensor data types that map to TorchSharp `ScalarType`, including non-float inputs and outputs.
+- Added TorchModule import support for `GRU` and multi-output operators such as `Split` and `TopK`.
+- Added TorchModule inline support for additional ONNX operators including `ArgMax`, `ArgMin`, `Celu`, `CumSum`, `DepthToSpace`, `Dropout`, `Expand`, `GatherElements`, `Gelu`, `GroupNormalization`, `HardSwish`, `InstanceNormalization`, `LayerNormalization`, `LogSoftmax`, `Mish`, `PRelu`, `Pad`, `ReduceMax`, `ReduceMin`, `ReduceProd`, `Resize`, `Selu`, `Slice`, `Softplus`, `SpaceToDepth`, `Tile`, and `Trilu`.
+- TorchModule `LoadWeightsFromOnnx(...)` now canonicalizes the source graph and can fall back from initializer names to deterministic canonical initializer indexes when loading weights from structurally identical models with different value names.
+- Removed MVP wording from TorchModule backend diagnostics.
+
 ## 0.2.0
 
 - Aligned the package version with the 0.2.0 Onnxify package family release.
+- Added `OnnxifyModelImportType`, with `OnnxRuntimeInference` as the default and an opt-in `TorchModule` mode that emits a graph-shaped TorchSharp module for supported single-input/single-output ONNX graphs.
+- Added TorchModule import support for ONNX `Acos`, `Acosh`, `Asin`, `Asinh`, `Atan`, `Atanh`, `Round`, `Sign`, `GreaterOrEqual`, and `LessOrEqual` operators.
+- Added TorchModule import support for runtime input and output tensor data types that map to TorchSharp `ScalarType`, plus ONNX `LSTM`, `Not`, `Max`, and `Min`, including LSTM gate-order conversion when loading ONNX weights into TorchSharp.
 
 ## 0.1.2
 
