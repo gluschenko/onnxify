@@ -633,7 +633,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             }
 
             var outputs = node.Output.Where(static x => !string.IsNullOrWhiteSpace(x)).ToArray();
-            if (outputs.Length != 1 && !string.Equals(node.OpType, "LSTM", StringComparison.Ordinal))
+            if (outputs.Length != 1 && !IsSupportedTorchModuleMultiOutputOperator(node.OpType))
             {
                 ReportUnsupportedTorchModule(fileName, $"operator '{node.OpType}' in node '{FormatNodeName(node)}' must have exactly one output for the TorchModule backend.", diagnostics);
                 return null;
@@ -693,6 +693,11 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
     private static bool IsSupportedTorchModuleRuntimeTensorType(TensorProto.Types.DataType dataType)
     {
         return TryFormatTorchModuleScalarType(dataType, out _);
+    }
+
+    private static bool IsSupportedTorchModuleMultiOutputOperator(string opType)
+    {
+        return opType is "LSTM" or "GRU" or "Split" or "TopK";
     }
 
     internal static bool TryFormatTorchModuleScalarType(
@@ -1347,6 +1352,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         ReLU6 = 6,
         MaxPool2d = 7,
         LSTM = 8,
+        GRU = 9,
     }
 
     internal sealed record TorchNodeSpecification(

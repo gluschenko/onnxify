@@ -15,6 +15,7 @@ internal static class TorchModuleOperatorRegistry
         Add(new ReluTorchModuleOperator());
         Add(new Relu6TorchModuleOperator());
         Add(new LstmTorchModuleOperator());
+        Add(new GruTorchModuleOperator());
         return builder.ToImmutable();
 
         void Add(TorchModuleOperator @operator)

@@ -259,6 +259,57 @@ internal sealed class TorchModulePrinter
                 return input.sum(ResolveReductionAxes(axes, input.shape.Length), keepDims);
             }
 
+            private static Tensor ReduceMaxTensor(Tensor input, Tensor? axes, bool keepDims)
+            {
+                return ReduceMaxTensor(input, axes?.data<long>().ToArray(), keepDims);
+            }
+
+            private static Tensor ReduceMaxTensor(Tensor input, long[]? axes, bool keepDims)
+            {
+                var resolvedAxes = ResolveReductionAxes(axes, input.shape.Length);
+                var result = input;
+                foreach (var axis in resolvedAxes.OrderByDescending(static x => x))
+                {
+                    result = result.max(axis, keepdim: keepDims).values;
+                }
+
+                return result;
+            }
+
+            private static Tensor ReduceMinTensor(Tensor input, Tensor? axes, bool keepDims)
+            {
+                return ReduceMinTensor(input, axes?.data<long>().ToArray(), keepDims);
+            }
+
+            private static Tensor ReduceMinTensor(Tensor input, long[]? axes, bool keepDims)
+            {
+                var resolvedAxes = ResolveReductionAxes(axes, input.shape.Length);
+                var result = input;
+                foreach (var axis in resolvedAxes.OrderByDescending(static x => x))
+                {
+                    result = result.min(axis, keepdim: keepDims).values;
+                }
+
+                return result;
+            }
+
+            private static Tensor ReduceProdTensor(Tensor input, Tensor? axes, bool keepDims)
+            {
+                return ReduceProdTensor(input, axes?.data<long>().ToArray(), keepDims);
+            }
+
+            private static Tensor ReduceProdTensor(Tensor input, long[]? axes, bool keepDims)
+            {
+                var resolvedAxes = ResolveReductionAxes(axes, input.shape.Length);
+                var result = input;
+                foreach (var axis in resolvedAxes.OrderByDescending(static x => x))
+                {
+                    result = result.prod(axis, keepdim: keepDims);
+                }
+
+                return result;
+            }
+
             private static long[] ResolveReductionAxes(long[]? axes, int rank)
             {
                 return axes is null || axes.Length == 0
@@ -273,12 +324,230 @@ internal sealed class TorchModulePrinter
                     .ToArray();
             }
 
+            private static Tensor CumSumTensor(Tensor input, Tensor axis, bool reverse, bool exclusive)
+            {
+                var dim = axis.data<long>().ToArray()[0];
+                var source = reverse ? input.flip(new long[] { dim }) : input;
+                var result = source.cumsum(dim);
+                if (exclusive)
+                {
+                    result = result - source;
+                }
+
+                return reverse ? result.flip(new long[] { dim }) : result;
+            }
+
+            private static Tensor DepthToSpaceTensor(Tensor input, long blockSize, string mode)
+            {
+                var shape = input.shape;
+                if (shape.Length != 4)
+                {
+                    throw new InvalidOperationException("DepthToSpace expects a rank-4 tensor.");
+                }
+
+                var n = shape[0];
+                var c = shape[1] / (blockSize * blockSize);
+                var h = shape[2];
+                var w = shape[3];
+                return string.Equals(mode, "CRD", StringComparison.OrdinalIgnoreCase)
+                    ? input.reshape(new long[] { n, c, blockSize, blockSize, h, w }).permute(0, 1, 4, 2, 5, 3).reshape(new long[] { n, c, h * blockSize, w * blockSize })
+                    : input.reshape(new long[] { n, blockSize, blockSize, c, h, w }).permute(0, 3, 4, 1, 5, 2).reshape(new long[] { n, c, h * blockSize, w * blockSize });
+            }
+
+            private static Tensor SpaceToDepthTensor(Tensor input, long blockSize)
+            {
+                var shape = input.shape;
+                if (shape.Length != 4)
+                {
+                    throw new InvalidOperationException("SpaceToDepth expects a rank-4 tensor.");
+                }
+
+                var n = shape[0];
+                var c = shape[1];
+                var h = shape[2] / blockSize;
+                var w = shape[3] / blockSize;
+                return input.reshape(new long[] { n, c, h, blockSize, w, blockSize }).permute(0, 3, 5, 1, 2, 4).reshape(new long[] { n, c * blockSize * blockSize, h, w });
+            }
+
+            private static Tensor LayerNormTensor(Tensor input, Tensor scale, Tensor? bias, long axis, float epsilon)
+            {
+                var rank = input.shape.Length;
+                var normalizedAxis = axis < 0 ? axis + rank : axis;
+                var normalizedShape = input.shape.Skip(checked((int)normalizedAxis)).ToArray();
+                return torch.nn.functional.layer_norm(input, normalizedShape, scale, bias, eps: epsilon);
+            }
+
+            private static Tensor PadTensor(Tensor input, Tensor pads, Tensor? constantValue, string mode)
+            {
+                var rawPads = pads.data<long>().ToArray();
+                var rank = rawPads.Length / 2;
+                var torchPads = new List<long>(rawPads.Length);
+                for (var axis = rank - 1; axis >= 0; axis--)
+                {
+                    torchPads.Add(rawPads[axis]);
+                    torchPads.Add(rawPads[axis + rank]);
+                }
+
+                var value = constantValue is null ? 0.0 : Convert.ToDouble(constantValue.cpu().item<double>());
+                return torch.nn.functional.pad(input, torchPads.ToArray(), mode: ParsePaddingMode(mode), value: value);
+            }
+
+            private static PaddingModes ParsePaddingMode(string mode)
+            {
+                return mode switch
+                {
+                    "constant" => PaddingModes.Constant,
+                    "reflect" => PaddingModes.Reflect,
+                    "replicate" => PaddingModes.Replicate,
+                    "edge" => PaddingModes.Replicate,
+                    "circular" => PaddingModes.Circular,
+                    _ => throw new NotSupportedException($"Unsupported Pad mode '{mode}'."),
+                };
+            }
+
+            private static Tensor SliceTensor(Tensor input, Tensor starts, Tensor ends, Tensor? axes, Tensor? steps)
+            {
+                var result = input;
+                var startValues = starts.data<long>().ToArray();
+                var endValues = ends.data<long>().ToArray();
+                var axisValues = axes?.data<long>().ToArray() ?? Enumerable.Range(0, startValues.Length).Select(static x => (long)x).ToArray();
+                var stepValues = steps?.data<long>().ToArray() ?? Enumerable.Repeat(1L, startValues.Length).ToArray();
+                for (var i = 0; i < startValues.Length; i++)
+                {
+                    var axis = axisValues[i] < 0 ? axisValues[i] + result.shape.Length : axisValues[i];
+                    var dim = result.shape[axis];
+                    var start = startValues[i] < 0 ? startValues[i] + dim : startValues[i];
+                    var end = endValues[i] < 0 ? endValues[i] + dim : Math.Min(endValues[i], dim);
+                    var step = stepValues[i];
+                    if (step == 1L)
+                    {
+                        result = result.narrow((int)axis, (int)start, Math.Max(0L, end - start));
+                    }
+                    else
+                    {
+                        using var indices = torch.arange((int)start, (int)end, (int)step, dtype: ScalarType.Int64, device: input.device);
+                        result = result.index_select((int)axis, indices);
+                    }
+                }
+
+                return result;
+            }
+
+            private static Tensor[] SplitTensor(Tensor input, Tensor? split, long axis, long outputCount)
+            {
+                var axisIndex = (int)axis;
+                var splitSizes = split?.data<long>().ToArray();
+                if (splitSizes is null)
+                {
+                    var size = input.shape[axis] / outputCount;
+                    splitSizes = Enumerable.Repeat(size, checked((int)outputCount)).ToArray();
+                }
+
+                var result = new Tensor[splitSizes.Length];
+                var offset = 0L;
+                for (var i = 0; i < splitSizes.Length; i++)
+                {
+                    result[i] = input.narrow(axisIndex, (int)offset, splitSizes[i]);
+                    offset += splitSizes[i];
+                }
+
+                return result;
+            }
+
+            private static Tensor[] TopKTensor(Tensor input, Tensor k, long axis, bool largest, bool sorted)
+            {
+                var kValue = k.data<long>().ToArray()[0];
+                var result = input.topk((int)kValue, dim: (int)axis, largest: largest, sorted: sorted);
+                return new Tensor[] { result.values, result.indexes };
+            }
+
+            private static Tensor TriluTensor(Tensor input, Tensor? k, bool upper)
+            {
+                var diagonal = k is null ? 0L : k.data<long>().ToArray()[0];
+                return upper ? input.triu((int)diagonal) : input.tril((int)diagonal);
+            }
+
+            private static Tensor ResizeTensor(Tensor input, Tensor? scales, Tensor? sizes, string mode, string coordinateTransformationMode)
+            {
+                if (coordinateTransformationMode is not ("asymmetric" or "half_pixel" or "pytorch_half_pixel"))
+                {
+                    throw new NotSupportedException($"Unsupported Resize coordinate_transformation_mode '{coordinateTransformationMode}'.");
+                }
+
+                var interpolationMode = mode switch
+                {
+                    "nearest" => global::TorchSharp.torch.InterpolationMode.Nearest,
+                    "linear" => input.shape.Length switch
+                    {
+                        3 => global::TorchSharp.torch.InterpolationMode.Linear,
+                        4 => global::TorchSharp.torch.InterpolationMode.Bilinear,
+                        5 => global::TorchSharp.torch.InterpolationMode.Trilinear,
+                        _ => throw new NotSupportedException($"Resize linear mode requires rank 3, 4, or 5 input. Got rank {input.shape.Length}."),
+                    },
+                    "cubic" => global::TorchSharp.torch.InterpolationMode.Bicubic,
+                    _ => throw new NotSupportedException($"Unsupported Resize mode '{mode}'."),
+                };
+
+                long[] outputSpatialSizes = [];
+                double[] outputSpatialScales = [];
+                if (sizes is not null)
+                {
+                    var rawSizes = sizes.data<long>().ToArray();
+                    outputSpatialSizes = rawSizes.Length == input.shape.Length
+                        ? rawSizes.Skip(2).ToArray()
+                        : rawSizes;
+                }
+                else if (scales is not null)
+                {
+                    var rawScales = scales.to(ScalarType.Float64).data<double>().ToArray();
+                    outputSpatialScales = rawScales.Length == input.shape.Length
+                        ? rawScales.Skip(2).ToArray()
+                        : rawScales;
+                }
+                else
+                {
+                    throw new InvalidOperationException("Resize requires either scales or sizes.");
+                }
+
+                bool? alignCorners = coordinateTransformationMode == "pytorch_half_pixel" && (mode is "linear" or "cubic")
+                    ? false
+                    : null;
+                return torch.nn.functional.interpolate(
+                    input,
+                    outputSpatialSizes,
+                    outputSpatialScales,
+                    interpolationMode,
+                    align_corners: alignCorners,
+                    recompute_scale_factor: false,
+                    antialias: false
+                );
+            }
+
             private static Tensor ToOnnxLstmY(Tensor torchY, long numDirections, long hiddenSize)
             {
                 var shape = torchY.shape;
                 if (shape.Length != 3)
                 {
                     throw new InvalidOperationException($"TorchSharp LSTM output must have rank 3. Got rank {shape.Length}.");
+                }
+
+                return torchY
+                    .reshape(new long[] { shape[0], shape[1], numDirections, hiddenSize })
+                    .permute(0, 2, 1, 3);
+            }
+
+            private static Tensor[] ToOnnxGruOutputs((Tensor, Tensor) torchOutput, long numDirections, long hiddenSize)
+            {
+                var y = ToOnnxGruY(torchOutput.Item1, numDirections, hiddenSize);
+                return new Tensor[] { y, torchOutput.Item2 };
+            }
+
+            private static Tensor ToOnnxGruY(Tensor torchY, long numDirections, long hiddenSize)
+            {
+                var shape = torchY.shape;
+                if (shape.Length != 3)
+                {
+                    throw new InvalidOperationException($"TorchSharp GRU output must have rank 3. Got rank {shape.Length}.");
                 }
 
                 return torchY
@@ -479,6 +748,60 @@ internal sealed class TorchModulePrinter
                 }
             }
 
+            private static void LoadOnnxGruWeights(
+                IReadOnlyDictionary<string, Onnxify.OnnxTensor> tensors,
+                string wName,
+                string rName,
+                string? bName,
+                TorchModules.GRU module,
+                long hiddenSize,
+                long inputSize,
+                long numDirections
+            )
+            {
+                var w = GetFloatTensor(tensors, wName);
+                var r = GetFloatTensor(tensors, rName);
+                var b = bName is null ? null : GetFloatTensor(tensors, bName);
+                var state = module.state_dict();
+
+                for (var direction = 0L; direction < numDirections; direction++)
+                {
+                    var suffix = direction == 1L ? "_reverse" : string.Empty;
+                    CopyOnnxGruGateMatrix(
+                        w,
+                        direction,
+                        hiddenSize,
+                        inputSize,
+                        GetRequiredStateTensor(state, $"weight_ih_l0{suffix}")
+                    );
+                    CopyOnnxGruGateMatrix(
+                        r,
+                        direction,
+                        hiddenSize,
+                        hiddenSize,
+                        GetRequiredStateTensor(state, $"weight_hh_l0{suffix}")
+                    );
+
+                    if (b is not null)
+                    {
+                        CopyOnnxGruGateVector(
+                            b,
+                            direction,
+                            hiddenSize,
+                            offset: 0L,
+                            GetRequiredStateTensor(state, $"bias_ih_l0{suffix}")
+                        );
+                        CopyOnnxGruGateVector(
+                            b,
+                            direction,
+                            hiddenSize,
+                            offset: 3L * hiddenSize,
+                            GetRequiredStateTensor(state, $"bias_hh_l0{suffix}")
+                        );
+                    }
+                }
+            }
+
             private static Onnxify.OnnxTensor<float> GetFloatTensor(
                 IReadOnlyDictionary<string, Onnxify.OnnxTensor> tensors,
                 string name
@@ -547,6 +870,47 @@ internal sealed class TorchModulePrinter
                 target.detach().copy_(tensor);
             }
 
+            private static void CopyOnnxGruGateMatrix(
+                Onnxify.OnnxTensor<float> source,
+                long direction,
+                long hiddenSize,
+                long width,
+                Tensor target
+            )
+            {
+                var data = source.Value.ToArray();
+                var gateBlockLength = hiddenSize * width;
+                var reordered = ReorderOnnxGruGateData(
+                    data,
+                    direction,
+                    gateBlockLength,
+                    directionStride: 3L * gateBlockLength,
+                    offset: 0L
+                );
+                using var tensor = torch.tensor(reordered, new long[] { 3L * hiddenSize, width }, dtype: ScalarType.Float32, device: target.device);
+                target.detach().copy_(tensor);
+            }
+
+            private static void CopyOnnxGruGateVector(
+                Onnxify.OnnxTensor<float> source,
+                long direction,
+                long hiddenSize,
+                long offset,
+                Tensor target
+            )
+            {
+                var data = source.Value.ToArray();
+                var reordered = ReorderOnnxGruGateData(
+                    data,
+                    direction,
+                    gateBlockLength: hiddenSize,
+                    directionStride: 6L * hiddenSize,
+                    offset
+                );
+                using var tensor = torch.tensor(reordered, new long[] { 3L * hiddenSize }, dtype: ScalarType.Float32, device: target.device);
+                target.detach().copy_(tensor);
+            }
+
             private static float[] ReorderOnnxLstmGateData(
                 float[] source,
                 long direction,
@@ -562,6 +926,23 @@ internal sealed class TorchModulePrinter
                 CopyGateBlock(source, result, directionOffset + 2L * gateBlockLength, 1L * gateBlockLength, gateBlockLength);
                 CopyGateBlock(source, result, directionOffset + 3L * gateBlockLength, 2L * gateBlockLength, gateBlockLength);
                 CopyGateBlock(source, result, directionOffset + 1L * gateBlockLength, 3L * gateBlockLength, gateBlockLength);
+                return result;
+            }
+
+            private static float[] ReorderOnnxGruGateData(
+                float[] source,
+                long direction,
+                long gateBlockLength,
+                long directionStride,
+                long offset
+            )
+            {
+                var directionOffset = (direction * directionStride) + offset;
+                var result = new float[checked((int)(3L * gateBlockLength))];
+
+                CopyGateBlock(source, result, directionOffset + 1L * gateBlockLength, 0L * gateBlockLength, gateBlockLength);
+                CopyGateBlock(source, result, directionOffset + 0L * gateBlockLength, 1L * gateBlockLength, gateBlockLength);
+                CopyGateBlock(source, result, directionOffset + 2L * gateBlockLength, 2L * gateBlockLength, gateBlockLength);
                 return result;
             }
 
@@ -617,10 +998,27 @@ internal sealed class TorchModulePrinter
             var expression = modulesByNodeName.TryGetValue(node.Name, out var module)
                 ? EmitTorchModuleNode(module, node, values)
                 : EmitTorchNode(node, values);
-            var output = node.Outputs[0];
-            var localName = ToCamelIdentifier(output, "value");
-            values[output] = localName;
-            statements.Add($"var {localName} = {expression};");
+            if (node.Outputs.Length > 1 && IsTensorArrayExpression(node.OpType))
+            {
+                var resultLocalName = ToCamelIdentifier(node.Name, "outputs");
+                statements.Add($"var {resultLocalName} = {expression};");
+                for (var outputIndex = 0; outputIndex < node.Outputs.Length; outputIndex++)
+                {
+                    var output = node.Outputs[outputIndex];
+                    var localName = ToCamelIdentifier(output, "value");
+                    values[output] = localName;
+                    statements.Add($"var {localName} = {resultLocalName}[{outputIndex}];");
+                }
+
+                continue;
+            }
+
+            {
+                var output = node.Outputs[0];
+                var localName = ToCamelIdentifier(output, "value");
+                values[output] = localName;
+                statements.Add($"var {localName} = {expression};");
+            }
         }
 
         if (!values.TryGetValue(torchModule.OutputOnnxName, out var outputExpression))
@@ -866,6 +1264,11 @@ internal sealed class TorchModulePrinter
         }
 
         return @operator.Emit(node, values);
+    }
+
+    private static bool IsTensorArrayExpression(string opType)
+    {
+        return opType is "GRU" or "Split" or "TopK";
     }
 
 }
