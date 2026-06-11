@@ -239,6 +239,59 @@ internal sealed class TorchModulePrinter
                 return result;
             }
 
+            private static Tensor ModTensor(Tensor input, Tensor other, bool fmod)
+            {
+                return fmod ? input.fmod(other) : input.remainder(other);
+            }
+
+            private static Tensor IsInfTensor(Tensor input, long detectNegative, long detectPositive)
+            {
+                var isInf = input.isinf();
+                if (detectNegative != 0L && detectPositive != 0L)
+                {
+                    return isInf;
+                }
+
+                var zero = torch.zeros(Array.Empty<long>(), dtype: input.dtype, device: input.device);
+                if (detectNegative != 0L)
+                {
+                    return input.lt(zero).logical_and(isInf);
+                }
+
+                if (detectPositive != 0L)
+                {
+                    return input.gt(zero).logical_and(isInf);
+                }
+
+                return torch.zeros_like(isInf);
+            }
+
+            private static Tensor BitwiseNotTensor(Tensor input)
+            {
+                return input.dtype == ScalarType.Bool ? input.logical_not() : input.bitwise_not();
+            }
+
+            private static Tensor BitwiseAndTensor(Tensor input, Tensor other)
+            {
+                return input.dtype == ScalarType.Bool && other.dtype == ScalarType.Bool
+                    ? input.logical_and(other)
+                    : input.bitwise_and(other);
+            }
+
+            private static Tensor BitwiseOrTensor(Tensor input, Tensor other)
+            {
+                return input.dtype == ScalarType.Bool && other.dtype == ScalarType.Bool
+                    ? input.logical_or(other)
+                    : input.bitwise_or(other);
+            }
+
+            private static Tensor BitwiseXorTensor(Tensor input, Tensor other)
+            {
+                return input.dtype == ScalarType.Bool && other.dtype == ScalarType.Bool
+                    ? input.logical_xor(other)
+                    : input.bitwise_xor(other);
+            }
+
             private static Tensor ReduceMeanTensor(Tensor input, Tensor? axes, bool keepDims)
             {
                 return ReduceMeanTensor(input, axes?.data<long>().ToArray(), keepDims);
@@ -308,6 +361,36 @@ internal sealed class TorchModulePrinter
                 }
 
                 return result;
+            }
+
+            private static Tensor ReduceL1Tensor(Tensor input, Tensor? axes, bool keepDims)
+            {
+                return ReduceL1Tensor(input, axes?.data<long>().ToArray(), keepDims);
+            }
+
+            private static Tensor ReduceL1Tensor(Tensor input, long[]? axes, bool keepDims)
+            {
+                return input.abs().sum(ResolveReductionAxes(axes, input.shape.Length), keepDims);
+            }
+
+            private static Tensor ReduceL2Tensor(Tensor input, Tensor? axes, bool keepDims)
+            {
+                return ReduceL2Tensor(input, axes?.data<long>().ToArray(), keepDims);
+            }
+
+            private static Tensor ReduceL2Tensor(Tensor input, long[]? axes, bool keepDims)
+            {
+                return input.pow(2).sum(ResolveReductionAxes(axes, input.shape.Length), keepDims).sqrt();
+            }
+
+            private static Tensor ReduceLogSumExpTensor(Tensor input, Tensor? axes, bool keepDims)
+            {
+                return ReduceLogSumExpTensor(input, axes?.data<long>().ToArray(), keepDims);
+            }
+
+            private static Tensor ReduceLogSumExpTensor(Tensor input, long[]? axes, bool keepDims)
+            {
+                return input.exp().sum(ResolveReductionAxes(axes, input.shape.Length), keepDims).log();
             }
 
             private static long[] ResolveReductionAxes(long[]? axes, int rank)

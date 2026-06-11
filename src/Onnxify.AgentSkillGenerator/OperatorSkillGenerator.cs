@@ -302,6 +302,16 @@ internal static class OperatorSkillGenerator
             x => x.NodeType.FullName ?? x.NodeType.Name,
             x => x.Key,
             StringComparer.Ordinal);
+        var operatorKeysByName = onnxOperators
+            .GroupBy(x => x.Key.Name, StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .OrderBy(static x => string.IsNullOrEmpty(x.Key.Domain) ? 0 : 1)
+                    .ThenBy(static x => x.Key.Domain, StringComparer.Ordinal)
+                    .First()
+                    .Key,
+                StringComparer.Ordinal);
 
         var wrapperMethodsByHandle = onnxOperators
             .SelectMany(x => x.WrapperMethods.Select(method => new KeyValuePair<string, OperatorKey>(GetMethodKey(method.Method), x.Key)))
@@ -310,7 +320,7 @@ internal static class OperatorSkillGenerator
         MethodAnalysis[] analyses = SafeGetTypes(torchSharpAssembly)
             .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly))
             .Where(method => method.GetMethodBody() is not null)
-            .Select(method => AnalyzeMethod(method, torchSharpAssembly, operatorConstructorsByType, wrapperMethodsByHandle))
+            .Select(method => AnalyzeMethod(method, torchSharpAssembly, operatorConstructorsByType, operatorKeysByName, wrapperMethodsByHandle))
             .ToArray();
 
         var analysesByKey = analyses.ToDictionary(x => x.MethodKey, StringComparer.Ordinal);
@@ -385,6 +395,7 @@ internal static class OperatorSkillGenerator
         MethodBase method,
         Assembly currentAssembly,
         IReadOnlyDictionary<string, OperatorKey> operatorConstructorsByType,
+        IReadOnlyDictionary<string, OperatorKey> operatorKeysByName,
         IReadOnlyDictionary<string, OperatorKey> wrapperMethodsByHandle
     )
     {
@@ -414,6 +425,12 @@ internal static class OperatorSkillGenerator
             {
                 directOperators.Add(constructedOperator);
             }
+
+            if (TryGetHelperEmittedOperator(call, operatorKeysByName, out OperatorKey? helperOperator)
+                && helperOperator is not null)
+            {
+                directOperators.Add(helperOperator);
+            }
         }
 
         string[] torchOps = method
@@ -431,6 +448,31 @@ internal static class OperatorSkillGenerator
             internalCalls.ToFrozenSet(StringComparer.Ordinal),
             torchOps,
             IsTopLevelConverter(method));
+    }
+
+    private static bool TryGetHelperEmittedOperator(
+        ResolvedCall call,
+        IReadOnlyDictionary<string, OperatorKey> operatorKeysByName,
+        out OperatorKey? key
+    )
+    {
+        key = null;
+        if (call.Target is null
+            || call.Target.DeclaringType != typeof(global::Onnxify.TorchSharp.TorchTensorOperatorExtensions)
+            || call.Target.Name is not ("ExportUnaryNode" or "ExportBinaryNode" or "ExportReduceNode"))
+        {
+            return false;
+        }
+
+        foreach (string value in call.RecentStringOperands.Reverse())
+        {
+            if (operatorKeysByName.TryGetValue(value, out key))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static IReadOnlyDictionary<OperatorKey, IReadOnlyList<ModelGeneratorTorchModuleDoc>> BuildModelGeneratorCoverage()
@@ -876,14 +918,25 @@ internal static class OperatorSkillGenerator
         Type[]? methodArguments = method is MethodInfo info ? info.GetGenericArguments() : null;
 
         int offset = 0;
+        var recentStringOperands = new Queue<string>();
         while (offset < il.Length)
         {
             OpCode opCode = ReadOpCode(il, ref offset);
             object? operand = ReadOperand(method.Module, il, ref offset, opCode.OperandType, typeArguments, methodArguments);
 
+            if (opCode == OpCodes.Ldstr && operand is string stringOperand)
+            {
+                recentStringOperands.Enqueue(stringOperand);
+                while (recentStringOperands.Count > 8)
+                {
+                    recentStringOperands.Dequeue();
+                }
+            }
+
             if ((opCode == OpCodes.Call || opCode == OpCodes.Callvirt || opCode == OpCodes.Newobj) && operand is MethodBase target)
             {
-                yield return new ResolvedCall(opCode, target);
+                yield return new ResolvedCall(opCode, target, recentStringOperands.ToArray());
+                recentStringOperands.Clear();
             }
         }
     }
@@ -926,6 +979,19 @@ internal static class OperatorSkillGenerator
             case OperandType.InlineField:
             case OperandType.InlineSig:
             case OperandType.InlineString:
+                {
+                    int token = BitConverter.ToInt32(il, offset);
+                    offset += 4;
+
+                    try
+                    {
+                        return module.ResolveString(token);
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                }
             case OperandType.InlineType:
             case OperandType.ShortInlineR:
             case OperandType.InlineTok:
@@ -1402,7 +1468,7 @@ internal static class OperatorSkillGenerator
         bool IsTopLevelConverter
     );
 
-    private sealed record ResolvedCall(OpCode OpCode, MethodBase? Target);
+    private sealed record ResolvedCall(OpCode OpCode, MethodBase? Target, string[] RecentStringOperands);
 
     private enum ParameterKind
     {

@@ -45,6 +45,7 @@ Calculates the hyperbolic tangent of the given input tensor element-wise.
 | Converter | Torch ops |
 | --- | --- |
 | `Onnxify.TorchSharp.TorchModuleExtensions.Export(this Tanh module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::tanh` |
+| `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportTanh(this OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `prims::tanh` |
 
 ## ModelGenerator TorchModule Coverage
 

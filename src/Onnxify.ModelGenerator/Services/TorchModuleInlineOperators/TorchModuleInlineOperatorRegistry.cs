@@ -23,7 +23,9 @@ internal static class TorchModuleInlineOperatorRegistry
         Add(new SignTorchModuleInlineOperator());
         Add(new SinTorchModuleInlineOperator());
         Add(new CosTorchModuleInlineOperator());
+        Add(new CoshTorchModuleInlineOperator());
         Add(new TanTorchModuleInlineOperator());
+        Add(new SinhTorchModuleInlineOperator());
         Add(new AcosTorchModuleInlineOperator());
         Add(new AcoshTorchModuleInlineOperator());
         Add(new AsinTorchModuleInlineOperator());
@@ -40,6 +42,12 @@ internal static class TorchModuleInlineOperatorRegistry
         Add(new SoftmaxTorchModuleInlineOperator());
         Add(new IdentityTorchModuleInlineOperator());
         Add(new CastTorchModuleInlineOperator());
+        Add(new CastLikeTorchModuleInlineOperator());
+        Add(new DetTorchModuleInlineOperator());
+        Add(new IsInfTorchModuleInlineOperator());
+        Add(new IsNaNTorchModuleInlineOperator());
+        Add(new ModTorchModuleInlineOperator());
+        Add(new NonZeroTorchModuleInlineOperator());
         Add(new MatMulTorchModuleInlineOperator());
         Add(new MaxTorchModuleInlineOperator());
         Add(new MinTorchModuleInlineOperator());
@@ -68,6 +76,9 @@ internal static class TorchModuleInlineOperatorRegistry
         Add(new ReduceMaxTorchModuleInlineOperator());
         Add(new ReduceMinTorchModuleInlineOperator());
         Add(new ReduceProdTorchModuleInlineOperator());
+        Add(new ReduceL1TorchModuleInlineOperator());
+        Add(new ReduceL2TorchModuleInlineOperator());
+        Add(new ReduceLogSumExpTorchModuleInlineOperator());
         Add(new ResizeTorchModuleInlineOperator());
         Add(new SeluTorchModuleInlineOperator());
         Add(new SliceTorchModuleInlineOperator());
@@ -97,6 +108,13 @@ internal static class TorchModuleInlineOperatorRegistry
         Add(new EqualTorchModuleInlineOperator());
         Add(new WhereTorchModuleInlineOperator());
         Add(new NotTorchModuleInlineOperator());
+        Add(new AndTorchModuleInlineOperator());
+        Add(new OrTorchModuleInlineOperator());
+        Add(new XorTorchModuleInlineOperator());
+        Add(new BitwiseNotTorchModuleInlineOperator());
+        Add(new BitwiseAndTorchModuleInlineOperator());
+        Add(new BitwiseOrTorchModuleInlineOperator());
+        Add(new BitwiseXorTorchModuleInlineOperator());
         Add(new ConstantTorchModuleInlineOperator());
         Add(new QuantizeLinearTorchModuleInlineOperator());
         Add(new DequantizeLinearTorchModuleInlineOperator());

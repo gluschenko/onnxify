@@ -38,18 +38,21 @@ internal sealed class PowTorchModuleInlineOperator : TorchModuleInlineOperator
     internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.pow({Input(node, values, 1)})";
 }
 
+[TorchSharpOp("Abs")]
 internal sealed class AbsTorchModuleInlineOperator : TorchModuleInlineOperator
 {
     internal override string OnnxOpType => "Abs";
     internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.abs()";
 }
 
+[TorchSharpOp("Neg")]
 internal sealed class NegTorchModuleInlineOperator : TorchModuleInlineOperator
 {
     internal override string OnnxOpType => "Neg";
     internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"-{Input(node, values, 0)}";
 }
 
+[TorchSharpOp("Exp")]
 internal sealed class ExpTorchModuleInlineOperator : TorchModuleInlineOperator
 {
     internal override string OnnxOpType => "Exp";
@@ -70,12 +73,14 @@ internal sealed class SqrtTorchModuleInlineOperator : TorchModuleInlineOperator
     internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.sqrt()";
 }
 
+[TorchSharpOp("Floor")]
 internal sealed class FloorTorchModuleInlineOperator : TorchModuleInlineOperator
 {
     internal override string OnnxOpType => "Floor";
     internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.floor()";
 }
 
+[TorchSharpOp("Ceil")]
 internal sealed class CeilTorchModuleInlineOperator : TorchModuleInlineOperator
 {
     internal override string OnnxOpType => "Ceil";
@@ -96,22 +101,39 @@ internal sealed class SignTorchModuleInlineOperator : TorchModuleInlineOperator
     internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.sign()";
 }
 
+[TorchSharpOp("Sin")]
 internal sealed class SinTorchModuleInlineOperator : TorchModuleInlineOperator
 {
     internal override string OnnxOpType => "Sin";
     internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.sin()";
 }
 
+[TorchSharpOp("Cos")]
 internal sealed class CosTorchModuleInlineOperator : TorchModuleInlineOperator
 {
     internal override string OnnxOpType => "Cos";
     internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.cos()";
 }
 
+[TorchSharpOp("Cosh")]
+internal sealed class CoshTorchModuleInlineOperator : TorchModuleInlineOperator
+{
+    internal override string OnnxOpType => "Cosh";
+    internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.cosh()";
+}
+
+[TorchSharpOp("Tan")]
 internal sealed class TanTorchModuleInlineOperator : TorchModuleInlineOperator
 {
     internal override string OnnxOpType => "Tan";
     internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.tan()";
+}
+
+[TorchSharpOp("Sinh")]
+internal sealed class SinhTorchModuleInlineOperator : TorchModuleInlineOperator
+{
+    internal override string OnnxOpType => "Sinh";
+    internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.sinh()";
 }
 
 [TorchSharpOp("Acos")]
@@ -156,12 +178,14 @@ internal sealed class AtanhTorchModuleInlineOperator : TorchModuleInlineOperator
     internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.atanh()";
 }
 
+[TorchSharpOp("Erf")]
 internal sealed class ErfTorchModuleInlineOperator : TorchModuleInlineOperator
 {
     internal override string OnnxOpType => "Erf";
     internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.erf()";
 }
 
+[TorchSharpOp("Reciprocal")]
 internal sealed class ReciprocalTorchModuleInlineOperator : TorchModuleInlineOperator
 {
     internal override string OnnxOpType => "Reciprocal";
@@ -210,6 +234,7 @@ internal sealed class SoftmaxTorchModuleInlineOperator : TorchModuleInlineOperat
     internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.softmax({GetLongAttribute(node, "axis", -1L)}L)";
 }
 
+[TorchSharpOp("Identity")]
 internal sealed class IdentityTorchModuleInlineOperator : TorchModuleInlineOperator
 {
     internal override string OnnxOpType => "Identity";
@@ -220,6 +245,48 @@ internal sealed class CastTorchModuleInlineOperator : TorchModuleInlineOperator
 {
     internal override string OnnxOpType => "Cast";
     internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.to({FormatScalarType((TensorProto.Types.DataType)GetLongAttribute(node, "to", 0L))})";
+}
+
+[TorchSharpOp("CastLike")]
+internal sealed class CastLikeTorchModuleInlineOperator : TorchModuleInlineOperator
+{
+    internal override string OnnxOpType => "CastLike";
+    internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.to({Input(node, values, 1)}.dtype)";
+}
+
+[TorchSharpOp("Det")]
+internal sealed class DetTorchModuleInlineOperator : TorchModuleInlineOperator
+{
+    internal override string OnnxOpType => "Det";
+    internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.det()";
+}
+
+[TorchSharpOp("IsInf")]
+internal sealed class IsInfTorchModuleInlineOperator : TorchModuleInlineOperator
+{
+    internal override string OnnxOpType => "IsInf";
+    internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"IsInfTensor({Input(node, values, 0)}, {GetLongAttribute(node, "detect_negative", 1L)}L, {GetLongAttribute(node, "detect_positive", 1L)}L)";
+}
+
+[TorchSharpOp("IsNaN")]
+internal sealed class IsNaNTorchModuleInlineOperator : TorchModuleInlineOperator
+{
+    internal override string OnnxOpType => "IsNaN";
+    internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.isnan()";
+}
+
+[TorchSharpOp("Mod")]
+internal sealed class ModTorchModuleInlineOperator : TorchModuleInlineOperator
+{
+    internal override string OnnxOpType => "Mod";
+    internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"ModTensor({Input(node, values, 0)}, {Input(node, values, 1)}, {FormatBool(GetLongAttribute(node, "fmod", 0L) != 0L)})";
+}
+
+[TorchSharpOp("NonZero")]
+internal sealed class NonZeroTorchModuleInlineOperator : TorchModuleInlineOperator
+{
+    internal override string OnnxOpType => "NonZero";
+    internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.nonzero().transpose(0, 1)";
 }
 
 [TorchSharpOp("MatMul")]
@@ -422,6 +489,33 @@ internal sealed class ReduceProdTorchModuleInlineOperator : TorchModuleInlineOpe
         : $"ReduceProdTensor({Input(node, values, 0)}, {FormatNullableLongArray(GetLongArrayAttributeOrNull(node, "axes"))}, {FormatBool(GetLongAttribute(node, "keepdims", 1L) != 0L)})";
 }
 
+[TorchSharpOp("ReduceL1")]
+internal sealed class ReduceL1TorchModuleInlineOperator : TorchModuleInlineOperator
+{
+    internal override string OnnxOpType => "ReduceL1";
+    internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => node.Inputs.Length > 1
+        ? $"ReduceL1Tensor({Input(node, values, 0)}, {Input(node, values, 1)}, {FormatBool(GetLongAttribute(node, "keepdims", 1L) != 0L)})"
+        : $"ReduceL1Tensor({Input(node, values, 0)}, {FormatNullableLongArray(GetLongArrayAttributeOrNull(node, "axes"))}, {FormatBool(GetLongAttribute(node, "keepdims", 1L) != 0L)})";
+}
+
+[TorchSharpOp("ReduceL2")]
+internal sealed class ReduceL2TorchModuleInlineOperator : TorchModuleInlineOperator
+{
+    internal override string OnnxOpType => "ReduceL2";
+    internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => node.Inputs.Length > 1
+        ? $"ReduceL2Tensor({Input(node, values, 0)}, {Input(node, values, 1)}, {FormatBool(GetLongAttribute(node, "keepdims", 1L) != 0L)})"
+        : $"ReduceL2Tensor({Input(node, values, 0)}, {FormatNullableLongArray(GetLongArrayAttributeOrNull(node, "axes"))}, {FormatBool(GetLongAttribute(node, "keepdims", 1L) != 0L)})";
+}
+
+[TorchSharpOp("ReduceLogSumExp")]
+internal sealed class ReduceLogSumExpTorchModuleInlineOperator : TorchModuleInlineOperator
+{
+    internal override string OnnxOpType => "ReduceLogSumExp";
+    internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => node.Inputs.Length > 1
+        ? $"ReduceLogSumExpTensor({Input(node, values, 0)}, {Input(node, values, 1)}, {FormatBool(GetLongAttribute(node, "keepdims", 1L) != 0L)})"
+        : $"ReduceLogSumExpTensor({Input(node, values, 0)}, {FormatNullableLongArray(GetLongArrayAttributeOrNull(node, "axes"))}, {FormatBool(GetLongAttribute(node, "keepdims", 1L) != 0L)})";
+}
+
 [TorchSharpOp("Resize")]
 internal sealed class ResizeTorchModuleInlineOperator : TorchModuleInlineOperator
 {
@@ -595,12 +689,14 @@ internal sealed class ReduceSumTorchModuleInlineOperator : TorchModuleInlineOper
     }
 }
 
+[TorchSharpOp("Greater")]
 internal sealed class GreaterTorchModuleInlineOperator : TorchModuleInlineOperator
 {
     internal override string OnnxOpType => "Greater";
     internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.gt({Input(node, values, 1)})";
 }
 
+[TorchSharpOp("Less")]
 internal sealed class LessTorchModuleInlineOperator : TorchModuleInlineOperator
 {
     internal override string OnnxOpType => "Less";
@@ -621,6 +717,7 @@ internal sealed class LessOrEqualTorchModuleInlineOperator : TorchModuleInlineOp
     internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.le({Input(node, values, 1)})";
 }
 
+[TorchSharpOp("Equal")]
 internal sealed class EqualTorchModuleInlineOperator : TorchModuleInlineOperator
 {
     internal override string OnnxOpType => "Equal";
@@ -639,6 +736,55 @@ internal sealed class NotTorchModuleInlineOperator : TorchModuleInlineOperator
 {
     internal override string OnnxOpType => "Not";
     internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.logical_not()";
+}
+
+[TorchSharpOp("And")]
+internal sealed class AndTorchModuleInlineOperator : TorchModuleInlineOperator
+{
+    internal override string OnnxOpType => "And";
+    internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.logical_and({Input(node, values, 1)})";
+}
+
+[TorchSharpOp("Or")]
+internal sealed class OrTorchModuleInlineOperator : TorchModuleInlineOperator
+{
+    internal override string OnnxOpType => "Or";
+    internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.logical_or({Input(node, values, 1)})";
+}
+
+[TorchSharpOp("Xor")]
+internal sealed class XorTorchModuleInlineOperator : TorchModuleInlineOperator
+{
+    internal override string OnnxOpType => "Xor";
+    internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.logical_xor({Input(node, values, 1)})";
+}
+
+[TorchSharpOp("BitwiseNot")]
+internal sealed class BitwiseNotTorchModuleInlineOperator : TorchModuleInlineOperator
+{
+    internal override string OnnxOpType => "BitwiseNot";
+    internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"BitwiseNotTensor({Input(node, values, 0)})";
+}
+
+[TorchSharpOp("BitwiseAnd")]
+internal sealed class BitwiseAndTorchModuleInlineOperator : TorchModuleInlineOperator
+{
+    internal override string OnnxOpType => "BitwiseAnd";
+    internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"BitwiseAndTensor({Input(node, values, 0)}, {Input(node, values, 1)})";
+}
+
+[TorchSharpOp("BitwiseOr")]
+internal sealed class BitwiseOrTorchModuleInlineOperator : TorchModuleInlineOperator
+{
+    internal override string OnnxOpType => "BitwiseOr";
+    internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"BitwiseOrTensor({Input(node, values, 0)}, {Input(node, values, 1)})";
+}
+
+[TorchSharpOp("BitwiseXor")]
+internal sealed class BitwiseXorTorchModuleInlineOperator : TorchModuleInlineOperator
+{
+    internal override string OnnxOpType => "BitwiseXor";
+    internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"BitwiseXorTensor({Input(node, values, 0)}, {Input(node, values, 1)})";
 }
 
 internal sealed class ConstantTorchModuleInlineOperator : TorchModuleInlineOperator
