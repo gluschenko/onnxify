@@ -2,7 +2,7 @@
 
 Found: 83.73% (417/498)
 Onnxify.TorchSharp coverage: 83.53% (416/498)
-Onnxify.ModelGenerator coverage: 20.08% (100/498)
+Onnxify.ModelGenerator coverage: 30.12% (150/498)
 
 ## Coverage Columns
 
@@ -15,9 +15,9 @@ Onnxify.ModelGenerator coverage: 20.08% (100/498)
 | --- | --- | --- | --- | --- |
 | _operator::__lshift__ |  | ❌ | ✅ | ❌ |
 | _operator::__rshift__ |  | ❌ | ✅ | ❌ |
-| _operator::abs | TorchSharp.torch+Tensor.abs | ✅ | ✅ | ❌ |
+| _operator::abs | TorchSharp.torch+Tensor.abs | ✅ | ✅ | ✅ |
 | _operator::add | TorchSharp.torch+Tensor.add | ✅ | ✅ | ✅ |
-| _operator::and_ |  | ❌ | ✅ | ❌ |
+| _operator::and_ |  | ❌ | ✅ | ✅ |
 | _operator::eq | TorchSharp.torch+Tensor.eq | ✅ | ✅ | ❌ |
 | _operator::floordiv |  | ❌ | ✅ | ❌ |
 | _operator::ge | TorchSharp.torch+Tensor.ge | ✅ | ✅ | ❌ |
@@ -25,11 +25,11 @@ Onnxify.ModelGenerator coverage: 20.08% (100/498)
 | _operator::gt | TorchSharp.torch+Tensor.gt | ✅ | ✅ | ❌ |
 | _operator::le | TorchSharp.torch+Tensor.le | ✅ | ✅ | ❌ |
 | _operator::lt | TorchSharp.torch+Tensor.lt | ✅ | ✅ | ❌ |
-| _operator::mod |  | ❌ | ✅ | ❌ |
+| _operator::mod |  | ❌ | ✅ | ✅ |
 | _operator::mul | TorchSharp.torch+Tensor.mul | ✅ | ✅ | ✅ |
 | _operator::ne | TorchSharp.torch+Tensor.ne | ✅ | ✅ | ❌ |
-| _operator::neg | TorchSharp.torch+Tensor.neg | ✅ | ✅ | ❌ |
-| _operator::or_ |  | ❌ | ✅ | ❌ |
+| _operator::neg | TorchSharp.torch+Tensor.neg | ✅ | ✅ | ✅ |
+| _operator::or_ |  | ❌ | ✅ | ✅ |
 | _operator::pow | TorchSharp.torch+Tensor.pow | ✅ | ✅ | ✅ |
 | _operator::sub | TorchSharp.torch+Tensor.sub | ✅ | ✅ | ✅ |
 | _operator::truediv |  | ❌ | ✅ | ❌ |
@@ -41,7 +41,7 @@ Onnxify.ModelGenerator coverage: 20.08% (100/498)
 | aten::_fft_c2c |  | ❌ | ❌ | ❌ |
 | aten::_fft_c2r |  | ❌ | ❌ | ❌ |
 | aten::_fft_r2c |  | ❌ | ❌ | ❌ |
-| aten::_linalg_det | TorchSharp.torch+Tensor.det | ✅ | ✅ | ❌ |
+| aten::_linalg_det | TorchSharp.torch+Tensor.det | ✅ | ✅ | ✅ |
 | aten::_local_scalar_dense |  | ❌ | ❌ | ❌ |
 | aten::_log_softmax | TorchSharp.Modules.LogSoftmax | ✅ | ✅ | ✅ |
 | aten::_native_batch_norm_legit |  | ❌ | ✅ | ❌ |
@@ -61,7 +61,7 @@ Onnxify.ModelGenerator coverage: 20.08% (100/498)
 | aten::_unsafe_view |  | ❌ | ❌ | ❌ |
 | aten::_upsample_bicubic2d_aa |  | ❌ | ❌ | ❌ |
 | aten::_upsample_bilinear2d_aa |  | ❌ | ❌ | ❌ |
-| aten::abs | TorchSharp.torch+Tensor.abs | ✅ | ✅ | ❌ |
+| aten::abs | TorchSharp.torch+Tensor.abs | ✅ | ✅ | ✅ |
 | aten::acos | TorchSharp.torch+Tensor.acos | ✅ | ✅ | ✅ |
 | aten::acosh | TorchSharp.torch+Tensor.acosh | ✅ | ✅ | ✅ |
 | aten::add.Scalar | TorchSharp.torch+Tensor.add | ✅ | ✅ | ✅ |
@@ -107,27 +107,27 @@ Onnxify.ModelGenerator coverage: 20.08% (100/498)
 | aten::bernoulli | TorchSharp.torch+Tensor.bernoulli | ✅ | ✅ | ❌ |
 | aten::bernoulli.p | TorchSharp.torch+Tensor.bernoulli | ✅ | ✅ | ❌ |
 | aten::bilinear | TorchSharp.Modules.Bilinear | ✅ | ❌ | ❌ |
-| aten::bitwise_and.Scalar | TorchSharp.torch+Tensor.bitwise_and | ✅ | ✅ | ❌ |
-| aten::bitwise_and.Scalar_Tensor | TorchSharp.torch+Tensor.bitwise_and | ✅ | ✅ | ❌ |
-| aten::bitwise_and.Tensor | TorchSharp.torch+Tensor.bitwise_and | ✅ | ✅ | ❌ |
+| aten::bitwise_and.Scalar | TorchSharp.torch+Tensor.bitwise_and | ✅ | ✅ | ✅ |
+| aten::bitwise_and.Scalar_Tensor | TorchSharp.torch+Tensor.bitwise_and | ✅ | ✅ | ✅ |
+| aten::bitwise_and.Tensor | TorchSharp.torch+Tensor.bitwise_and | ✅ | ✅ | ✅ |
 | aten::bitwise_left_shift.Scalar_Tensor | TorchSharp.torch+Tensor.bitwise_left_shift | ✅ | ✅ | ❌ |
 | aten::bitwise_left_shift.Tensor | TorchSharp.torch+Tensor.bitwise_left_shift | ✅ | ✅ | ❌ |
 | aten::bitwise_left_shift.Tensor_Scalar | TorchSharp.torch+Tensor.bitwise_left_shift | ✅ | ✅ | ❌ |
-| aten::bitwise_not | TorchSharp.torch+Tensor.bitwise_not | ✅ | ✅ | ❌ |
-| aten::bitwise_or.Scalar | TorchSharp.torch+Tensor.bitwise_or | ✅ | ✅ | ❌ |
-| aten::bitwise_or.Scalar_Tensor | TorchSharp.torch+Tensor.bitwise_or | ✅ | ✅ | ❌ |
-| aten::bitwise_or.Tensor | TorchSharp.torch+Tensor.bitwise_or | ✅ | ✅ | ❌ |
+| aten::bitwise_not | TorchSharp.torch+Tensor.bitwise_not | ✅ | ✅ | ✅ |
+| aten::bitwise_or.Scalar | TorchSharp.torch+Tensor.bitwise_or | ✅ | ✅ | ✅ |
+| aten::bitwise_or.Scalar_Tensor | TorchSharp.torch+Tensor.bitwise_or | ✅ | ✅ | ✅ |
+| aten::bitwise_or.Tensor | TorchSharp.torch+Tensor.bitwise_or | ✅ | ✅ | ✅ |
 | aten::bitwise_right_shift.Scalar_Tensor | TorchSharp.torch+Tensor.bitwise_right_shift | ✅ | ✅ | ❌ |
 | aten::bitwise_right_shift.Tensor | TorchSharp.torch+Tensor.bitwise_right_shift | ✅ | ✅ | ❌ |
 | aten::bitwise_right_shift.Tensor_Scalar | TorchSharp.torch+Tensor.bitwise_right_shift | ✅ | ✅ | ❌ |
-| aten::bitwise_xor.Scalar | TorchSharp.torch+Tensor.bitwise_xor | ✅ | ✅ | ❌ |
-| aten::bitwise_xor.Scalar_Tensor | TorchSharp.torch+Tensor.bitwise_xor | ✅ | ✅ | ❌ |
-| aten::bitwise_xor.Tensor | TorchSharp.torch+Tensor.bitwise_xor | ✅ | ✅ | ❌ |
+| aten::bitwise_xor.Scalar | TorchSharp.torch+Tensor.bitwise_xor | ✅ | ✅ | ✅ |
+| aten::bitwise_xor.Scalar_Tensor | TorchSharp.torch+Tensor.bitwise_xor | ✅ | ✅ | ✅ |
+| aten::bitwise_xor.Tensor | TorchSharp.torch+Tensor.bitwise_xor | ✅ | ✅ | ✅ |
 | aten::blackman_window | TorchSharp.torch.blackman_window | ✅ | ✅ | ❌ |
 | aten::bmm | TorchSharp.torch+Tensor.bmm | ✅ | ✅ | ❌ |
 | aten::broadcast_to | TorchSharp.torch+Tensor.broadcast_to | ✅ | ✅ | ❌ |
 | aten::cat | TorchSharp.torch+distributions+constraints.cat | ✅ | ✅ | ❌ |
-| aten::ceil | TorchSharp.torch+Tensor.ceil | ✅ | ✅ | ❌ |
+| aten::ceil | TorchSharp.torch+Tensor.ceil | ✅ | ✅ | ✅ |
 | aten::celu | TorchSharp.Modules.CELU | ✅ | ✅ | ✅ |
 | aten::chunk | TorchSharp.torch+Tensor.chunk | ✅ | ✅ | ❌ |
 | aten::clamp | TorchSharp.torch+Tensor.clamp | ✅ | ✅ | ❌ |
@@ -149,13 +149,13 @@ Onnxify.ModelGenerator coverage: 20.08% (100/498)
 | aten::conv3d | TorchSharp.Modules.Conv3d | ✅ | ✅ | ❌ |
 | aten::convolution | TorchSharp.Modules.Convolution | ✅ | ✅ | ❌ |
 | aten::copy | TorchSharp.torch+Storage`1.copy_ | ✅ | ✅ | ❌ |
-| aten::cos | TorchSharp.torch+Tensor.cos | ✅ | ✅ | ❌ |
-| aten::cosh | TorchSharp.torch+Tensor.cosh | ✅ | ✅ | ❌ |
+| aten::cos | TorchSharp.torch+Tensor.cos | ✅ | ✅ | ✅ |
+| aten::cosh | TorchSharp.torch+Tensor.cosh | ✅ | ✅ | ✅ |
 | aten::cross | TorchSharp.torch+Tensor.cross | ✅ | ✅ | ❌ |
 | aten::cross_entropy_loss | TorchSharp.Modules.CrossEntropyLoss | ✅ | ✅ | ❌ |
 | aten::cumsum | TorchSharp.torch+Tensor.cumsum | ✅ | ✅ | ✅ |
 | aten::deg2rad | TorchSharp.torch+Tensor.deg2rad | ✅ | ✅ | ❌ |
-| aten::det | TorchSharp.torch+Tensor.det | ✅ | ✅ | ❌ |
+| aten::det | TorchSharp.torch+Tensor.det | ✅ | ✅ | ✅ |
 | aten::detach | TorchSharp.torch+Tensor.detach | ✅ | ✅ | ❌ |
 | aten::diagonal | TorchSharp.torch+Tensor.diagonal | ✅ | ✅ | ❌ |
 | aten::diagonal_copy |  | ❌ | ❌ | ❌ |
@@ -179,10 +179,10 @@ Onnxify.ModelGenerator coverage: 20.08% (100/498)
 | aten::eq | TorchSharp.torch+Tensor.eq | ✅ | ✅ | ❌ |
 | aten::eq.Scalar | TorchSharp.torch+Tensor.eq | ✅ | ✅ | ❌ |
 | aten::eq.Tensor | TorchSharp.torch+Tensor.eq | ✅ | ✅ | ❌ |
-| aten::equal | TorchSharp.torch+Tensor.equal | ✅ | ✅ | ❌ |
-| aten::erf | TorchSharp.torch+Tensor.erf | ✅ | ✅ | ❌ |
+| aten::equal | TorchSharp.torch+Tensor.equal | ✅ | ✅ | ✅ |
+| aten::erf | TorchSharp.torch+Tensor.erf | ✅ | ✅ | ✅ |
 | aten::erfc | TorchSharp.torch+Tensor.erfc | ✅ | ✅ | ❌ |
-| aten::exp | TorchSharp.torch+Tensor.exp | ✅ | ✅ | ❌ |
+| aten::exp | TorchSharp.torch+Tensor.exp | ✅ | ✅ | ✅ |
 | aten::exp2 | TorchSharp.torch+Tensor.exp2 | ✅ | ✅ | ❌ |
 | aten::expand | TorchSharp.torch+Tensor.expand | ✅ | ✅ | ✅ |
 | aten::expand_as | TorchSharp.torch+Tensor.expand_as | ✅ | ✅ | ❌ |
@@ -194,7 +194,7 @@ Onnxify.ModelGenerator coverage: 20.08% (100/498)
 | aten::fill.Tensor | TorchSharp.torch+Storage`1.fill_ | ✅ | ✅ | ❌ |
 | aten::flatten.using_ints | TorchSharp.Modules.Flatten | ✅ | ✅ | ✅ |
 | aten::flip | TorchSharp.torch+Tensor.flip | ✅ | ✅ | ❌ |
-| aten::floor | TorchSharp.torch+Tensor.floor | ✅ | ✅ | ❌ |
+| aten::floor | TorchSharp.torch+Tensor.floor | ✅ | ✅ | ✅ |
 | aten::floor_divide | TorchSharp.torch+Tensor.floor_divide | ✅ | ✅ | ❌ |
 | aten::fmod.Scalar | TorchSharp.torch+Tensor.fmod | ✅ | ✅ | ❌ |
 | aten::fmod.Tensor | TorchSharp.torch+Tensor.fmod | ✅ | ✅ | ❌ |
@@ -207,7 +207,7 @@ Onnxify.ModelGenerator coverage: 20.08% (100/498)
 | aten::gelu | TorchSharp.Modules.GELU | ✅ | ✅ | ✅ |
 | aten::getitem |  | ❌ | ❌ | ❌ |
 | aten::glu | TorchSharp.Modules.GLU | ✅ | ✅ | ❌ |
-| aten::greater.Tensor | TorchSharp.torch+Tensor.greater | ✅ | ✅ | ❌ |
+| aten::greater.Tensor | TorchSharp.torch+Tensor.greater | ✅ | ✅ | ✅ |
 | aten::greater_equal.Tensor | TorchSharp.torch+Tensor.greater_equal | ✅ | ✅ | ❌ |
 | aten::grid_sampler |  | ❌ | ❌ | ❌ |
 | aten::grid_sampler_2d |  | ❌ | ❌ | ❌ |
@@ -231,8 +231,8 @@ Onnxify.ModelGenerator coverage: 20.08% (100/498)
 | aten::is_nonzero | TorchSharp.torch+Tensor.is_nonzero | ✅ | ✅ | ❌ |
 | aten::isclose | TorchSharp.torch+Tensor.isclose | ✅ | ✅ | ❌ |
 | aten::isfinite | TorchSharp.torch+Tensor.isfinite | ✅ | ✅ | ❌ |
-| aten::isinf | TorchSharp.torch+Tensor.isinf | ✅ | ✅ | ❌ |
-| aten::isnan | TorchSharp.torch+Tensor.isnan | ✅ | ✅ | ❌ |
+| aten::isinf | TorchSharp.torch+Tensor.isinf | ✅ | ✅ | ✅ |
+| aten::isnan | TorchSharp.torch+Tensor.isnan | ✅ | ✅ | ✅ |
 | aten::isneginf | TorchSharp.torch+Tensor.isneginf | ✅ | ✅ | ❌ |
 | aten::isposinf | TorchSharp.torch+Tensor.isposinf | ✅ | ✅ | ❌ |
 | aten::layer_norm | TorchSharp.Modules.LayerNorm | ✅ | ✅ | ❌ |
@@ -241,11 +241,11 @@ Onnxify.ModelGenerator coverage: 20.08% (100/498)
 | aten::leaky_relu | TorchSharp.Modules.LeakyReLU | ✅ | ✅ | ✅ |
 | aten::lerp.Scalar | TorchSharp.torch+Tensor.lerp | ✅ | ✅ | ❌ |
 | aten::lerp.Tensor | TorchSharp.torch+Tensor.lerp | ✅ | ✅ | ❌ |
-| aten::less.Tensor | TorchSharp.torch+Tensor.less | ✅ | ✅ | ❌ |
+| aten::less.Tensor | TorchSharp.torch+Tensor.less | ✅ | ✅ | ✅ |
 | aten::less_equal.Tensor | TorchSharp.torch+Tensor.less_equal | ✅ | ✅ | ❌ |
 | aten::lift_fresh_copy |  | ❌ | ❌ | ❌ |
 | aten::linalg_cross |  | ❌ | ❌ | ❌ |
-| aten::linalg_det | TorchSharp.torch+Tensor.det | ✅ | ✅ | ❌ |
+| aten::linalg_det | TorchSharp.torch+Tensor.det | ✅ | ✅ | ✅ |
 | aten::linalg_vector_norm | TorchSharp.torch+linalg.vector_norm | ✅ | ✅ | ❌ |
 | aten::linear | TorchSharp.Modules.Linear | ✅ | ✅ | ✅ |
 | aten::linspace | TorchSharp.torch.linspace | ✅ | ✅ | ❌ |
@@ -304,7 +304,7 @@ Onnxify.ModelGenerator coverage: 20.08% (100/498)
 | aten::ne | TorchSharp.torch+Tensor.ne | ✅ | ✅ | ❌ |
 | aten::ne.Scalar | TorchSharp.torch+Tensor.ne | ✅ | ✅ | ❌ |
 | aten::ne.Tensor | TorchSharp.torch+Tensor.ne | ✅ | ✅ | ❌ |
-| aten::neg | TorchSharp.torch+Tensor.neg | ✅ | ✅ | ❌ |
+| aten::neg | TorchSharp.torch+Tensor.neg | ✅ | ✅ | ✅ |
 | aten::new_empty | TorchSharp.torch+Tensor.new_empty | ✅ | ✅ | ❌ |
 | aten::new_empty_strided |  | ❌ | ❌ | ❌ |
 | aten::new_full | TorchSharp.torch+Tensor.new_full | ✅ | ✅ | ❌ |
@@ -312,7 +312,7 @@ Onnxify.ModelGenerator coverage: 20.08% (100/498)
 | aten::new_zeros | TorchSharp.torch+Tensor.new_zeros | ✅ | ✅ | ❌ |
 | aten::nll_loss | TorchSharp.Modules.NLLLoss | ✅ | ✅ | ❌ |
 | aten::nll_loss_forward |  | ❌ | ❌ | ❌ |
-| aten::nonzero | TorchSharp.torch+Tensor.nonzero | ✅ | ✅ | ❌ |
+| aten::nonzero | TorchSharp.torch+Tensor.nonzero | ✅ | ✅ | ✅ |
 | aten::normal.Tensor_Tensor | TorchSharp.torch+Tensor.normal_ | ✅ | ✅ | ❌ |
 | aten::normal.Tensor_float | TorchSharp.torch+Tensor.normal_ | ✅ | ✅ | ❌ |
 | aten::normal.float_Tensor | TorchSharp.torch+Tensor.normal_ | ✅ | ✅ | ❌ |
@@ -340,7 +340,7 @@ Onnxify.ModelGenerator coverage: 20.08% (100/498)
 | aten::randint_like.low_dtype | TorchSharp.torch+Tensor.randint_like | ✅ | ✅ | ❌ |
 | aten::randn | TorchSharp.torch.randn | ✅ | ✅ | ❌ |
 | aten::randn_like | TorchSharp.torch+Tensor.randn_like | ✅ | ✅ | ❌ |
-| aten::reciprocal | TorchSharp.torch+Tensor.reciprocal | ✅ | ✅ | ❌ |
+| aten::reciprocal | TorchSharp.torch+Tensor.reciprocal | ✅ | ✅ | ✅ |
 | aten::reflection_pad1d | TorchSharp.Modules.ReflectionPad1d | ✅ | ✅ | ❌ |
 | aten::reflection_pad2d | TorchSharp.Modules.ReflectionPad2d | ✅ | ✅ | ❌ |
 | aten::reflection_pad3d | TorchSharp.Modules.ReflectionPad3d | ✅ | ✅ | ❌ |
@@ -375,15 +375,15 @@ Onnxify.ModelGenerator coverage: 20.08% (100/498)
 | aten::sign | TorchSharp.torch+Tensor.sign | ✅ | ✅ | ✅ |
 | aten::signbit | TorchSharp.torch+Tensor.signbit | ✅ | ✅ | ❌ |
 | aten::silu | TorchSharp.Modules.SiLU | ✅ | ✅ | ❌ |
-| aten::sin | TorchSharp.torch+Tensor.sin | ✅ | ✅ | ❌ |
+| aten::sin | TorchSharp.torch+Tensor.sin | ✅ | ✅ | ✅ |
 | aten::sinc | TorchSharp.torch+Tensor.sinc | ✅ | ✅ | ❌ |
-| aten::sinh | TorchSharp.torch+Tensor.sinh | ✅ | ✅ | ❌ |
+| aten::sinh | TorchSharp.torch+Tensor.sinh | ✅ | ✅ | ✅ |
 | aten::slice.Tensor | TorchSharp.torch+Size.Slice | ✅ | ✅ | ✅ |
 | aten::slice_scatter | TorchSharp.torch+Tensor.slice_scatter | ✅ | ❌ | ❌ |
 | aten::softmax.int | TorchSharp.Modules.Softmax | ✅ | ✅ | ✅ |
 | aten::softplus | TorchSharp.Modules.Softplus | ✅ | ✅ | ✅ |
 | aten::sort | TorchSharp.torch+Tensor.sort | ✅ | ✅ | ❌ |
-| aten::special_erf | TorchSharp.torch+Tensor.erf | ✅ | ✅ | ❌ |
+| aten::special_erf | TorchSharp.torch+Tensor.erf | ✅ | ✅ | ✅ |
 | aten::special_erfc | TorchSharp.torch+Tensor.erfc | ✅ | ✅ | ❌ |
 | aten::special_erfcx | TorchSharp.torch+special.erfcx | ✅ | ✅ | ❌ |
 | aten::special_expm1 | TorchSharp.torch+Tensor.expm1 | ✅ | ✅ | ❌ |
@@ -407,7 +407,7 @@ Onnxify.ModelGenerator coverage: 20.08% (100/498)
 | aten::sym_size.int |  | ❌ | ❌ | ❌ |
 | aten::sym_storage_offset |  | ❌ | ❌ | ❌ |
 | aten::t | TorchSharp.torch+Tensor.t | ✅ | ✅ | ❌ |
-| aten::tan | TorchSharp.torch+Tensor.tan | ✅ | ✅ | ❌ |
+| aten::tan | TorchSharp.torch+Tensor.tan | ✅ | ✅ | ✅ |
 | aten::tanh | TorchSharp.Modules.Tanh | ✅ | ✅ | ✅ |
 | aten::tensor.bool | TorchSharp.torch+TensorIndex.Tensor | ✅ | ✅ | ❌ |
 | aten::tensor.float | TorchSharp.torch+TensorIndex.Tensor | ✅ | ✅ | ❌ |
@@ -457,10 +457,10 @@ Onnxify.ModelGenerator coverage: 20.08% (100/498)
 | aten::xlogy.Tensor | TorchSharp.torch+Tensor.xlogy | ✅ | ✅ | ❌ |
 | aten::zeros | TorchSharp.torch+Tensor.zeros | ✅ | ✅ | ❌ |
 | aten::zeros_like | TorchSharp.torch+Tensor.zeros_like | ✅ | ✅ | ❌ |
-| math::ceil | TorchSharp.torch+Tensor.ceil | ✅ | ✅ | ❌ |
-| math::floor | TorchSharp.torch+Tensor.floor | ✅ | ✅ | ❌ |
+| math::ceil | TorchSharp.torch+Tensor.ceil | ✅ | ✅ | ✅ |
+| math::floor | TorchSharp.torch+Tensor.floor | ✅ | ✅ | ✅ |
 | math::trunc | TorchSharp.torch+Tensor.trunc | ✅ | ✅ | ❌ |
-| prims::abs | TorchSharp.torch+Tensor.abs | ✅ | ✅ | ❌ |
+| prims::abs | TorchSharp.torch+Tensor.abs | ✅ | ✅ | ✅ |
 | prims::acos | TorchSharp.torch+Tensor.acos | ✅ | ✅ | ✅ |
 | prims::acosh | TorchSharp.torch+Tensor.acosh | ✅ | ✅ | ✅ |
 | prims::add | TorchSharp.torch+Tensor.add | ✅ | ✅ | ✅ |
@@ -469,16 +469,16 @@ Onnxify.ModelGenerator coverage: 20.08% (100/498)
 | prims::atan | TorchSharp.torch+Tensor.atan | ✅ | ✅ | ✅ |
 | prims::atanh | TorchSharp.torch+Tensor.atanh | ✅ | ✅ | ✅ |
 | prims::broadcast_in_dim |  | ❌ | ❌ | ❌ |
-| prims::ceil | TorchSharp.torch+Tensor.ceil | ✅ | ✅ | ❌ |
+| prims::ceil | TorchSharp.torch+Tensor.ceil | ✅ | ✅ | ✅ |
 | prims::convert_element_type |  | ❌ | ❌ | ❌ |
-| prims::cos | TorchSharp.torch+Tensor.cos | ✅ | ✅ | ❌ |
-| prims::cosh | TorchSharp.torch+Tensor.cosh | ✅ | ✅ | ❌ |
+| prims::cos | TorchSharp.torch+Tensor.cos | ✅ | ✅ | ✅ |
+| prims::cosh | TorchSharp.torch+Tensor.cosh | ✅ | ✅ | ✅ |
 | prims::device_put |  | ❌ | ❌ | ❌ |
 | prims::div | TorchSharp.torch+Tensor.div | ✅ | ✅ | ✅ |
 | prims::eq | TorchSharp.torch+Tensor.eq | ✅ | ✅ | ❌ |
-| prims::erf | TorchSharp.torch+Tensor.erf | ✅ | ✅ | ❌ |
-| prims::exp | TorchSharp.torch+Tensor.exp | ✅ | ✅ | ❌ |
-| prims::floor | TorchSharp.torch+Tensor.floor | ✅ | ✅ | ❌ |
+| prims::erf | TorchSharp.torch+Tensor.erf | ✅ | ✅ | ✅ |
+| prims::exp | TorchSharp.torch+Tensor.exp | ✅ | ✅ | ✅ |
+| prims::floor | TorchSharp.torch+Tensor.floor | ✅ | ✅ | ✅ |
 | prims::ge | TorchSharp.torch+Tensor.ge | ✅ | ✅ | ❌ |
 | prims::gt | TorchSharp.torch+Tensor.gt | ✅ | ✅ | ❌ |
 | prims::le | TorchSharp.torch+Tensor.le | ✅ | ✅ | ❌ |
@@ -486,18 +486,18 @@ Onnxify.ModelGenerator coverage: 20.08% (100/498)
 | prims::lt | TorchSharp.torch+Tensor.lt | ✅ | ✅ | ❌ |
 | prims::mul | TorchSharp.torch+Tensor.mul | ✅ | ✅ | ✅ |
 | prims::ne | TorchSharp.torch+Tensor.ne | ✅ | ✅ | ❌ |
-| prims::neg | TorchSharp.torch+Tensor.neg | ✅ | ✅ | ❌ |
+| prims::neg | TorchSharp.torch+Tensor.neg | ✅ | ✅ | ✅ |
 | prims::pow | TorchSharp.torch+Tensor.pow | ✅ | ✅ | ✅ |
 | prims::reshape | TorchSharp.torch+Tensor.reshape | ✅ | ✅ | ✅ |
 | prims::resize |  | ❌ | ❌ | ✅ |
 | prims::round | TorchSharp.torch+Tensor.round | ✅ | ✅ | ✅ |
-| prims::sin | TorchSharp.torch+Tensor.sin | ✅ | ✅ | ❌ |
-| prims::sinh | TorchSharp.torch+Tensor.sinh | ✅ | ✅ | ❌ |
+| prims::sin | TorchSharp.torch+Tensor.sin | ✅ | ✅ | ✅ |
+| prims::sinh | TorchSharp.torch+Tensor.sinh | ✅ | ✅ | ✅ |
 | prims::sqrt | TorchSharp.torch+Tensor.sqrt | ✅ | ✅ | ✅ |
 | prims::squeeze | TorchSharp.torch+Tensor.squeeze | ✅ | ✅ | ✅ |
 | prims::sub | TorchSharp.torch+Tensor.sub | ✅ | ✅ | ✅ |
 | prims::sum | TorchSharp.torch+Tensor.sum | ✅ | ✅ | ❌ |
-| prims::tan | TorchSharp.torch+Tensor.tan | ✅ | ✅ | ❌ |
+| prims::tan | TorchSharp.torch+Tensor.tan | ✅ | ✅ | ✅ |
 | prims::tanh | TorchSharp.Modules.Tanh | ✅ | ✅ | ✅ |
 | prims::transpose | TorchSharp.torch+Tensor.transpose | ✅ | ✅ | ✅ |
 | prims::var | TorchSharp.torch+Tensor.var | ✅ | ✅ | ❌ |
