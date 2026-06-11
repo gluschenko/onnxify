@@ -4,12 +4,12 @@
     <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <RepositoryUrl>https://github.com/gluschenko/onnxify</RepositoryUrl>
     <Authors>Alexander Gluschenko</Authors>
     <Copyright>© 2026 Alexander Gluschenko</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageTags>ml;dotnet;onnx;huggingface</PackageTags>
+    <PackageTags>ml;dotnet;machine-learning;ai;onnx;huggingface;huggingface-hub;huggingface-models;model-download;model-repository;transformers;model-files;checkpoint</PackageTags>
     <Description>Hugging Face intergration for Onnxify.</Description>
   </PropertyGroup>
 

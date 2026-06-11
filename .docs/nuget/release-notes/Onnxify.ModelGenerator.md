@@ -1,3 +1,10 @@
+## 0.3.0
+
+- Expanded TorchModule import support for ONNX graphs with broader runtime tensor data types that map to TorchSharp `ScalarType`, including non-float inputs and outputs.
+- Added TorchModule import support for `GRU` and multi-output operators such as `Split` and `TopK`.
+- Added TorchModule inline support for additional ONNX operators including `ArgMax`, `ArgMin`, `Celu`, `CumSum`, `DepthToSpace`, `Dropout`, `Expand`, `GatherElements`, `Gelu`, `GroupNormalization`, `HardSwish`, `InstanceNormalization`, `LayerNormalization`, `LogSoftmax`, `Mish`, `PRelu`, `Pad`, `ReduceMax`, `ReduceMin`, `ReduceProd`, `Resize`, `Selu`, `Slice`, `Softplus`, `SpaceToDepth`, `Tile`, and `Trilu`.
+- Removed MVP wording from TorchModule backend diagnostics.
+
 ## 0.2.0
 
 - Aligned the package version with the 0.2.0 Onnxify package family release.

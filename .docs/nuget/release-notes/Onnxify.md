@@ -1,3 +1,8 @@
+## 0.3.0
+
+- Aligned the package version with the 0.3.0 Onnxify package family release.
+- Kept core ONNX model APIs aligned with the expanded TorchModule generation and package documentation updates in the 0.3.0 family.
+
 ## 0.2.0
 
 - Raised the default `OnnxModel.Create()` profile to standard ONNX opset 25 and IR version 11.

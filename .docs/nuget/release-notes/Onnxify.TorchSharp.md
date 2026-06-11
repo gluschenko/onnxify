@@ -1,3 +1,8 @@
+## 0.3.0
+
+- Aligned the package version with the 0.3.0 Onnxify package family release.
+- Updated generated TorchSharp converter documentation and coverage reports for the latest ModelGenerator TorchModule reconstruction coverage.
+
 ## 0.2.0
 
 - Added `TorchTensorDataType` for public exporter `dtype` parameters, replacing numeric magic values such as `-1`, `1`, `7`, and `9` with readable enum values.

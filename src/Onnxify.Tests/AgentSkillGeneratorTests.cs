@@ -80,7 +80,8 @@ public sealed class AgentSkillGeneratorTests
         Assert.Contains("- Operators with at least one Onnxify.ModelGenerator TorchModule path: `", indexMarkdown);
 
         var addMarkdown = files[Path.Combine("ai.onnx", "Add.md")];
-        Assert.Contains("- Onnxify.ModelGenerator TorchModule coverage: `not detected`", addMarkdown);
+        Assert.Contains("- Onnxify.ModelGenerator TorchModule coverage: `available`", addMarkdown);
+        Assert.Contains("AddTorchModuleInlineOperator", addMarkdown);
         Assert.Contains("(../common/Broadcasting.md)", addMarkdown);
         Assert.DoesNotContain("(Broadcasting.md)", addMarkdown);
 
