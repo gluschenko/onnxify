@@ -82,7 +82,7 @@ internal sealed class LstmTorchModuleOperator : TorchModuleOperator
             $"LSTM({inputSize}, {hiddenSize}, numLayers: 1, bidirectional: {FormatBool(bidirectional)}, batchFirst: false)",
             TransposeInput: false,
             [
-                $"LoadOnnxLstmWeights(tensors, \"{Escape(w.OnnxName)}\", \"{Escape(r.OnnxName)}\", {(b is null ? "null" : $"\"{Escape(b.OnnxName)}\"")}, {fieldName}, {hiddenSize}L, {inputSize}L, {numDirections}L);",
+                $"LoadOnnxLstmWeights(tensors, \"{Escape(w.OnnxName)}\", {w.CanonicalIndex}, {FormatLongArray(w.Shape)}, \"{Escape(r.OnnxName)}\", {r.CanonicalIndex}, {FormatLongArray(r.Shape)}, {(b is null ? "null, -1, null" : $"\"{Escape(b.OnnxName)}\", {b.CanonicalIndex}, {FormatLongArray(b.Shape)}")}, {fieldName}, {hiddenSize}L, {inputSize}L, {numDirections}L);",
             ],
             $"ToOnnxLstmY({fieldName}.forward({{0}}).Item1, {numDirections}L, {hiddenSize}L)"
         );

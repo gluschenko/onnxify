@@ -88,7 +88,7 @@ internal sealed class TorchModulePrinter
                 .SelectMany(static module => module.LoadStatements)
                 )
                 .Concat(torchModule.Initializers.Select(static initializer =>
-                    $"LoadTensor<{initializer.ClrTypeName}>(tensors, \"{Escape(initializer.OnnxName)}\", {initializer.FieldName}, {initializer.ScalarTypeExpression});")));
+                    $"LoadTensor<{initializer.ClrTypeName}>(tensors, \"{Escape(initializer.OnnxName)}\", {initializer.CanonicalIndex}, {initializer.ShapeExpression}, {initializer.FieldName}, {initializer.ScalarTypeExpression});")));
 
         var forwardBody = BuildTorchForwardBody(specification, torchModule, forwardGroups);
         var forwardGroupTypes = BuildForwardGroupTypes(forwardGroups, torchModule);
@@ -135,7 +135,8 @@ internal sealed class TorchModulePrinter
                     throw new ArgumentNullException(nameof(model));
                 }
 
-                var tensors = model.Graph.Initializers.ToDictionary(static x => x.Name, StringComparer.Ordinal);
+                model.Graph.SortTopologically();
+                var tensors = new OnnxInitializerLookup(model.Graph.Initializers);
                 {{Indent(loadCalls, 2)}}
             }
 
@@ -684,62 +685,73 @@ internal sealed class TorchModulePrinter
                 return parameter.reshape(shape);
             }
 
+            private sealed class OnnxInitializerLookup
+            {
+                private readonly IReadOnlyList<Onnxify.OnnxTensor> _byIndex;
+                private readonly IReadOnlyDictionary<string, Onnxify.OnnxTensor> _byName;
+
+                public OnnxInitializerLookup(IReadOnlyList<Onnxify.OnnxTensor> initializers)
+                {
+                    _byIndex = initializers;
+                    _byName = initializers.ToDictionary(static x => x.Name, StringComparer.Ordinal);
+                }
+
+                public bool TryGetByName(string name, out Onnxify.OnnxTensor tensor)
+                {
+                    return _byName.TryGetValue(name, out tensor!);
+                }
+
+                public bool TryGetByIndex(int index, out Onnxify.OnnxTensor tensor)
+                {
+                    if (index >= 0 && index < _byIndex.Count)
+                    {
+                        tensor = _byIndex[index];
+                        return true;
+                    }
+
+                    tensor = null!;
+                    return false;
+                }
+            }
+
             private static void LoadFloatTensor(
-                IReadOnlyDictionary<string, Onnxify.OnnxTensor> tensors,
+                OnnxInitializerLookup tensors,
                 string name,
+                int canonicalIndex,
+                long[] expectedShape,
                 Tensor target
             )
             {
-                if (!tensors.TryGetValue(name, out var tensor))
-                {
-                    throw new KeyNotFoundException($"The ONNX model does not contain initializer '{name}'.");
-                }
-
-                if (tensor is not Onnxify.OnnxTensor<float> typedTensor)
-                {
-                    throw new InvalidOperationException($"Initializer '{name}' is not a float32 tensor.");
-                }
+                var typedTensor = GetTensor<float>(tensors, name, canonicalIndex, expectedShape, "float32");
 
                 using var source = torch.tensor(typedTensor.Value.ToArray(), typedTensor.Shape, dtype: ScalarType.Float32, device: target.device);
                 target.detach().copy_(source);
             }
 
             private static void LoadLongTensor(
-                IReadOnlyDictionary<string, Onnxify.OnnxTensor> tensors,
+                OnnxInitializerLookup tensors,
                 string name,
+                int canonicalIndex,
+                long[] expectedShape,
                 Tensor target
             )
             {
-                if (!tensors.TryGetValue(name, out var tensor))
-                {
-                    throw new KeyNotFoundException($"The ONNX model does not contain initializer '{name}'.");
-                }
-
-                if (tensor is not Onnxify.OnnxTensor<long> typedTensor)
-                {
-                    throw new InvalidOperationException($"Initializer '{name}' is not an int64 tensor.");
-                }
+                var typedTensor = GetTensor<long>(tensors, name, canonicalIndex, expectedShape, "int64");
 
                 using var source = torch.tensor(typedTensor.Value.ToArray(), typedTensor.Shape, dtype: ScalarType.Int64, device: target.device);
                 target.detach().copy_(source);
             }
 
             private static void LoadTensor<T>(
-                IReadOnlyDictionary<string, Onnxify.OnnxTensor> tensors,
+                OnnxInitializerLookup tensors,
                 string name,
+                int canonicalIndex,
+                long[] expectedShape,
                 Tensor target,
                 ScalarType scalarType
             )
             {
-                if (!tensors.TryGetValue(name, out var tensor))
-                {
-                    throw new KeyNotFoundException($"The ONNX model does not contain initializer '{name}'.");
-                }
-
-                if (tensor is not Onnxify.OnnxTensor<T> typedTensor)
-                {
-                    throw new InvalidOperationException($"Initializer '{name}' is not a {typeof(T).Name} tensor.");
-                }
+                var typedTensor = GetTensor<T>(tensors, name, canonicalIndex, expectedShape, typeof(T).Name);
 
                 var values = typedTensor.Value.ToArray();
                 using var source = scalarType switch
@@ -758,17 +770,15 @@ internal sealed class TorchModulePrinter
             }
 
             private static void LoadFloatTensorTransposed2D(
-                IReadOnlyDictionary<string, Onnxify.OnnxTensor> tensors,
+                OnnxInitializerLookup tensors,
                 string name,
+                int canonicalIndex,
+                long[] expectedShape,
                 Tensor target
             )
             {
-                if (!tensors.TryGetValue(name, out var tensor))
-                {
-                    throw new KeyNotFoundException($"The ONNX model does not contain initializer '{name}'.");
-                }
-
-                if (tensor is not Onnxify.OnnxTensor<float> typedTensor || typedTensor.Shape.Length != 2)
+                var typedTensor = GetTensor<float>(tensors, name, canonicalIndex, expectedShape, "float32");
+                if (typedTensor.Shape.Length != 2)
                 {
                     throw new InvalidOperationException($"Initializer '{name}' is not a 2D float32 tensor.");
                 }
@@ -778,19 +788,25 @@ internal sealed class TorchModulePrinter
             }
 
             private static void LoadOnnxLstmWeights(
-                IReadOnlyDictionary<string, Onnxify.OnnxTensor> tensors,
+                OnnxInitializerLookup tensors,
                 string wName,
+                int wIndex,
+                long[] wShape,
                 string rName,
+                int rIndex,
+                long[] rShape,
                 string? bName,
+                int bIndex,
+                long[]? bShape,
                 TorchModules.LSTM module,
                 long hiddenSize,
                 long inputSize,
                 long numDirections
             )
             {
-                var w = GetFloatTensor(tensors, wName);
-                var r = GetFloatTensor(tensors, rName);
-                var b = bName is null ? null : GetFloatTensor(tensors, bName);
+                var w = GetTensor<float>(tensors, wName, wIndex, wShape, "float32");
+                var r = GetTensor<float>(tensors, rName, rIndex, rShape, "float32");
+                var b = bName is null || bShape is null ? null : GetTensor<float>(tensors, bName, bIndex, bShape, "float32");
                 var state = module.state_dict();
 
                 for (var direction = 0L; direction < numDirections; direction++)
@@ -832,19 +848,25 @@ internal sealed class TorchModulePrinter
             }
 
             private static void LoadOnnxGruWeights(
-                IReadOnlyDictionary<string, Onnxify.OnnxTensor> tensors,
+                OnnxInitializerLookup tensors,
                 string wName,
+                int wIndex,
+                long[] wShape,
                 string rName,
+                int rIndex,
+                long[] rShape,
                 string? bName,
+                int bIndex,
+                long[]? bShape,
                 TorchModules.GRU module,
                 long hiddenSize,
                 long inputSize,
                 long numDirections
             )
             {
-                var w = GetFloatTensor(tensors, wName);
-                var r = GetFloatTensor(tensors, rName);
-                var b = bName is null ? null : GetFloatTensor(tensors, bName);
+                var w = GetTensor<float>(tensors, wName, wIndex, wShape, "float32");
+                var r = GetTensor<float>(tensors, rName, rIndex, rShape, "float32");
+                var b = bName is null || bShape is null ? null : GetTensor<float>(tensors, bName, bIndex, bShape, "float32");
                 var state = module.state_dict();
 
                 for (var direction = 0L; direction < numDirections; direction++)
@@ -885,18 +907,45 @@ internal sealed class TorchModulePrinter
                 }
             }
 
-            private static Onnxify.OnnxTensor<float> GetFloatTensor(
-                IReadOnlyDictionary<string, Onnxify.OnnxTensor> tensors,
-                string name
+            private static Onnxify.OnnxTensor<T> GetTensor<T>(
+                OnnxInitializerLookup tensors,
+                string name,
+                int canonicalIndex,
+                long[] expectedShape,
+                string expectedTypeName
             )
             {
-                if (!tensors.TryGetValue(name, out var tensor))
+                if (tensors.TryGetByName(name, out var namedTensor))
                 {
-                    throw new KeyNotFoundException($"The ONNX model does not contain initializer '{name}'.");
+                    return RequireTensor<T>(namedTensor, name, expectedShape, expectedTypeName);
                 }
 
-                return tensor as Onnxify.OnnxTensor<float>
-                    ?? throw new InvalidOperationException($"Initializer '{name}' is not a float32 tensor.");
+                if (tensors.TryGetByIndex(canonicalIndex, out var indexedTensor))
+                {
+                    return RequireTensor<T>(indexedTensor, $"initializer at canonical index {canonicalIndex}", expectedShape, expectedTypeName);
+                }
+
+                throw new KeyNotFoundException($"The ONNX model does not contain initializer '{name}' and has no initializer at canonical index {canonicalIndex}.");
+            }
+
+            private static Onnxify.OnnxTensor<T> RequireTensor<T>(
+                Onnxify.OnnxTensor tensor,
+                string label,
+                long[] expectedShape,
+                string expectedTypeName
+            )
+            {
+                if (tensor is not Onnxify.OnnxTensor<T> typedTensor)
+                {
+                    throw new InvalidOperationException($"Initializer '{label}' is not a {expectedTypeName} tensor.");
+                }
+
+                if (!typedTensor.Shape.SequenceEqual(expectedShape))
+                {
+                    throw new InvalidOperationException($"Initializer '{label}' shape [{string.Join(", ", typedTensor.Shape)}] does not match expected shape [{string.Join(", ", expectedShape)}].");
+                }
+
+                return typedTensor;
             }
 
             private static Tensor GetRequiredStateTensor(
@@ -1304,7 +1353,7 @@ internal sealed class TorchModulePrinter
                         {{Indent(initializers, 2)}}
                     }
 
-                    public void LoadWeights(IReadOnlyDictionary<string, Onnxify.OnnxTensor> tensors)
+                    public void LoadWeights(OnnxInitializerLookup tensors)
                     {
                         {{Indent(loadStatements, 2)}}
                     }

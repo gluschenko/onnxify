@@ -42,10 +42,10 @@ internal sealed class BatchNorm2dTorchModuleOperator : TorchModuleOperator
             $"BatchNorm2d({scale.Shape[0]})",
             TransposeInput: false,
             [
-                $"LoadFloatTensor(tensors, \"{Escape(scale.OnnxName)}\", {fieldName}.weight!);",
-                $"LoadFloatTensor(tensors, \"{Escape(bias.OnnxName)}\", {fieldName}.bias!);",
-                $"LoadFloatTensor(tensors, \"{Escape(mean.OnnxName)}\", {fieldName}.running_mean);",
-                $"LoadFloatTensor(tensors, \"{Escape(variance.OnnxName)}\", {fieldName}.running_var);",
+                $"LoadFloatTensor(tensors, \"{Escape(scale.OnnxName)}\", {scale.CanonicalIndex}, {FormatLongArray(scale.Shape)}, {fieldName}.weight!);",
+                $"LoadFloatTensor(tensors, \"{Escape(bias.OnnxName)}\", {bias.CanonicalIndex}, {FormatLongArray(bias.Shape)}, {fieldName}.bias!);",
+                $"LoadFloatTensor(tensors, \"{Escape(mean.OnnxName)}\", {mean.CanonicalIndex}, {FormatLongArray(mean.Shape)}, {fieldName}.running_mean);",
+                $"LoadFloatTensor(tensors, \"{Escape(variance.OnnxName)}\", {variance.CanonicalIndex}, {FormatLongArray(variance.Shape)}, {fieldName}.running_var);",
             ]
         );
         consumedInitializers = [scale.OnnxName, bias.OnnxName, mean.OnnxName, variance.OnnxName];

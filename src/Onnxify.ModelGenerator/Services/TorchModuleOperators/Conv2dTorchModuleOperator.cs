@@ -54,10 +54,10 @@ internal sealed class Conv2dTorchModuleOperator : TorchModuleOperator
             constructor,
             TransposeInput: false,
             [
-                $"LoadFloatTensor(tensors, \"{Escape(weight.OnnxName)}\", {fieldName}.weight);",
+                $"LoadFloatTensor(tensors, \"{Escape(weight.OnnxName)}\", {weight.CanonicalIndex}, {FormatLongArray(weight.Shape)}, {fieldName}.weight);",
                 .. bias is null
                     ? []
-                    : new[] { $"LoadFloatTensor(tensors, \"{Escape(bias.OnnxName)}\", {fieldName}.bias!);" },
+                    : new[] { $"LoadFloatTensor(tensors, \"{Escape(bias.OnnxName)}\", {bias.CanonicalIndex}, {FormatLongArray(bias.Shape)}, {fieldName}.bias!);" },
             ]
         );
         consumedInitializers = bias is null ? [weight.OnnxName] : [weight.OnnxName, bias.OnnxName];

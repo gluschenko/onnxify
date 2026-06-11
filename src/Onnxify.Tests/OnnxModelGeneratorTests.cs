@@ -204,6 +204,9 @@ public sealed class OnnxModelGeneratorTests
             Assert.Contains("LoadWeightsFromOnnx(model);", generatedSource);
             Assert.Contains("public void LoadWeightsFromOnnx(Onnxify.OnnxModel model)", generatedSource);
             Assert.Contains("throw new ArgumentNullException(nameof(model));", generatedSource);
+            Assert.Contains("model.Graph.SortTopologically();", generatedSource);
+            Assert.Contains("var tensors = new OnnxInitializerLookup(model.Graph.Initializers);", generatedSource);
+            Assert.Contains("LoadTensor<float>(tensors, \"bias\", 0, new long[] { 1L, 2L }, _bias, ScalarType.Float32);", generatedSource);
             Assert.Contains("var output = input + _bias;", generatedSource);
             Assert.Contains("return output;", generatedSource);
             Assert.DoesNotContain("InferenceSession", generatedSource, StringComparison.Ordinal);
@@ -399,7 +402,7 @@ public sealed class OnnxModelGeneratorTests
 
             Assert.Contains("private readonly TorchModules.LSTM _lstm;", generatedSource);
             Assert.Contains("LSTM(4, 5, numLayers: 1, bidirectional: false, batchFirst: false)", generatedSource);
-            Assert.Contains("LoadOnnxLstmWeights(tensors, \"lstm_W\", \"lstm_R\", \"lstm_B\", _lstm, 5L, 4L, 1L);", generatedSource);
+            Assert.Contains("LoadOnnxLstmWeights(tensors, \"lstm_W\", 0, new long[] { 1L, 20L, 4L }, \"lstm_R\", 1, new long[] { 1L, 20L, 5L }, \"lstm_B\", 2, new long[] { 1L, 40L }, _lstm, 5L, 4L, 1L);", generatedSource);
             Assert.Contains("ToOnnxLstmY(_lstm.forward(input).Item1, 1L, 5L)", generatedSource);
         }
         finally
@@ -888,7 +891,7 @@ public sealed class OnnxModelGeneratorTests
 
             var generatedSource = GetGeneratedSource(driver);
             Assert.Contains("torch.empty(new long[] { 1L }, dtype: ScalarType.Byte)", generatedSource);
-            Assert.Contains("LoadTensor<byte>(tensors, \"data_0_zero_point\", _data0ZeroPoint, ScalarType.Byte);", generatedSource);
+            Assert.Contains("LoadTensor<byte>(tensors, \"data_0_zero_point\", 1, new long[] { 1L }, _data0ZeroPoint, ScalarType.Byte);", generatedSource);
             Assert.Contains("QuantizeLinearTensor(input, _data0Scale, _data0ZeroPoint, 1L)", generatedSource);
             Assert.Contains("DequantizeLinearTensor(quantized, _data0Scale, _data0ZeroPoint, 1L)", generatedSource);
             Assert.DoesNotContain("unsupported tensor data type 'Uint8'", generatedSource, StringComparison.Ordinal);
@@ -982,7 +985,7 @@ public sealed class OnnxModelGeneratorTests
             Assert.Contains("private sealed class ForwardBlock0Module : torch.nn.Module<Tensor, Tensor>", generatedSource);
             Assert.Contains("_conv1 = Conv2d(3, 2, kernel_size: 3L, stride: 1L, padding: 1L, dilation: 1L, groups: 1L, bias: false);", generatedSource);
             Assert.Contains("_relu1 = ReLU();", generatedSource);
-            Assert.Contains("LoadFloatTensor(tensors, \"conv.weight\", _conv1.weight);", generatedSource);
+            Assert.Contains("LoadFloatTensor(tensors, \"conv.weight\", 0, new long[] { 2L, 3L, 3L, 3L }, _conv1.weight);", generatedSource);
             Assert.Contains("var output = _forwardBlock0.forward(input);", generatedSource);
             Assert.Contains("var convOutput = _conv1.forward(input);", generatedSource);
             Assert.Contains("var output = _relu1.forward(convOutput);", generatedSource);
@@ -1125,10 +1128,10 @@ public sealed class OnnxModelGeneratorTests
 
             Assert.Contains("private readonly TorchModules.BatchNorm2d _bn1;", generatedSource);
             Assert.Contains("_bn1 = BatchNorm2d(2);", generatedSource);
-            Assert.Contains("LoadFloatTensor(tensors, \"scale\", _bn1.weight!);", generatedSource);
-            Assert.Contains("LoadFloatTensor(tensors, \"bias\", _bn1.bias!);", generatedSource);
-            Assert.Contains("LoadFloatTensor(tensors, \"mean\", _bn1.running_mean);", generatedSource);
-            Assert.Contains("LoadFloatTensor(tensors, \"var\", _bn1.running_var);", generatedSource);
+            Assert.Contains("LoadFloatTensor(tensors, \"scale\", 0, new long[] { 2L }, _bn1.weight!);", generatedSource);
+            Assert.Contains("LoadFloatTensor(tensors, \"bias\", 1, new long[] { 2L }, _bn1.bias!);", generatedSource);
+            Assert.Contains("LoadFloatTensor(tensors, \"mean\", 2, new long[] { 2L }, _bn1.running_mean);", generatedSource);
+            Assert.Contains("LoadFloatTensor(tensors, \"var\", 3, new long[] { 2L }, _bn1.running_var);", generatedSource);
             Assert.Contains("var output = _bn1.forward(input);", generatedSource);
             Assert.DoesNotContain("functional.batch_norm", generatedSource, StringComparison.Ordinal);
         }

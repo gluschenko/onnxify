@@ -2,6 +2,7 @@
 
 - Aligned the package version with the 0.3.0 Onnxify package family release.
 - Kept core ONNX model APIs aligned with the expanded TorchModule generation and package documentation updates in the 0.3.0 family.
+- Added `OnnxGraph.SortTopologically()` to deterministically reorder graph nodes, initializers, loose edges, and value-info entries for structurally comparable ONNX graphs.
 
 ## 0.2.0
 

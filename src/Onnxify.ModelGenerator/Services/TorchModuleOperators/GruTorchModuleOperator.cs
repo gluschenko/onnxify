@@ -77,7 +77,7 @@ internal sealed class GruTorchModuleOperator : TorchModuleOperator
             $"GRU({inputSize}, {hiddenSize}, numLayers: 1, bidirectional: {FormatBool(bidirectional)}, batchFirst: false)",
             TransposeInput: false,
             [
-                $"LoadOnnxGruWeights(tensors, \"{Escape(w.OnnxName)}\", \"{Escape(r.OnnxName)}\", {(b is null ? "null" : $"\"{Escape(b.OnnxName)}\"")}, {fieldName}, {hiddenSize}L, {inputSize}L, {numDirections}L);",
+                $"LoadOnnxGruWeights(tensors, \"{Escape(w.OnnxName)}\", {w.CanonicalIndex}, {FormatLongArray(w.Shape)}, \"{Escape(r.OnnxName)}\", {r.CanonicalIndex}, {FormatLongArray(r.Shape)}, {(b is null ? "null, -1, null" : $"\"{Escape(b.OnnxName)}\", {b.CanonicalIndex}, {FormatLongArray(b.Shape)}")}, {fieldName}, {hiddenSize}L, {inputSize}L, {numDirections}L);",
             ],
             $"ToOnnxGruOutputs({fieldName}.forward({{0}}), {numDirections}L, {hiddenSize}L)"
         );

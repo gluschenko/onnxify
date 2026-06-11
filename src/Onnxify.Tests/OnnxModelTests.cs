@@ -1083,4 +1083,41 @@ public sealed class OnnxGraphTests
 
         Assert.Equal(["first", "replacement", "last"], graph.Nodes.Select(x => x.Name).ToArray());
     }
+
+    [Fact]
+    public void SortTopologically_ReordersNodesValuesAndInitializers()
+    {
+        var graph = OnnxModel.Create().Graph;
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([1]));
+        var output = graph.AddOutput("output", OnnxTensorType.Create<float>([1]));
+        var hidden = graph.AddValue("hidden", OnnxTensorType.Create<float>([1]));
+        var bias = graph.AddTensor("bias", [1], [1.0f]);
+
+        graph.AddNode(
+            name: "relu",
+            opType: "Relu",
+            domain: "",
+            docString: "",
+            inputs: [hidden],
+            outputs: [output],
+            attributes: []
+        );
+        graph.AddNode(
+            name: "add",
+            opType: "Add",
+            domain: "",
+            docString: "",
+            inputs: [input, bias],
+            outputs: [hidden],
+            attributes: []
+        );
+
+        graph.SortTopologically();
+
+        Assert.Equal(["add", "relu"], graph.Nodes.Select(x => x.Name).ToArray());
+        Assert.Equal(["bias"], graph.Initializers.Select(x => x.Name).ToArray());
+        Assert.Equal(["input"], graph.Inputs.Select(x => x.Name).ToArray());
+        Assert.Equal(["hidden"], graph.IntermediateValues.Select(x => x.Name).ToArray());
+        Assert.Equal(["output"], graph.Outputs.Select(x => x.Name).ToArray());
+    }
 }
