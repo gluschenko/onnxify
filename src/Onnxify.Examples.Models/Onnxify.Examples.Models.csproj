@@ -12,8 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="TorchSharp" Version="0.106.0" />
-    <PackageReference Include="TorchVision" Version="0.106.0" />
+    <PackageReference Include="TorchSharp" Version="0.107.0" />
+    <PackageReference Include="TorchVision" Version="0.107.0" />
   </ItemGroup>
 
 </Project>

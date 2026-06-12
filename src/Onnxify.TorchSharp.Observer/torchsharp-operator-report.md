@@ -1,6 +1,6 @@
 # TorchSharp operator coverage
 
-Found: 83.73% (417/498)
+Found: 84.34% (420/498)
 Onnxify.TorchSharp coverage: 83.53% (416/498)
 Onnxify.ModelGenerator coverage: 30.12% (150/498)
 
@@ -230,9 +230,9 @@ Onnxify.ModelGenerator coverage: 30.12% (150/498)
 | aten::instance_norm | TorchSharp.Modules.InstanceNorm | ✅ | ✅ | ❌ |
 | aten::is_nonzero | TorchSharp.torch+Tensor.is_nonzero | ✅ | ✅ | ❌ |
 | aten::isclose | TorchSharp.torch+Tensor.isclose | ✅ | ✅ | ❌ |
-| aten::isfinite | TorchSharp.torch+Tensor.isfinite | ✅ | ✅ | ❌ |
+| aten::isfinite | TorchSharp.BFloat16.IsFinite | ✅ | ✅ | ❌ |
 | aten::isinf | TorchSharp.torch+Tensor.isinf | ✅ | ✅ | ✅ |
-| aten::isnan | TorchSharp.torch+Tensor.isnan | ✅ | ✅ | ✅ |
+| aten::isnan | TorchSharp.BFloat16.IsNaN | ✅ | ✅ | ✅ |
 | aten::isneginf | TorchSharp.torch+Tensor.isneginf | ✅ | ✅ | ❌ |
 | aten::isposinf | TorchSharp.torch+Tensor.isposinf | ✅ | ✅ | ❌ |
 | aten::layer_norm | TorchSharp.Modules.LayerNorm | ✅ | ✅ | ❌ |
@@ -505,9 +505,9 @@ Onnxify.ModelGenerator coverage: 30.12% (150/498)
 | quantized_decomposed::dequantize_per_tensor |  | ❌ | ❌ | ❌ |
 | quantized_decomposed::dequantize_per_tensor.tensor |  | ❌ | ❌ | ❌ |
 | quantized_decomposed::dequantize_per_tensor.tensor2 |  | ❌ | ❌ | ❌ |
-| quantized_decomposed::quantize_per_tensor |  | ❌ | ❌ | ❌ |
-| quantized_decomposed::quantize_per_tensor.tensor |  | ❌ | ❌ | ❌ |
-| quantized_decomposed::quantize_per_tensor.tensor2 |  | ❌ | ❌ | ❌ |
+| quantized_decomposed::quantize_per_tensor | TorchSharp.torch.quantize_per_tensor | ✅ | ❌ | ❌ |
+| quantized_decomposed::quantize_per_tensor.tensor | TorchSharp.torch.quantize_per_tensor | ✅ | ❌ | ❌ |
+| quantized_decomposed::quantize_per_tensor.tensor2 | TorchSharp.torch.quantize_per_tensor | ✅ | ❌ | ❌ |
 | torchvision::nms |  | ❌ | ❌ | ❌ |
 | torchvision::roi_align |  | ❌ | ❌ | ❌ |
 | torchvision::roi_pool |  | ❌ | ❌ | ❌ |

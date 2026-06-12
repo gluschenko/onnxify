@@ -537,6 +537,19 @@ internal sealed class TorchModulePrinter
                 return torch.nn.functional.layer_norm(input, normalizedShape, scale, bias, eps: epsilon);
             }
 
+            private static Tensor SimplifiedLayerNormTensor(Tensor input, Tensor scale, Tensor? bias, long axis, float epsilon)
+            {
+                var rank = input.shape.Length;
+                var normalizedAxis = axis < 0 ? axis + rank : axis;
+                var axes = Enumerable
+                    .Range(checked((int)normalizedAxis), rank - checked((int)normalizedAxis))
+                    .Select(static x => (long)x)
+                    .ToArray();
+                var rms = (input.pow(2).mean(axes, keepdim: true) + epsilon).sqrt();
+                var result = input / rms * scale;
+                return bias is null ? result : result + bias;
+            }
+
             private static Tensor PadTensor(Tensor input, Tensor pads, Tensor? constantValue, string mode)
             {
                 var rawPads = pads.data<long>().ToArray();
@@ -827,6 +840,12 @@ internal sealed class TorchModulePrinter
                 ScalarType scalarType
             )
             {
+                if (scalarType == ScalarType.BFloat16)
+                {
+                    LoadBFloat16Tensor(tensors, name, canonicalIndex, expectedShape, target);
+                    return;
+                }
+
                 var typedTensor = GetTensor<T>(tensors, name, canonicalIndex, expectedShape, typeof(T).Name);
 
                 var values = typedTensor.Value.ToArray();
@@ -837,11 +856,46 @@ internal sealed class TorchModulePrinter
                     ScalarType.Int16 => torch.tensor((short[])(object)values, typedTensor.Shape, dtype: ScalarType.Int16, device: target.device),
                     ScalarType.Int32 => torch.tensor((int[])(object)values, typedTensor.Shape, dtype: ScalarType.Int32, device: target.device),
                     ScalarType.Int64 => torch.tensor((long[])(object)values, typedTensor.Shape, dtype: ScalarType.Int64, device: target.device),
+                    ScalarType.Float16 => torch.tensor(((Half[])(object)values).Select(static x => (float)x).ToArray(), typedTensor.Shape, dtype: ScalarType.Float16, device: target.device),
                     ScalarType.Float32 => torch.tensor((float[])(object)values, typedTensor.Shape, dtype: ScalarType.Float32, device: target.device),
                     ScalarType.Float64 => torch.tensor((double[])(object)values, typedTensor.Shape, dtype: ScalarType.Float64, device: target.device),
                     ScalarType.Bool => torch.tensor((bool[])(object)values, typedTensor.Shape, dtype: ScalarType.Bool, device: target.device),
                     _ => throw new NotSupportedException($"Unsupported Torch tensor data type for ONNX initializer import: {scalarType}."),
                 };
+                target.detach().copy_(source);
+            }
+
+            private static void LoadBFloat16Tensor(
+                OnnxInitializerLookup tensors,
+                string name,
+                int canonicalIndex,
+                long[] expectedShape,
+                Tensor target
+            )
+            {
+                var tensor = GetTensor(tensors, name, canonicalIndex, expectedShape, "bfloat16");
+                var valueProperty = tensor.GetType().GetProperty("Value")
+                    ?? throw new InvalidOperationException($"Initializer '{name}' does not expose tensor values.");
+                if (valueProperty.GetValue(tensor) is not System.Collections.IEnumerable values)
+                {
+                    throw new InvalidOperationException($"Initializer '{name}' does not expose enumerable tensor values.");
+                }
+
+                var floats = new List<float>();
+                foreach (var value in values)
+                {
+                    if (value is global::TorchSharp.BFloat16 torchBFloat16)
+                    {
+                        floats.Add(torchBFloat16.ToSingle());
+                        continue;
+                    }
+
+                    var toSingle = value?.GetType().GetMethod("ToSingle", Type.EmptyTypes)
+                        ?? throw new InvalidOperationException($"Initializer '{name}' contains unsupported bfloat16 value type '{value?.GetType().FullName ?? "<null>"}'.");
+                    floats.Add((float)(toSingle.Invoke(value, null) ?? throw new InvalidOperationException($"Initializer '{name}' bfloat16 value conversion returned null.")));
+                }
+
+                using var source = torch.tensor(floats.ToArray(), tensor.Shape, dtype: ScalarType.BFloat16, device: target.device);
                 target.detach().copy_(source);
             }
 
@@ -1022,6 +1076,50 @@ internal sealed class TorchModulePrinter
                 }
 
                 return typedTensor;
+            }
+
+            private static Onnxify.OnnxTensor GetTensor(
+                OnnxInitializerLookup tensors,
+                string name,
+                int canonicalIndex,
+                long[] expectedShape,
+                string expectedTypeName
+            )
+            {
+                if (tensors.TryGetByName(name, out var namedTensor))
+                {
+                    return RequireTensor(namedTensor, name, expectedShape, expectedTypeName);
+                }
+
+                if (tensors.TryGetByIndex(canonicalIndex, out var indexedTensor))
+                {
+                    return RequireTensor(indexedTensor, $"initializer at canonical index {canonicalIndex}", expectedShape, expectedTypeName);
+                }
+
+                throw new KeyNotFoundException($"The ONNX model does not contain initializer '{name}' and has no initializer at canonical index {canonicalIndex}.");
+            }
+
+            private static Onnxify.OnnxTensor RequireTensor(
+                Onnxify.OnnxTensor tensor,
+                string label,
+                long[] expectedShape,
+                string expectedTypeName
+            )
+            {
+                var dataTypeName = tensor.DataType.FullName ?? tensor.DataType.Name;
+                if (expectedTypeName == "bfloat16"
+                    && dataTypeName != "Onnxify.Data.Numerics.BFloat16"
+                    && dataTypeName != "TorchSharp.BFloat16")
+                {
+                    throw new InvalidOperationException($"Initializer '{label}' is not a {expectedTypeName} tensor.");
+                }
+
+                if (!tensor.Shape.SequenceEqual(expectedShape))
+                {
+                    throw new InvalidOperationException($"Initializer '{label}' shape [{string.Join(", ", tensor.Shape)}] does not match expected shape [{string.Join(", ", expectedShape)}].");
+                }
+
+                return tensor;
             }
 
             private static Tensor GetRequiredStateTensor(

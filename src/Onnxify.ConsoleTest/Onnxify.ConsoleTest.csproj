@@ -11,7 +11,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.23.2" />
-    <PackageReference Include="TorchSharp-cpu" Version="0.106.0" />
+    <PackageReference Include="TorchSharp-cpu" Version="0.107.0" />
   </ItemGroup>
 
   <ItemGroup>

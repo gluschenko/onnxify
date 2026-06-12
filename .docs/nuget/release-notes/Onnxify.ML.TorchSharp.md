@@ -1,6 +1,7 @@
 ## 0.3.0
 
 - Aligned the package version with the 0.3.0 Onnxify package family release.
+- Updated the TorchSharp dependency baseline to `0.107.0` for TorchSharp-backed ML pipeline extensions.
 - Picked up the latest TorchSharp and safetensors package-family updates.
 
 ## 0.2.0

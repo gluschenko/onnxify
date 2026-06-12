@@ -1,3 +1,9 @@
+## 0.3.1
+
+- Added TorchModule initializer import support for ONNX `float16` and `bfloat16` tensors, using TorchSharp `BFloat16` support from TorchSharp `0.107.0` for generated bfloat16 loader paths.
+- Expanded TorchModule generation to support ONNX graphs with multiple non-initializer inputs and multiple graph outputs.
+- Added TorchModule reconstruction support for `ScatterND`, `ConvTranspose`, `SimplifiedLayerNormalization`, `GRU` initial hidden state inputs, and asymmetric convolution fallback through functional `conv2d`.
+
 ## 0.3.0
 
 - Expanded TorchModule import support for ONNX graphs with broader runtime tensor data types that map to TorchSharp `ScalarType`, including non-float inputs and outputs.

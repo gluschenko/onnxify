@@ -70,6 +70,7 @@ internal static class TorchModuleInlineOperatorRegistry
         Add(new HardSwishTorchModuleInlineOperator());
         Add(new InstanceNormalizationTorchModuleInlineOperator());
         Add(new LayerNormalizationTorchModuleInlineOperator());
+        Add(new SimplifiedLayerNormalizationTorchModuleInlineOperator());
         Add(new LogSoftmaxTorchModuleInlineOperator());
         Add(new MishTorchModuleInlineOperator());
         Add(new PReluTorchModuleInlineOperator());

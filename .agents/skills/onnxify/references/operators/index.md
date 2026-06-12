@@ -5,7 +5,7 @@ Do not hand-edit files in this directory; rerun the generator instead.
 
 - Total reflected Onnxify operators: `473`
 - Operators with at least one Onnxify.TorchSharp converter path: `109`
-- Operators with at least one Onnxify.ModelGenerator TorchModule path: `109`
+- Operators with at least one Onnxify.ModelGenerator TorchModule path: `111`
 - Operator schema source: `src/Onnxify/Assets/onnx_operators.json`
 
 ## Table of Contents
@@ -189,7 +189,7 @@ Do not hand-edit files in this directory; rerun the generator instead.
 | Scan | 25 | no | no | [Scan](ai.onnx/Scan.md) |
 | Scatter | 11 | no | no | [Scatter](ai.onnx/Scatter.md) |
 | ScatterElements | 18 | no | no | [ScatterElements](ai.onnx/ScatterElements.md) |
-| ScatterND | 18 | no | no | [ScatterND](ai.onnx/ScatterND.md) |
+| ScatterND | 18 | no | yes | [ScatterND](ai.onnx/ScatterND.md) |
 | Selu | 22 | yes | yes | [Selu](ai.onnx/Selu.md) |
 | SequenceAt | 11 | no | no | [SequenceAt](ai.onnx/SequenceAt.md) |
 | SequenceConstruct | 11 | no | no | [SequenceConstruct](ai.onnx/SequenceConstruct.md) |
@@ -202,7 +202,7 @@ Do not hand-edit files in this directory; rerun the generator instead.
 | Shrink | 9 | no | no | [Shrink](ai.onnx/Shrink.md) |
 | Sigmoid | 13 | yes | yes | [Sigmoid](ai.onnx/Sigmoid.md) |
 | Sign | 13 | yes | yes | [Sign](ai.onnx/Sign.md) |
-| SimplifiedLayerNormalization | 1 | no | no | [SimplifiedLayerNormalization](ai.onnx/SimplifiedLayerNormalization.md) |
+| SimplifiedLayerNormalization | 1 | no | yes | [SimplifiedLayerNormalization](ai.onnx/SimplifiedLayerNormalization.md) |
 | Sin | 22 | yes | yes | [Sin](ai.onnx/Sin.md) |
 | Sinh | 22 | yes | yes | [Sinh](ai.onnx/Sinh.md) |
 | Size | 25 | no | no | [Size](ai.onnx/Size.md) |

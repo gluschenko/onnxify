@@ -1,6 +1,7 @@
 ## 0.3.0
 
 - Aligned the package version with the 0.3.0 Onnxify package family release.
+- Updated the TorchSharp dependency baseline to `0.107.0`; matching TorchSharp runtime packages such as `TorchSharp-cpu` and `TorchSharp-cuda-windows` should use the same version.
 - Updated generated TorchSharp converter documentation and coverage reports for the latest ModelGenerator TorchModule reconstruction coverage.
 
 ## 0.2.0

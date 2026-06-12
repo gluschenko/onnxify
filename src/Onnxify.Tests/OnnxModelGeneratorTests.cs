@@ -656,6 +656,52 @@ public sealed class OnnxModelGeneratorTests
     }
 
     [Fact]
+    public void Generate_WithTorchModuleImportType_EmitsSimplifiedLayerNormalization()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, "simplified-layer-normalization.onnx");
+
+        try
+        {
+            var model = new ModelProto
+            {
+                Graph = new GraphProto()
+            };
+            model.Graph.Input.Add(CreateTensorValueInfo("input", TensorProto.Types.DataType.Float, 1L, 4L, 8L));
+            model.Graph.Output.Add(CreateTensorValueInfo("output", TensorProto.Types.DataType.Float, 1L, 4L, 8L));
+            AddFloatInitializer(model.Graph, "scale", [8L], Enumerable.Repeat(1.0f, 8));
+            AddFloatInitializer(model.Graph, "bias", [8L], Enumerable.Repeat(0.0f, 8));
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "rms_norm",
+                OpType = "SimplifiedLayerNormalization",
+                Input = { "input", "scale", "bias" },
+                Output = { "output" },
+                Attribute =
+                {
+                    new AttributeProto { Name = "axis", Type = AttributeProto.Types.AttributeType.Int, I = -1L },
+                    new AttributeProto { Name = "epsilon", Type = AttributeProto.Types.AttributeType.Float, F = 1e-6f },
+                },
+            });
+            File.WriteAllBytes(modelPath, model.ToByteArray());
+
+            var generatedSource = GenerateSingleTorchModuleSource(tempRoot, modelPath);
+
+            Assert.Contains("SimplifiedLayerNormTensor(input, _scale, _bias, -1L, 1E-06f)", generatedSource);
+            Assert.Contains("input.pow(2).mean(axes, keepdim: true)", generatedSource);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void Generate_WithTorchModuleImportType_EmitsAdditionalUnaryAndComparisonOperators()
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
@@ -1446,6 +1492,104 @@ public sealed class OnnxModelGeneratorTests
     }
 
     [Fact]
+    public void Generate_WithTorchModuleImportType_EmitsFloat16InitializerLoad()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, "float16-initializer.onnx");
+
+        try
+        {
+            var bias = new TensorProto
+            {
+                Name = "bias",
+                DataType = (int)TensorProto.Types.DataType.Float16,
+                Dims = { 2L },
+                RawData = ByteString.CopyFrom(CreateFloat16RawData((Half)0.5f, (Half)1.5f)),
+            };
+            var model = new ModelProto
+            {
+                Graph = new GraphProto()
+            };
+            model.Graph.Input.Add(CreateTensorValueInfo("input", TensorProto.Types.DataType.Float16, 1L, 2L));
+            model.Graph.Output.Add(CreateTensorValueInfo("output", TensorProto.Types.DataType.Float16, 1L, 2L));
+            model.Graph.Initializer.Add(bias);
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "add_bias",
+                OpType = "Add",
+                Input = { "input", "bias" },
+                Output = { "output" },
+            });
+            File.WriteAllBytes(modelPath, model.ToByteArray());
+
+            var generatedSource = GenerateSingleTorchModuleSource(tempRoot, modelPath);
+
+            Assert.Contains("private Tensor _bias;", generatedSource);
+            Assert.Contains("torch.empty(new long[] { 2L }, dtype: ScalarType.Float16)", generatedSource);
+            Assert.Contains("LoadTensor<Half>(tensors, \"bias\", 0, new long[] { 2L }, _bias, ScalarType.Float16);", generatedSource);
+            Assert.Contains("ScalarType.Float16 => torch.tensor(((Half[])(object)values).Select(static x => (float)x).ToArray(), typedTensor.Shape, dtype: ScalarType.Float16, device: target.device)", generatedSource);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Generate_WithTorchModuleImportType_EmitsBFloat16InitializerLoad()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, "bfloat16-initializer.onnx");
+
+        try
+        {
+            var bias = new TensorProto
+            {
+                Name = "bias",
+                DataType = (int)TensorProto.Types.DataType.Bfloat16,
+                Dims = { 2L },
+                RawData = ByteString.CopyFrom(CreateBFloat16RawData(0.5f, 1.5f)),
+            };
+            var model = new ModelProto
+            {
+                Graph = new GraphProto()
+            };
+            model.Graph.Input.Add(CreateTensorValueInfo("input", TensorProto.Types.DataType.Bfloat16, 1L, 2L));
+            model.Graph.Output.Add(CreateTensorValueInfo("output", TensorProto.Types.DataType.Bfloat16, 1L, 2L));
+            model.Graph.Initializer.Add(bias);
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "add_bias",
+                OpType = "Add",
+                Input = { "input", "bias" },
+                Output = { "output" },
+            });
+            File.WriteAllBytes(modelPath, model.ToByteArray());
+
+            var generatedSource = GenerateSingleTorchModuleSource(tempRoot, modelPath);
+
+            Assert.Contains("private Tensor _bias;", generatedSource);
+            Assert.Contains("torch.empty(new long[] { 2L }, dtype: ScalarType.BFloat16)", generatedSource);
+            Assert.Contains("LoadTensor<global::TorchSharp.BFloat16>(tensors, \"bias\", 0, new long[] { 2L }, _bias, ScalarType.BFloat16);", generatedSource);
+            Assert.Contains("value is global::TorchSharp.BFloat16 torchBFloat16", generatedSource);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void Generate_ModelWithoutGraph_ProducesParameterlessWrapper()
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
@@ -1595,6 +1739,32 @@ public sealed class OnnxModelGeneratorTests
         tensor.Dims.AddRange(shape);
         tensor.FloatData.AddRange(values);
         graph.Initializer.Add(tensor);
+    }
+
+    private static byte[] CreateFloat16RawData(params Half[] values)
+    {
+        var bytes = new byte[values.Length * sizeof(ushort)];
+        for (var index = 0; index < values.Length; index++)
+        {
+            var raw = BitConverter.HalfToUInt16Bits(values[index]);
+            bytes[index * 2] = (byte)raw;
+            bytes[index * 2 + 1] = (byte)(raw >> 8);
+        }
+
+        return bytes;
+    }
+
+    private static byte[] CreateBFloat16RawData(params float[] values)
+    {
+        var bytes = new byte[values.Length * sizeof(ushort)];
+        for (var index = 0; index < values.Length; index++)
+        {
+            var raw = (ushort)((uint)BitConverter.SingleToInt32Bits(values[index]) >> 16);
+            bytes[index * 2] = (byte)raw;
+            bytes[index * 2 + 1] = (byte)(raw >> 8);
+        }
+
+        return bytes;
     }
 
     private static string GenerateSingleTorchModuleSource(string tempRoot, string modelPath)

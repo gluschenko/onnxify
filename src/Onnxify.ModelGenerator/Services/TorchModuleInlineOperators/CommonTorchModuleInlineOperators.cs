@@ -441,6 +441,13 @@ internal sealed class LayerNormalizationTorchModuleInlineOperator : TorchModuleI
     internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"LayerNormTensor({Input(node, values, 0)}, {Input(node, values, 1)}, {(node.Inputs.Length > 2 ? Input(node, values, 2) : "null")}, {GetLongAttribute(node, "axis", -1L)}L, {FormatFloat(GetFloatAttribute(node, "epsilon", 1e-5f))}f)";
 }
 
+[TorchSharpOp("SimplifiedLayerNormalization")]
+internal sealed class SimplifiedLayerNormalizationTorchModuleInlineOperator : TorchModuleInlineOperator
+{
+    internal override string OnnxOpType => "SimplifiedLayerNormalization";
+    internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"SimplifiedLayerNormTensor({Input(node, values, 0)}, {Input(node, values, 1)}, {(node.Inputs.Length > 2 ? Input(node, values, 2) : "null")}, {GetLongAttribute(node, "axis", -1L)}L, {FormatFloat(GetFloatAttribute(node, "epsilon", 1e-5f))}f)";
+}
+
 [TorchSharpOp("LogSoftmax")]
 internal sealed class LogSoftmaxTorchModuleInlineOperator : TorchModuleInlineOperator
 {

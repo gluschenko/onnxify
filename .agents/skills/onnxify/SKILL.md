@@ -97,7 +97,7 @@ Use this section for the packages and tools that the repo itself exports outward
 
 ## 2B. Onnxify.TorchSharp Principles
 
-- `Onnxify.TorchSharp` currently references `TorchSharp` `0.106.0`; examples that add `TorchSharp-cpu` or a CUDA runtime package should use the matching TorchSharp runtime version unless the project has intentionally moved to a newer dependency.
+- `Onnxify.TorchSharp` currently references `TorchSharp` `0.107.0`; examples that add `TorchSharp-cpu` or a CUDA runtime package should use the matching TorchSharp runtime version unless the project has intentionally moved to a newer dependency.
 - Treat TorchSharp export as inference-oriented graph synthesis, not as runtime tracing or training-time execution.
 - Prefer implementing support as `Export(...)` extension methods on concrete TorchSharp module types in `TorchModuleExtensions.cs`.
 - Keep `TorchModule.Export(graph, input)` as the public dispatch entry point and extend its module switch consistently when adding support.
