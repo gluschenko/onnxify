@@ -92,10 +92,16 @@ internal sealed class TorchModulePrinter
 
         var forwardBody = BuildTorchForwardBody(specification, torchModule, forwardGroups);
         var forwardGroupTypes = BuildForwardGroupTypes(forwardGroups, torchModule);
+        var baseTypeName = BuildTorchModuleBaseTypeName(torchModule);
+        var forwardReturnTypeName = BuildTorchModuleForwardReturnTypeName(torchModule);
+        var forwardParameters = string.Join(
+            ", ",
+            torchModule.Inputs.Select(static input => $"Tensor {input.ParameterName}")
+        );
 
         return $$"""
         {{_documentationPrinter.TorchModuleType(specification)}}
-        public sealed class {{torchClassName}} : torch.nn.Module<Tensor, Tensor>
+        public sealed class {{torchClassName}} : {{baseTypeName}}
         {
             {{Indent(_documentationPrinter.TorchModuleProjectRelativePath(), 1)}}
             public const string MODEL_PROJECT_RELATIVE_PATH = {{ToVerbatimStringLiteral(specification.ProjectRelativePath)}};
@@ -141,7 +147,7 @@ internal sealed class TorchModulePrinter
             }
 
             {{Indent(_documentationPrinter.TorchModuleForward(specification, torchModule), 1)}}
-            public override Tensor forward(Tensor {{torchModule.InputParameterName}})
+            public override {{forwardReturnTypeName}} forward({{forwardParameters}})
             {
                 {{Indent(forwardBody, 2)}}
             }
@@ -206,6 +212,76 @@ internal sealed class TorchModulePrinter
                 var device = tensors[0].device;
                 var aligned = tensors.Select(x => x.device == device ? x : x.to(device)).ToArray();
                 return torch.cat(aligned, axis);
+            }
+
+            private static Tensor ScatterNdTensor(Tensor data, Tensor indices, Tensor updates, string reduction)
+            {
+                if (!string.Equals(reduction, "none", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new NotSupportedException($"ScatterND reduction '{reduction}' is not supported by the generated TorchModule.");
+                }
+
+                using var cpuIndices = indices.to(ScalarType.Int64).cpu();
+                var indexShape = cpuIndices.shape;
+                if (indexShape.Length == 0)
+                {
+                    throw new InvalidOperationException("ScatterND indices must have rank at least 1.");
+                }
+
+                var indexTupleLength = checked((int)indexShape[indexShape.Length - 1]);
+                if (indexTupleLength <= 0 || indexTupleLength > data.shape.Length)
+                {
+                    throw new InvalidOperationException("ScatterND index tuple length must be between 1 and the input tensor rank.");
+                }
+
+                var updateCount = indexShape.Aggregate(1L, static (product, dimension) => product * dimension) / indexTupleLength;
+                var sliceSize = data.shape
+                    .Skip(indexTupleLength)
+                    .Aggregate(1L, static (product, dimension) => product * dimension);
+                var dataStrides = ComputeContiguousStrides(data.shape);
+                var rawIndices = cpuIndices.data<long>().ToArray();
+                var flattenedOffsets = new long[checked((int)(updateCount * sliceSize))];
+
+                for (var updateIndex = 0L; updateIndex < updateCount; updateIndex++)
+                {
+                    var baseOffset = 0L;
+                    for (var tupleIndex = 0; tupleIndex < indexTupleLength; tupleIndex++)
+                    {
+                        var dimension = data.shape[tupleIndex];
+                        var index = rawIndices[checked((int)(updateIndex * indexTupleLength + tupleIndex))];
+                        if (index < 0)
+                        {
+                            index += dimension;
+                        }
+
+                        baseOffset += index * dataStrides[tupleIndex];
+                    }
+
+                    for (var sliceOffset = 0L; sliceOffset < sliceSize; sliceOffset++)
+                    {
+                        flattenedOffsets[checked((int)(updateIndex * sliceSize + sliceOffset))] = baseOffset + sliceOffset;
+                    }
+                }
+
+                var result = data.clone();
+                using var flatResult = result.reshape(-1);
+                using var offsetTensor = torch.tensor(flattenedOffsets, new long[] { flattenedOffsets.LongLength }, dtype: ScalarType.Int64, device: data.device);
+                using var flatUpdates = updates.reshape(-1).to(data.device);
+                flatResult.scatter_(0L, offsetTensor, flatUpdates);
+                return result;
+            }
+
+            private static long[] ComputeContiguousStrides(long[] shape)
+            {
+                var strides = new long[shape.Length];
+                var stride = 1L;
+                for (var index = shape.Length - 1; index >= 0; index--)
+                {
+                    strides[index] = stride;
+                    stride *= shape[index];
+                }
+
+                return strides;
             }
 
             private static Tensor MaxTensors(Tensor[] tensors)
@@ -1099,7 +1175,11 @@ internal sealed class TorchModulePrinter
     )
     {
         var values = new Dictionary<string, string>(StringComparer.Ordinal);
-        values[torchModule.InputOnnxName] = torchModule.InputParameterName;
+        foreach (var input in torchModule.Inputs)
+        {
+            values[input.OnnxName] = input.ParameterName;
+        }
+
         foreach (var initializer in torchModule.Initializers)
         {
             values[initializer.OnnxName] = initializer.FieldName;
@@ -1153,13 +1233,28 @@ internal sealed class TorchModulePrinter
             }
         }
 
-        if (!values.TryGetValue(torchModule.OutputOnnxName, out var outputExpression))
-        {
-            outputExpression = ToCamelIdentifier(torchModule.OutputOnnxName, "output");
-        }
+        var outputExpressions = torchModule.Outputs
+            .Select(output => values.TryGetValue(output.OnnxName, out var expression)
+                ? expression
+                : ToCamelIdentifier(output.OnnxName, "output"))
+            .ToArray();
 
-        statements.Add($"return {outputExpression};");
+        statements.Add(outputExpressions.Length == 1
+            ? $"return {outputExpressions[0]};"
+            : $"return ({string.Join(", ", outputExpressions)});");
         return string.Join("\n", statements);
+    }
+
+    private static string BuildTorchModuleBaseTypeName(TorchModuleGenerationSpecification torchModule)
+    {
+        return $"torch.nn.Module<{string.Join(", ", Enumerable.Repeat("Tensor", torchModule.Inputs.Length).Concat([BuildTorchModuleForwardReturnTypeName(torchModule)]))}>";
+    }
+
+    private static string BuildTorchModuleForwardReturnTypeName(TorchModuleGenerationSpecification torchModule)
+    {
+        return torchModule.Outputs.Length == 1
+            ? "Tensor"
+            : $"({string.Join(", ", Enumerable.Repeat("Tensor", torchModule.Outputs.Length))})";
     }
 
     private static HashSet<string> GetGroupedModuleNodeNames(
@@ -1374,10 +1469,14 @@ internal sealed class TorchModulePrinter
         IReadOnlyDictionary<string, string> values
     )
     {
-        var input = values[node.Inputs[0]];
+        var inputs = node.Inputs
+            .Select(input => values.TryGetValue(input, out var value) ? value : string.Empty)
+            .Cast<object>()
+            .ToArray();
+        var input = (string)inputs[0];
         if (module.ForwardExpression is not null)
         {
-            return string.Format(System.Globalization.CultureInfo.InvariantCulture, module.ForwardExpression, input);
+            return string.Format(System.Globalization.CultureInfo.InvariantCulture, module.ForwardExpression, inputs);
         }
 
         return module.Kind == TorchModuleNodeKind.Linear && module.TransposeInput

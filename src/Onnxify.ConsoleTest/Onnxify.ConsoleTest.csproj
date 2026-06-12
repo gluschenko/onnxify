@@ -28,8 +28,8 @@
     <OnnxModel Include="Assets\gpt-oss_q4f16.onnx" />
     <OnnxModel Include="Assets\bvlcalexnet-12-qdq.onnx" OnnxifyModelImportType="OnnxRuntimeInference,TorchModule" />
     <OnnxModel Include="Assets\panlingo-lstm.onnx" OnnxifyModelImportType="OnnxRuntimeInference,TorchModule" />
-    <OnnxModel Include="Assets\real_esrgan_x4plus-onnx-float\real_esrgan_x4plus.onnx" />
-    <OnnxModel Include="Assets\gtcrn_simple.onnx" />
+    <OnnxModel Include="Assets\real_esrgan_x4plus-onnx-float\real_esrgan_x4plus.onnx" OnnxifyModelImportType="OnnxRuntimeInference,TorchModule" />
+    <OnnxModel Include="Assets\gtcrn_simple.onnx" OnnxifyModelImportType="OnnxRuntimeInference,TorchModule" />
   </ItemGroup>
 
   <ItemGroup>

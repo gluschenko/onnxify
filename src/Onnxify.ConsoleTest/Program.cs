@@ -300,8 +300,10 @@ namespace Onnxify.ConsoleTest
                 using var alexNetModel = new Bvlcalexnet12QdqModel();
                 using var realEsrganModel = new RealEsrganX4plusModel();
 
-                using var yy = new PanlingoLstmModel();
-                using var xx = new PanlingoLstmModelTorchModule();
+                using var xx = new PanlingoLstmModel();
+                using var yy = new PanlingoLstmModelTorchModule();
+                using var zz = new RealEsrganX4plusModelTorchModule();
+                using var aa = new GtcrnSimpleModelTorchModule();
             }
             catch (Exception ex)
             {

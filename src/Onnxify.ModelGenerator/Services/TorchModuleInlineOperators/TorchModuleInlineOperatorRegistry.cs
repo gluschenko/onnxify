@@ -64,6 +64,7 @@ internal static class TorchModuleInlineOperatorRegistry
         Add(new DropoutTorchModuleInlineOperator());
         Add(new ExpandTorchModuleInlineOperator());
         Add(new GatherElementsTorchModuleInlineOperator());
+        Add(new ScatterNdTorchModuleInlineOperator());
         Add(new GeluTorchModuleInlineOperator());
         Add(new GroupNormalizationTorchModuleInlineOperator());
         Add(new HardSwishTorchModuleInlineOperator());
@@ -91,6 +92,7 @@ internal static class TorchModuleInlineOperatorRegistry
         Add(new TransposeTorchModuleInlineOperator());
         Add(new ClipTorchModuleInlineOperator());
         Add(new ConvTorchModuleInlineOperator());
+        Add(new ConvTransposeTorchModuleInlineOperator());
         Add(new MaxPoolTorchModuleInlineOperator());
         Add(new BatchNormalizationTorchModuleInlineOperator());
         Add(new GlobalAveragePoolTorchModuleInlineOperator());

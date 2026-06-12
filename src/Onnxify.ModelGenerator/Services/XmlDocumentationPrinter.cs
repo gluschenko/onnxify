@@ -129,25 +129,30 @@ internal sealed class XmlDocumentationPrinter
         TorchModuleGenerationSpecification torchModule
     )
     {
-        var input = specification.Inputs.FirstOrDefault(x => string.Equals(x.OnnxName, torchModule.InputOnnxName, StringComparison.Ordinal));
-        var output = specification.Outputs.FirstOrDefault(x => string.Equals(x.OnnxName, torchModule.OutputOnnxName, StringComparison.Ordinal));
-        var inputParagraph = input is null
-            ? "Input tensor shape is not described by the source ONNX model."
-            : $"Input {FormatCode(torchModule.InputOnnxName)} shape: {FormatCode(FormatTensorShape(input.Shape))}.";
-        var outputParagraph = output is null
-            ? "Output tensor shape is not described by the source ONNX model."
-            : $"Output {FormatCode(torchModule.OutputOnnxName)} shape: {FormatCode(FormatTensorShape(output.Shape))}.";
+        var inputParagraphs = torchModule.Inputs.Select(input =>
+        {
+            var contract = specification.Inputs.FirstOrDefault(x => string.Equals(x.OnnxName, input.OnnxName, StringComparison.Ordinal));
+            return contract is null
+                ? $"Input {FormatCode(input.OnnxName)} shape is not described by the source ONNX model."
+                : $"Input {FormatCode(input.OnnxName)} shape: {FormatCode(FormatTensorShape(contract.Shape))}.";
+        });
+        var outputParagraphs = torchModule.Outputs.Select(output =>
+        {
+            var contract = specification.Outputs.FirstOrDefault(x => string.Equals(x.OnnxName, output.OnnxName, StringComparison.Ordinal));
+            return contract is null
+                ? $"Output {FormatCode(output.OnnxName)} shape is not described by the source ONNX model."
+                : $"Output {FormatCode(output.OnnxName)} shape: {FormatCode(FormatTensorShape(contract.Shape))}.";
+        });
 
         return $$"""
         {{XmlDocumentation(
-            "Runs the reconstructed TorchSharp graph for a single input tensor.",
-            [
-                inputParagraph,
-                outputParagraph
-            ]
+            "Runs the reconstructed TorchSharp graph.",
+            inputParagraphs.Concat(outputParagraphs)
         )}}
-        {{XmlParamXml(torchModule.InputParameterName, $"Tensor value for ONNX input {FormatCode(torchModule.InputOnnxName)}.")}}
-        {{XmlReturns($"The tensor value produced for ONNX output '{torchModule.OutputOnnxName}'.")}}
+        {{string.Join("\n", torchModule.Inputs.Select(input => XmlParamXml(input.ParameterName, $"Tensor value for ONNX input {FormatCode(input.OnnxName)}.")))}}
+        {{XmlReturns(torchModule.Outputs.Length == 1
+            ? $"The tensor value produced for ONNX output '{torchModule.Outputs[0].OnnxName}'."
+            : "The tensor values produced for the ONNX graph outputs.")}}
         """;
     }
 

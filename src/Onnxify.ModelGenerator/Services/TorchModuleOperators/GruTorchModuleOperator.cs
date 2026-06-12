@@ -63,12 +63,36 @@ internal sealed class GruTorchModuleOperator : TorchModuleOperator
             b = foundB;
         }
 
-        if (node.Inputs.Length > 4)
+        var initialHiddenInputIndex = -1;
+        for (var inputIndex = 3; inputIndex < node.Inputs.Length; inputIndex++)
         {
-            return false;
+            if (string.IsNullOrWhiteSpace(node.Inputs[inputIndex]))
+            {
+                continue;
+            }
+
+            if (b is not null && string.Equals(node.Inputs[inputIndex], b.OnnxName, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (inputIndex == 4)
+            {
+                continue;
+            }
+
+            if (initialHiddenInputIndex >= 0)
+            {
+                return false;
+            }
+
+            initialHiddenInputIndex = inputIndex;
         }
 
         var fieldName = MakeUniqueIdentifier("_" + ToCamelIdentifier(node.Name, "gru"), usedFieldNames, "_module");
+        var forwardCall = initialHiddenInputIndex >= 0
+            ? $"{fieldName}.forward({{0}}, {{{initialHiddenInputIndex}}})"
+            : $"{fieldName}.forward({{0}})";
         module = new TorchModuleNodeSpecification(
             node.Name,
             TorchModuleNodeKind.GRU,
@@ -79,7 +103,7 @@ internal sealed class GruTorchModuleOperator : TorchModuleOperator
             [
                 $"LoadOnnxGruWeights(tensors, \"{Escape(w.OnnxName)}\", {w.CanonicalIndex}, {FormatLongArray(w.Shape)}, \"{Escape(r.OnnxName)}\", {r.CanonicalIndex}, {FormatLongArray(r.Shape)}, {(b is null ? "null, -1, null" : $"\"{Escape(b.OnnxName)}\", {b.CanonicalIndex}, {FormatLongArray(b.Shape)}")}, {fieldName}, {hiddenSize}L, {inputSize}L, {numDirections}L);",
             ],
-            $"ToOnnxGruOutputs({fieldName}.forward({{0}}), {numDirections}L, {hiddenSize}L)"
+            $"ToOnnxGruOutputs({forwardCall}, {numDirections}L, {hiddenSize}L)"
         );
         consumedInitializers = b is null ? [w.OnnxName, r.OnnxName] : [w.OnnxName, r.OnnxName, b.OnnxName];
         return true;

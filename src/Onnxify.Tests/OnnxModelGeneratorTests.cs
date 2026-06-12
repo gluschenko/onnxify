@@ -1375,6 +1375,77 @@ public sealed class OnnxModelGeneratorTests
     }
 
     [Fact]
+    public void Generate_WithTorchModuleImportType_EmitsMultiInputMultiOutputTorchModule()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, "multi-input-output.onnx");
+
+        try
+        {
+            var model = new ModelProto
+            {
+                Graph = new GraphProto()
+            };
+            model.Graph.Input.Add(CreateTensorValueInfo("mix", TensorProto.Types.DataType.Float, 1L, 1L, 256L));
+            model.Graph.Input.Add(CreateTensorValueInfo("conv_cache", TensorProto.Types.DataType.Float, 2L, 1L, 16L, 16L));
+            model.Graph.Output.Add(CreateTensorValueInfo("enhanced", TensorProto.Types.DataType.Float, 1L, 1L, 256L));
+            model.Graph.Output.Add(CreateTensorValueInfo("conv_cache_out", TensorProto.Types.DataType.Float, 2L, 1L, 16L, 16L));
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "identity_mix",
+                OpType = "Identity",
+                Input = { "mix" },
+                Output = { "enhanced" },
+            });
+            model.Graph.Node.Add(new NodeProto
+            {
+                Name = "identity_cache",
+                OpType = "Identity",
+                Input = { "conv_cache" },
+                Output = { "conv_cache_out" },
+            });
+            File.WriteAllBytes(modelPath, model.ToByteArray());
+
+            var driver = CreateDriver(
+                additionalFiles: [new BinaryAdditionalText(modelPath)],
+                globalOptions: new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["build_property.ProjectDir"] = tempRoot + Path.DirectorySeparatorChar,
+                    ["build_property.RootNamespace"] = "Demo.App",
+                },
+                fileOptions: new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal)
+                {
+                    [modelPath] = new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["build_metadata.additionalfiles.OnnxifyModelImportType"] = "TorchModule",
+                    }
+                });
+
+            var compilation = CreateCompilation();
+            driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var updatedCompilation, out var generatorDiagnostics);
+
+            Assert.DoesNotContain(generatorDiagnostics, static x => x.Severity == DiagnosticSeverity.Error);
+            Assert.DoesNotContain(updatedCompilation.GetDiagnostics(), static x => x.Severity == DiagnosticSeverity.Error);
+
+            var generatedSource = GetGeneratedSource(driver);
+            Assert.Contains("public sealed class MultiInputOutputModelTorchModule : torch.nn.Module<Tensor, Tensor, (Tensor, Tensor)>", generatedSource);
+            Assert.Contains("public override (Tensor, Tensor) forward(Tensor mix, Tensor convCache)", generatedSource);
+            Assert.Contains("var enhanced = mix;", generatedSource);
+            Assert.Contains("var convCacheOut = convCache;", generatedSource);
+            Assert.Contains("return (enhanced, convCacheOut);", generatedSource);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void Generate_ModelWithoutGraph_ProducesParameterlessWrapper()
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));

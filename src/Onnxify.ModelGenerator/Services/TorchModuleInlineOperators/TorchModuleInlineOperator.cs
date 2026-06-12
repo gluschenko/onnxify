@@ -121,6 +121,23 @@ internal abstract class TorchModuleInlineOperator
         return $"torch.nn.functional.conv2d({input}, {weight}, {bias}, {FormatLongArray(strides)}, {FormatLongArray(padding)}, {FormatLongArray(dilations)}, {group}L)";
     }
 
+    protected static string EmitConvTranspose(
+        TorchNodeSpecification node,
+        string input,
+        string weight,
+        string bias
+    )
+    {
+        var strides = GetLongArrayAttribute(node, "strides", [1L, 1L]);
+        var pads = GetLongArrayAttribute(node, "pads", [0L, 0L, 0L, 0L]);
+        var outputPadding = GetLongArrayAttribute(node, "output_padding", [0L, 0L]);
+        var dilations = GetLongArrayAttribute(node, "dilations", [1L, 1L]);
+        var group = GetLongAttribute(node, "group", 1L);
+        var padding = pads.Length >= 2 ? pads.Take(pads.Length / 2).ToArray() : pads;
+
+        return $"torch.nn.functional.conv_transpose2d({input}, {weight}, {bias}, {FormatLongArray(strides)}, {FormatLongArray(padding)}, {FormatLongArray(dilations)}, {FormatLongArray(outputPadding)}, {group}L)";
+    }
+
     protected static string EmitBatchNormalization(
         TorchNodeSpecification node,
         string input,

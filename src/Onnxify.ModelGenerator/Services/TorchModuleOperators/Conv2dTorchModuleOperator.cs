@@ -43,8 +43,16 @@ internal sealed class Conv2dTorchModuleOperator : TorchModuleOperator
         var strides = GetLongArrayAttribute(node, "strides", [1L, 1L]);
         var dilations = GetLongArrayAttribute(node, "dilations", [1L, 1L]);
         var group = GetLongAttribute(node, "group", 1L);
+        if (!TryGetScalar2dArgument(weight.Shape.Skip(2), out var kernelSize)
+            || !TryGetScalar2dArgument(strides, out var stride)
+            || !TryGetScalar2dArgument(pads.Take(2), out var padding)
+            || !TryGetScalar2dArgument(dilations, out var dilation))
+        {
+            return false;
+        }
+
         var fieldName = MakeUniqueIdentifier("_" + ToCamelIdentifier(node.Name, "conv"), usedFieldNames, "_module");
-        var constructor = $"Conv2d({weight.Shape[1] * group}, {weight.Shape[0]}, kernel_size: {FormatModuleArgument(weight.Shape.Skip(2))}, stride: {FormatModuleArgument(strides)}, padding: {FormatModuleArgument(pads.Take(2))}, dilation: {FormatModuleArgument(dilations)}, groups: {group}L, bias: {FormatBool(bias is not null)})";
+        var constructor = $"Conv2d({weight.Shape[1] * group}, {weight.Shape[0]}, kernel_size: {kernelSize}L, stride: {stride}L, padding: {padding}L, dilation: {dilation}L, groups: {group}L, bias: {FormatBool(bias is not null)})";
 
         module = new TorchModuleNodeSpecification(
             node.Name,
@@ -62,5 +70,27 @@ internal sealed class Conv2dTorchModuleOperator : TorchModuleOperator
         );
         consumedInitializers = bias is null ? [weight.OnnxName] : [weight.OnnxName, bias.OnnxName];
         return true;
+    }
+
+    private static bool TryGetScalar2dArgument(
+        IEnumerable<long> values,
+        out long scalarValue
+    )
+    {
+        var array = values.ToArray();
+        if (array.Length == 1)
+        {
+            scalarValue = array[0];
+            return true;
+        }
+
+        if (array.Length == 2 && array[0] == array[1])
+        {
+            scalarValue = array[0];
+            return true;
+        }
+
+        scalarValue = 0;
+        return false;
     }
 }

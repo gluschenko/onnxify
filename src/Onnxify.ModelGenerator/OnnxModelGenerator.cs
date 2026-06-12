@@ -575,28 +575,42 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             .Where(input => !initializerNames.Contains(input.Name))
             .ToArray();
 
-        if (runtimeInputs.Length != 1)
+        if (runtimeInputs.Length == 0)
         {
-            ReportUnsupportedTorchModule(fileName, "the TorchModule backend supports exactly one non-initializer graph input.", diagnostics);
+            ReportUnsupportedTorchModule(
+                fileName,
+                "the TorchModule backend requires at least one non-initializer graph input.",
+                diagnostics
+            );
             return null;
         }
 
-        if (graph.Output.Count != 1)
+        if (graph.Output.Count == 0)
         {
-            ReportUnsupportedTorchModule(fileName, "the TorchModule backend supports exactly one graph output.", diagnostics);
+            ReportUnsupportedTorchModule(
+                fileName,
+                "the TorchModule backend requires at least one graph output.",
+                diagnostics
+            );
             return null;
         }
 
-        if (!TryGetTensorElementType(runtimeInputs[0], out var inputElementType) || !IsSupportedTorchModuleRuntimeTensorType(inputElementType))
+        foreach (var input in runtimeInputs)
         {
-            ReportUnsupportedTorchModule(fileName, "the TorchModule backend supports only runtime tensor input data types that map to TorchSharp ScalarType.", diagnostics);
-            return null;
+            if (!TryGetTensorElementType(input, out var inputElementType) || !IsSupportedTorchModuleRuntimeTensorType(inputElementType))
+            {
+                ReportUnsupportedTorchModule(fileName, $"the TorchModule backend supports only runtime tensor input data types that map to TorchSharp ScalarType; input '{input.Name}' is unsupported.", diagnostics);
+                return null;
+            }
         }
 
-        if (!TryGetTensorElementType(graph.Output[0], out var outputElementType) || !IsSupportedTorchModuleRuntimeTensorType(outputElementType))
+        foreach (var output in graph.Output)
         {
-            ReportUnsupportedTorchModule(fileName, "the TorchModule backend supports only runtime tensor output data types that map to TorchSharp ScalarType.", diagnostics);
-            return null;
+            if (!TryGetTensorElementType(output, out var outputElementType) || !IsSupportedTorchModuleRuntimeTensorType(outputElementType))
+            {
+                ReportUnsupportedTorchModule(fileName, $"the TorchModule backend supports only runtime tensor output data types that map to TorchSharp ScalarType; output '{output.Name}' is unsupported.", diagnostics);
+                return null;
+            }
         }
 
         var initializerFieldNames = new HashSet<string>(StringComparer.Ordinal);
@@ -684,9 +698,18 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             .ToImmutableArray();
 
         return new TorchModuleGenerationSpecification(
-            runtimeInputs[0].Name,
-            ToCamelIdentifier(runtimeInputs[0].Name, "input"),
-            graph.Output[0].Name,
+            runtimeInputs
+                .Select(static input => new TorchModuleTensorSpecification(
+                    input.Name,
+                    ToCamelIdentifier(input.Name, "input")
+                ))
+                .ToImmutableArray(),
+            graph.Output
+                .Select(static output => new TorchModuleTensorSpecification(
+                    output.Name,
+                    ToCamelIdentifier(output.Name, "output")
+                ))
+                .ToImmutableArray(),
             initializers,
             moduleNodes.ToImmutableArray(),
             nodes.ToImmutableArray()
@@ -1006,6 +1029,18 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
                 message
             )
         );
+    }
+
+    private static string FormatGraphValueNames(IEnumerable<string> names)
+    {
+        var formattedNames = names
+            .Where(static name => !string.IsNullOrWhiteSpace(name))
+            .Select(static name => $"'{name}'")
+            .ToArray();
+
+        return formattedNames.Length == 0
+            ? "[none]"
+            : string.Join(", ", formattedNames);
     }
 
     private static object ReadAttributeValue(AttributeProto attribute)
@@ -1471,12 +1506,16 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
     }
 
     internal sealed record TorchModuleGenerationSpecification(
-        string InputOnnxName,
-        string InputParameterName,
-        string OutputOnnxName,
+        ImmutableArray<TorchModuleTensorSpecification> Inputs,
+        ImmutableArray<TorchModuleTensorSpecification> Outputs,
         ImmutableArray<TorchInitializerSpecification> Initializers,
         ImmutableArray<TorchModuleNodeSpecification> ModuleNodes,
         ImmutableArray<TorchNodeSpecification> Nodes
+    );
+
+    internal sealed record TorchModuleTensorSpecification(
+        string OnnxName,
+        string ParameterName
     );
 
     internal sealed record TorchInitializerSpecification(

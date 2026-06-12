@@ -399,6 +399,13 @@ internal sealed class GatherElementsTorchModuleInlineOperator : TorchModuleInlin
     internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"{Input(node, values, 0)}.gather({GetLongAttribute(node, "axis", 0L)}L, {Input(node, values, 1)})";
 }
 
+[TorchSharpOp("ScatterND")]
+internal sealed class ScatterNdTorchModuleInlineOperator : TorchModuleInlineOperator
+{
+    internal override string OnnxOpType => "ScatterND";
+    internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"ScatterNdTensor({Input(node, values, 0)}, {Input(node, values, 1)}, {Input(node, values, 2)}, \"{GetStringAttribute(node, "reduction", "none")}\")";
+}
+
 [TorchSharpOp("Gelu")]
 internal sealed class GeluTorchModuleInlineOperator : TorchModuleInlineOperator
 {
@@ -596,6 +603,12 @@ internal sealed class ConvTorchModuleInlineOperator : TorchModuleInlineOperator
 {
     internal override string OnnxOpType => "Conv";
     internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => EmitConv(node, Input(node, values, 0), Input(node, values, 1), node.Inputs.Length > 2 ? Input(node, values, 2) : "null");
+}
+
+internal sealed class ConvTransposeTorchModuleInlineOperator : TorchModuleInlineOperator
+{
+    internal override string OnnxOpType => "ConvTranspose";
+    internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => EmitConvTranspose(node, Input(node, values, 0), Input(node, values, 1), node.Inputs.Length > 2 ? Input(node, values, 2) : "null");
 }
 
 internal sealed class MaxPoolTorchModuleInlineOperator : TorchModuleInlineOperator
