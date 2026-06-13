@@ -905,6 +905,51 @@ public sealed class OnnxModelTests
 public sealed class OnnxGraphTests
 {
     [Fact]
+    public void Load_WithValueInfoForGraphOutput_ReusesOutputName()
+    {
+        var output = new OnnxValue<OnnxTensorType>(
+            "logits",
+            OnnxTensorType.Create<float>([1, 1000]),
+            null).ToProto();
+        var valueInfo = new OnnxValue<OnnxTensorType>(
+            "logits",
+            OnnxTensorType.Create<float>([1, 1000]),
+            null).ToProto();
+        valueInfo.DocString = "preserved value metadata";
+        var modelProto = new ModelProto
+        {
+            IrVersion = 11,
+            Graph = new GraphProto
+            {
+                Name = "duplicate-value-info-output",
+            },
+        };
+        modelProto.OpsetImport.Add(new OperatorSetIdProto
+        {
+            Domain = "",
+            Version = 25,
+        });
+        modelProto.Graph.ValueInfo.Add(valueInfo);
+        modelProto.Graph.Output.Add(output);
+
+        var model = new OnnxModel(modelProto, new OnnxModelBaseOptions());
+
+        Assert.Equal("logits", Assert.Single(model.Graph.Outputs).Name);
+        Assert.Empty(model.Graph.IntermediateValues);
+        Assert.Equal("preserved value metadata", Assert.Single(model.ToProto().Graph.Output).DocString);
+    }
+
+    [Fact]
+    public void FromFile_WithMobileNetDuplicatedLogitsValueInfo_LoadsGraph()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "Assets", "mobilenet_v2_1.4_224.onnx");
+
+        var model = OnnxModel.FromFile(path);
+
+        Assert.Equal("logits", Assert.Single(model.Graph.Outputs).Name);
+    }
+
+    [Fact]
     public void AddMembers_WithDuplicateNames_ThrowsInvalidOperationException()
     {
         var graph = OnnxModel.Create().Graph;

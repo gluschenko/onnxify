@@ -655,7 +655,7 @@ public static class TorchModuleExportExtensions
 
     private static bool IsTensorMethod(string methodName)
     {
-        return methodName is "view" or "reshape" or "permute" or "transpose" or "contiguous" or "unsqueeze" or "slice" or "expand" or "ne" or "to_type" or "sum" or "clamp";
+        return methodName is "view" or "reshape" or "flatten" or "permute" or "transpose" or "contiguous" or "unsqueeze" or "slice" or "expand" or "ne" or "to_type" or "sum" or "clamp";
     }
 
     private static ExportValue ExportTensorMethodInvocation(
@@ -681,6 +681,9 @@ public static class TorchModuleExportExtensions
             //   qkv.permute(2, 0, 3, 1, 4)
             //   mask.slice(0, 0, sequenceLength, 1)
             "view" or "reshape" => ExportTensorReshape(context, input, invocation),
+            "flatten" => new ExportValue(
+                ExportTensorFlatten(context, input, invocation)
+            ),
             "permute" => new ExportValue(
                 context.Graph.Transpose(
                     name: context.Graph.NextName("transpose"),
@@ -725,6 +728,56 @@ public static class TorchModuleExportExtensions
             ),
             _ => throw new NotSupportedException($"Unsupported tensor method invocation: {invocation}"),
         };
+    }
+
+    private static IOnnxGraphEdge ExportTensorFlatten(
+        ForwardExportContext context,
+        IOnnxGraphEdge input,
+        InvocationExpression invocation
+    )
+    {
+        var startDim = ResolveLongArgument(context, invocation.Arguments.ElementAtOrDefault(0), defaultValue: 0);
+        var endDim = ResolveLongArgument(context, invocation.Arguments.ElementAtOrDefault(1), defaultValue: -1);
+
+        if (startDim == 0 && endDim == -1)
+        {
+            return context.Graph.ExportReshape(input, -1L);
+        }
+
+        if (startDim == 1 && endDim == -1)
+        {
+            return context.Graph.Flatten(
+                name: context.Graph.NextName("flatten"),
+                options: new FlattenInputOptions
+                {
+                    Input = input,
+                    Axis = startDim,
+                }
+            );
+        }
+
+        var inputShape = GetRequiredStaticShape(input, "flatten");
+        var normalizedStartDim = NormalizeAxis(startDim, inputShape.Length);
+        var normalizedEndDim = NormalizeAxis(endDim, inputShape.Length);
+        if (normalizedEndDim < normalizedStartDim)
+        {
+            throw new NotSupportedException(
+                $"Tensor flatten requires end_dim >= start_dim after normalization, got start_dim={startDim} and end_dim={endDim}."
+            );
+        }
+
+        if (normalizedStartDim == normalizedEndDim)
+        {
+            return input;
+        }
+
+        var outputShape = inputShape
+            .Take(normalizedStartDim)
+            .Concat([Product(inputShape.Skip(normalizedStartDim).Take(normalizedEndDim - normalizedStartDim + 1).ToArray())])
+            .Concat(inputShape.Skip(normalizedEndDim + 1))
+            .ToArray();
+
+        return context.Graph.ExportReshape(input, outputShape);
     }
 
     private static ExportValue ExportTensorReshape(
@@ -3061,6 +3114,39 @@ public static class TorchModuleExportExtensions
 
         dimension = default;
         return false;
+    }
+
+    private static long[] GetRequiredStaticShape(IOnnxGraphEdge input, string opName)
+    {
+        if (input is not OnnxValue { Type: OnnxTensorType tensorType }
+            || tensorType.Shape is null)
+        {
+            throw new NotSupportedException($"{opName} export requires a statically known input shape.");
+        }
+
+        var result = new long[tensorType.Shape.Dimensions.Length];
+        for (var i = 0; i < result.Length; i++)
+        {
+            if (tensorType.Shape.Dimensions[i].GetValue() is not long dimension)
+            {
+                throw new NotSupportedException($"{opName} export requires a statically known input shape.");
+            }
+
+            result[i] = dimension;
+        }
+
+        return result;
+    }
+
+    private static long Product(IReadOnlyList<long> values)
+    {
+        long result = 1;
+        foreach (var value in values)
+        {
+            result = checked(result * value);
+        }
+
+        return result;
     }
 
     private static int NormalizeAxis(long axis, long rank)

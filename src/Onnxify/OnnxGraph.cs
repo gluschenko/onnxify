@@ -85,20 +85,20 @@ public class OnnxGraph
 
         foreach (var value in graph.ValueInfo)
         {
-            _values.Add(OnnxValue.FromProto(value));
+            AddLoadedValue(OnnxValue.FromProto(value));
         }
 
         foreach (var input in graph.Input)
         {
             var x = OnnxValue.FromProto(input);
-            _values.Add(x);
+            AddLoadedValue(x);
             _inputs.Add(x.Name);
         }
 
         foreach (var output in graph.Output)
         {
             var x = OnnxValue.FromProto(output);
-            _values.Add(x);
+            AddLoadedValue(x);
             _outputs.Add(x.Name);
         }
 
@@ -690,6 +690,14 @@ public class OnnxGraph
         }
 
         throw new InvalidOperationException($"No graph value found for '{name}'.");
+    }
+
+    private void AddLoadedValue(OnnxValue value)
+    {
+        if (!_values.Contains(value.Name))
+        {
+            _values.Add(value);
+        }
     }
 
     private bool ReplaceNodeEdgeReferences(string name, IOnnxGraphEdge value)
