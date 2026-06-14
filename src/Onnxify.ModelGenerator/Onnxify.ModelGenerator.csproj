@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.3.1.3</Version>
+    <Version>0.3.1.4</Version>
     <RepositoryUrl>https://github.com/gluschenko/onnxify</RepositoryUrl>
     <Authors>Alexander Gluschenko</Authors>
     <Copyright>© 2026 Alexander Gluschenko</Copyright>
@@ -74,6 +74,9 @@
       <AnalyzerRuntimeDependency Include="$(PkgGoogle_Protobuf)\lib\netstandard2.0\Google.Protobuf.dll" Condition="Exists('$(PkgGoogle_Protobuf)\lib\netstandard2.0\Google.Protobuf.dll')" />
       <AnalyzerRuntimeDependency Include="$(PkgGoogle_Protobuf)\lib\netstandard2.0\Google.Protobuf.pdb" Condition="Exists('$(PkgGoogle_Protobuf)\lib\netstandard2.0\Google.Protobuf.pdb')" />
       <AnalyzerRuntimeDependency Include="$(PkgGoogle_Protobuf)\lib\netstandard2.0\Google.Protobuf.xml" Condition="Exists('$(PkgGoogle_Protobuf)\lib\netstandard2.0\Google.Protobuf.xml')" />
+      <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.dll" Condition="Exists('$(TargetDir)Onnxify.dll')" />
+      <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.pdb" Condition="Exists('$(TargetDir)Onnxify.pdb')" />
+      <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.xml" Condition="Exists('$(TargetDir)Onnxify.xml')" />
     </ItemGroup>
 
     <Copy

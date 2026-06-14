@@ -1,6 +1,7 @@
 ﻿namespace Onnxify.Tests;
 
 using Onnx;
+using Google.Protobuf;
 
 public sealed class OnnxModelTests
 {
@@ -200,6 +201,43 @@ public sealed class OnnxModelTests
         var exception = await Assert.ThrowsAsync<FileNotFoundException>(() => OnnxModel.FromFileAsync(path));
 
         Assert.Equal(path, exception.FileName);
+    }
+
+    [Fact]
+    public void FromStream_WithRepeatedLooseEdgeName_LoadsGraph()
+    {
+        var model = new ModelProto
+        {
+            Graph = new GraphProto
+            {
+                Node =
+                {
+                    new NodeProto
+                    {
+                        Name = "repeated_edge",
+                        OpType = "Custom",
+                        Input = { "onnx::Concat_3552", "onnx::Concat_3552" },
+                        Output = { "output" },
+                    },
+                },
+            },
+        };
+
+        using var stream = new MemoryStream(model.ToByteArray());
+        var loaded = OnnxModel.FromStream(
+            stream,
+            new OnnxModelBaseOptions
+            {
+                NodeTypeResolutionStrategy = NodeTypeResolutionStrategy.PreserveUntyped,
+            }
+        );
+
+        var node = Assert.Single(loaded.Graph.Nodes);
+        Assert.Collection(
+            node.Inputs,
+            input => Assert.Equal("onnx::Concat_3552", input.Name),
+            input => Assert.Equal("onnx::Concat_3552", input.Name)
+        );
     }
 
     [Fact]

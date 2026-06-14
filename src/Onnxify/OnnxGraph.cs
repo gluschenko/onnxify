@@ -106,7 +106,7 @@ public class OnnxGraph
         {
             foreach (var x in node.Input.Concat(node.Output))
             {
-                if (GetValue(x) is null)
+                if (GetValue(x) is null && !_edges.TryGetValue(x, out _))
                 {
                     _edges.Add(new OnnxEdge(x));
                 }

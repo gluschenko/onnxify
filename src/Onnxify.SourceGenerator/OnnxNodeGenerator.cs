@@ -368,7 +368,7 @@ public class OnnxNodeGenerator : IIncrementalGenerator
                 {
                     var type = FromProto((AttributeType)x.Type);
 
-                    if (!x.IsNullable())
+                    if (!x.IsNullable() || x.Required)
                     {
                         return $"{AttributeName(x.Name, reservedFieldNames)} = ({type})(attributes.GetValueOrDefault(\"{x.Name}\") ?? throw new InvalidOperationException($\"Missing value '{x.Name}'\"))";
                     }
