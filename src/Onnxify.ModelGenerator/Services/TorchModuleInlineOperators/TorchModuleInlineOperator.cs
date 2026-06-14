@@ -155,12 +155,17 @@ internal abstract class TorchModuleInlineOperator
 
     protected static string EmitConstant(TorchNodeSpecification node)
     {
-        if (!node.Attributes.TryGetValue("value", out var value) || value is not TensorProto tensor)
+        if (!node.Attributes.TryGetValue("value", out var value))
         {
             throw new NotSupportedException($"Constant node '{node.Name}' does not contain a tensor value attribute.");
         }
 
-        return FormatTensorProtoExpression(tensor);
+        return value switch
+        {
+            TensorProto tensor => FormatTensorProtoExpression(tensor),
+            global::Onnxify.OnnxTensor tensor => FormatTensorExpression(tensor),
+            _ => throw new NotSupportedException($"Constant node '{node.Name}' does not contain a tensor value attribute."),
+        };
     }
 
     protected static string FormatScalarType(TensorProto.Types.DataType dataType)

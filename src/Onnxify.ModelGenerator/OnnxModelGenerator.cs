@@ -1,4 +1,4 @@
-﻿using System.Collections.Immutable;
+using System.Collections.Immutable;
 using System.Text;
 using Google.Protobuf;
 using Microsoft.CodeAnalysis;
@@ -222,9 +222,33 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         TorchModuleGenerationSpecification? torchModule = null;
         if (importTypes.HasFlag(ModelImportType.TorchModule))
         {
-            var canonicalModel = model.Clone();
-            SortGraphTopologically(canonicalModel.Graph);
-            torchModule = AnalyzeTorchModuleGraph(fileName, canonicalModel, diagnostics);
+            OnnxModel onnxModel;
+            try
+            {
+                onnxModel = OnnxModel.FromFile(
+                    file.Path,
+                    new OnnxModelBaseOptions
+                    {
+                        NodeTypeResolutionStrategy = NodeTypeResolutionStrategy.PreserveUntyped,
+                    }
+                );
+            }
+            catch (Exception ex)
+            {
+                diagnostics.Add(
+                    Diagnostic.Create(
+                        _invalidModelDescriptor,
+                        location: Location.None,
+                        fileName,
+                        ex.Message
+                    )
+                );
+
+                return new ModelAnalysisResult(null, diagnostics.ToImmutableArray());
+            }
+
+            onnxModel.Graph.SortTopologically();
+            torchModule = AnalyzeTorchModuleGraph(fileName, onnxModel.Graph, diagnostics);
             if (torchModule is null)
             {
                 return new ModelAnalysisResult(null, diagnostics.ToImmutableArray());
@@ -555,23 +579,16 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
 
     private static TorchModuleGenerationSpecification? AnalyzeTorchModuleGraph(
         string fileName,
-        ModelProto model,
+        OnnxGraph graph,
         List<Diagnostic> diagnostics
     )
     {
-        var graph = model.Graph;
-        if (graph is null)
-        {
-            ReportUnsupportedTorchModule(fileName, "the model does not contain a graph.", diagnostics);
-            return null;
-        }
-
         var initializerNames = new HashSet<string>(
-            graph.Initializer.Select(static x => x.Name),
+            graph.Initializers.Select(static x => x.Name),
             StringComparer.Ordinal
         );
 
-        var runtimeInputs = graph.Input
+        var runtimeInputs = graph.Inputs
             .Where(input => !initializerNames.Contains(input.Name))
             .ToArray();
 
@@ -585,7 +602,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             return null;
         }
 
-        if (graph.Output.Count == 0)
+        if (graph.Outputs.Count == 0)
         {
             ReportUnsupportedTorchModule(
                 fileName,
@@ -604,7 +621,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             }
         }
 
-        foreach (var output in graph.Output)
+        foreach (var output in graph.Outputs)
         {
             if (!TryGetTensorElementType(output, out var outputElementType) || !IsSupportedTorchModuleRuntimeTensorType(outputElementType))
             {
@@ -615,9 +632,9 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
 
         var initializerFieldNames = new HashSet<string>(StringComparer.Ordinal);
         var allInitializers = new Dictionary<string, TorchInitializerSpecification>(StringComparer.Ordinal);
-        for (var initializerIndex = 0; initializerIndex < graph.Initializer.Count; initializerIndex++)
+        for (var initializerIndex = 0; initializerIndex < graph.Initializers.Count; initializerIndex++)
         {
-            var initializer = graph.Initializer[initializerIndex];
+            var initializer = graph.Initializers[initializerIndex];
             if (!TryCreateTorchInitializer(initializer, initializerIndex, initializerFieldNames, out var specification, out var error))
             {
                 ReportUnsupportedTorchModule(fileName, error, diagnostics);
@@ -635,7 +652,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         var consumedModuleInitializerNames = new HashSet<string>(StringComparer.Ordinal);
         var moduleFieldNames = new HashSet<string>(StringComparer.Ordinal);
 
-        foreach (var node in graph.Node)
+        foreach (var node in graph.Nodes)
         {
             if (!string.IsNullOrWhiteSpace(node.Domain))
             {
@@ -649,7 +666,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
                 return null;
             }
 
-            var outputs = node.Output.Where(static x => !string.IsNullOrWhiteSpace(x)).ToArray();
+            var outputs = node.Outputs.Select(static x => x.Name).Where(static x => !string.IsNullOrWhiteSpace(x)).ToArray();
             if (outputs.Length != 1 && !IsSupportedTorchModuleMultiOutputOperator(node.OpType))
             {
                 ReportUnsupportedTorchModule(fileName, $"operator '{node.OpType}' in node '{FormatNodeName(node)}' must have exactly one output for the TorchModule backend.", diagnostics);
@@ -659,7 +676,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             Dictionary<string, object> attributes;
             try
             {
-                attributes = node.Attribute.ToDictionary(static x => x.Name, ReadAttributeValue, StringComparer.Ordinal);
+                attributes = node.Attributes.ToDictionary(static x => x.Name, ReadAttributeValue, StringComparer.Ordinal);
             }
             catch (NotSupportedException ex)
             {
@@ -670,7 +687,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             var nodeSpecification = new TorchNodeSpecification(
                 FormatNodeName(node),
                 node.OpType,
-                node.Input.Where(static x => !string.IsNullOrWhiteSpace(x)).ToImmutableArray(),
+                node.Inputs.Select(static x => x.Name).Where(static x => !string.IsNullOrWhiteSpace(x)).ToImmutableArray(),
                 outputs.ToImmutableArray(),
                 attributes
             );
@@ -704,7 +721,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
                     ToCamelIdentifier(input.Name, "input")
                 ))
                 .ToImmutableArray(),
-            graph.Output
+            graph.Outputs
                 .Select(static output => new TorchModuleTensorSpecification(
                     output.Name,
                     ToCamelIdentifier(output.Name, "output")
@@ -770,14 +787,20 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
     }
 
     private static bool TryCreateTorchInitializer(
-        TensorProto tensor,
+        OnnxTensor tensor,
         int canonicalIndex,
         HashSet<string> usedFieldNames,
         out TorchInitializerSpecification specification,
         out string error
     )
     {
-        var dataType = (TensorProto.Types.DataType)tensor.DataType;
+        if (!TryGetTensorDataType(tensor.DataType, out var dataType))
+        {
+            specification = null!;
+            error = $"initializer '{tensor.Name}' uses unsupported tensor data type '{tensor.DataType}'. The TorchModule backend supports float16, bfloat16, float32, float64, uint8, int8, int16, int32, int64, and bool initializers.";
+            return false;
+        }
+
         var mapping = dataType switch
         {
             TensorProto.Types.DataType.Float => ("float", "ScalarType.Float32", true),
@@ -808,9 +831,9 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             canonicalIndex,
             stateName,
             fieldName,
-            tensor.Dims.ToImmutableArray(),
+            tensor.Shape.ToImmutableArray(),
             TryReadScalarFloatValue(tensor),
-            FormatLongArray(tensor.Dims.ToArray()),
+            FormatLongArray(tensor.Shape),
             mapping.Item1,
             mapping.Item2,
             mapping.Item3
@@ -819,197 +842,125 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         return true;
     }
 
-    private static void SortGraphTopologically(GraphProto? graph)
+    private static float? TryReadScalarFloatValue(OnnxTensor tensor)
     {
-        if (graph is null)
-        {
-            return;
-        }
-
-        var nodes = graph.Node.ToArray();
-        var producerByValue = new Dictionary<string, NodeProto>(StringComparer.Ordinal);
-        foreach (var node in nodes)
-        {
-            foreach (var output in node.Output.Where(static x => !string.IsNullOrWhiteSpace(x)))
-            {
-                if (!producerByValue.ContainsKey(output))
-                {
-                    producerByValue[output] = node;
-                }
-            }
-        }
-
-        var depthByNode = new Dictionary<NodeProto, int>();
-        var visiting = new HashSet<NodeProto>();
-        foreach (var node in nodes)
-        {
-            GetDepth(node);
-        }
-
-        var originalNodeIndexes = nodes
-            .Select((node, index) => (node, index))
-            .ToDictionary(static x => x.node, static x => x.index);
-        var sortedNodes = nodes
-            .OrderBy(node => depthByNode[node])
-            .ThenBy(GetNodeStructuralSignature, StringComparer.Ordinal)
-            .ThenBy(node => originalNodeIndexes[node])
-            .ToArray();
-
-        graph.Node.Clear();
-        graph.Node.AddRange(sortedNodes);
-
-        var edgeOrder = BuildEdgeOrder(sortedNodes);
-
-        var initializers = graph.Initializer
-            .Select((value, index) => new OrderedMember<TensorProto>(value, index))
-            .OrderBy(x => GetOrder(edgeOrder, x.Value.Name))
-            .ThenBy(x => GetTensorSignature(x.Value), StringComparer.Ordinal)
-            .ThenBy(x => x.Index)
-            .Select(x => x.Value)
-            .ToArray();
-        graph.Initializer.Clear();
-        graph.Initializer.AddRange(initializers);
-
-        var valueInfo = graph.ValueInfo
-            .Select((value, index) => new OrderedMember<ValueInfoProto>(value, index))
-            .OrderBy(x => GetOrder(edgeOrder, x.Value.Name))
-            .ThenBy(x => GetValueInfoSignature(x.Value), StringComparer.Ordinal)
-            .ThenBy(x => x.Index)
-            .Select(x => x.Value)
-            .ToArray();
-        graph.ValueInfo.Clear();
-        graph.ValueInfo.AddRange(valueInfo);
-
-        int GetDepth(NodeProto node)
-        {
-            if (depthByNode.TryGetValue(node, out var depth))
-            {
-                return depth;
-            }
-
-            if (!visiting.Add(node))
-            {
-                throw new InvalidOperationException("Graph contains a cycle and cannot be sorted topologically.");
-            }
-
-            depth = 0;
-            foreach (var input in node.Input)
-            {
-                if (producerByValue.TryGetValue(input, out var producer))
-                {
-                    depth = Math.Max(depth, GetDepth(producer) + 1);
-                }
-            }
-
-            visiting.Remove(node);
-            depthByNode[node] = depth;
-            return depth;
-        }
-    }
-
-    private static Dictionary<string, int> BuildEdgeOrder(IEnumerable<NodeProto> nodes)
-    {
-        var order = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (var node in nodes)
-        {
-            foreach (var input in node.Input.Where(static x => !string.IsNullOrWhiteSpace(x)))
-            {
-                Add(input);
-            }
-
-            foreach (var output in node.Output.Where(static x => !string.IsNullOrWhiteSpace(x)))
-            {
-                Add(output);
-            }
-        }
-
-        return order;
-
-        void Add(string name)
-        {
-            if (!order.ContainsKey(name))
-            {
-                order[name] = order.Count;
-            }
-        }
-    }
-
-    private static int GetOrder(IReadOnlyDictionary<string, int> order, string name)
-    {
-        return order.TryGetValue(name, out var value) ? value : int.MaxValue;
-    }
-
-    private static string GetNodeStructuralSignature(NodeProto node)
-    {
-        var attributes = string.Join(
-            ";",
-            node.Attribute
-                .Select(GetAttributeSignature)
-                .OrderBy(static x => x, StringComparer.Ordinal));
-
-        return string.Join(
-            "|",
-            node.Domain,
-            node.OpType,
-            node.Input.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            node.Output.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            attributes);
-    }
-
-    private static string GetAttributeSignature(AttributeProto attribute)
-    {
-        return attribute.Type switch
-        {
-            AttributeProto.Types.AttributeType.Float => $"{attribute.Name}:Float:{FormatFloat(attribute.F)}",
-            AttributeProto.Types.AttributeType.Int => $"{attribute.Name}:Int:{attribute.I}",
-            AttributeProto.Types.AttributeType.String => $"{attribute.Name}:String:{attribute.S.ToStringUtf8()}",
-            AttributeProto.Types.AttributeType.Floats => $"{attribute.Name}:Floats:{string.Join(",", attribute.Floats.Select(FormatFloat))}",
-            AttributeProto.Types.AttributeType.Ints => $"{attribute.Name}:Ints:{string.Join(",", attribute.Ints)}",
-            AttributeProto.Types.AttributeType.Tensor => $"{attribute.Name}:Tensor:{GetTensorSignature(attribute.T)}",
-            _ => $"{attribute.Name}:{attribute.Type}",
-        };
-    }
-
-    private static string GetTensorSignature(TensorProto tensor)
-    {
-        return $"{tensor.DataType}[{string.Join(",", tensor.Dims)}]";
-    }
-
-    private static string GetValueInfoSignature(ValueInfoProto value)
-    {
-        return $"{value.Type?.ValueCase}:{value.Type?.TensorType?.ElemType}:{string.Join(",", value.Type?.TensorType?.Shape?.Dim.Select(GetDimensionSignature) ?? Enumerable.Empty<string>())}";
-    }
-
-    private static string GetDimensionSignature(TensorShapeProto.Types.Dimension dimension)
-    {
-        return dimension.ValueCase switch
-        {
-            TensorShapeProto.Types.Dimension.ValueOneofCase.DimValue => dimension.DimValue.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            TensorShapeProto.Types.Dimension.ValueOneofCase.DimParam => dimension.DimParam,
-            _ => "?",
-        };
-    }
-
-    private static float? TryReadScalarFloatValue(TensorProto tensor)
-    {
-        if ((TensorProto.Types.DataType)tensor.DataType != TensorProto.Types.DataType.Float
-            || tensor.Dims.Aggregate(1L, static (product, dim) => product * dim) > 1)
+        if (tensor is not global::Onnxify.OnnxTensor<float> floatTensor
+            || tensor.Shape.Aggregate(1L, static (product, dim) => product * dim) > 1)
         {
             return null;
         }
 
-        var values = ReadFloatTensorValues(tensor);
+        var values = floatTensor.Value.ToArray();
         return values.Length == 1 ? values[0] : null;
     }
 
     private static bool TryGetTensorElementType(
-        ValueInfoProto value,
+        OnnxValue value,
         out TensorProto.Types.DataType dataType
     )
     {
-        if (value.Type.ValueCase == TypeProto.ValueOneofCase.TensorType)
+        if (TryGetTensorType(value.Type, out var tensorType))
         {
-            dataType = (TensorProto.Types.DataType)value.Type.TensorType.ElemType;
+            return TryGetTensorDataType(tensorType.Type, out dataType);
+        }
+
+        dataType = default;
+        return false;
+    }
+
+    private static bool TryGetTensorType(
+        OnnxValueType valueType,
+        out OnnxTensorType tensorType
+    )
+    {
+        switch (valueType)
+        {
+            case OnnxTensorType directTensorType:
+                tensorType = directTensorType;
+                return true;
+            case OnnxOptionalType optionalType when optionalType.ElementType is OnnxTensorType optionalTensorType:
+                tensorType = optionalTensorType;
+                return true;
+            default:
+                tensorType = null!;
+                return false;
+        }
+    }
+
+    private static bool TryGetTensorDataType(
+        Type type,
+        out TensorProto.Types.DataType dataType
+    )
+    {
+        if (type == typeof(float))
+        {
+            dataType = TensorProto.Types.DataType.Float;
+            return true;
+        }
+
+        if (type == typeof(double))
+        {
+            dataType = TensorProto.Types.DataType.Double;
+            return true;
+        }
+
+        if (type == typeof(byte))
+        {
+            dataType = TensorProto.Types.DataType.Uint8;
+            return true;
+        }
+
+        if (type == typeof(sbyte))
+        {
+            dataType = TensorProto.Types.DataType.Int8;
+            return true;
+        }
+
+        if (type == typeof(short))
+        {
+            dataType = TensorProto.Types.DataType.Int16;
+            return true;
+        }
+
+        if (type == typeof(int))
+        {
+            dataType = TensorProto.Types.DataType.Int32;
+            return true;
+        }
+
+        if (type == typeof(long))
+        {
+            dataType = TensorProto.Types.DataType.Int64;
+            return true;
+        }
+
+        if (type == typeof(bool))
+        {
+            dataType = TensorProto.Types.DataType.Bool;
+            return true;
+        }
+
+        if (type.FullName == "System.Half")
+        {
+            dataType = TensorProto.Types.DataType.Float16;
+            return true;
+        }
+
+        if (type.FullName == "Onnxify.Data.Numerics.BFloat16")
+        {
+            dataType = TensorProto.Types.DataType.Bfloat16;
+            return true;
+        }
+
+        if (type.FullName == "Onnxify.Data.Numerics.Complex64")
+        {
+            dataType = TensorProto.Types.DataType.Complex64;
+            return true;
+        }
+
+        if (type.FullName == "Onnxify.Data.Numerics.Complex128")
+        {
+            dataType = TensorProto.Types.DataType.Complex128;
             return true;
         }
 
@@ -1045,17 +996,20 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             : string.Join(", ", formattedNames);
     }
 
-    private static object ReadAttributeValue(AttributeProto attribute)
+    private static object ReadAttributeValue(OnnxAttribute attribute)
     {
-        return attribute.Type switch
+        var value = attribute.GetValue();
+        return value switch
         {
-            AttributeProto.Types.AttributeType.Float => attribute.F,
-            AttributeProto.Types.AttributeType.Int => attribute.I,
-            AttributeProto.Types.AttributeType.String => attribute.S.ToStringUtf8(),
-            AttributeProto.Types.AttributeType.Floats => attribute.Floats.ToArray(),
-            AttributeProto.Types.AttributeType.Ints => attribute.Ints.ToArray(),
-            AttributeProto.Types.AttributeType.Tensor => attribute.T,
-            _ => throw new NotSupportedException($"Unsupported TorchModule attribute type '{attribute.Type}' for attribute '{attribute.Name}'."),
+            float or long or string or OnnxTensor => value,
+            double doubleValue => (float)doubleValue,
+            int intValue => (long)intValue,
+            IEnumerable<float> floatValues => floatValues.ToArray(),
+            IEnumerable<double> doubleValues => doubleValues.Select(static x => (float)x).ToArray(),
+            IEnumerable<long> longValues => longValues.ToArray(),
+            IEnumerable<int> intValues => intValues.Select(static x => (long)x).ToArray(),
+            IEnumerable<string> stringValues => stringValues.ToArray(),
+            _ => throw new NotSupportedException($"Unsupported TorchModule attribute value type '{value.GetType()}' for attribute '{attribute.Name}'."),
         };
     }
 
@@ -1201,6 +1155,18 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         };
     }
 
+    internal static string FormatTensorExpression(OnnxTensor tensor)
+    {
+        var shapeExpression = FormatLongArray(tensor.Shape);
+
+        return tensor switch
+        {
+            global::Onnxify.OnnxTensor<float> floatTensor => $"torch.tensor(new float[] {{ {string.Join(", ", floatTensor.Value.Select(static x => $"{FormatFloat(x)}f"))} }}, {shapeExpression}, dtype: ScalarType.Float32)",
+            global::Onnxify.OnnxTensor<long> longTensor => $"torch.tensor(new long[] {{ {string.Join(", ", longTensor.Value.Select(static x => $"{x}L"))} }}, {shapeExpression}, dtype: ScalarType.Int64)",
+            _ => throw new NotSupportedException($"Unsupported Constant tensor data type '{tensor.DataType}'."),
+        };
+    }
+
     internal static float[] ReadFloatTensorValues(TensorProto tensor)
     {
         if (tensor.FloatData.Count > 0)
@@ -1246,6 +1212,13 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
     }
 
     internal static string FormatNodeName(NodeProto node)
+    {
+        return string.IsNullOrWhiteSpace(node.Name)
+            ? node.OpType
+            : node.Name;
+    }
+
+    internal static string FormatNodeName(OnnxNode node)
     {
         return string.IsNullOrWhiteSpace(node.Name)
             ? node.OpType
@@ -1599,6 +1572,5 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         string? SymbolicNameLiteral,
         bool IsUnknown
     );
-
-    private readonly record struct OrderedMember<T>(T Value, int Index);
 }
+
