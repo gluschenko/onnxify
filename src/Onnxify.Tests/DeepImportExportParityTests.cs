@@ -50,6 +50,28 @@ public sealed class DeepImportExportParityTests
     }
 
     [Fact]
+    public void RoundTrip_ForAsymmetricPaddedConv2d_PreservesOutput()
+    {
+        var model = CreateAsymmetricPaddedConvModel();
+        var input = NamedOnnxValue.CreateFromTensor(
+            "input",
+            new DenseTensor<float>(
+                Enumerable.Range(0, 16).Select(static x => ((x % 9) - 4) / 4f).ToArray(),
+                [1, 1, 4, 4]
+            )
+        );
+
+        var result = DeepImportExportParity.AssertRoundTripMse(
+            model,
+            [input],
+            outputName: "output",
+            threshold: 1e-8f
+        );
+
+        Assert.Equal([1, 1, 2, 2], result.OutputShape);
+    }
+
+    [Fact]
     public void RoundTrip_ForMobileNetInvertedResidualOperators_PreservesOutput()
     {
         var model = CreateInvertedResidualModel();
@@ -132,6 +154,33 @@ public sealed class DeepImportExportParityTests
                 KernelShape = [3L, 3L],
                 Pads = [0L, 0L, 0L, 0L],
                 Strides = [1L, 1L],
+            }
+        );
+
+        return model;
+    }
+
+    private static OnnxModel CreateAsymmetricPaddedConvModel()
+    {
+        var model = CreateModel();
+        var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([1L, 1L, 4L, 4L]));
+        var output = model.Graph.AddOutput("output", OnnxTensorType.Create<float>([1L, 1L, 2L, 2L]));
+        var weight = model.Graph.AddTensor("weight", [1L, 1L, 3L, 3L], CreateSequence(9, 0.125f));
+        var bias = model.Graph.AddTensor("bias", [1L], [0.05f]);
+
+        model.Graph.Conv(
+            name: "asymmetric_conv",
+            options: new ConvInputOutputOptions
+            {
+                X = input,
+                W = weight,
+                B = bias,
+                Y = output,
+                Dilations = [1L, 1L],
+                Group = 1L,
+                KernelShape = [3L, 3L],
+                Pads = [0L, 0L, 1L, 1L],
+                Strides = [2L, 2L],
             }
         );
 

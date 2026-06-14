@@ -618,6 +618,12 @@ public static class TorchModuleExportExtensions
             return ExportTorchConv2d(context, invocation);
         }
 
+        if (string.Equals(memberReference.MemberName, "pad", StringComparison.Ordinal)
+            && IsTorchFunctionalReference(memberReference.Target))
+        {
+            return ExportTorchPad(context, invocation);
+        }
+
         if (string.Equals(memberReference.MemberName, "adaptive_avg_pool2d", StringComparison.Ordinal)
             && IsTorchFunctionalReference(memberReference.Target))
         {
@@ -645,6 +651,7 @@ public static class TorchModuleExportExtensions
             "relu" => ExportTorchRelu(context, invocation),
             "batch_norm" => ExportTorchBatchNorm(context, invocation),
             "conv2d" => ExportTorchConv2d(context, invocation),
+            "pad" => ExportTorchPad(context, invocation),
             "adaptive_avg_pool2d" => ExportTorchAdaptiveAvgPool2d(context, invocation),
             "log_softmax" => ExportTorchLogSoftmax(context, invocation),
             _ => default,
@@ -1396,6 +1403,63 @@ public static class TorchModuleExportExtensions
                 }
             )
         );
+    }
+
+    private static ExportValue ExportTorchPad(
+        ForwardExportContext context,
+        InvocationExpression invocation
+    )
+    {
+        if (invocation.Arguments.Count < 2)
+        {
+            throw new NotSupportedException($"pad requires input and pad arguments: {invocation}");
+        }
+
+        var input = ExportAsGraphEdge(context, invocation.Arguments.ElementAt(0));
+        var padding = ResolveLongArray(context, invocation.Arguments.ElementAt(1)).ToArray();
+        var mode = invocation.Arguments.Count >= 3 && !IsNullLiteral(invocation.Arguments.ElementAt(2))
+            ? ResolvePadModeArgument(invocation.Arguments.ElementAt(2))
+            : "constant";
+        var value = invocation.Arguments.Count >= 4 && !IsNullLiteral(invocation.Arguments.ElementAt(3))
+            ? ResolveDoubleArgument(context, invocation.Arguments.ElementAt(3))
+            : 0d;
+
+        return new ExportValue(context.Graph.ExportPad(input, padding, mode, value));
+    }
+
+    private static string ResolvePadModeArgument(
+        Expression expression
+    )
+    {
+        expression = UnwrapNamedArgument(expression);
+
+        var text = expression.ToString();
+        if (text.Length >= 2 && text[0] == '"' && text[^1] == '"')
+        {
+            return text[1..^1].ToLowerInvariant();
+        }
+
+        if (text.Contains("(PaddingModes)4", StringComparison.Ordinal))
+        {
+            return "constant";
+        }
+
+        if (text.Contains("Constant", StringComparison.Ordinal))
+        {
+            return "constant";
+        }
+
+        if (text.Contains("Reflect", StringComparison.Ordinal))
+        {
+            return "reflect";
+        }
+
+        if (text.Contains("Replicate", StringComparison.Ordinal))
+        {
+            return "replicate";
+        }
+
+        throw new NotSupportedException($"Unsupported pad mode expression: {expression}");
     }
 
     private static ExportValue ExportTorchBatchNorm(

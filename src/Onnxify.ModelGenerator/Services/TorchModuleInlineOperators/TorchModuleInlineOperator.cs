@@ -116,9 +116,29 @@ internal abstract class TorchModuleInlineOperator
         var pads = GetLongArrayAttribute(node, "pads", [0L, 0L, 0L, 0L]);
         var dilations = GetLongArrayAttribute(node, "dilations", [1L, 1L]);
         var group = GetLongAttribute(node, "group", 1L);
-        var padding = pads.Length >= 2 ? pads.Take(pads.Length / 2).ToArray() : pads;
+        var normalizedPads = NormalizeConv2dPads(pads);
+        var padding = new[] { normalizedPads[0], normalizedPads[1] };
+
+        if (normalizedPads[0] != normalizedPads[2] || normalizedPads[1] != normalizedPads[3])
+        {
+            input = $"torch.nn.functional.pad({input}, {FormatLongArray([normalizedPads[1], normalizedPads[3], normalizedPads[0], normalizedPads[2]])})";
+            padding = [0L, 0L];
+        }
 
         return $"torch.nn.functional.conv2d({input}, {weight}, {bias}, {FormatLongArray(strides)}, {FormatLongArray(padding)}, {FormatLongArray(dilations)}, {group}L)";
+    }
+
+    private static long[] NormalizeConv2dPads(long[] pads)
+    {
+        return pads.Length switch
+        {
+            0 => [0L, 0L, 0L, 0L],
+            2 => [pads[0], pads[1], pads[0], pads[1]],
+            4 => pads,
+            _ => throw new NotSupportedException(
+                $"Conv2d import requires 2 or 4 pad values, got [{string.Join(", ", pads)}]."
+            ),
+        };
     }
 
     protected static string EmitConvTranspose(
