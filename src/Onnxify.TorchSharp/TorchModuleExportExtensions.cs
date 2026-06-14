@@ -2078,6 +2078,13 @@ public static class TorchModuleExportExtensions
         return expression switch
         {
             IdentifierExpression identifier => GetRequiredMemberValue(root, identifier.Identifier),
+            ParenthesizedExpression parenthesized =>
+                ResolveMemberExpression(root, parenthesized.Expression),
+            CastExpression cast =>
+                ResolveMemberExpression(root, cast.Expression),
+            UnaryOperatorExpression unaryOperator
+                when unaryOperator.Operator == UnaryOperatorType.NullConditionalRewrap =>
+                ResolveMemberExpression(root, unaryOperator.Expression),
             MemberReferenceExpression { Target: ThisReferenceExpression, MemberName: var memberName } =>
                 GetRequiredMemberValue(root, memberName),
             MemberReferenceExpression memberReference =>
@@ -3503,9 +3510,11 @@ public static class TorchModuleExportExtensions
     {
         var text = expression.ToString();
         // Functional calls may decompile as:
+        //   functional.conv2d(...)
         //   torch.nn.functional.interpolate(...)
         //   global::TorchSharp.torch.nn.functional.interpolate(...)
-        return text.EndsWith(".functional", StringComparison.Ordinal)
+        return string.Equals(text, "functional", StringComparison.Ordinal)
+            || text.EndsWith(".functional", StringComparison.Ordinal)
             || text.Contains(".torch.nn.functional", StringComparison.Ordinal);
     }
 
