@@ -13,15 +13,15 @@ Read [references/repo-map.md](references/repo-map.md) when you need a quick remi
 Read [references/glossary.md](references/glossary.md) when you need the internal terms or code names used for Onnxify feature work and architecture discussions.
 Read [references/generated-artifacts.md](references/generated-artifacts.md) when the task touches generated files, skill docs, protobuf outputs, or build artifacts.
 Read [references/finding-torchsharp-porting-candidates.md](references/finding-torchsharp-porting-candidates.md) when you need to identify the highest-value missing `Onnxify.TorchSharp` operators before starting a port.
-Read [references/porting-onnxscript-converters.md](references/porting-onnxscript-converters.md) when you need to port a Python-side ONNXScript Torch conversion into `Onnxify.TorchSharp`.
-Read [references/porting-onnx-to-torchmodule-operators.md](references/porting-onnx-to-torchmodule-operators.md) when you need to add ONNX-to-TorchSharp TorchModule reconstruction support in `Onnxify.ModelGenerator`.
-Read [references/validating-existing-torchsharp-converters-against-onnxscript.md](references/validating-existing-torchsharp-converters-against-onnxscript.md) only when the user explicitly asks you to validate an already covered `Onnxify.TorchSharp` exporter against the original Python exporter in `third_party/onnxscript`.
+Read [references/deep-export-feature.md](references/deep-export-feature.md) when you need to port a Python-side ONNXScript Torch conversion into `Onnxify.TorchSharp`.
+Read [references/deep-import-feature.md](references/deep-import-feature.md) when you need to add ONNX-to-TorchSharp TorchModule reconstruction support in `Onnxify.ModelGenerator`.
+Read [references/deep-import-export-validation-feature.md](references/deep-import-export-validation-feature.md) only when the user explicitly asks you to validate already covered `deep export` or `deep import` operators against the original Python exporter in `third_party/onnxscript`.
 Read [references/torchsharp-operator-verification-log.md](references/torchsharp-operator-verification-log.md) when the user wants the already completed parity-validation batches for covered tensor operators or needs to continue the same running validation log.
 Read [references/porting-safetensors.md](references/porting-safetensors.md) when you need to port `third_party/safetensors` into `Onnxify.Safetensors`.
 
 For requests like "port more operators", "add 25 unsupported operators", or "what should we port next", do not jump straight into implementation from the observer table alone.
 First read [references/finding-torchsharp-porting-candidates.md](references/finding-torchsharp-porting-candidates.md) to rank candidates by model impact, example pain, and available ONNX primitives.
-Only after that shortlist exists should you read [references/porting-onnxscript-converters.md](references/porting-onnxscript-converters.md) and implement the selected operators.
+Only after that shortlist exists should you read [references/deep-export-feature.md](references/deep-export-feature.md) and implement the selected operators.
 
 ## Quick Start
 
@@ -38,12 +38,12 @@ When the task is specifically about TorchSharp operator porting:
 1. Start with `references/finding-torchsharp-porting-candidates.md` to choose candidates.
 2. Build a shortlist from `Found = yes` and `Coverage = no` rows in `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md`.
 3. Prefer candidates that remove manual ONNX graph work in `src/Onnxify.Examples` or unblock existing model families in the repo.
-4. Then use `references/porting-onnxscript-converters.md` to mirror the chosen ONNXScript converters into `Onnxify.TorchSharp`.
+4. Then use `references/deep-export-feature.md` to mirror the chosen ONNXScript converters into `Onnxify.TorchSharp`.
 5. Add focused smoke tests in `src/Onnxify.Tests` before moving to the next batch.
 
 When the task is specifically about `Onnxify.ModelGenerator` ONNX-to-TorchModule operator support:
 
-1. Start with `references/porting-onnx-to-torchmodule-operators.md` to choose whether the operator belongs in the inline-operator registry or the module-operator registry.
+1. Start with `references/deep-import-feature.md` to choose whether the operator belongs in the inline-operator registry or the module-operator registry.
 2. Use `third_party/onnxscript` as semantic context by reading the TorchSharp-to-ONNX lowering in reverse.
 3. Implement support through a focused `TorchModuleInlineOperator` or `TorchModuleOperator` subclass instead of adding a central switch-case or a duplicated hard-coded support list.
 4. Add focused source-generator smoke tests in `src/Onnxify.Tests/OnnxModelGeneratorTests.cs`.
@@ -59,7 +59,7 @@ Use it only when the user explicitly asks to validate, compare, audit, or check 
 2. Confirm support in `.agents/skills/onnxify/references/torchsharp-converters/index.md`.
 3. Open the linked generated converter page to get the exact C# signature and source file.
 4. Trace the real exporter implementation in `src/Onnxify.TorchSharp`, including semantic helper methods it calls.
-5. Then use `references/validating-existing-torchsharp-converters-against-onnxscript.md` to compare that behavior against the Python exporter in `third_party/onnxscript`.
+5. Then use `references/deep-import-export-validation-feature.md` to compare that behavior against the Python exporter in `third_party/onnxscript`.
 6. If the task is about continuing or reviewing the existing documented validation batches, open `references/torchsharp-operator-verification-log.md` before starting the next wave and keep extending its combined operator table.
 
 ## Core Principles
@@ -156,9 +156,9 @@ private const long InlineTensorElementThreshold = 20L;
 - Add or refine Codex guidance for library users: start with `.agents/skills/onnxify`.
 - Add or refine Codex guidance for repo maintainers: start with `.agents/skills/onnxify-internal`.
 - Find the next best TorchSharp operator to port: start with `references/finding-torchsharp-porting-candidates.md`, then inspect `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md`.
-- Port an ONNXScript Torch conversion into `Onnxify.TorchSharp`: if the user did not name the operator explicitly, first use `references/finding-torchsharp-porting-candidates.md`; then use `references/porting-onnxscript-converters.md`.
-- Add ONNX-to-TorchSharp TorchModule support in `Onnxify.ModelGenerator`: start with `references/porting-onnx-to-torchmodule-operators.md`, then choose `Services/TorchModuleInlineOperators` or `Services/TorchModuleOperators` based on whether the generated code should be an inline expression or private module field.
-- Validate an existing `Onnxify.TorchSharp` exporter against ONNXScript: only do this when the user explicitly asks for validation/parity checking of already supported operators; then start with `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md` and use `references/validating-existing-torchsharp-converters-against-onnxscript.md`.
+- Port an ONNXScript Torch conversion into `Onnxify.TorchSharp`: if the user did not name the operator explicitly, first use `references/finding-torchsharp-porting-candidates.md`; then use `references/deep-export-feature.md`.
+- Add ONNX-to-TorchSharp TorchModule support in `Onnxify.ModelGenerator`: start with `references/deep-import-feature.md`, then choose `Services/TorchModuleInlineOperators` or `Services/TorchModuleOperators` based on whether the generated code should be an inline expression or private module field.
+- Validate an existing `deep export` or `deep import` operator against ONNXScript: only do this when the user explicitly asks for validation/parity checking of already supported operators; then start with `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md` and use `references/deep-import-export-validation-feature.md`.
 - Need the already written parity-validation batch reports for covered tensor operators: open `references/torchsharp-operator-verification-log.md`.
 - For requests like "port 10/25/50 more operators", treat candidate selection as a required first phase, not an optional nicety.
 - Port `third_party/safetensors` into `Onnxify.Safetensors`: start with `third_party/safetensors/safetensors/src`, then use `references/porting-safetensors.md`.

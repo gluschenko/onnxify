@@ -1,10 +1,14 @@
 # Porting Torch Converters From ONNXScript
 
 Use this workflow when you want to port a Python-side ONNXScript conversion into `Onnxify.TorchSharp`.
+This feature path is called `deep export`: TorchSharp execution or module structure is exported into an ONNX graph.
 
 ## Goal
 
 Start from the ONNXScript Torch registry in `third_party/onnxscript`, find an operator that TorchSharp exposes but `Onnxify.TorchSharp` does not yet cover, and implement an equivalent export path in C#.
+
+Deep export operator work should be covered with `deep roundtrip tests` whenever the operator can participate in a full ONNX -> generated TorchSharp module -> ONNX loop.
+Those tests are the preferred way to keep `deep export` complementary with the `deep import` path in `Onnxify.ModelGenerator`, because they prove the exported ONNX can line up with generated TorchSharp code and runtime output, not only with a local graph-shape assertion.
 
 ## 1. Refresh The Coverage Report
 
@@ -152,6 +156,10 @@ Keep these tests lightweight. A small structural graph assertion is usually bett
 The tests should reflect operator semantics learned from ONNXScript and its tests, but they should not be a line-by-line translation of Python tests.
 Avoid dragging Python-specific conventions into C# when they conflict with local helper patterns, naming, or runtime assumptions.
 
+When the ported operator is also supported, or is being made supportable, by the ModelGenerator TorchModule backend, add or extend `deep roundtrip tests` in `src/Onnxify.Tests/DeepImportExportParityTests.cs`.
+Use them to cover the full complementary path: author a small ONNX graph, deep import it into a generated TorchSharp module, deep export it back to ONNX, and compare inference outputs.
+Keep the focused structural exporter tests too when they catch local graph details that a roundtrip test would not diagnose clearly.
+
 ## 7. Refresh The Generated Skill Docs
 
 After changing TorchSharp converter coverage, regenerate the skill artifacts:
@@ -168,6 +176,7 @@ Before finishing:
 
 - rerun `src/Onnxify.TorchSharp.Observer` if you want to confirm the new operator now shows coverage
 - run the focused `Onnxify.Tests` coverage you added
+- run or add relevant `deep roundtrip tests` when the operator should be complementary with `deep import`
 - inspect the regenerated converter docs if the new exporter should now appear there
 
 ## Heuristics
@@ -177,3 +186,4 @@ Before finishing:
 - Keep the `TorchOp` names aligned with ONNXScript operator names, including overload suffixes when relevant.
 - If the Python version handles more cases than the current C# export layer can support safely, implement the safe subset first and fail clearly for the rest.
 - Use ONNXScript tests to learn the operator contract, then restate that contract as idiomatic `Onnxify.Tests` coverage instead of transliterating Python test code.
+- Prefer adding `deep roundtrip tests` for operators that affect both `deep export` and `deep import`; this is the main guardrail for keeping the two feature paths complementary.

@@ -12,7 +12,7 @@ Related areas:
 
 - `src/Onnxify.TorchSharp`
 - `src/Onnxify.TorchSharp.Observer`
-- `references/porting-onnxscript-converters.md`
+- `references/deep-export-feature.md`
 - `references/finding-torchsharp-porting-candidates.md`
 
 ## Deep Import
@@ -26,7 +26,7 @@ Related areas:
 - `src/Onnxify.ModelGenerator`
 - `src/Onnxify.ModelGenerator/Services/TorchModuleInlineOperators`
 - `src/Onnxify.ModelGenerator/Services/TorchModuleOperators`
-- `references/porting-onnx-to-torchmodule-operators.md`
+- `references/deep-import-feature.md`
 
 ## Deep Roundtrip Tests
 

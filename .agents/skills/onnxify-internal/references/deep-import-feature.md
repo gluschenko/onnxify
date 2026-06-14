@@ -1,15 +1,19 @@
 # Porting ONNX Operators Into ModelGenerator TorchModules
 
 Use this workflow when you want `Onnxify.ModelGenerator` to reconstruct a TorchSharp `torch.nn.Module` from an ONNX graph through `OnnxifyModelImportType=TorchModule`.
+This feature path is called `deep import`: ONNX graph structure is imported into generated TorchSharp module code.
 
 ## Goal
 
 Start from an ONNX operator or ONNX graph pattern that appears in real models, understand the equivalent TorchSharp behavior, and add a reverse ONNX-to-TorchSharp conversion that can emit compilable generated C#.
 
+Deep import operator work should be covered with `deep roundtrip tests` whenever the operator can participate in a full ONNX -> generated TorchSharp module -> ONNX loop.
+Those tests are the preferred way to keep `deep import` complementary with the `deep export` path in `Onnxify.TorchSharp`, because they prove the generated module can execute and export back to an equivalent ONNX graph, not only compile.
+
 This is the reverse direction of `Onnxify.TorchSharp` exporter work:
 
-- `Onnxify.TorchSharp`: TorchSharp API or module -> ONNX graph
-- `Onnxify.ModelGenerator` TorchModule backend: ONNX graph -> generated TorchSharp module
+- `Onnxify.TorchSharp` `deep export`: TorchSharp API or module -> ONNX graph
+- `Onnxify.ModelGenerator` `deep import`: ONNX graph -> generated TorchSharp module
 
 ## 1. Pick A Candidate From Evidence
 
@@ -155,6 +159,10 @@ Prefer small synthetic graphs over large model fixtures for operator coverage. T
 
 Use `src/Onnxify.ConsoleTest` for manual repros against real assets, but do not rely on it as the only validation surface.
 
+When the operator is also supported, or is being made supportable, by `Onnxify.TorchSharp` deep export, add or extend `deep roundtrip tests` in `src/Onnxify.Tests/DeepImportExportParityTests.cs`.
+Use them to cover the complementary path: construct a small ONNX graph, deep import it into a generated TorchSharp module, deep export that module back to ONNX, and compare inference outputs.
+Keep focused generator smoke tests for compile-time and source-shape assertions; use deep roundtrip tests for cross-feature behavior.
+
 ## 7. Declare Coverage For Reports
 
 The Observer and generated skill reports discover ModelGenerator coverage through:
@@ -199,6 +207,7 @@ Do not hand-edit generated skill reference pages when the change should come fro
 Before finishing:
 
 - run focused tests, usually `dotnet test src\Onnxify.Tests\Onnxify.Tests.csproj --no-restore --framework net10.0 --filter OnnxModelGeneratorTests`
+- run or add relevant `deep roundtrip tests` when the operator should be complementary with `deep export`
 - build `src\Onnxify.ConsoleTest\Onnxify.ConsoleTest.csproj` when real asset generation might be affected
 - inspect `torchsharp-operator-report.md` when coverage reporting was expected to change
 - inspect generated skill docs when AgentSkillGenerator was rerun
@@ -217,3 +226,4 @@ Warnings such as `OMG004` for external tensor data can be expected for large ext
 - For `Cast`, map ONNX `TensorProto.DataType` to TorchSharp `ScalarType` explicitly and fail clearly for unsupported dtypes.
 - For quantized models, expect QDQ nodes and integer zero-point tensors.
 - For real-model failures, fix the general operator path rather than adding model-specific architecture shortcuts.
+- Prefer adding `deep roundtrip tests` for operators that affect both `deep import` and `deep export`; this is the main guardrail for keeping the two feature paths complementary.
