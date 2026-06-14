@@ -10,6 +10,7 @@ description: "Use this skill when maintaining the Onnxify repository, package do
 Use this skill for repository maintenance, contributor-facing docs, build/test wiring, and generated-artifact workflows in this repo.
 
 Read [references/repo-map.md](references/repo-map.md) when you need a quick reminder of which project owns which responsibility in `src/`.
+Read [references/glossary.md](references/glossary.md) when you need the internal terms or code names used for Onnxify feature work and architecture discussions.
 Read [references/generated-artifacts.md](references/generated-artifacts.md) when the task touches generated files, skill docs, protobuf outputs, or build artifacts.
 Read [references/finding-torchsharp-porting-candidates.md](references/finding-torchsharp-porting-candidates.md) when you need to identify the highest-value missing `Onnxify.TorchSharp` operators before starting a port.
 Read [references/porting-onnxscript-converters.md](references/porting-onnxscript-converters.md) when you need to port a Python-side ONNXScript Torch conversion into `Onnxify.TorchSharp`.
