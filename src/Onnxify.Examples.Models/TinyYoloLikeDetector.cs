@@ -88,7 +88,7 @@ public sealed class TinyYoloLikeDetector : Module<Tensor, Tensor>
 
         var input = graph.AddInput(
             name: "input",
-            type: OnnxTensorType.Create<float>(["batch", 3, 64, 64])
+            type: OnnxTensorType.Create<float>(["batch_size", 3, 64, 64])
         );
 
         var x = _backbone.Export(graph, input);
@@ -145,7 +145,7 @@ public sealed class TinyYoloLikeDetector : Module<Tensor, Tensor>
 
         graph.AddOutput(
             name: "output",
-            type: OnnxTensorType.Create<float>(["batch", PredictionCount, _attributeCount])
+            type: OnnxTensorType.Create<float>(["batch_size", PredictionCount, _attributeCount])
         );
 
         model.AddMetadataProps("architecture", "tiny-yolo-like");

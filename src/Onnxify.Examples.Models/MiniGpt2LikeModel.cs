@@ -60,7 +60,7 @@ public sealed class MiniGpt2LikeModel : Module<Tensor, Tensor>
         var graph = model.Graph;
         var input = graph.AddInput(
             name: "input",
-            type: OnnxTensorType.Create<long>(["batch", _settings.MaxContextLength])
+            type: OnnxTensorType.Create<long>(["batch_size", _settings.MaxContextLength])
         );
 
         var positionIds = graph.AddTensor(
@@ -104,7 +104,7 @@ public sealed class MiniGpt2LikeModel : Module<Tensor, Tensor>
 
         graph.AddOutput(
             name: "output",
-            type: OnnxTensorType.Create<float>(["batch", _settings.MaxContextLength, _settings.VocabSize])
+            type: OnnxTensorType.Create<float>(["batch_size", _settings.MaxContextLength, _settings.VocabSize])
         );
 
         model.AddMetadataProps("architecture", "mini-gpt2-like");

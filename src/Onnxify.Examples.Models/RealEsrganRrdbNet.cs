@@ -162,7 +162,7 @@ public sealed class RealEsrganRrdbNet : Module<Tensor, Tensor>
 
         var input = graph.AddInput(
             name: "input",
-            type: OnnxTensorType.Create<float>(["batch", _inputChannels, inputHeight, inputWidth])
+            type: OnnxTensorType.Create<float>(["batch_size", _inputChannels, inputHeight, inputWidth])
         );
 
         var x = _pixelUnshuffle is null
@@ -198,7 +198,7 @@ public sealed class RealEsrganRrdbNet : Module<Tensor, Tensor>
 
         graph.AddOutput(
             name: "output",
-            type: OnnxTensorType.Create<float>(["batch", _outputChannels, inputHeight * _scale, inputWidth * _scale])
+            type: OnnxTensorType.Create<float>(["batch_size", _outputChannels, inputHeight * _scale, inputWidth * _scale])
         );
 
         model.AddMetadataProps("architecture", "real-esrgan-rrdbnet");

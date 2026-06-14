@@ -47,8 +47,8 @@ public sealed class TorchModuleDeepExportTests
         module.eval();
 
         var model = module.ExportOnnxModel(
-            input: OnnxTensorType.Create<long>(["batch", module.MaxSequenceLength]),
-            output: OnnxTensorType.Create<float>(["batch", module.MaxSequenceLength, module.VocabularySize]),
+            input: OnnxTensorType.Create<long>(["batch_size", module.MaxSequenceLength]),
+            output: OnnxTensorType.Create<float>(["batch_size", module.MaxSequenceLength, module.VocabularySize]),
             options: new OnnxModelCreationOptions
             {
                 Opset = 22,
@@ -81,8 +81,8 @@ public sealed class TorchModuleDeepExportTests
 
         var model = ExportDeep(
             module,
-            input: OnnxTensorType.Create<long>(["batch", 2]),
-            output: OnnxTensorType.Create<float>(["batch", 2, module.VocabularySize])
+            input: OnnxTensorType.Create<long>(["batch_size", 2]),
+            output: OnnxTensorType.Create<float>(["batch_size", 2, module.VocabularySize])
         );
 
         Assert.Contains(model.Graph.Nodes, node => node.OpType == "Gather");
@@ -163,8 +163,8 @@ public sealed class TorchModuleDeepExportTests
 
         var model = ExportDeep(
             module,
-            input: OnnxTensorType.Create<float>(["batch", 3]),
-            output: OnnxTensorType.Create<float>(["batch", 2])
+            input: OnnxTensorType.Create<float>(["batch_size", 3]),
+            output: OnnxTensorType.Create<float>(["batch_size", 2])
         );
 
         Assert.Contains(model.Graph.Nodes, node => node.OpType == "MatMul");
@@ -244,8 +244,8 @@ public sealed class TorchModuleDeepExportTests
 
         var model = ExportDeep(
             module,
-            input: OnnxTensorType.Create<float>(["batch", 2, 3]),
-            output: OnnxTensorType.Create<float>(["batch", 4, 3])
+            input: OnnxTensorType.Create<float>(["batch_size", 2, 3]),
+            output: OnnxTensorType.Create<float>(["batch_size", 4, 3])
         );
 
         Assert.Contains(model.Graph.Nodes, node => node.OpType == "Concat");
