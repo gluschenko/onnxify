@@ -27,3 +27,17 @@ Related areas:
 - `src/Onnxify.ModelGenerator/Services/TorchModuleInlineOperators`
 - `src/Onnxify.ModelGenerator/Services/TorchModuleOperators`
 - `references/porting-onnx-to-torchmodule-operators.md`
+
+## Deep Roundtrip Tests
+
+`deep roundtrip tests` are the cross-package parity tests in `DeepImportExportParityTests` that run an ONNX model through deep import into a generated TorchSharp `TorchModule`, then deep export that module back to ONNX and compare inference outputs.
+
+Use this term for tests that validate the full deep import plus deep export loop instead of only checking generated source shape, individual operator lowering, or one-way model execution.
+The purpose of these tests is to drive test coverage and convergence between `Deep Import` and `Deep Export` so both feature paths become complementary parts of the same ONNX ↔ TorchSharp workflow.
+
+Related areas:
+
+- `src/Onnxify.Tests/DeepImportExportParityTests.cs`
+- `src/Onnxify.Tests/DeepImportExportParity.cs`
+- `src/Onnxify.ModelGenerator`
+- `src/Onnxify.TorchSharp`

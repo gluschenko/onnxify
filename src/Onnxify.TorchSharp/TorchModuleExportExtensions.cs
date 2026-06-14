@@ -155,6 +155,7 @@ public static class TorchModuleExportExtensions
         //   forward(Tensor input)
         //   forward(Tensor tokens)
         context.Values["input"] = new ExportValue(input);
+        TrackRank(context, input);
 
         foreach (var parameter in forward.Parameters)
         {
@@ -1388,21 +1389,22 @@ public static class TorchModuleExportExtensions
             ? [padding[0], padding[1], padding[0], padding[1]]
             : padding;
 
-        return new ExportValue(
-            context.Graph.Conv(
-                name: context.Graph.NextName("conv"),
-                options: new ConvInputOptions
-                {
-                    X = input,
-                    W = weight,
-                    B = bias,
-                    Strides = strides,
-                    Pads = pads,
-                    Dilations = dilations,
-                    Group = groups,
-                }
-            )
+        var output = context.Graph.Conv(
+            name: context.Graph.NextName("conv"),
+            options: new ConvInputOptions
+            {
+                X = input,
+                W = weight,
+                B = bias,
+                Strides = strides,
+                Pads = pads,
+                Dilations = dilations,
+                Group = groups,
+            }
         );
+        TrackRank(context, output, TryGetRank(context, input) ?? 4);
+
+        return new ExportValue(output);
     }
 
     private static ExportValue ExportTorchPad(
@@ -1424,7 +1426,95 @@ public static class TorchModuleExportExtensions
             ? ResolveDoubleArgument(context, invocation.Arguments.ElementAt(3))
             : 0d;
 
-        return new ExportValue(context.Graph.ExportPad(input, padding, mode, value));
+        return new ExportValue(ExportPad(context, input, padding, mode, value));
+    }
+
+    private static IOnnxGraphEdge ExportPad(
+        ForwardExportContext context,
+        IOnnxGraphEdge input,
+        IReadOnlyList<long> padding,
+        string mode,
+        double value
+    )
+    {
+        if (TryGetRank(context, input) is int knownRank)
+        {
+            var knownRankOutput = context.Graph.ExportPad(input, padding, mode, value);
+            TrackRank(context, knownRankOutput, knownRank);
+            return knownRankOutput;
+        }
+
+        if (value != 0d)
+        {
+            throw new NotSupportedException("pad export requires a statically known input rank for non-zero constant padding.");
+        }
+
+        var inferredRank = InferFunctionalPadRank(padding);
+        var pads = CreateFunctionalPadVector(padding, inferredRank);
+        var name = context.Graph.NextName("pad");
+        var padsTensor = context.Graph.AddTensor<long>(
+            name: $"{name}_pads",
+            shape: [pads.Length],
+            value: pads
+        );
+        var output = context.Graph.AddEdge($"{name}_output");
+
+        context.Graph.AddNode(
+            name: name,
+            opType: "Pad",
+            domain: string.Empty,
+            docString: string.Empty,
+            inputs: [input, padsTensor],
+            outputs: [output],
+            attributes: [new OnnxAttribute<string>("mode", ConvertTorchPadModeToOnnxMode(mode))]
+        );
+
+        TrackRank(context, output, inferredRank);
+        return output;
+    }
+
+    private static int InferFunctionalPadRank(IReadOnlyList<long> padding)
+    {
+        if (padding.Count % 2 != 0)
+        {
+            throw new NotSupportedException("pad export requires an even number of pad values.");
+        }
+
+        // Torch functional.pad applies the provided pairs to the trailing dimensions.
+        // Generated conv2d imports use two padded spatial axes on an NCHW tensor.
+        return padding.Count / 2 + 2;
+    }
+
+    private static long[] CreateFunctionalPadVector(IReadOnlyList<long> padding, int rank)
+    {
+        var paddedAxes = padding.Count / 2;
+        if (paddedAxes > rank)
+        {
+            throw new NotSupportedException(
+                $"pad export got {paddedAxes} padded axes for rank {rank} input."
+            );
+        }
+
+        var pads = new long[rank * 2];
+        for (var pair = 0; pair < paddedAxes; pair++)
+        {
+            var axis = rank - 1 - pair;
+            pads[axis] = padding[pair * 2];
+            pads[axis + rank] = padding[pair * 2 + 1];
+        }
+
+        return pads;
+    }
+
+    private static string ConvertTorchPadModeToOnnxMode(string mode)
+    {
+        return mode switch
+        {
+            "constant" => "constant",
+            "reflect" => "reflect",
+            "replicate" => "edge",
+            _ => throw new NotSupportedException($"pad export does not support mode '{mode}'."),
+        };
     }
 
     private static string ResolvePadModeArgument(
@@ -3209,6 +3299,35 @@ public static class TorchModuleExportExtensions
         return result;
     }
 
+    private static int? TryGetRank(IOnnxGraphEdge input)
+    {
+        return input is OnnxValue { Type: OnnxTensorType { Shape: not null } tensorType }
+            ? tensorType.Shape.Dimensions.Length
+            : null;
+    }
+
+    private static int? TryGetRank(ForwardExportContext context, IOnnxGraphEdge input)
+    {
+        return TryGetRank(input) ?? (
+            context.EdgeRanks.TryGetValue(input.Name, out var rank)
+                ? rank
+                : null
+        );
+    }
+
+    private static void TrackRank(ForwardExportContext context, IOnnxGraphEdge edge)
+    {
+        if (TryGetRank(edge) is int rank)
+        {
+            TrackRank(context, edge, rank);
+        }
+    }
+
+    private static void TrackRank(ForwardExportContext context, IOnnxGraphEdge edge, int rank)
+    {
+        context.EdgeRanks[edge.Name] = rank;
+    }
+
     private static long Product(IReadOnlyList<long> values)
     {
         long result = 1;
@@ -3627,6 +3746,8 @@ public static class TorchModuleExportExtensions
         public OnnxGraph Graph { get; } = graph;
 
         public Dictionary<string, ExportValue> Values { get; } = new(StringComparer.Ordinal);
+
+        public Dictionary<string, int> EdgeRanks { get; } = new(StringComparer.Ordinal);
 
         public bool HasReturned { get; private set; }
 
