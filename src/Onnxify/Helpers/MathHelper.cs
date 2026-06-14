@@ -54,7 +54,7 @@ public static class MathHelper
     /// </para>
     public static float Frexp(float number, out int exponent)
     {
-        var bits = BitConverter.SingleToInt32Bits(number);
+        var bits = FloatBitConverter.SingleToInt32Bits(number);
         var exp = (int)((bits & FLT_EXP_MASK) >> FLT_MANT_BITS);
         exponent = 0;
 
@@ -69,13 +69,13 @@ public static class MathHelper
             if (exp == 0)
             {
                 // Subnormal, scale number so that it is in [1, 2).
-                number *= BitConverter.Int32BitsToSingle(0x4c000000); // 2^25
-                bits = BitConverter.SingleToInt32Bits(number);
+                number *= FloatBitConverter.Int32BitsToSingle(0x4c000000); // 2^25
+                bits = FloatBitConverter.SingleToInt32Bits(number);
                 exp = (int)((bits & FLT_EXP_MASK) >> FLT_MANT_BITS);
                 exponent = exp - 126 - 25;
             }
             // Set exponent to -1 so that number is in [0.5, 1).
-            number = BitConverter.Int32BitsToSingle((bits & FLT_EXP_CLR_MASK) | 0x3f000000);
+            number = FloatBitConverter.Int32BitsToSingle((bits & FLT_EXP_CLR_MASK) | 0x3f000000);
         }
 
         return number;

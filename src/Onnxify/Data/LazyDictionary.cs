@@ -58,4 +58,28 @@ internal class LazyDictionary<TKey, TValue> : KeyedCollection<TKey, TValue> wher
         SetItem(index, value);
         return true;
     }
+
+#if NETSTANDARD2_0
+    public bool TryGetValue(TKey key, out TValue value)
+#else
+    public new bool TryGetValue(TKey key, out TValue value)
+#endif
+    {
+        if (Dictionary is not null && Dictionary.TryGetValue(key, out value!))
+        {
+            return true;
+        }
+
+        foreach (var item in Items)
+        {
+            if (Comparer.Equals(GetKeyForItem(item), key))
+            {
+                value = item;
+                return true;
+            }
+        }
+
+        value = default!;
+        return false;
+    }
 }

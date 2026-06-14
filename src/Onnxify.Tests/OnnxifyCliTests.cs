@@ -104,6 +104,150 @@ public sealed class OnnxifyCliTests
     }
 
     [Fact]
+    public void Run_OnnxShowWithSections_WritesCompactSelectedSections()
+    {
+        var modelPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+
+        try
+        {
+            var model = OnnxModel.Create(new OnnxModelCreationOptions
+            {
+                ProducerName = "cli-tests",
+                IrVersion = 9,
+                Opset = 13,
+            });
+
+            model.Graph.Name = "section-demo";
+            var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([1, 2]));
+            var output = model.Graph.AddOutput("output", OnnxTensorType.Create<float>([1, 2]));
+            var weights = model.Graph.AddTensor("weights", [1, 2], [1.0f, 2.0f]);
+
+            model.Graph.AddNode(
+                name: "node",
+                opType: "Add",
+                domain: "",
+                docString: "",
+                inputs: [input, weights],
+                outputs: [output],
+                attributes: []);
+
+            model.Save(modelPath);
+
+            var stdout = new StringWriter();
+            var stderr = new StringWriter();
+
+            var exitCode = App.Run(
+                ["onnx", "show", "--nodes", "--values", "--inputs", "--outputs", modelPath],
+                stdout,
+                stderr);
+
+            Assert.Equal(0, exitCode);
+            Assert.Equal(string.Empty, stderr.ToString());
+
+            var outputText = stdout.ToString();
+            Assert.Contains("OnnxModelSummary(", outputText);
+            Assert.Contains("Inputs=", outputText);
+            Assert.Contains("Outputs=", outputText);
+            Assert.Contains("Initializers=", outputText);
+            Assert.Contains("IntermediateValues=", outputText);
+            Assert.Contains("Nodes=", outputText);
+            Assert.Contains("weights: Single[1, 2] = [1, 2]", outputText);
+            Assert.Contains("0: node: <default>:Add", outputText);
+        }
+        finally
+        {
+            if (File.Exists(modelPath))
+            {
+                File.Delete(modelPath);
+            }
+        }
+    }
+
+    [Fact]
+    public void Run_OnnxDiff_WritesStructuralDifferences()
+    {
+        var leftPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+        var rightPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+
+        try
+        {
+            CreateDiffModel(leftPath, opType: "Add", producerName: "left");
+            CreateDiffModel(rightPath, opType: "Mul", producerName: "right");
+
+            var stdout = new StringWriter();
+            var stderr = new StringWriter();
+
+            var exitCode = App.Run(["onnx", "diff", leftPath, rightPath], stdout, stderr);
+
+            Assert.Equal(0, exitCode);
+            Assert.Equal(string.Empty, stderr.ToString());
+
+            var outputText = stdout.ToString();
+            Assert.Contains("OnnxModelDiff(", outputText);
+            Assert.Contains("diff ProducerName: left=left, right=right", outputText);
+            Assert.Contains("diff Add: left=1, right=0", outputText);
+            Assert.Contains("diff Mul: left=0, right=1", outputText);
+            Assert.Contains("diff [0]: left=node: <default>:Add", outputText);
+            Assert.Contains("right=node: <default>:Mul", outputText);
+        }
+        finally
+        {
+            if (File.Exists(leftPath))
+            {
+                File.Delete(leftPath);
+            }
+
+            if (File.Exists(rightPath))
+            {
+                File.Delete(rightPath);
+            }
+        }
+    }
+
+    [Fact]
+    public void Run_OnnxDiffWithSections_WritesOnlySelectedSections()
+    {
+        var leftPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+        var rightPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+
+        try
+        {
+            CreateDiffModel(leftPath, opType: "Add", producerName: "left");
+            CreateDiffModel(rightPath, opType: "Mul", producerName: "right");
+
+            var stdout = new StringWriter();
+            var stderr = new StringWriter();
+
+            var exitCode = App.Run(["onnx", "diff", "--nodes", leftPath, rightPath], stdout, stderr);
+
+            Assert.Equal(0, exitCode);
+            Assert.Equal(string.Empty, stderr.ToString());
+
+            var outputText = stdout.ToString();
+            Assert.Contains("OnnxModelDiff(", outputText);
+            Assert.Contains("Metadata=", outputText);
+            Assert.Contains("OpCounts=", outputText);
+            Assert.Contains("Nodes=", outputText);
+            Assert.DoesNotContain("Inputs=", outputText);
+            Assert.DoesNotContain("Outputs=", outputText);
+            Assert.DoesNotContain("Initializers=", outputText);
+            Assert.DoesNotContain("IntermediateValues=", outputText);
+        }
+        finally
+        {
+            if (File.Exists(leftPath))
+            {
+                File.Delete(leftPath);
+            }
+
+            if (File.Exists(rightPath))
+            {
+                File.Delete(rightPath);
+            }
+        }
+    }
+
+    [Fact]
     public void Run_SafetensorsShow_WritesArchiveToString()
     {
         var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.safetensors");
@@ -249,6 +393,32 @@ public sealed class OnnxifyCliTests
         var bytes = new byte[values.Length * sizeof(float)];
         Buffer.BlockCopy(values, 0, bytes, 0, bytes.Length);
         return bytes;
+    }
+
+    private static void CreateDiffModel(string path, string opType, string producerName)
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions
+        {
+            ProducerName = producerName,
+            IrVersion = 9,
+            Opset = 13,
+        });
+
+        model.Graph.Name = "diff-demo";
+        var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([1]));
+        var output = model.Graph.AddOutput("output", OnnxTensorType.Create<float>([1]));
+        var weights = model.Graph.AddTensor("weights", [1], [1.0f]);
+
+        model.Graph.AddNode(
+            name: "node",
+            opType: opType,
+            domain: "",
+            docString: "",
+            inputs: [input, weights],
+            outputs: [output],
+            attributes: []);
+
+        model.Save(path);
     }
 
     private sealed class FakeHuggingFaceHandler : HttpMessageHandler

@@ -1,3 +1,10 @@
+## 0.3.2
+
+- Aligned the package version with the 0.3.2 Onnxify package family release.
+- Picked up the core graph-loading fix for ONNX files whose `value_info` repeats graph input or output names.
+- Added section filters to `onnxify onnx show`, including `--nodes`, `--values`, `--inputs`, and `--outputs`.
+- Added `onnxify onnx diff` with matching section filters for comparing model summaries, nodes, values, inputs, and outputs.
+
 ## 0.3.0
 
 - Aligned the package version with the 0.3.0 Onnxify package family release.

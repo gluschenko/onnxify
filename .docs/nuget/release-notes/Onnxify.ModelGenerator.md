@@ -1,3 +1,12 @@
+## 0.3.2
+
+- Aligned the package version with the 0.3.2 Onnxify package family release.
+- Picked up the core graph-loading fix for ONNX models whose `value_info` repeats graph input or output names when generated TorchModule loader code reads weights through `OnnxModel.FromFile(...)`.
+- Kept the source generator strictly on `netstandard2.0` while referencing the core `Onnxify` package for shared graph loading and `OnnxGraph.SortTopologically()`.
+- Removed the duplicated raw-protobuf topological sort from TorchModule analysis; TorchModule generation now walks the shared `OnnxGraph` wrapper in `PreserveUntyped` mode to retain raw ONNX node inputs and attributes.
+- Fixed TorchModule deep import for ONNX `Conv` nodes with asymmetric `pads` by emitting an explicit `torch.nn.functional.pad(...)` before `conv2d(...)` instead of dropping the ending spatial padding values.
+- Added deep roundtrip tests that import ONNX graphs as TorchSharp modules, export them back to ONNX, and compare runtime outputs for classifier-head, convolution, and MobileNet-style residual patterns.
+
 ## 0.3.1
 
 - Added TorchModule initializer import support for ONNX `float16` and `bfloat16` tensors, using TorchSharp `BFloat16` support from TorchSharp `0.107.0` for generated bfloat16 loader paths.

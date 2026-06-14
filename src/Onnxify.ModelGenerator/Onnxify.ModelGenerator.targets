@@ -1,5 +1,9 @@
 <Project>
 
+  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\Onnxify.dll')">
+    <Analyzer Include="$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\Onnxify.dll" />
+  </ItemGroup>
+
   <ItemGroup Condition="'@(OnnxModel)' != ''">
     <CompilerVisibleItemMetadata Include="AdditionalFiles"
                                  MetadataName="OnnxifyModelClassName" />

@@ -1,4 +1,4 @@
-using Onnxify.TorchSharp;
+﻿using Onnxify.TorchSharp;
 using TorchSharp;
 using static TorchSharp.torch;
 using static TorchSharp.torch.nn;
@@ -75,7 +75,7 @@ namespace Onnxify.Examples.Models
 
             var input = graph.AddInput(
                 name: "input",
-                type: OnnxTensorType.Create<float>(["batch", 3, 227, 227])
+                type: OnnxTensorType.Create<float>(["batch_size", 3, 227, 227])
             );
 
             var x = _features.Export(graph, input);
@@ -103,7 +103,7 @@ namespace Onnxify.Examples.Models
 
             graph.AddOutput(
                 name: "output",
-                type: OnnxTensorType.Create<float>(["batch", _numClasses])
+                type: OnnxTensorType.Create<float>(["batch_size", _numClasses])
             );
 
             return model;

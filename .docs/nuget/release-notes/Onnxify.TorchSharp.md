@@ -1,3 +1,12 @@
+## 0.3.2
+
+- Added deep TorchSharp export support for tensor instance `flatten(...)` calls, including full flatten, `flatten(1, -1)`, and statically shaped partial flatten ranges.
+- Kept `flatten(1, -1)` lowered to ONNX `Flatten(axis: 1)` for common classifier heads and used ONNX `Reshape` for PyTorch flatten forms whose result is not rank 2.
+- Added deep TorchSharp export support for `torch.nn.functional.pad(...)`, including rank tracking for intermediate graph edges so generated TorchModule imports can round-trip asymmetric convolution padding back to ONNX.
+- Improved deep import plus deep export parity for MobileNet-style stride-2 convolutions whose ONNX padding is asymmetric, avoiding spatial computation drift after round-tripping.
+- Added deep roundtrip tests that import ONNX graphs as TorchSharp modules, export them back to ONNX, and compare runtime outputs for classifier-head, convolution, and MobileNet-style residual patterns.
+- Aligned the package version with the 0.3.2 Onnxify package family release.
+
 ## 0.3.0
 
 - Aligned the package version with the 0.3.0 Onnxify package family release.

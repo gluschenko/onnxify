@@ -7,6 +7,8 @@
 Use it when you need to:
 
 - inspect an ONNX model through the repository's own `OnnxModel.ToString()` view
+- inspect selected ONNX sections such as inputs, outputs, values, or compact node signatures
+- compare two ONNX models structurally with `onnxify onnx diff`
 - inspect a safetensors archive through `SafeTensors.ToString()`
 - look only at ONNX inputs and outputs without the rest of the graph dump
 - generate a standalone C# project from an existing `.onnx` file via `Onnxify.ProjectGenerator`
@@ -90,6 +92,20 @@ This prints the `OnnxModel` string view, including:
 - placeholder values
 - nodes
 
+Selected ONNX sections:
+
+```powershell
+dotnet run --project src/Onnxify.CLI -- onnx show --nodes --values --inputs --outputs path\to\model.onnx
+onnxify onnx show --nodes --values --inputs --outputs path\to\model.onnx
+```
+
+Use section flags when the full `OnnxModel.ToString()` dump is too noisy. Available flags:
+
+- `--inputs` prints graph inputs.
+- `--outputs` prints graph outputs.
+- `--values` prints initializer previews and intermediate value-info entries.
+- `--nodes` prints compact node signatures with input/output references and attributes.
+
 Inputs and outputs only:
 
 ```powershell
@@ -98,6 +114,22 @@ dotnet run --project src/Onnxify.CLI -- onnx inputs-outputs path\to\model.onnx
 ```
 
 Use this when you only care about model contract shape and do not want the full graph dump.
+
+Structural diff between two ONNX models:
+
+```powershell
+dotnet run --project src/Onnxify.CLI -- onnx diff path\to\model-a.onnx path\to\model-b.onnx
+onnxify onnx diff --nodes --values --inputs --outputs path\to\model-a.onnx path\to\model-b.onnx
+```
+
+Without section flags, `onnx diff` prints the full structural comparison. With section flags, it always includes metadata and operator counts, then includes only the selected sections:
+
+- `--inputs` includes graph input differences.
+- `--outputs` includes graph output differences.
+- `--values` includes initializer and intermediate value differences.
+- `--nodes` includes compact node signature differences.
+
+Use `onnx diff` when investigating graph drift after save/load, `deep import`, `deep export`, generated-project round trips, or exporter changes. For example, it can quickly reveal changed Conv padding, replaced `Gemm` heads, extra `Identity` nodes, missing value-info metadata, or initializer shape/name changes.
 
 ## Safetensors Inspection
 

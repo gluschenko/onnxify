@@ -61,7 +61,7 @@ namespace Onnxify.Examples.Models
 
             var input = graph.AddInput(
                 name: "input",
-                type: OnnxTensorType.Create<float>(["batch", 3, 16, 16])
+                type: OnnxTensorType.Create<float>(["batch_size", 3, 16, 16])
             );
 
             var x = _features.Export(graph, input);
@@ -79,7 +79,7 @@ namespace Onnxify.Examples.Models
 
             graph.AddOutput(
                 name: "output",
-                type: OnnxTensorType.Create<float>(["batch", _numClasses])
+                type: OnnxTensorType.Create<float>(["batch_size", _numClasses])
             );
 
             return model;

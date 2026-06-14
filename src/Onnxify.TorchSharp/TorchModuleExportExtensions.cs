@@ -155,6 +155,7 @@ public static class TorchModuleExportExtensions
         //   forward(Tensor input)
         //   forward(Tensor tokens)
         context.Values["input"] = new ExportValue(input);
+        TrackRank(context, input);
 
         foreach (var parameter in forward.Parameters)
         {
@@ -618,6 +619,12 @@ public static class TorchModuleExportExtensions
             return ExportTorchConv2d(context, invocation);
         }
 
+        if (string.Equals(memberReference.MemberName, "pad", StringComparison.Ordinal)
+            && IsTorchFunctionalReference(memberReference.Target))
+        {
+            return ExportTorchPad(context, invocation);
+        }
+
         if (string.Equals(memberReference.MemberName, "adaptive_avg_pool2d", StringComparison.Ordinal)
             && IsTorchFunctionalReference(memberReference.Target))
         {
@@ -645,6 +652,7 @@ public static class TorchModuleExportExtensions
             "relu" => ExportTorchRelu(context, invocation),
             "batch_norm" => ExportTorchBatchNorm(context, invocation),
             "conv2d" => ExportTorchConv2d(context, invocation),
+            "pad" => ExportTorchPad(context, invocation),
             "adaptive_avg_pool2d" => ExportTorchAdaptiveAvgPool2d(context, invocation),
             "log_softmax" => ExportTorchLogSoftmax(context, invocation),
             _ => default,
@@ -655,7 +663,7 @@ public static class TorchModuleExportExtensions
 
     private static bool IsTensorMethod(string methodName)
     {
-        return methodName is "view" or "reshape" or "permute" or "transpose" or "contiguous" or "unsqueeze" or "slice" or "expand" or "ne" or "to_type" or "sum" or "clamp";
+        return methodName is "view" or "reshape" or "flatten" or "permute" or "transpose" or "contiguous" or "unsqueeze" or "slice" or "expand" or "ne" or "to_type" or "sum" or "clamp";
     }
 
     private static ExportValue ExportTensorMethodInvocation(
@@ -681,6 +689,9 @@ public static class TorchModuleExportExtensions
             //   qkv.permute(2, 0, 3, 1, 4)
             //   mask.slice(0, 0, sequenceLength, 1)
             "view" or "reshape" => ExportTensorReshape(context, input, invocation),
+            "flatten" => new ExportValue(
+                ExportTensorFlatten(context, input, invocation)
+            ),
             "permute" => new ExportValue(
                 context.Graph.Transpose(
                     name: context.Graph.NextName("transpose"),
@@ -725,6 +736,56 @@ public static class TorchModuleExportExtensions
             ),
             _ => throw new NotSupportedException($"Unsupported tensor method invocation: {invocation}"),
         };
+    }
+
+    private static IOnnxGraphEdge ExportTensorFlatten(
+        ForwardExportContext context,
+        IOnnxGraphEdge input,
+        InvocationExpression invocation
+    )
+    {
+        var startDim = ResolveLongArgument(context, invocation.Arguments.ElementAtOrDefault(0), defaultValue: 0);
+        var endDim = ResolveLongArgument(context, invocation.Arguments.ElementAtOrDefault(1), defaultValue: -1);
+
+        if (startDim == 0 && endDim == -1)
+        {
+            return context.Graph.ExportReshape(input, -1L);
+        }
+
+        if (startDim == 1 && endDim == -1)
+        {
+            return context.Graph.Flatten(
+                name: context.Graph.NextName("flatten"),
+                options: new FlattenInputOptions
+                {
+                    Input = input,
+                    Axis = startDim,
+                }
+            );
+        }
+
+        var inputShape = GetRequiredStaticShape(input, "flatten");
+        var normalizedStartDim = NormalizeAxis(startDim, inputShape.Length);
+        var normalizedEndDim = NormalizeAxis(endDim, inputShape.Length);
+        if (normalizedEndDim < normalizedStartDim)
+        {
+            throw new NotSupportedException(
+                $"Tensor flatten requires end_dim >= start_dim after normalization, got start_dim={startDim} and end_dim={endDim}."
+            );
+        }
+
+        if (normalizedStartDim == normalizedEndDim)
+        {
+            return input;
+        }
+
+        var outputShape = inputShape
+            .Take(normalizedStartDim)
+            .Concat([Product(inputShape.Skip(normalizedStartDim).Take(normalizedEndDim - normalizedStartDim + 1).ToArray())])
+            .Concat(inputShape.Skip(normalizedEndDim + 1))
+            .ToArray();
+
+        return context.Graph.ExportReshape(input, outputShape);
     }
 
     private static ExportValue ExportTensorReshape(
@@ -1328,21 +1389,167 @@ public static class TorchModuleExportExtensions
             ? [padding[0], padding[1], padding[0], padding[1]]
             : padding;
 
-        return new ExportValue(
-            context.Graph.Conv(
-                name: context.Graph.NextName("conv"),
-                options: new ConvInputOptions
-                {
-                    X = input,
-                    W = weight,
-                    B = bias,
-                    Strides = strides,
-                    Pads = pads,
-                    Dilations = dilations,
-                    Group = groups,
-                }
-            )
+        var output = context.Graph.Conv(
+            name: context.Graph.NextName("conv"),
+            options: new ConvInputOptions
+            {
+                X = input,
+                W = weight,
+                B = bias,
+                Strides = strides,
+                Pads = pads,
+                Dilations = dilations,
+                Group = groups,
+            }
         );
+        TrackRank(context, output, TryGetRank(context, input) ?? 4);
+
+        return new ExportValue(output);
+    }
+
+    private static ExportValue ExportTorchPad(
+        ForwardExportContext context,
+        InvocationExpression invocation
+    )
+    {
+        if (invocation.Arguments.Count < 2)
+        {
+            throw new NotSupportedException($"pad requires input and pad arguments: {invocation}");
+        }
+
+        var input = ExportAsGraphEdge(context, invocation.Arguments.ElementAt(0));
+        var padding = ResolveLongArray(context, invocation.Arguments.ElementAt(1)).ToArray();
+        var mode = invocation.Arguments.Count >= 3 && !IsNullLiteral(invocation.Arguments.ElementAt(2))
+            ? ResolvePadModeArgument(invocation.Arguments.ElementAt(2))
+            : "constant";
+        var value = invocation.Arguments.Count >= 4 && !IsNullLiteral(invocation.Arguments.ElementAt(3))
+            ? ResolveDoubleArgument(context, invocation.Arguments.ElementAt(3))
+            : 0d;
+
+        return new ExportValue(ExportPad(context, input, padding, mode, value));
+    }
+
+    private static IOnnxGraphEdge ExportPad(
+        ForwardExportContext context,
+        IOnnxGraphEdge input,
+        IReadOnlyList<long> padding,
+        string mode,
+        double value
+    )
+    {
+        if (TryGetRank(context, input) is int knownRank)
+        {
+            var knownRankOutput = context.Graph.ExportPad(input, padding, mode, value);
+            TrackRank(context, knownRankOutput, knownRank);
+            return knownRankOutput;
+        }
+
+        if (value != 0d)
+        {
+            throw new NotSupportedException("pad export requires a statically known input rank for non-zero constant padding.");
+        }
+
+        var inferredRank = InferFunctionalPadRank(padding);
+        var pads = CreateFunctionalPadVector(padding, inferredRank);
+        var name = context.Graph.NextName("pad");
+        var padsTensor = context.Graph.AddTensor<long>(
+            name: $"{name}_pads",
+            shape: [pads.Length],
+            value: pads
+        );
+        var output = context.Graph.AddEdge($"{name}_output");
+
+        context.Graph.AddNode(
+            name: name,
+            opType: "Pad",
+            domain: string.Empty,
+            docString: string.Empty,
+            inputs: [input, padsTensor],
+            outputs: [output],
+            attributes: [new OnnxAttribute<string>("mode", ConvertTorchPadModeToOnnxMode(mode))]
+        );
+
+        TrackRank(context, output, inferredRank);
+        return output;
+    }
+
+    private static int InferFunctionalPadRank(IReadOnlyList<long> padding)
+    {
+        if (padding.Count % 2 != 0)
+        {
+            throw new NotSupportedException("pad export requires an even number of pad values.");
+        }
+
+        // Torch functional.pad applies the provided pairs to the trailing dimensions.
+        // Generated conv2d imports use two padded spatial axes on an NCHW tensor.
+        return padding.Count / 2 + 2;
+    }
+
+    private static long[] CreateFunctionalPadVector(IReadOnlyList<long> padding, int rank)
+    {
+        var paddedAxes = padding.Count / 2;
+        if (paddedAxes > rank)
+        {
+            throw new NotSupportedException(
+                $"pad export got {paddedAxes} padded axes for rank {rank} input."
+            );
+        }
+
+        var pads = new long[rank * 2];
+        for (var pair = 0; pair < paddedAxes; pair++)
+        {
+            var axis = rank - 1 - pair;
+            pads[axis] = padding[pair * 2];
+            pads[axis + rank] = padding[pair * 2 + 1];
+        }
+
+        return pads;
+    }
+
+    private static string ConvertTorchPadModeToOnnxMode(string mode)
+    {
+        return mode switch
+        {
+            "constant" => "constant",
+            "reflect" => "reflect",
+            "replicate" => "edge",
+            _ => throw new NotSupportedException($"pad export does not support mode '{mode}'."),
+        };
+    }
+
+    private static string ResolvePadModeArgument(
+        Expression expression
+    )
+    {
+        expression = UnwrapNamedArgument(expression);
+
+        var text = expression.ToString();
+        if (text.Length >= 2 && text[0] == '"' && text[^1] == '"')
+        {
+            return text[1..^1].ToLowerInvariant();
+        }
+
+        if (text.Contains("(PaddingModes)4", StringComparison.Ordinal))
+        {
+            return "constant";
+        }
+
+        if (text.Contains("Constant", StringComparison.Ordinal))
+        {
+            return "constant";
+        }
+
+        if (text.Contains("Reflect", StringComparison.Ordinal))
+        {
+            return "reflect";
+        }
+
+        if (text.Contains("Replicate", StringComparison.Ordinal))
+        {
+            return "replicate";
+        }
+
+        throw new NotSupportedException($"Unsupported pad mode expression: {expression}");
     }
 
     private static ExportValue ExportTorchBatchNorm(
@@ -2025,6 +2232,13 @@ public static class TorchModuleExportExtensions
         return expression switch
         {
             IdentifierExpression identifier => GetRequiredMemberValue(root, identifier.Identifier),
+            ParenthesizedExpression parenthesized =>
+                ResolveMemberExpression(root, parenthesized.Expression),
+            CastExpression cast =>
+                ResolveMemberExpression(root, cast.Expression),
+            UnaryOperatorExpression unaryOperator
+                when unaryOperator.Operator == UnaryOperatorType.NullConditionalRewrap =>
+                ResolveMemberExpression(root, unaryOperator.Expression),
             MemberReferenceExpression { Target: ThisReferenceExpression, MemberName: var memberName } =>
                 GetRequiredMemberValue(root, memberName),
             MemberReferenceExpression memberReference =>
@@ -3063,6 +3277,68 @@ public static class TorchModuleExportExtensions
         return false;
     }
 
+    private static long[] GetRequiredStaticShape(IOnnxGraphEdge input, string opName)
+    {
+        if (input is not OnnxValue { Type: OnnxTensorType tensorType }
+            || tensorType.Shape is null)
+        {
+            throw new NotSupportedException($"{opName} export requires a statically known input shape.");
+        }
+
+        var result = new long[tensorType.Shape.Dimensions.Length];
+        for (var i = 0; i < result.Length; i++)
+        {
+            if (tensorType.Shape.Dimensions[i].GetValue() is not long dimension)
+            {
+                throw new NotSupportedException($"{opName} export requires a statically known input shape.");
+            }
+
+            result[i] = dimension;
+        }
+
+        return result;
+    }
+
+    private static int? TryGetRank(IOnnxGraphEdge input)
+    {
+        return input is OnnxValue { Type: OnnxTensorType { Shape: not null } tensorType }
+            ? tensorType.Shape.Dimensions.Length
+            : null;
+    }
+
+    private static int? TryGetRank(ForwardExportContext context, IOnnxGraphEdge input)
+    {
+        return TryGetRank(input) ?? (
+            context.EdgeRanks.TryGetValue(input.Name, out var rank)
+                ? rank
+                : null
+        );
+    }
+
+    private static void TrackRank(ForwardExportContext context, IOnnxGraphEdge edge)
+    {
+        if (TryGetRank(edge) is int rank)
+        {
+            TrackRank(context, edge, rank);
+        }
+    }
+
+    private static void TrackRank(ForwardExportContext context, IOnnxGraphEdge edge, int rank)
+    {
+        context.EdgeRanks[edge.Name] = rank;
+    }
+
+    private static long Product(IReadOnlyList<long> values)
+    {
+        long result = 1;
+        foreach (var value in values)
+        {
+            result = checked(result * value);
+        }
+
+        return result;
+    }
+
     private static int NormalizeAxis(long axis, long rank)
     {
         var normalized = axis < 0 ? axis + rank : axis;
@@ -3417,9 +3693,11 @@ public static class TorchModuleExportExtensions
     {
         var text = expression.ToString();
         // Functional calls may decompile as:
+        //   functional.conv2d(...)
         //   torch.nn.functional.interpolate(...)
         //   global::TorchSharp.torch.nn.functional.interpolate(...)
-        return text.EndsWith(".functional", StringComparison.Ordinal)
+        return string.Equals(text, "functional", StringComparison.Ordinal)
+            || text.EndsWith(".functional", StringComparison.Ordinal)
             || text.Contains(".torch.nn.functional", StringComparison.Ordinal);
     }
 
@@ -3468,6 +3746,8 @@ public static class TorchModuleExportExtensions
         public OnnxGraph Graph { get; } = graph;
 
         public Dictionary<string, ExportValue> Values { get; } = new(StringComparer.Ordinal);
+
+        public Dictionary<string, int> EdgeRanks { get; } = new(StringComparer.Ordinal);
 
         public bool HasReturned { get; private set; }
 

@@ -77,25 +77,129 @@ public static class App
             return 0;
         }
 
-        if (args.Length != 2)
-        {
-            return Fail(standardError, "The onnx command expects a subcommand and a model path.", WriteOnnxHelp);
-        }
-
-        var model = OnnxModel.FromFile(args[1]);
-
         switch (args[0].ToLowerInvariant())
         {
             case "show":
-                standardOutput.WriteLine(model);
-                return 0;
+                return RunOnnxShow(args[1..], standardOutput, standardError);
+            case "diff":
+                return RunOnnxDiff(args[1..], standardOutput, standardError);
             case "io":
             case "inputs-outputs":
+                if (args.Length != 2)
+                {
+                    return Fail(standardError, "The onnx inputs-outputs command expects a model path.", WriteOnnxHelp);
+                }
+
+                var model = OnnxModel.FromFile(args[1]);
                 standardOutput.WriteLine(FormatInputsOutputs(model));
                 return 0;
             default:
                 return Fail(standardError, $"Unknown onnx subcommand '{args[0]}'.", WriteOnnxHelp);
         }
+    }
+
+    private static int RunOnnxShow(string[] args, TextWriter standardOutput, TextWriter standardError)
+    {
+        if (args.Length == 0)
+        {
+            return Fail(standardError, "The onnx show command expects a model path.", WriteOnnxHelp);
+        }
+
+        var options = OnnxShowOptions.None;
+        string? modelPath = null;
+
+        foreach (var arg in args)
+        {
+            switch (arg.ToLowerInvariant())
+            {
+                case "--inputs":
+                    options |= OnnxShowOptions.Inputs;
+                    break;
+                case "--outputs":
+                    options |= OnnxShowOptions.Outputs;
+                    break;
+                case "--values":
+                    options |= OnnxShowOptions.Values;
+                    break;
+                case "--nodes":
+                    options |= OnnxShowOptions.Nodes;
+                    break;
+                default:
+                    if (arg.StartsWith("-", StringComparison.Ordinal))
+                    {
+                        return Fail(standardError, $"Unknown onnx show option '{arg}'.", WriteOnnxHelp);
+                    }
+
+                    if (modelPath is not null)
+                    {
+                        return Fail(standardError, "The onnx show command expects one model path.", WriteOnnxHelp);
+                    }
+
+                    modelPath = arg;
+                    break;
+            }
+        }
+
+        if (modelPath is null)
+        {
+            return Fail(standardError, "The onnx show command expects a model path.", WriteOnnxHelp);
+        }
+
+        var model = OnnxModel.FromFile(modelPath);
+        standardOutput.WriteLine(options == OnnxShowOptions.None
+            ? model.ToString()
+            : FormatOnnxShow(model, options));
+
+        return 0;
+    }
+
+    private static int RunOnnxDiff(string[] args, TextWriter standardOutput, TextWriter standardError)
+    {
+        if (args.Length == 0)
+        {
+            return Fail(standardError, "The onnx diff command expects two model paths.", WriteOnnxHelp);
+        }
+
+        var options = OnnxShowOptions.None;
+        var modelPaths = new List<string>();
+
+        foreach (var arg in args)
+        {
+            switch (arg.ToLowerInvariant())
+            {
+                case "--inputs":
+                    options |= OnnxShowOptions.Inputs;
+                    break;
+                case "--outputs":
+                    options |= OnnxShowOptions.Outputs;
+                    break;
+                case "--values":
+                    options |= OnnxShowOptions.Values;
+                    break;
+                case "--nodes":
+                    options |= OnnxShowOptions.Nodes;
+                    break;
+                default:
+                    if (arg.StartsWith("-", StringComparison.Ordinal))
+                    {
+                        return Fail(standardError, $"Unknown onnx diff option '{arg}'.", WriteOnnxHelp);
+                    }
+
+                    modelPaths.Add(arg);
+                    break;
+            }
+        }
+
+        if (modelPaths.Count != 2)
+        {
+            return Fail(standardError, "The onnx diff command expects two model paths.", WriteOnnxHelp);
+        }
+
+        var left = OnnxModel.FromFile(modelPaths[0]);
+        var right = OnnxModel.FromFile(modelPaths[1]);
+
+        standardOutput.WriteLine(FormatOnnxDiff(left, right, modelPaths[0], modelPaths[1], options));
+        return 0;
     }
 
     private static int RunSafetensors(string[] args, TextWriter standardOutput, TextWriter standardError)
@@ -344,6 +448,328 @@ public static class App
             """;
     }
 
+    private static string FormatOnnxShow(OnnxModel model, OnnxShowOptions options)
+    {
+        var sections = new List<string>
+        {
+            FormatOnnxSummary(model),
+        };
+
+        if (options.HasFlag(OnnxShowOptions.Inputs))
+        {
+            sections.Add(FormatNamedSection("Inputs", model.Graph.Inputs.Select(FormatValue)));
+        }
+
+        if (options.HasFlag(OnnxShowOptions.Outputs))
+        {
+            sections.Add(FormatNamedSection("Outputs", model.Graph.Outputs.Select(FormatValue)));
+        }
+
+        if (options.HasFlag(OnnxShowOptions.Values))
+        {
+            sections.Add(FormatNamedSection("Initializers", model.Graph.Initializers.Select(x => FormatTensor(x, includeValues: true))));
+            sections.Add(FormatNamedSection("IntermediateValues", model.Graph.IntermediateValues.Select(FormatValue)));
+        }
+
+        if (options.HasFlag(OnnxShowOptions.Nodes))
+        {
+            sections.Add(FormatNamedSection("Nodes", model.Graph.Nodes.Select((node, index) => FormatNode(index, node))));
+        }
+
+        return string.Join("\n", sections);
+    }
+
+    private static string FormatOnnxDiff(
+        OnnxModel left,
+        OnnxModel right,
+        string leftPath,
+        string rightPath,
+        OnnxShowOptions options
+    )
+    {
+        var includeInputs = options == OnnxShowOptions.None || options.HasFlag(OnnxShowOptions.Inputs);
+        var includeOutputs = options == OnnxShowOptions.None || options.HasFlag(OnnxShowOptions.Outputs);
+        var includeValues = options == OnnxShowOptions.None || options.HasFlag(OnnxShowOptions.Values);
+        var includeNodes = options == OnnxShowOptions.None || options.HasFlag(OnnxShowOptions.Nodes);
+        var lines = new List<string>
+        {
+            "OnnxModelDiff(",
+            $"    Left={leftPath},",
+            $"    Right={rightPath},",
+            "    Metadata=[",
+        };
+
+        AddDiff(lines, "ProducerName", FormatScalar(left.ProducerName), FormatScalar(right.ProducerName), indent: 2);
+        AddDiff(lines, "ProducerVersion", FormatScalar(left.ProducerVersion), FormatScalar(right.ProducerVersion), indent: 2);
+        AddDiff(lines, "ModelVersion", left.ModelVersion.ToString(), right.ModelVersion.ToString(), indent: 2);
+        AddDiff(lines, "IrVersion", left.IrVersion.ToString(), right.IrVersion.ToString(), indent: 2);
+        AddDiff(lines, "Domain", FormatDomain(left.Domain), FormatDomain(right.Domain), indent: 2);
+        AddDiff(lines, "GraphName", FormatScalar(left.Graph.Name), FormatScalar(right.Graph.Name), indent: 2);
+        AddDiff(lines, "Inputs", left.Graph.Inputs.Count.ToString(), right.Graph.Inputs.Count.ToString(), indent: 2);
+        AddDiff(lines, "Outputs", left.Graph.Outputs.Count.ToString(), right.Graph.Outputs.Count.ToString(), indent: 2);
+        AddDiff(lines, "Initializers", left.Graph.Initializers.Count.ToString(), right.Graph.Initializers.Count.ToString(), indent: 2);
+        AddDiff(lines, "IntermediateValues", left.Graph.IntermediateValues.Count.ToString(), right.Graph.IntermediateValues.Count.ToString(), indent: 2);
+        AddDiff(lines, "Nodes", left.Graph.Nodes.Count.ToString(), right.Graph.Nodes.Count.ToString(), indent: 2);
+        lines.Add("    ],");
+
+        lines.Add("    OpCounts=[");
+        foreach (var diff in CompareMaps(GetOpCounts(left), GetOpCounts(right)))
+        {
+            lines.Add($"        {diff},");
+        }
+        lines.Add("    ],");
+
+        if (includeInputs)
+        {
+            lines.Add("    Inputs=[");
+            foreach (var diff in CompareOrdered(
+                left.Graph.Inputs.Select(FormatValue).ToArray(),
+                right.Graph.Inputs.Select(FormatValue).ToArray()))
+            {
+                lines.Add($"        {diff},");
+            }
+            lines.Add("    ],");
+        }
+
+        if (includeOutputs)
+        {
+            lines.Add("    Outputs=[");
+            foreach (var diff in CompareOrdered(
+                left.Graph.Outputs.Select(FormatValue).ToArray(),
+                right.Graph.Outputs.Select(FormatValue).ToArray()))
+            {
+                lines.Add($"        {diff},");
+            }
+            lines.Add("    ],");
+        }
+
+        if (includeValues)
+        {
+            lines.Add("    Initializers=[");
+            foreach (var diff in CompareOrdered(
+                left.Graph.Initializers.Select(x => FormatTensor(x, includeValues: false)).ToArray(),
+                right.Graph.Initializers.Select(x => FormatTensor(x, includeValues: false)).ToArray()))
+            {
+                lines.Add($"        {diff},");
+            }
+            lines.Add("    ],");
+
+            lines.Add("    IntermediateValues=[");
+            foreach (var diff in CompareOrdered(
+                left.Graph.IntermediateValues.Select(FormatValue).ToArray(),
+                right.Graph.IntermediateValues.Select(FormatValue).ToArray()))
+            {
+                lines.Add($"        {diff},");
+            }
+            lines.Add("    ],");
+        }
+
+        if (includeNodes)
+        {
+            lines.Add("    Nodes=[");
+            foreach (var diff in CompareOrdered(
+                left.Graph.Nodes.Select(FormatNodeSignature).ToArray(),
+                right.Graph.Nodes.Select(FormatNodeSignature).ToArray()))
+            {
+                lines.Add($"        {diff},");
+            }
+            lines.Add("    ]");
+        }
+
+        lines.Add(")");
+
+        return string.Join("\n", lines);
+    }
+
+    private static string FormatOnnxSummary(OnnxModel model)
+    {
+        return $"""
+            OnnxModelSummary(
+                Producer={FormatScalar(model.ProducerName)},
+                Version={FormatScalar(model.ProducerVersion)},
+                ModelVersion={model.ModelVersion},
+                IrVersion={model.IrVersion},
+                Domain={FormatDomain(model.Domain)},
+                GraphName={FormatScalar(model.Graph.Name)},
+                OpsetImports={FormatCollection(model.OpsetImport.Select(FormatOpsetImport)).Indent(1)},
+                Inputs={model.Graph.Inputs.Count},
+                Outputs={model.Graph.Outputs.Count},
+                Initializers={model.Graph.Initializers.Count},
+                IntermediateValues={model.Graph.IntermediateValues.Count},
+                Nodes={model.Graph.Nodes.Count},
+                OpCounts={FormatCollection(GetOpCounts(model).Select(x => $"{x.Key}={x.Value}")).Indent(1)}
+            )
+            """;
+    }
+
+    private static string FormatNamedSection(string name, IEnumerable<string> values)
+    {
+        return $"""
+            {name}={FormatCollection(values).Indent(1)}
+            """;
+    }
+
+    private static string FormatNode(int index, OnnxNode node)
+    {
+        return $"{index}: {FormatNodeSignature(node)}";
+    }
+
+    private static string FormatNodeSignature(OnnxNode node)
+    {
+        var domain = FormatDomain(node.Domain);
+        var inputs = string.Join(", ", node.Inputs.Select(FormatEdgeReference));
+        var outputs = string.Join(", ", node.Outputs.Select(FormatEdgeReference));
+        var attributes = string.Join(", ", node.Attributes
+            .OrderBy(x => x.Name, StringComparer.Ordinal)
+            .Select(FormatAttribute));
+
+        return $"{node.Name}: {domain}:{node.OpType}({inputs}) -> [{outputs}] attrs=[{attributes}]";
+    }
+
+    private static string FormatAttribute(OnnxAttribute attribute)
+    {
+        return $"{attribute.Name}={FormatObject(attribute.GetValue())}";
+    }
+
+    private static string FormatValue(OnnxValue value)
+    {
+        return $"{value.Name}: {value.Type}";
+    }
+
+    private static string FormatTensor(OnnxTensor tensor, bool includeValues)
+    {
+        var result = $"{tensor.Name}: {tensor.DataType.Name}[{string.Join(", ", tensor.Shape)}]";
+
+        if (!includeValues)
+        {
+            return result;
+        }
+
+        return tensor switch
+        {
+            OnnxTensor<float> value => $"{result} = {FormatPreview(value.Value)}",
+            OnnxTensor<double> value => $"{result} = {FormatPreview(value.Value)}",
+            OnnxTensor<long> value => $"{result} = {FormatPreview(value.Value)}",
+            OnnxTensor<int> value => $"{result} = {FormatPreview(value.Value)}",
+            OnnxTensor<short> value => $"{result} = {FormatPreview(value.Value)}",
+            OnnxTensor<byte> value => $"{result} = {FormatPreview(value.Value)}",
+            OnnxTensor<sbyte> value => $"{result} = {FormatPreview(value.Value)}",
+            OnnxTensor<bool> value => $"{result} = {FormatPreview(value.Value)}",
+            OnnxTensor<string> value => $"{result} = {FormatPreview(value.Value)}",
+            _ => result,
+        };
+    }
+
+    private static string FormatPreview<T>(IEnumerable<T> values)
+    {
+        const int PREVIEW_COUNT = 8;
+
+        var materialized = values.Take(PREVIEW_COUNT + 1).ToArray();
+        var preview = materialized.Take(PREVIEW_COUNT).Select(static x => x?.ToString() ?? "null");
+        var suffix = materialized.Length > PREVIEW_COUNT ? ", ..." : string.Empty;
+
+        return $"[{string.Join(", ", preview)}{suffix}]";
+    }
+
+    private static string FormatEdgeReference(IOnnxGraphEdge edge)
+    {
+        return edge switch
+        {
+            OnnxValue value => FormatValue(value),
+            OnnxTensor tensor => FormatTensor(tensor, includeValues: false),
+            _ => edge.Name,
+        };
+    }
+
+    private static string FormatObject(object? value)
+    {
+        return value switch
+        {
+            null => "<null>",
+            string text => text,
+            IEnumerable<long> values => $"[{string.Join(", ", values)}]",
+            IEnumerable<int> values => $"[{string.Join(", ", values)}]",
+            IEnumerable<float> values => $"[{string.Join(", ", values)}]",
+            IEnumerable<double> values => $"[{string.Join(", ", values)}]",
+            IEnumerable<string> values => $"[{string.Join(", ", values)}]",
+            System.Collections.IEnumerable values when value is not string => $"[{string.Join(", ", values.Cast<object?>())}]",
+            _ => value.ToString() ?? string.Empty,
+        };
+    }
+
+    private static string FormatScalar(string value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? "<empty>" : value;
+    }
+
+    private static string FormatDomain(string value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? "<default>" : value;
+    }
+
+    private static string FormatOpsetImport(OperationSet opset)
+    {
+        return $"{FormatDomain(opset.Domain)}={opset.Version}";
+    }
+
+    private static Dictionary<string, int> GetOpCounts(OnnxModel model)
+    {
+        return model.Graph.Nodes
+            .GroupBy(x => string.IsNullOrWhiteSpace(x.Domain) ? x.OpType : $"{x.Domain}:{x.OpType}")
+            .OrderBy(x => x.Key, StringComparer.Ordinal)
+            .ToDictionary(x => x.Key, x => x.Count(), StringComparer.Ordinal);
+    }
+
+    private static IEnumerable<string> CompareMaps(
+        IReadOnlyDictionary<string, int> left,
+        IReadOnlyDictionary<string, int> right
+    )
+    {
+        var keys = left.Keys.Concat(right.Keys).Distinct(StringComparer.Ordinal).OrderBy(x => x, StringComparer.Ordinal);
+
+        foreach (var key in keys)
+        {
+            left.TryGetValue(key, out var leftValue);
+            right.TryGetValue(key, out var rightValue);
+
+            if (leftValue == rightValue)
+            {
+                yield return $"same {key}: {leftValue}";
+            }
+            else
+            {
+                yield return $"diff {key}: left={leftValue}, right={rightValue}";
+            }
+        }
+    }
+
+    private static IEnumerable<string> CompareOrdered(string[] left, string[] right)
+    {
+        var count = Math.Max(left.Length, right.Length);
+
+        for (var i = 0; i < count; i++)
+        {
+            var leftValue = i < left.Length ? left[i] : "<missing>";
+            var rightValue = i < right.Length ? right[i] : "<missing>";
+
+            if (StringComparer.Ordinal.Equals(leftValue, rightValue))
+            {
+                yield return $"same [{i}]: {leftValue}";
+            }
+            else
+            {
+                yield return $"diff [{i}]: left={leftValue}; right={rightValue}";
+            }
+        }
+    }
+
+    private static void AddDiff(List<string> lines, string name, string left, string right, int indent)
+    {
+        var prefix = new string(' ', indent * 4);
+        var status = StringComparer.Ordinal.Equals(left, right) ? "same" : "diff";
+        lines.Add($"{prefix}{status} {name}: left={left}, right={right},");
+    }
+
     private static string FormatProjectGenerationResult(ProjectGenerationResult result)
     {
         return $"""
@@ -489,7 +915,8 @@ public static class App
 
             Usage:
               onnxify --version
-              onnxify onnx show <model.onnx>
+              onnxify onnx show [options] <model.onnx>
+              onnxify onnx diff [options] <left.onnx> <right.onnx>
               onnxify onnx io <model.onnx>
               onnxify safetensors show <model.safetensors>
               onnxify project generate <model.onnx> <output-directory> [options]
@@ -506,9 +933,22 @@ public static class App
             ONNX commands
 
             Usage:
-              onnxify onnx show <model.onnx>
+              onnxify onnx show [options] <model.onnx>
+              onnxify onnx diff [options] <left.onnx> <right.onnx>
               onnxify onnx io <model.onnx>
               onnxify onnx inputs-outputs <model.onnx>
+
+            Show options:
+              --inputs     Include graph inputs.
+              --outputs    Include graph outputs.
+              --values     Include initializer previews and intermediate value-info entries.
+              --nodes      Include compact node signatures.
+
+            Diff options:
+              --inputs     Include graph input differences.
+              --outputs    Include graph output differences.
+              --values     Include initializer and intermediate value differences.
+              --nodes      Include compact node signature differences.
             """);
     }
 
@@ -571,6 +1011,16 @@ public static class App
               --include "*.json" --include "*.model" --exclude "*.md5"
             """);
     }
+}
+
+[Flags]
+internal enum OnnxShowOptions
+{
+    None = 0,
+    Inputs = 1,
+    Outputs = 2,
+    Values = 4,
+    Nodes = 8,
 }
 
 internal static class CliTextExtensions

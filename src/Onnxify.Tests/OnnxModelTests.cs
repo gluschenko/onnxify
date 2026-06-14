@@ -1,6 +1,7 @@
 ﻿namespace Onnxify.Tests;
 
 using Onnx;
+using Google.Protobuf;
 
 public sealed class OnnxModelTests
 {
@@ -200,6 +201,43 @@ public sealed class OnnxModelTests
         var exception = await Assert.ThrowsAsync<FileNotFoundException>(() => OnnxModel.FromFileAsync(path));
 
         Assert.Equal(path, exception.FileName);
+    }
+
+    [Fact]
+    public void FromStream_WithRepeatedLooseEdgeName_LoadsGraph()
+    {
+        var model = new ModelProto
+        {
+            Graph = new GraphProto
+            {
+                Node =
+                {
+                    new NodeProto
+                    {
+                        Name = "repeated_edge",
+                        OpType = "Custom",
+                        Input = { "onnx::Concat_3552", "onnx::Concat_3552" },
+                        Output = { "output" },
+                    },
+                },
+            },
+        };
+
+        using var stream = new MemoryStream(model.ToByteArray());
+        var loaded = OnnxModel.FromStream(
+            stream,
+            new OnnxModelBaseOptions
+            {
+                NodeTypeResolutionStrategy = NodeTypeResolutionStrategy.PreserveUntyped,
+            }
+        );
+
+        var node = Assert.Single(loaded.Graph.Nodes);
+        Assert.Collection(
+            node.Inputs,
+            input => Assert.Equal("onnx::Concat_3552", input.Name),
+            input => Assert.Equal("onnx::Concat_3552", input.Name)
+        );
     }
 
     [Fact]
@@ -904,6 +942,51 @@ public sealed class OnnxModelTests
 
 public sealed class OnnxGraphTests
 {
+    [Fact]
+    public void Load_WithValueInfoForGraphOutput_ReusesOutputName()
+    {
+        var output = new OnnxValue<OnnxTensorType>(
+            "logits",
+            OnnxTensorType.Create<float>([1, 1000]),
+            null).ToProto();
+        var valueInfo = new OnnxValue<OnnxTensorType>(
+            "logits",
+            OnnxTensorType.Create<float>([1, 1000]),
+            null).ToProto();
+        valueInfo.DocString = "preserved value metadata";
+        var modelProto = new ModelProto
+        {
+            IrVersion = 11,
+            Graph = new GraphProto
+            {
+                Name = "duplicate-value-info-output",
+            },
+        };
+        modelProto.OpsetImport.Add(new OperatorSetIdProto
+        {
+            Domain = "",
+            Version = 25,
+        });
+        modelProto.Graph.ValueInfo.Add(valueInfo);
+        modelProto.Graph.Output.Add(output);
+
+        var model = new OnnxModel(modelProto, new OnnxModelBaseOptions());
+
+        Assert.Equal("logits", Assert.Single(model.Graph.Outputs).Name);
+        Assert.Empty(model.Graph.IntermediateValues);
+        Assert.Equal("preserved value metadata", Assert.Single(model.ToProto().Graph.Output).DocString);
+    }
+
+    [Fact]
+    public void FromFile_WithMobileNetDuplicatedLogitsValueInfo_LoadsGraph()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "Assets", "mobilenet_v2_1.4_224.onnx");
+
+        var model = OnnxModel.FromFile(path);
+
+        Assert.Equal("logits", Assert.Single(model.Graph.Outputs).Name);
+    }
+
     [Fact]
     public void AddMembers_WithDuplicateNames_ThrowsInvalidOperationException()
     {

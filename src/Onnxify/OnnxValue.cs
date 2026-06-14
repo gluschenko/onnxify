@@ -62,7 +62,16 @@ public class OnnxValue<T> : OnnxValue where T : OnnxValueType
     public override string Name { get; }
 
     /// <inheritdoc />
+#if NETSTANDARD2_0
+    public override OnnxValueType Type { get; }
+
+    /// <summary>
+    /// Gets the ONNX type descriptor as the concrete generic type.
+    /// </summary>
+    public T TypedType => (T)Type;
+#else
     public override T Type { get; }
+#endif
 
     private readonly ValueInfoProto _valueInfo;
 

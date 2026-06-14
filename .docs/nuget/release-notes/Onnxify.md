@@ -1,3 +1,11 @@
+## 0.3.2
+
+- Fixed ONNX graph loading for models whose `graph.value_info` repeats a graph input or output name, preserving the first loaded value metadata while marking the value as an input or output.
+- Added regression coverage for loading a MobileNetV2 ONNX model whose `logits` output is also present in `value_info`.
+- Added a `netstandard2.0` target for core graph/model APIs so analyzer packages can share the same `OnnxModel` and `OnnxGraph` implementation.
+- Added `NodeTypeResolutionStrategy.PreserveUntyped` for callers that need to inspect loaded graphs without projecting nodes into generated typed wrappers.
+- Aligned the package version with the 0.3.2 Onnxify package family release.
+
 ## 0.3.0
 
 - Aligned the package version with the 0.3.0 Onnxify package family release.

@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.3.1</Version>
+    <Version>0.3.2</Version>
     <RepositoryUrl>https://github.com/gluschenko/onnxify</RepositoryUrl>
     <Authors>Alexander Gluschenko</Authors>
     <Copyright>© 2026 Alexander Gluschenko</Copyright>
@@ -50,6 +50,10 @@
   </Target>
 
   <ItemGroup>
+    <ProjectReference Include="..\Onnxify\Onnxify.csproj" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" PrivateAssets="all" />
     <PackageReference Include="Google.Protobuf" Version="3.34.0" PrivateAssets="all" GeneratePathProperty="true" />
@@ -70,6 +74,9 @@
       <AnalyzerRuntimeDependency Include="$(PkgGoogle_Protobuf)\lib\netstandard2.0\Google.Protobuf.dll" Condition="Exists('$(PkgGoogle_Protobuf)\lib\netstandard2.0\Google.Protobuf.dll')" />
       <AnalyzerRuntimeDependency Include="$(PkgGoogle_Protobuf)\lib\netstandard2.0\Google.Protobuf.pdb" Condition="Exists('$(PkgGoogle_Protobuf)\lib\netstandard2.0\Google.Protobuf.pdb')" />
       <AnalyzerRuntimeDependency Include="$(PkgGoogle_Protobuf)\lib\netstandard2.0\Google.Protobuf.xml" Condition="Exists('$(PkgGoogle_Protobuf)\lib\netstandard2.0\Google.Protobuf.xml')" />
+      <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.dll" Condition="Exists('$(TargetDir)Onnxify.dll')" />
+      <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.pdb" Condition="Exists('$(TargetDir)Onnxify.pdb')" />
+      <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.xml" Condition="Exists('$(TargetDir)Onnxify.xml')" />
     </ItemGroup>
 
     <Copy
@@ -95,6 +102,9 @@
     <ItemGroup>
       <TfmSpecificPackageFile Include="$(TargetPath)" PackagePath="analyzers/dotnet/cs" />
       <TfmSpecificPackageFile Include="$(TargetDir)$(AssemblyName).pdb" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)$(AssemblyName).pdb')" />
+      <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.dll')" />
+      <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.pdb" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.pdb')" />
+      <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.xml" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.xml')" />
       <TfmSpecificPackageFile Include="$(TargetDir)Google.Protobuf.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Google.Protobuf.dll')" />
       <TfmSpecificPackageFile Include="$(TargetDir)Google.Protobuf.pdb" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Google.Protobuf.pdb')" />
       <TfmSpecificPackageFile Include="$(TargetDir)Google.Protobuf.xml" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Google.Protobuf.xml')" />

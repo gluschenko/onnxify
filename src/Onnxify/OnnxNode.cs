@@ -48,8 +48,8 @@ public class OnnxNode : IOnnxGraphNode
     /// </summary>
     public IReadOnlyList<OnnxAttribute> Attributes => _attributes;
 
-    private readonly LazyDictionary<string, IOnnxGraphEdge> _inputs = new(x => x.Name, EqualityComparer<string>.Default);
-    private readonly LazyDictionary<string, IOnnxGraphEdge> _outputs = new(x => x.Name, EqualityComparer<string>.Default);
+    private readonly List<IOnnxGraphEdge> _inputs = [];
+    private readonly List<IOnnxGraphEdge> _outputs = [];
     private readonly LazyDictionary<string, OnnxAttribute> _attributes = new(x => x.Name, EqualityComparer<string>.Default);
 
     private readonly NodeProto _node;
@@ -161,45 +161,41 @@ public class OnnxNode : IOnnxGraphNode
         return removed;
     }
 
-    private static void ReplaceEdgeReference(LazyDictionary<string, IOnnxGraphEdge> edges, string name, IOnnxGraphEdge value, ref bool replaced)
+    private static void ReplaceEdgeReference(List<IOnnxGraphEdge> edges, string name, IOnnxGraphEdge value, ref bool replaced)
     {
-        if (!edges.TryGetValue(name, out var existing))
+        for (var i = 0; i < edges.Count; i++)
         {
-            return;
-        }
-
-        var index = edges.IndexOf(existing);
-        edges.Remove(existing);
-
-        if (edges.TryGetValue(value.Name, out var duplicate))
-        {
-            var duplicateIndex = edges.IndexOf(duplicate);
-            edges.Remove(duplicate);
-
-            if (duplicateIndex < index)
+            if (!StringComparer.Ordinal.Equals(edges[i].Name, name))
             {
-                index--;
+                continue;
             }
-        }
 
-        edges.Insert(index, value);
-        replaced = true;
+            edges[i] = value;
+            replaced = true;
+        }
     }
 
-    private static void RemoveEdgeReference(LazyDictionary<string, IOnnxGraphEdge> edges, string name, ref bool removed)
+    private static void RemoveEdgeReference(List<IOnnxGraphEdge> edges, string name, ref bool removed)
     {
-        if (!edges.TryGetValue(name, out var existing))
+        for (var i = edges.Count - 1; i >= 0; i--)
         {
-            return;
-        }
+            if (!StringComparer.Ordinal.Equals(edges[i].Name, name))
+            {
+                continue;
+            }
 
-        edges.Remove(existing);
-        removed = true;
+            edges.RemoveAt(i);
+            removed = true;
+        }
     }
 
     internal static OnnxNode FromProto(NodeProto node, OnnxGraph graph)
     {
         var options = graph.GetOptions();
+        if (options.NodeTypeResolutionStrategy == NodeTypeResolutionStrategy.PreserveUntyped)
+        {
+            return FromProtoUntyped(node, graph);
+        }
 
         var needThrowException = false;
         var needResolveTypedNode = true;
@@ -303,11 +299,10 @@ public class OnnxNode : IOnnxGraphNode
 
         if (index < _inputs.Count)
         {
-            var existing = _inputs[index];
-            _inputs.Remove(existing);
+            _inputs.RemoveAt(index);
         }
 
-        _inputs.Add(value);
+        _inputs.Insert(Math.Min(index, _inputs.Count), value);
     }
 
     /// <summary>
@@ -322,13 +317,12 @@ public class OnnxNode : IOnnxGraphNode
 
         if (index < _inputs.Count)
         {
-            var existing = _inputs[index];
-            _inputs.Remove(existing);
+            _inputs.RemoveAt(index);
         }
 
         if (value != null)
         {
-            _inputs.Add(value);
+            _inputs.Insert(Math.Min(index, _inputs.Count), value);
         }
     }
 
@@ -345,11 +339,10 @@ public class OnnxNode : IOnnxGraphNode
 
         if (index < _outputs.Count)
         {
-            var existing = _outputs[index];
-            _outputs.Remove(existing);
+            _outputs.RemoveAt(index);
         }
 
-        _outputs.Add(value);
+        _outputs.Insert(Math.Min(index, _outputs.Count), value);
     }
 
     /// <summary>
@@ -364,13 +357,12 @@ public class OnnxNode : IOnnxGraphNode
 
         if (index < _outputs.Count)
         {
-            var existing = _outputs[index];
-            _outputs.Remove(existing);
+            _outputs.RemoveAt(index);
         }
 
         if (value != null)
         {
-            _outputs.Add(value);
+            _outputs.Insert(Math.Min(index, _outputs.Count), value);
         }
     }
 
@@ -413,7 +405,7 @@ public class OnnxNode : IOnnxGraphNode
 
         while (_inputs.Count > startIndex)
         {
-            _inputs.Remove(_inputs[startIndex]);
+            _inputs.RemoveAt(startIndex);
         }
 
         foreach (var value in newValues)
@@ -461,7 +453,7 @@ public class OnnxNode : IOnnxGraphNode
 
         while (_outputs.Count > startIndex)
         {
-            _outputs.Remove(_outputs[startIndex]);
+            _outputs.RemoveAt(startIndex);
         }
 
         foreach (var value in newValues)

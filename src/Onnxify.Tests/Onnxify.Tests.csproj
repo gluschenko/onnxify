@@ -22,6 +22,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Assets\*.onnx" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Onnxify.AgentSkillGenerator\Onnxify.AgentSkillGenerator.csproj" />
     <ProjectReference Include="..\Onnxify.CLI\Onnxify.CLI.csproj" />
     <ProjectReference Include="..\Onnxify.Examples.Models\Onnxify.Examples.Models.csproj" />

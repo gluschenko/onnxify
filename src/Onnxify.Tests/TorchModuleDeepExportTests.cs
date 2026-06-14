@@ -47,8 +47,8 @@ public sealed class TorchModuleDeepExportTests
         module.eval();
 
         var model = module.ExportOnnxModel(
-            input: OnnxTensorType.Create<long>(["batch", module.MaxSequenceLength]),
-            output: OnnxTensorType.Create<float>(["batch", module.MaxSequenceLength, module.VocabularySize]),
+            input: OnnxTensorType.Create<long>(["batch_size", module.MaxSequenceLength]),
+            output: OnnxTensorType.Create<float>(["batch_size", module.MaxSequenceLength, module.VocabularySize]),
             options: new OnnxModelCreationOptions
             {
                 Opset = 22,
@@ -81,8 +81,8 @@ public sealed class TorchModuleDeepExportTests
 
         var model = ExportDeep(
             module,
-            input: OnnxTensorType.Create<long>(["batch", 2]),
-            output: OnnxTensorType.Create<float>(["batch", 2, module.VocabularySize])
+            input: OnnxTensorType.Create<long>(["batch_size", 2]),
+            output: OnnxTensorType.Create<float>(["batch_size", 2, module.VocabularySize])
         );
 
         Assert.Contains(model.Graph.Nodes, node => node.OpType == "Gather");
@@ -163,8 +163,8 @@ public sealed class TorchModuleDeepExportTests
 
         var model = ExportDeep(
             module,
-            input: OnnxTensorType.Create<float>(["batch", 3]),
-            output: OnnxTensorType.Create<float>(["batch", 2])
+            input: OnnxTensorType.Create<float>(["batch_size", 3]),
+            output: OnnxTensorType.Create<float>(["batch_size", 2])
         );
 
         Assert.Contains(model.Graph.Nodes, node => node.OpType == "MatMul");
@@ -244,8 +244,8 @@ public sealed class TorchModuleDeepExportTests
 
         var model = ExportDeep(
             module,
-            input: OnnxTensorType.Create<float>(["batch", 2, 3]),
-            output: OnnxTensorType.Create<float>(["batch", 4, 3])
+            input: OnnxTensorType.Create<float>(["batch_size", 2, 3]),
+            output: OnnxTensorType.Create<float>(["batch_size", 4, 3])
         );
 
         Assert.Contains(model.Graph.Nodes, node => node.OpType == "Concat");
@@ -263,6 +263,57 @@ public sealed class TorchModuleDeepExportTests
             output: OnnxTensorType.Create<float>([2, 3])
         );
 
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Reshape");
+    }
+
+    [Fact]
+    public void DeepExport_ForTensorFlattenStartOneEndMinusOne_EmitsFlatten()
+    {
+        using var module = new DeepExportTensorFlattenModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 3, 4]),
+            output: OnnxTensorType.Create<float>([2, 12])
+        );
+
+        var flatten = Assert.Single(model.Graph.Nodes, node => node.OpType == "Flatten");
+        Assert.Equal(1L, Assert.IsType<long>(flatten.Attributes.Single(x => x.Name == "axis").GetValue()));
+    }
+
+    [Fact]
+    public void DeepExport_ForTensorFlattenAll_EmitsRankOneReshape()
+    {
+        using var module = new DeepExportTensorFlattenAllModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 3, 4]),
+            output: OnnxTensorType.Create<float>([24])
+        );
+
+        Assert.Contains(
+            model.Graph.Initializers.OfType<OnnxTensor<long>>(),
+            initializer => initializer.Value.SequenceEqual([-1L])
+        );
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Reshape");
+    }
+
+    [Fact]
+    public void DeepExport_ForTensorFlattenMiddleDimensions_EmitsReshape()
+    {
+        using var module = new DeepExportTensorFlattenMiddleModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 3, 4, 5]),
+            output: OnnxTensorType.Create<float>([2, 12, 5])
+        );
+
+        Assert.Contains(
+            model.Graph.Initializers.OfType<OnnxTensor<long>>(),
+            initializer => initializer.Value.SequenceEqual([2L, 12L, 5L])
+        );
         Assert.Contains(model.Graph.Nodes, node => node.OpType == "Reshape");
     }
 
@@ -683,6 +734,42 @@ public sealed class TorchModuleDeepExportTests
         public override Tensor forward(Tensor input)
         {
             return input.view([2, 3]);
+        }
+    }
+
+    private sealed class DeepExportTensorFlattenModule : TorchModule
+    {
+        public DeepExportTensorFlattenModule()
+            : base(nameof(DeepExportTensorFlattenModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            return input.flatten(1L, -1L);
+        }
+    }
+
+    private sealed class DeepExportTensorFlattenAllModule : TorchModule
+    {
+        public DeepExportTensorFlattenAllModule()
+            : base(nameof(DeepExportTensorFlattenAllModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            return input.flatten();
+        }
+    }
+
+    private sealed class DeepExportTensorFlattenMiddleModule : TorchModule
+    {
+        public DeepExportTensorFlattenMiddleModule()
+            : base(nameof(DeepExportTensorFlattenMiddleModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            return input.flatten(1L, 2L);
         }
     }
 

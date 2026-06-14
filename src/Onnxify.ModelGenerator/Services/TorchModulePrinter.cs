@@ -126,7 +126,7 @@ internal sealed class TorchModulePrinter
                     modelPath,
                     new Onnxify.OnnxModelBaseOptions
                     {
-                        NodeTypeResolutionStrategy = Onnxify.NodeTypeResolutionStrategy.IgnoreIncompatible,
+                        NodeTypeResolutionStrategy = Onnxify.NodeTypeResolutionStrategy.PreserveUntyped,
                     }
                 );
 

@@ -63,7 +63,7 @@ public sealed class MobileNetV1LikeClassifier : Module<Tensor, Tensor>
 
         var input = graph.AddInput(
             name: "input",
-            type: OnnxTensorType.Create<float>(["batch", 3, 96, 96])
+            type: OnnxTensorType.Create<float>(["batch_size", 3, 96, 96])
         );
 
         var x = _features.Export(graph, input);
@@ -81,7 +81,7 @@ public sealed class MobileNetV1LikeClassifier : Module<Tensor, Tensor>
 
         graph.AddOutput(
             name: "output",
-            type: OnnxTensorType.Create<float>(["batch", _numClasses])
+            type: OnnxTensorType.Create<float>(["batch_size", _numClasses])
         );
 
         model.AddMetadataProps("architecture", "mobilenet-v1-like");

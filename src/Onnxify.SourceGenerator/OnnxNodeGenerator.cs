@@ -312,7 +312,8 @@ public class OnnxNodeGenerator : IIncrementalGenerator
                         public {{type}}? {{AttributeName(x.Name, reservedFieldNames)}}
                         {
                             get => HasAttribute("{{x.Name}}") ? GetAttribute<{{type}}>("{{x.Name}}") : null;
-                            set {
+                            set
+                            {
                                 if (value is not null)
                                 {
                                     SetAttribute<{{type}}>("{{x.Name}}", ({{type}})value);
@@ -363,21 +364,19 @@ public class OnnxNodeGenerator : IIncrementalGenerator
                     }
                 }));
 
-                protoInputOutputOptions.AddRange(op.Attributes
-                    .Where(x => x.Required || x.Default is null)
-                    .Select(x =>
-                    {
-                        var type = FromProto((AttributeType)x.Type);
+                protoInputOutputOptions.AddRange(op.Attributes.Select(x =>
+                {
+                    var type = FromProto((AttributeType)x.Type);
 
-                        if (!x.IsNullable())
-                        {
-                            return $"{AttributeName(x.Name, reservedFieldNames)} = ({type})(attributes.GetValueOrDefault(\"{x.Name}\") ?? throw new InvalidOperationException($\"Missing value '{x.Name}'\"))";
-                        }
-                        else
-                        {
-                            return $"{AttributeName(x.Name, reservedFieldNames)} = ({type}?)attributes.GetValueOrDefault(\"{x.Name}\")";
-                        }
-                    }));
+                    if (!x.IsNullable() || x.Required)
+                    {
+                        return $"{AttributeName(x.Name, reservedFieldNames)} = ({type})(attributes.GetValueOrDefault(\"{x.Name}\") ?? throw new InvalidOperationException($\"Missing value '{x.Name}'\"))";
+                    }
+                    else
+                    {
+                        return $"{AttributeName(x.Name, reservedFieldNames)} = ({type}?)attributes.GetValueOrDefault(\"{x.Name}\")";
+                    }
+                }));
 
                 protoInputOutputOptions.AddRange(op.Outputs.Select((x, i) =>
                 {
