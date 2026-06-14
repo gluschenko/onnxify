@@ -51,7 +51,7 @@ namespace Onnxify.SourceGenerator.Models
 
         public bool IsNullable()
         {
-            return !Required && Default is null;
+            return !Required;
         }
     }
 

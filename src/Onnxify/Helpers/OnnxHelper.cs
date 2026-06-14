@@ -620,7 +620,7 @@ public static class OnnxHelper
         attribute.Type = AttributeProto.Types.AttributeType.Undefined;
     }
 
-    internal static void SetValue<T>(this AttributeProto attribute, T value)
+    internal static void SetValue<T>(this AttributeProto attribute, T value) where T : notnull
     {
         ArgumentNullException.ThrowIfNull(attribute);
         ArgumentNullException.ThrowIfNull(value);
