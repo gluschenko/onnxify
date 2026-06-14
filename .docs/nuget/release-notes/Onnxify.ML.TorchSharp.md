@@ -1,3 +1,8 @@
+## 0.3.2
+
+- Aligned the package version with the 0.3.2 Onnxify package family release.
+- Picked up the TorchSharp package-family deep export improvements for tensor `flatten(...)` calls.
+
 ## 0.3.0
 
 - Aligned the package version with the 0.3.0 Onnxify package family release.

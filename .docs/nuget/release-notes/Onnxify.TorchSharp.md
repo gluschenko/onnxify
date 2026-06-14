@@ -1,3 +1,9 @@
+## 0.3.2
+
+- Added deep TorchSharp export support for tensor instance `flatten(...)` calls, including full flatten, `flatten(1, -1)`, and statically shaped partial flatten ranges.
+- Kept `flatten(1, -1)` lowered to ONNX `Flatten(axis: 1)` for common classifier heads and used ONNX `Reshape` for PyTorch flatten forms whose result is not rank 2.
+- Aligned the package version with the 0.3.2 Onnxify package family release.
+
 ## 0.3.0
 
 - Aligned the package version with the 0.3.0 Onnxify package family release.

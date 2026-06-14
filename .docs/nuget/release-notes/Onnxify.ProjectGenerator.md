@@ -1,3 +1,8 @@
+## 0.3.2
+
+- Aligned the package version with the 0.3.2 Onnxify package family release.
+- Picked up the core graph-loading fix for ONNX files whose `value_info` repeats graph input or output names.
+
 ## 0.3.0
 
 - Aligned the package version with the 0.3.0 Onnxify package family release.
