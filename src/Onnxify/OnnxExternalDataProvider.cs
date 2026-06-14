@@ -90,7 +90,17 @@ public sealed class OnnxExternalDataProvider : ExternalDataProvider
         }
 
         var buffer = new byte[length];
-        fs.ReadExactly(buffer);
+        var read = 0;
+        while (read < buffer.Length)
+        {
+            var count = fs.Read(buffer, read, buffer.Length - read);
+            if (count == 0)
+            {
+                throw new EndOfStreamException($"Could not read {buffer.Length} bytes from '{location}'.");
+            }
+
+            read += count;
+        }
 
         var data = DecodeRawData(buffer, type);
         return data;

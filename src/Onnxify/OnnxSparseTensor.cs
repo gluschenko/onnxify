@@ -41,7 +41,16 @@ public class OnnxSparseTensor<T> : OnnxSparseTensor
     public override Type DataType => _value.DataType;
 
     /// <inheritdoc />
+#if NETSTANDARD2_0
+    public override OnnxTensor Value => _value;
+
+    /// <summary>
+    /// Gets the sparse tensor values as the concrete generic tensor type.
+    /// </summary>
+    public OnnxTensor<T> TypedValue => _value;
+#else
     public override OnnxTensor<T> Value => _value;
+#endif
 
     private readonly SparseTensorProto _tensor;
     private readonly OnnxTensor<T> _value;

@@ -346,7 +346,7 @@ public static class BinaryHelper
         for (var i = 0; i < ushortSpan.Length; i++)
         {
             var value = (uint)ushortSpan[i] << 16;
-            result[i] = new BFloat16(BitConverter.Int32BitsToSingle((int)value));
+            result[i] = new BFloat16(FloatBitConverter.Int32BitsToSingle((int)value));
         }
 
         return result;
@@ -358,7 +358,7 @@ public static class BinaryHelper
 
         for (var i = 0; i < data.Length; i++)
         {
-            var bits = (uint)BitConverter.SingleToInt32Bits(data[i].ToSingle());
+            var bits = (uint)FloatBitConverter.SingleToInt32Bits(data[i].ToSingle());
             var bf = (ushort)(bits >> 16);
 
             buffer[i * 2] = (byte)(bf & 0xFF);
@@ -375,7 +375,11 @@ public static class BinaryHelper
 
         for (var i = 0; i < ushortSpan.Length; i++)
         {
+#if NETSTANDARD2_0
+            result[i] = new Half(ushortSpan[i]);
+#else
             result[i] = BitConverter.UInt16BitsToHalf(ushortSpan[i]);
+#endif
         }
 
         return result;
@@ -387,7 +391,11 @@ public static class BinaryHelper
 
         for (var i = 0; i < data.Length; i++)
         {
+#if NETSTANDARD2_0
+            var bits = data[i].Bits;
+#else
             var bits = BitConverter.HalfToUInt16Bits(data[i]);
+#endif
             buffer[i * 2] = (byte)(bits & 0xFF);
             buffer[i * 2 + 1] = (byte)(bits >> 8);
         }

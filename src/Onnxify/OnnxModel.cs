@@ -226,7 +226,7 @@ public class OnnxModel
         options ??= new OnnxModelBaseOptions();
         options.DataLocation ??= Path.GetDirectoryName(path);
 
-        await using var stream = new FileStream(
+        using var stream = new FileStream(
             path,
             FileMode.Open,
             FileAccess.Read,
@@ -256,7 +256,7 @@ public class OnnxModel
         options ??= new OnnxModelBaseOptions();
 
         using var memoryStream = new MemoryStream();
-        await stream.CopyToAsync(memoryStream, cancellationToken);
+        await stream.CopyToAsync(memoryStream, 81920, cancellationToken);
 
         var model = ModelProto.Parser.ParseFrom(memoryStream.ToArray());
         return new OnnxModel(model, options);
@@ -310,7 +310,7 @@ public class OnnxModel
             throw new IOException($"File already exists at '{path}'");
         }
 
-        await using var fileStream = new FileStream(
+        using var fileStream = new FileStream(
             path,
             FileMode.Create,
             FileAccess.Write,
@@ -335,7 +335,8 @@ public class OnnxModel
         ArgumentNullException.ThrowIfNull(stream);
 
         var newModel = ToProto();
-        await stream.WriteAsync(newModel.ToByteArray(), cancellationToken);
+        var bytes = newModel.ToByteArray();
+        await stream.WriteAsync(bytes, 0, bytes.Length, cancellationToken);
     }
 
     internal ModelProto ToProto()

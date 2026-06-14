@@ -1,3 +1,5 @@
+using Onnxify.Helpers;
+
 namespace Onnxify.Data.Numerics;
 
 /// <summary>
@@ -19,7 +21,7 @@ public readonly struct BFloat16
     /// <param name="value">Value to encode.</param>
     public BFloat16(float value)
     {
-        var bits = (uint)BitConverter.SingleToInt32Bits(value);
+        var bits = (uint)FloatBitConverter.SingleToInt32Bits(value);
         Value = (ushort)(bits >> 16);
     }
 
@@ -30,6 +32,6 @@ public readonly struct BFloat16
     public float ToSingle()
     {
         var bits = (uint)Value << 16;
-        return BitConverter.Int32BitsToSingle((int)bits);
+        return FloatBitConverter.Int32BitsToSingle((int)bits);
     }
 }

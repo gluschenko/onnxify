@@ -200,6 +200,10 @@ public class OnnxNode : IOnnxGraphNode
     internal static OnnxNode FromProto(NodeProto node, OnnxGraph graph)
     {
         var options = graph.GetOptions();
+        if (options.NodeTypeResolutionStrategy == NodeTypeResolutionStrategy.PreserveUntyped)
+        {
+            return FromProtoUntyped(node, graph);
+        }
 
         var needThrowException = false;
         var needResolveTypedNode = true;
