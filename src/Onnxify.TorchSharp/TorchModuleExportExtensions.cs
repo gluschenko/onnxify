@@ -62,6 +62,111 @@ public static class TorchModuleExportExtensions
         );
     }
 
+    public static OnnxModel ExportOnnxModel(
+        this TorchModule module,
+        IReadOnlyDictionary<string, OnnxTensorType> inputs,
+        IReadOnlyDictionary<string, OnnxTensorType> outputs,
+        OnnxModelCreationOptions options
+    )
+    {
+        return ExportOnnxModelCore(
+            module: module,
+            inputs: inputs,
+            outputs: outputs,
+            options: options
+        );
+    }
+
+    public static OnnxModel ExportOnnxModel<TOutput>(
+        this global::TorchSharp.torch.nn.Module<global::TorchSharp.torch.Tensor, TOutput> module,
+        IReadOnlyDictionary<string, OnnxTensorType> inputs,
+        IReadOnlyDictionary<string, OnnxTensorType> outputs,
+        OnnxModelCreationOptions options
+    )
+    {
+        return ExportOnnxModelCore(
+            module: module,
+            inputs: inputs,
+            outputs: outputs,
+            options: options
+        );
+    }
+
+    public static OnnxModel ExportOnnxModel<TOutput>(
+        this global::TorchSharp.torch.nn.Module<global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor, TOutput> module,
+        IReadOnlyDictionary<string, OnnxTensorType> inputs,
+        IReadOnlyDictionary<string, OnnxTensorType> outputs,
+        OnnxModelCreationOptions options
+    )
+    {
+        return ExportOnnxModelCore(
+            module: module,
+            inputs: inputs,
+            outputs: outputs,
+            options: options
+        );
+    }
+
+    public static OnnxModel ExportOnnxModel<TOutput>(
+        this global::TorchSharp.torch.nn.Module<global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor, TOutput> module,
+        IReadOnlyDictionary<string, OnnxTensorType> inputs,
+        IReadOnlyDictionary<string, OnnxTensorType> outputs,
+        OnnxModelCreationOptions options
+    )
+    {
+        return ExportOnnxModelCore(
+            module: module,
+            inputs: inputs,
+            outputs: outputs,
+            options: options
+        );
+    }
+
+    public static OnnxModel ExportOnnxModel<TOutput>(
+        this global::TorchSharp.torch.nn.Module<global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor, TOutput> module,
+        IReadOnlyDictionary<string, OnnxTensorType> inputs,
+        IReadOnlyDictionary<string, OnnxTensorType> outputs,
+        OnnxModelCreationOptions options
+    )
+    {
+        return ExportOnnxModelCore(
+            module: module,
+            inputs: inputs,
+            outputs: outputs,
+            options: options
+        );
+    }
+
+    public static OnnxModel ExportOnnxModel<TOutput>(
+        this global::TorchSharp.torch.nn.Module<global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor, TOutput> module,
+        IReadOnlyDictionary<string, OnnxTensorType> inputs,
+        IReadOnlyDictionary<string, OnnxTensorType> outputs,
+        OnnxModelCreationOptions options
+    )
+    {
+        return ExportOnnxModelCore(
+            module: module,
+            inputs: inputs,
+            outputs: outputs,
+            options: options
+        );
+    }
+
+    public static OnnxModel ExportOnnxModel<TOutput>(
+        this global::TorchSharp.torch.nn.Module<global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor, TOutput> module,
+        IReadOnlyDictionary<string, OnnxTensorType> inputs,
+        IReadOnlyDictionary<string, OnnxTensorType> outputs,
+        OnnxModelCreationOptions options
+    )
+    {
+        return ExportOnnxModelCore(
+            module: module,
+            inputs: inputs,
+            outputs: outputs,
+            options: options
+        );
+    }
+
     /// <summary>
     /// Exports a single-input TorchSharp module to an ONNX model by analyzing the module's
     /// decompiled <c>forward</c> method and synthesizing an equivalent inference graph.
@@ -112,54 +217,113 @@ public static class TorchModuleExportExtensions
         ArgumentNullException.ThrowIfNull(output);
         ArgumentNullException.ThrowIfNull(options);
 
+        return ExportOnnxModelCore(
+            module: module,
+            inputs: new Dictionary<string, OnnxTensorType>(StringComparer.Ordinal)
+            {
+                [inputName] = input,
+            },
+            outputs: new Dictionary<string, OnnxTensorType>(StringComparer.Ordinal)
+            {
+                [outputName] = output,
+            },
+            options: options
+        );
+    }
+
+    private static OnnxModel ExportOnnxModelCore(
+        global::TorchSharp.torch.nn.Module module,
+        IReadOnlyDictionary<string, OnnxTensorType> inputs,
+        IReadOnlyDictionary<string, OnnxTensorType> outputs,
+        OnnxModelCreationOptions options
+    )
+    {
+        ArgumentNullException.ThrowIfNull(module);
+        ArgumentNullException.ThrowIfNull(inputs);
+        ArgumentNullException.ThrowIfNull(outputs);
+        ArgumentNullException.ThrowIfNull(options);
+
+        if (inputs.Count == 0)
+        {
+            throw new ArgumentException("At least one input must be provided.", nameof(inputs));
+        }
+
+        if (outputs.Count == 0)
+        {
+            throw new ArgumentException("At least one output must be provided.", nameof(outputs));
+        }
+
         var onnxModel = OnnxModel.Create(options);
         var graph = onnxModel.Graph;
 
-        var graphInputName = graph.NextName(inputName);
-        var graphOutputName = graph.NextName(outputName);
+        var inputEdges = inputs
+            .Select(input =>
+            {
+                ArgumentException.ThrowIfNullOrWhiteSpace(input.Key);
+                ArgumentNullException.ThrowIfNull(input.Value);
+                return graph.AddInput(graph.NextName(input.Key), input.Value);
+            })
+            .ToArray();
 
-        var inputEdge = graph.AddInput(graphInputName, input);
-        graph.AddOutput(graphOutputName, output);
+        var outputEdges = outputs
+            .Select(output =>
+            {
+                ArgumentException.ThrowIfNullOrWhiteSpace(output.Key);
+                ArgumentNullException.ThrowIfNull(output.Value);
+                var outputName = graph.NextName(output.Key);
+                graph.AddOutput(outputName, output.Value);
+                return graph.AddEdge(outputName);
+            })
+            .ToArray();
 
         var forward = DecompileForward(module);
 
         // Interpret the decompiled forward body as a small data-flow program.
         // Only tensor-producing inference patterns are lowered; unsupported C# fails loudly.
-        var result = ExportForwardBody(module, graph, inputEdge, forward);
-        var outputEdge = graph.AddEdge(graphOutputName);
+        var results = ExportForwardBody(module, graph, inputEdges, forward);
+        if (results.Length != outputEdges.Length)
+        {
+            throw new InvalidOperationException(
+                $"Method '{forward.Name}' produced {results.Length} output tensor(s), but {outputEdges.Length} output metadata entries were provided."
+            );
+        }
 
-        graph.Identity(
-            name: graph.NextName("output_identity"),
-            options: new IdentityInputOutputOptions
-            {
-                Input = result,
-                Output = outputEdge,
-            }
-        );
+        for (var index = 0; index < outputEdges.Length; index++)
+        {
+            graph.Identity(
+                name: graph.NextName("output_identity"),
+                options: new IdentityInputOutputOptions
+                {
+                    Input = results[index],
+                    Output = outputEdges[index],
+                }
+            );
+        }
 
         return onnxModel;
     }
 
-    private static IOnnxGraphEdge ExportForwardBody(
-        TorchModule module,
+    private static IOnnxGraphEdge[] ExportForwardBody(
+        global::TorchSharp.torch.nn.Module module,
         OnnxGraph graph,
-        IOnnxGraphEdge input,
+        IReadOnlyList<IOnnxGraphEdge> inputs,
         MethodDeclaration forward
     )
     {
         var context = new ForwardExportContext(module, graph);
 
-        // The public overload currently supports single-input Module<Tensor, Tensor>.
-        // Every decompiled forward parameter is therefore treated as an alias of the same graph input.
-        // Examples:
-        //   forward(Tensor input)
-        //   forward(Tensor tokens)
-        context.Values["input"] = new ExportValue(input);
-        TrackRank(context, input);
-
-        foreach (var parameter in forward.Parameters)
+        if (forward.Parameters.Count != inputs.Count)
         {
-            context.Values.TryAdd(parameter.Name, new ExportValue(input));
+            throw new InvalidOperationException(
+                $"Method '{forward.Name}' expects {forward.Parameters.Count} input tensor(s), but {inputs.Count} input metadata entries were provided."
+            );
+        }
+
+        for (var index = 0; index < inputs.Count; index++)
+        {
+            var input = inputs[index];
+            context.Values[forward.Parameters.ElementAt(index).Name] = new ExportValue(input);
+            TrackRank(context, input);
         }
 
         ExportValue? result = null;
@@ -172,10 +336,33 @@ public static class TorchModuleExportExtensions
             }
         }
 
-        return (context.ReturnValue ?? result)?.GetRequiredEdge(forward)
+        return GetOutputEdges(context.ReturnValue ?? result, forward)
             ?? throw new NotSupportedException(
                 $"Method '{forward.Name}' did not return a supported ONNX graph edge."
             );
+    }
+
+    private static IOnnxGraphEdge[] GetOutputEdges(
+        ExportValue? value,
+        AstNode source
+    )
+    {
+        return value?.Value switch
+        {
+            IOnnxGraphEdge edge => [edge],
+            ITuple tuple => Enumerable.Range(0, tuple.Length)
+                .Select(index => new ExportValue(tuple[index]).GetRequiredEdge(source))
+                .ToArray(),
+            object?[] array => array
+                .Select(item => new ExportValue(item).GetRequiredEdge(source))
+                .ToArray(),
+            null => throw new NotSupportedException(
+                $"Method '{source}' did not return a supported ONNX graph edge."
+            ),
+            _ => throw new NotSupportedException(
+                $"Expression '{source}' did not produce ONNX graph output edges."
+            ),
+        };
     }
 
     private static ExportValue? ExportStatement(
@@ -2213,7 +2400,7 @@ public static class TorchModuleExportExtensions
     }
 
     private static object ResolveTorchModule(
-        TorchModule root,
+        global::TorchSharp.torch.nn.Module root,
         Expression expression
     )
     {
@@ -2332,12 +2519,12 @@ public static class TorchModuleExportExtensions
         // Concrete TorchSharp module types (Linear, LayerNorm, LSTM, ...) should use explicit
         // exporters. This fallback is only for user modules whose forward can be lowered, e.g.
         // a custom transformer block composed from supported modules and tensor ops.
-        return module is TorchModule torchModule
-            ? ExportForwardBody(torchModule, graph, input, DecompileForward(torchModule))
+        return module is global::TorchSharp.torch.nn.Module torchModule
+            ? ExportForwardBody(torchModule, graph, [input], DecompileForward(torchModule)).Single()
             : null;
     }
 
-    private static MethodDeclaration DecompileForward(TorchModule module)
+    private static MethodDeclaration DecompileForward(global::TorchSharp.torch.nn.Module module)
     {
         var method = module.GetType().GetMethod("forward")
             ?? throw new InvalidOperationException(
@@ -2348,7 +2535,7 @@ public static class TorchModuleExportExtensions
     }
 
     private static MethodDeclaration DecompileMethod(
-        TorchModule module,
+        global::TorchSharp.torch.nn.Module module,
         MethodInfo method
     )
     {
@@ -3737,11 +3924,11 @@ public static class TorchModuleExportExtensions
     //   batchSize -> ShapeDimensionReference
     //   scale -> 0.3535f
     private sealed class ForwardExportContext(
-        TorchModule rootModule,
+        global::TorchSharp.torch.nn.Module rootModule,
         OnnxGraph graph
     )
     {
-        public TorchModule RootModule { get; } = rootModule;
+        public global::TorchSharp.torch.nn.Module RootModule { get; } = rootModule;
 
         public OnnxGraph Graph { get; } = graph;
 

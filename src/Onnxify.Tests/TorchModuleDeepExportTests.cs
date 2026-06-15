@@ -75,6 +75,52 @@ public sealed class TorchModuleDeepExportTests
     }
 
     [Fact]
+    public void DeepExport_ForMultiInputTupleOutputForward_UsesDeclaredInputAndOutputMetadata()
+    {
+        using var module = new DeepExportMultiInputTupleOutputModule();
+        module.eval();
+
+        var model = module.ExportOnnxModel(
+            inputs: new Dictionary<string, OnnxTensorType>(StringComparer.Ordinal)
+            {
+                ["tokens"] = OnnxTensorType.Create<float>(["batch_size", 1001]),
+                ["features"] = OnnxTensorType.Create<float>(["batch_size", 1001]),
+            },
+            outputs: new Dictionary<string, OnnxTensorType>(StringComparer.Ordinal)
+            {
+                ["logits"] = OnnxTensorType.Create<float>(["batch_size", 1001]),
+                ["boxes"] = OnnxTensorType.Create<float>(["batch_size", 1001]),
+            },
+            options: new OnnxModelCreationOptions
+            {
+                Opset = 22,
+            }
+        );
+
+        Assert.Collection(
+            model.Graph.Inputs,
+            input => Assert.Equal("tokens", input.Name),
+            input => Assert.Equal("features", input.Name)
+        );
+        Assert.Collection(
+            model.Graph.Outputs,
+            output =>
+            {
+                Assert.Equal("logits", output.Name);
+                Assert.Same(typeof(float), Assert.IsType<OnnxTensorType>(output.Type).Type);
+            },
+            output =>
+            {
+                Assert.Equal("boxes", output.Name);
+                Assert.Same(typeof(float), Assert.IsType<OnnxTensorType>(output.Type).Type);
+            }
+        );
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Add");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Mul");
+        Assert.Equal(2, model.Graph.Nodes.Count(node => node.OpType == "Identity"));
+    }
+
+    [Fact]
     public void DeepExport_ForLocalHelperProjection_InlinesHelperAndMaterializesTransposedWeight()
     {
         using var module = new DeepExportHelperProjectionModule();
@@ -562,6 +608,20 @@ public sealed class TorchModuleDeepExportTests
             ).unsqueeze(0);
 
             return _embedding.forward(ids);
+        }
+    }
+
+    private sealed class DeepExportMultiInputTupleOutputModule : global::TorchSharp.torch.nn.Module<Tensor, Tensor, (Tensor, Tensor)>
+    {
+        public DeepExportMultiInputTupleOutputModule()
+            : base(nameof(DeepExportMultiInputTupleOutputModule))
+        { }
+
+        public override (Tensor, Tensor) forward(Tensor tokens, Tensor features)
+        {
+            var logits = tokens + features;
+            var boxes = tokens * features;
+            return (logits, boxes);
         }
     }
 
