@@ -1,5 +1,6 @@
 ## 0.3.3
 
+- Aligned the package version with the 0.3.3 Onnxify package family release.
 
 ## 0.3.2
 
