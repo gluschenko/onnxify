@@ -8,11 +8,7 @@ Machine learning workflows are often difficult not because models are impossible
 
 The idea behind this repository is simple: models should be easier to work with, easier to reason about, and easier to integrate into real development workflows. If ONNX is meant to be a common language for models, then the tools around it should help people move faster, make smaller changes safely, and build their own workflows without unnecessary friction. That is the direction Onnxify is trying to push.
 
-The core `Onnxify` package can load and save models from files or streams with both synchronous and asynchronous APIs: `OnnxModel.FromFile(...)`, `FromFileAsync(...)`, `FromStream(...)`, `FromStreamAsync(...)`, `model.Save(...)`, and `model.SaveAsync(...)`.
-
 New models created with `OnnxModel.Create()` default to standard ONNX opset 25 and IR version 11. The opset default tracks the current bundled standard-domain operator schemas, while IR 11 remains compatible with the ONNX Runtime version used by the repository tests. Override `OnnxModelCreationOptions.Opset` and `IrVersion` when targeting an older runtime or a specific deployment profile.
-
-`OnnxGraph` exposes direct editing helpers for graph structure: existing `OnnxValue` instances can be marked or unmarked as model inputs and outputs with `AddInput(OnnxValue)`, `AddOutput(OnnxValue)`, `RemoveInput(...)`, and `RemoveOutput(...)`; graph members can be added, removed, and replaced with `AddValue(...)`, `RemoveValue(...)`, `ReplaceValue(...)`, `AddNode(...)`, `RemoveNode(...)`, `ReplaceNode(...)`, `RemoveTensor(...)`, and `RemoveEdge(...)`. Removal helpers also clear related node wiring and prune unused loose edges so edited graphs do not keep dangling graph pieces.
 
 [![GitHub CI](https://github.com/gluschenko/onnxify/actions/workflows/github-ci.yml/badge.svg)](https://github.com/gluschenko/onnxify/actions/workflows/github-ci.yml)
 

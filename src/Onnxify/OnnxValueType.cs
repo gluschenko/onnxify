@@ -551,12 +551,14 @@ public abstract class OnnxDimension
     public abstract object GetValue();
 
     internal abstract TensorShapeProto.Types.Dimension ToProto();
+
     internal static OnnxDimension FromProto(TensorShapeProto.Types.Dimension x)
     {
         return x.ValueCase switch
         {
             TensorShapeProto.Types.Dimension.ValueOneofCase.DimValue => new OnnxDimension<long>(x.DimValue),
             TensorShapeProto.Types.Dimension.ValueOneofCase.DimParam => new OnnxDimension<string>(x.DimParam),
+            TensorShapeProto.Types.Dimension.ValueOneofCase.None => new OnnxDimensionNone(),
             _ => throw new NotImplementedException($"Not implemented for '{x.ValueCase}'"),
         };
     }
@@ -587,7 +589,7 @@ public abstract class OnnxDimension
 /// Represents a fixed or symbolic ONNX tensor dimension.
 /// </summary>
 /// <typeparam name="T">Use <see cref="long"/> for fixed sizes or <see cref="string"/> for symbolic dimensions.</typeparam>
-public class OnnxDimension<T> : OnnxDimension where T : notnull
+public sealed class OnnxDimension<T> : OnnxDimension where T : notnull
 {
     /// <summary>
     /// Gets the fixed size or symbolic dimension name.
@@ -633,6 +635,31 @@ public class OnnxDimension<T> : OnnxDimension where T : notnull
         }
 
         return proto;
+    }
+
+    public override string ToString()
+    {
+        return GetValue().ToString() ?? string.Empty;
+    }
+}
+
+public sealed class OnnxDimensionNone : OnnxDimension
+{
+    /// <inheritdoc />
+    public override object GetValue()
+    {
+        return null!;
+    }
+
+    internal override TensorShapeProto.Types.Dimension ToProto()
+    {
+        var proto = new TensorShapeProto.Types.Dimension();
+        return proto;
+    }
+
+    public override string ToString()
+    {
+        return "[none]";
     }
 }
 

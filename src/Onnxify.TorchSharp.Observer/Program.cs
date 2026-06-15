@@ -409,16 +409,16 @@ internal static partial class Program
         var builder = new StringBuilder();
         builder.AppendLine("# TorchSharp operator coverage");
         builder.AppendLine();
-        builder.AppendLine($"Found: {FormatPercentage(foundCount, total)} ({foundCount}/{total})");
-        builder.AppendLine($"Onnxify.TorchSharp coverage: {FormatPercentage(torchSharpCoveredCount, total)} ({torchSharpCoveredCount}/{total})");
-        builder.AppendLine($"Onnxify.ModelGenerator coverage: {FormatPercentage(modelGeneratorCoveredCount, total)} ({modelGeneratorCoveredCount}/{total})");
+        builder.AppendLine($"* Found: {FormatPercentage(foundCount, total)} ({foundCount}/{total})");
+        builder.AppendLine($"* Onnxify.TorchSharp coverage: {FormatPercentage(torchSharpCoveredCount, total)} ({torchSharpCoveredCount}/{total})");
+        builder.AppendLine($"* Onnxify.ModelGenerator coverage: {FormatPercentage(modelGeneratorCoveredCount, total)} ({modelGeneratorCoveredCount}/{total})");
         builder.AppendLine();
         builder.AppendLine("## Coverage Columns");
         builder.AppendLine();
-        builder.AppendLine("- `Found` means the observer found a likely matching public TorchSharp API or module for the ONNXScript Torch operator name. This is a discovery signal, not an Onnxify implementation guarantee.");
-        builder.AppendLine("- `Onnxify.TorchSharp coverage` means `Onnxify.TorchSharp` declares exporter support for that Torch operator through `[TorchOp(...)]`, so TorchSharp code can be exported to ONNX through that converter path.");
-        builder.AppendLine("- `Onnxify.ModelGenerator coverage` means `Onnxify.ModelGenerator` declares reverse TorchModule reconstruction support through `[TorchSharpOp(...)]` for the matched TorchSharp API/module name or operator name, so an ONNX graph pattern can be regenerated as a TorchSharp module for that family.");
-        builder.AppendLine("- `✅` means the category is covered/found. `❌` means it is not covered/found.");
+        builder.AppendLine("* `Found` means the observer found a likely matching public TorchSharp API or module for the ONNXScript Torch operator name. This is a discovery signal, not an Onnxify implementation guarantee.");
+        builder.AppendLine("* `Onnxify.TorchSharp coverage` means `Onnxify.TorchSharp` declares exporter support for that Torch operator through `[TorchOp(...)]`, so TorchSharp code can be exported to ONNX through that converter path.");
+        builder.AppendLine("* `Onnxify.ModelGenerator coverage` means `Onnxify.ModelGenerator` declares reverse TorchModule reconstruction support through `[TorchSharpOp(...)]` for the matched TorchSharp API/module name or operator name, so an ONNX graph pattern can be regenerated as a TorchSharp module for that family.");
+        builder.AppendLine("* `✅` means the category is covered/found. `❌` means it is not covered/found.");
         builder.AppendLine();
         builder.AppendLine("| ONNXScript operator | TorchSharp module | Found | Onnxify.TorchSharp coverage | Onnxify.ModelGenerator coverage |");
         builder.AppendLine("| --- | --- | --- | --- | --- |");
@@ -427,9 +427,9 @@ internal static partial class Program
         {
             builder
                 .Append("| ")
-                .Append(EscapeMarkdown(row.Operator))
+                .Append($"`{EscapeMarkdown(row.Operator)}`")
                 .Append(" | ")
-                .Append(EscapeMarkdown(row.TorchSharpModule))
+                .Append(!string.IsNullOrWhiteSpace(row.TorchSharpModule) ? $"`{EscapeMarkdown(row.TorchSharpModule)}`" : string.Empty)
                 .Append(" | ")
                 .Append(FormatMarker(row.Found))
                 .Append(" | ")
