@@ -47,7 +47,7 @@ Use this reference when you need concrete entry points for repository work in th
   - attaches Torch operator names to export methods
   - useful when extending or auditing coverage
 
-- `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md`
+- `TORCH_OPERATOR_COVERAGE.md`
   - operator coverage snapshot for TorchSharp-related surfaces
   - useful when checking whether a module or operator pattern is already represented
 

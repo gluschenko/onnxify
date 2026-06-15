@@ -24,7 +24,7 @@ internal static partial class Program
     private static readonly Regex _torchOpRegex = TorchOpAttributeRegex();
     private static readonly Regex _stringLiteralRegex = StringLiteralPattern();
 
-    private static int Main(string[] args)
+    private static int Main()
     {
         CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
         CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
@@ -47,9 +47,7 @@ internal static partial class Program
             "ops"
         );
 
-        var outputPath = args.Length > 0
-            ? Path.GetFullPath(args[0])
-            : Path.Combine(repoRoot, "src", "Onnxify.TorchSharp.Observer", "torchsharp-operator-report.md");
+        var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "..", "TORCH_OPERATOR_COVERAGE.md");
 
         var operators = LoadOperators(opsDirectory);
         var candidates = LoadTorchSharpCandidates();

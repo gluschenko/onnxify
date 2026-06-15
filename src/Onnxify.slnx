@@ -4,6 +4,7 @@
   </Folder>
   <Folder Name="/.docs/">
     <File Path="../README.md" />
+    <File Path="../TORCH_OPERATOR_COVERAGE.md" />
   </Folder>
   <Folder Name="/.docs/nuget/">
     <File Path="../.docs/nuget/Onnxify.CLI.md" />

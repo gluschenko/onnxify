@@ -6,10 +6,10 @@
 
 ## Coverage Columns
 
-- `Found` means the observer found a likely matching public TorchSharp API or module for the ONNXScript Torch operator name. This is a discovery signal, not an Onnxify implementation guarantee.
-- `Onnxify.TorchSharp coverage` means `Onnxify.TorchSharp` declares exporter support for that Torch operator through `[TorchOp(...)]`, so TorchSharp code can be exported to ONNX through that converter path.
-- `Onnxify.ModelGenerator coverage` means `Onnxify.ModelGenerator` declares reverse TorchModule reconstruction support through `[TorchSharpOp(...)]` for the matched TorchSharp API/module name or operator name, so an ONNX graph pattern can be regenerated as a TorchSharp module for that family.
-- `✅` means the category is covered/found. `❌` means it is not covered/found.
+* `Found` means the observer found a likely matching public TorchSharp API or module for the ONNXScript Torch operator name. This is a discovery signal, not an Onnxify implementation guarantee.
+* `Onnxify.TorchSharp coverage` means `Onnxify.TorchSharp` declares exporter support for that Torch operator through `[TorchOp(...)]`, so TorchSharp code can be exported to ONNX through that converter path.
+* `Onnxify.ModelGenerator coverage` means `Onnxify.ModelGenerator` declares reverse TorchModule reconstruction support through `[TorchSharpOp(...)]` for the matched TorchSharp API/module name or operator name, so an ONNX graph pattern can be regenerated as a TorchSharp module for that family.
+* `✅` means the category is covered/found. `❌` means it is not covered/found.
 
 | ONNXScript operator | TorchSharp module | Found | Onnxify.TorchSharp coverage | Onnxify.ModelGenerator coverage |
 | --- | --- | --- | --- | --- |

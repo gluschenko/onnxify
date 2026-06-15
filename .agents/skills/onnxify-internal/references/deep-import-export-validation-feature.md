@@ -22,7 +22,7 @@ When the operator participates in both paths, validation should include or recom
 
 Open:
 
-- `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md`
+- `TORCH_OPERATOR_COVERAGE.md`
 
 Use it to confirm the exact Torch op spelling and the discovered TorchSharp surface.
 
@@ -299,7 +299,7 @@ If you find a mismatch, write down:
 For a single operator, a practical terminal workflow is:
 
 ```powershell
-rg -n "aten::addmm" src\Onnxify.TorchSharp.Observer\torchsharp-operator-report.md
+rg -n "aten::addmm" TORCH_OPERATOR_COVERAGE.md
 rg -n "aten::addmm" .agents\skills\onnxify\references\torchsharp-converters\index.md
 rg -n "ExportAddMM|\[TorchOp\(\" src\Onnxify.TorchSharp
 rg -n "TorchSharpOp|AddMM|Gemm|Conv" src\Onnxify.ModelGenerator\Services\TorchModuleInlineOperators src\Onnxify.ModelGenerator\Services\TorchModuleOperators

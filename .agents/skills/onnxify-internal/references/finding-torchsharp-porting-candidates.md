@@ -10,7 +10,7 @@ Start from the observer coverage report, confirm what `Onnxify.TorchSharp` alrea
 
 Open:
 
-- `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md`
+- `TORCH_OPERATOR_COVERAGE.md`
 
 Treat the columns as follows:
 
