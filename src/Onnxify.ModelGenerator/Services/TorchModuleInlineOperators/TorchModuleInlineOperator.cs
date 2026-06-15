@@ -24,6 +24,11 @@ internal abstract class TorchModuleInlineOperator
             throw new InvalidOperationException($"Node '{node.Name}' does not have input {index}.");
         }
 
+        if (string.IsNullOrWhiteSpace(node.Inputs[index]))
+        {
+            return "null";
+        }
+
         return values[node.Inputs[index]];
     }
 

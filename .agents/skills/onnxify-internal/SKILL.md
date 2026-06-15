@@ -36,7 +36,7 @@ When handling an internal Onnxify maintenance task:
 When the task is specifically about TorchSharp operator porting:
 
 1. Start with `references/finding-torchsharp-porting-candidates.md` to choose candidates.
-2. Build a shortlist from `Found = yes` and `Coverage = no` rows in `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md`.
+2. Build a shortlist from `Found = yes` and `Coverage = no` rows in `TORCH_OPERATOR_COVERAGE.md`.
 3. Prefer candidates that remove manual ONNX graph work in `src/Onnxify.Examples` or unblock existing model families in the repo.
 4. Then use `references/deep-export-feature.md` to mirror the chosen ONNXScript converters into `Onnxify.TorchSharp`.
 5. Add focused smoke tests in `src/Onnxify.Tests` before moving to the next batch.
@@ -47,7 +47,7 @@ When the task is specifically about `Onnxify.ModelGenerator` ONNX-to-TorchModule
 2. Use `third_party/onnxscript` as semantic context by reading the TorchSharp-to-ONNX lowering in reverse.
 3. Implement support through a focused `TorchModuleInlineOperator` or `TorchModuleOperator` subclass instead of adding a central switch-case or a duplicated hard-coded support list.
 4. Add focused source-generator smoke tests in `src/Onnxify.Tests/OnnxModelGeneratorTests.cs`.
-5. Refresh `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md` and generated skill references when `[TorchSharpOp(...)]` coverage changes.
+5. Refresh `TORCH_OPERATOR_COVERAGE.md` and generated skill references when `[TorchSharpOp(...)]` coverage changes.
 
 When the task is specifically about validating an existing TorchSharp exporter against ONNXScript:
 
@@ -55,7 +55,7 @@ This workflow is opt-in.
 Do not start it just because the task mentions Torch ops, coverage, porting, or ONNXScript.
 Use it only when the user explicitly asks to validate, compare, audit, or check parity of already existing `Onnxify.TorchSharp` operators.
 
-1. Start with `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md` to get the exact Torch op spelling.
+1. Start with `TORCH_OPERATOR_COVERAGE.md` to get the exact Torch op spelling.
 2. Confirm support in `.agents/skills/onnxify/references/torchsharp-converters/index.md`.
 3. Open the linked generated converter page to get the exact C# signature and source file.
 4. Trace the real exporter implementation in `src/Onnxify.TorchSharp`, including semantic helper methods it calls.
@@ -155,10 +155,10 @@ private const long InlineTensorElementThreshold = 20L;
 - Update the public repo description or install instructions: start with `README.md`.
 - Add or refine Codex guidance for library users: start with `.agents/skills/onnxify`.
 - Add or refine Codex guidance for repo maintainers: start with `.agents/skills/onnxify-internal`.
-- Find the next best TorchSharp operator to port: start with `references/finding-torchsharp-porting-candidates.md`, then inspect `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md`.
+- Find the next best TorchSharp operator to port: start with `references/finding-torchsharp-porting-candidates.md`, then inspect `TORCH_OPERATOR_COVERAGE.md`.
 - Port an ONNXScript Torch conversion into `Onnxify.TorchSharp`: if the user did not name the operator explicitly, first use `references/finding-torchsharp-porting-candidates.md`; then use `references/deep-export-feature.md`.
 - Add ONNX-to-TorchSharp TorchModule support in `Onnxify.ModelGenerator`: start with `references/deep-import-feature.md`, then choose `Services/TorchModuleInlineOperators` or `Services/TorchModuleOperators` based on whether the generated code should be an inline expression or private module field.
-- Validate an existing `deep export` or `deep import` operator against ONNXScript: only do this when the user explicitly asks for validation/parity checking of already supported operators; then start with `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md` and use `references/deep-import-export-validation-feature.md`.
+- Validate an existing `deep export` or `deep import` operator against ONNXScript: only do this when the user explicitly asks for validation/parity checking of already supported operators; then start with `TORCH_OPERATOR_COVERAGE.md` and use `references/deep-import-export-validation-feature.md`.
 - Need the already written parity-validation batch reports for covered tensor operators: open `references/torchsharp-operator-verification-log.md`.
 - For requests like "port 10/25/50 more operators", treat candidate selection as a required first phase, not an optional nicety.
 - Port `third_party/safetensors` into `Onnxify.Safetensors`: start with `third_party/safetensors/safetensors/src`, then use `references/porting-safetensors.md`.

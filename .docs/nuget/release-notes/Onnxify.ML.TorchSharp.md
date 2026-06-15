@@ -1,3 +1,7 @@
+## 0.3.3
+
+- Picked up the TorchSharp package-family deep export improvements for multi-input, tuple-output, generated TorchModule, and yolo26s roundtrip scenarios.
+
 ## 0.3.2
 
 - Aligned the package version with the 0.3.2 Onnxify package family release.

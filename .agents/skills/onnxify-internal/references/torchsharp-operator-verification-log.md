@@ -12,7 +12,7 @@ When verifying the next batch of already supported operators:
 
 - keep appending the newly validated Torch op spellings to the combined operator table on this page instead of creating a separate wave-only report;
 - add one more wave entry to the change log below with the date-independent summary of fixes, scope, and focused test result;
-- preserve the exact Torch op spellings from `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md`;
+- preserve the exact Torch op spellings from `TORCH_OPERATOR_COVERAGE.md`;
 - keep the status vocabulary consistent with the legend on this page;
 - update the notes column when a later wave narrows, fixes, or further constrains a previously logged operator.
 
@@ -22,7 +22,7 @@ This page is intentionally both the instruction anchor and the historical log.
 
 Validation in the currently recorded waves was performed against:
 
-- `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md`
+- `TORCH_OPERATOR_COVERAGE.md`
 - `.agents/skills/onnxify/references/torchsharp-converters/index.md`
 - `third_party/onnxscript/onnxscript/function_libs/torch_lib/ops/core.py`
 - `third_party/onnxscript/onnxscript/function_libs/torch_lib/ops/prims.py`

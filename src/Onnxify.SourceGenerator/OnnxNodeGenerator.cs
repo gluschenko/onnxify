@@ -204,20 +204,9 @@ public class OnnxNodeGenerator : IIncrementalGenerator
                     }
                     else
                     {
-                        nodeFields.AppendLine($$"""
-                        public {{MapType(x.Types)}}? {{InputName(x.Name, reservedFieldNames)}}
-                        {
-                            get => Inputs.Count > {{i}} ? ({{MapType(x.Types)}})Inputs[{{i}}] : null;
-                            set => SetOptionalInput({{i}}, value);
-                        }
-                        """);
-
-                        createInputLines.Add($$"""
-                        if (options.{{InputName(x.Name, reservedFieldNames)}} is not null)
-                        {
-                            inputs.Add(options.{{InputName(x.Name, reservedFieldNames)}});
-                        }
-                        """);
+                        var inputName = InputName(x.Name, reservedFieldNames);
+                        nodeFields.AppendLine(BuildOptionalParameterProperty(x, inputName, i, "Inputs", "SetOptionalInput"));
+                        createInputLines.Add(BuildOptionalParameterCreateLines("inputs", inputName));
                     }
                 }
 
@@ -270,20 +259,9 @@ public class OnnxNodeGenerator : IIncrementalGenerator
                     }
                     else
                     {
-                        nodeFields.AppendLine($$"""
-                        public {{MapType(x.Types)}}? {{OutputName(x.Name, reservedFieldNames)}}
-                        {
-                            get => Outputs.Count > {{i}} && Outputs[{{i}}] is {{MapType(x.Types)}} x ? x : null;
-                            set => SetOptionalOutput({{i}}, value);
-                        }
-                        """);
-
-                        createOutputLines.Add($$"""
-                        if (options.{{OutputName(x.Name, reservedFieldNames)}} is not null)
-                        {
-                            outputs.Add(options.{{OutputName(x.Name, reservedFieldNames)}});
-                        }
-                        """);
+                        var outputName = OutputName(x.Name, reservedFieldNames);
+                        nodeFields.AppendLine(BuildOptionalParameterProperty(x, outputName, i, "Outputs", "SetOptionalOutput"));
+                        createOutputLines.Add(BuildOptionalParameterCreateLines("outputs", outputName));
                     }
                 }
 
@@ -360,7 +338,7 @@ public class OnnxNodeGenerator : IIncrementalGenerator
                     }
                     else
                     {
-                        return $"{InputName(x.Name, reservedFieldNames)} = inputs.Count > {i} ? inputs[{i}] : null";
+                        return BuildOptionalParameterProtoOption(InputName(x.Name, reservedFieldNames), "inputs", i);
                     }
                 }));
 
@@ -391,7 +369,7 @@ public class OnnxNodeGenerator : IIncrementalGenerator
                     }
                     else
                     {
-                        return $"{OutputName(x.Name, reservedFieldNames)} = outputs.Count > {i} ? outputs[{i}] : null";
+                        return BuildOptionalParameterProtoOption(OutputName(x.Name, reservedFieldNames), "outputs", i);
                     }
                 }));
 
@@ -744,6 +722,51 @@ public class OnnxNodeGenerator : IIncrementalGenerator
         }
 
         return sb.ToString().Trim();
+    }
+
+    private static string BuildOptionalParameterProperty(
+        OperatorParameter parameter,
+        string propertyName,
+        int index,
+        string collectionName,
+        string setMethodName
+    )
+    {
+        var type = MapType(parameter.Types);
+
+        return $$"""
+        public {{type}}? {{propertyName}}
+        {
+            get => {{collectionName}}.Count > {{index}} && !string.IsNullOrEmpty({{collectionName}}[{{index}}].Name) && {{collectionName}}[{{index}}] is {{type}} x ? x : null;
+            set => {{setMethodName}}({{index}}, value);
+        }
+        """;
+    }
+
+    private static string BuildOptionalParameterCreateLines(
+        string collectionName,
+        string propertyName
+    )
+    {
+        return $$"""
+        if (options.{{propertyName}} is not null)
+        {
+            {{collectionName}}.Add(options.{{propertyName}});
+        }
+        else
+        {
+            {{collectionName}}.Add(new OnnxEdge(string.Empty));
+        }
+        """;
+    }
+
+    private static string BuildOptionalParameterProtoOption(
+        string propertyName,
+        string collectionName,
+        int index
+    )
+    {
+        return $"{propertyName} = {collectionName}.Count > {index} && !string.IsNullOrEmpty({collectionName}[{index}]?.Name) ? {collectionName}[{index}] : null";
     }
 
     private static string? GetLiteral(AttributeType type, object? value)

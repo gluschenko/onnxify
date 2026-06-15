@@ -4,7 +4,6 @@ using Onnxify.TorchSharp;
 using TorchSharp;
 using Xunit;
 using static TorchSharp.torch;
-using TorchModule = TorchSharp.torch.nn.Module<TorchSharp.torch.Tensor, TorchSharp.torch.Tensor>;
 
 namespace Onnxify.Tests;
 
@@ -15,6 +14,29 @@ public sealed class TorchModuleSafetensorsExtensionsTests
     {
         using var source = torch.nn.Linear(2, 3);
         using var target = torch.nn.Linear(2, 3);
+
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.safetensors");
+        try
+        {
+            await source.SaveStateAsSafetensorsAsync(path);
+            await target.LoadStateFromSafetensorsAsync(path);
+
+            AssertStateEqual(source, target);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task SaveAndLoadStateAsSafetensorsAsync_RoundTripsTupleOutputModuleState()
+    {
+        using var source = new TupleOutputSafetensorsModule(torch.tensor(new float[] { 1.25f, -2.5f }));
+        using var target = new TupleOutputSafetensorsModule(torch.zeros(new long[] { 2L }, dtype: ScalarType.Float32));
 
         var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.safetensors");
         try
@@ -100,7 +122,10 @@ public sealed class TorchModuleSafetensorsExtensionsTests
         };
     }
 
-    private static void AssertStateEqual(TorchModule expected, TorchModule actual)
+    private static void AssertStateEqual(
+        global::TorchSharp.torch.nn.Module expected,
+        global::TorchSharp.torch.nn.Module actual
+    )
     {
         var expectedState = expected.state_dict()
             .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
@@ -120,6 +145,24 @@ public sealed class TorchModuleSafetensorsExtensionsTests
             Assert.Equal(expectedView.DataType, actualView.DataType);
             Assert.Equal(expectedView.Shape, actualView.Shape);
             Assert.Equal(expectedView.Data.ToArray(), actualView.Data.ToArray());
+        }
+    }
+
+    private sealed class TupleOutputSafetensorsModule : torch.nn.Module<Tensor, (Tensor, Tensor)>
+    {
+        private readonly Tensor _scale;
+
+        public TupleOutputSafetensorsModule(Tensor scale)
+            : base(nameof(TupleOutputSafetensorsModule))
+        {
+            var scaleParameter = new global::TorchSharp.Modules.Parameter(scale);
+            register_parameter("scale", scaleParameter);
+            _scale = scaleParameter;
+        }
+
+        public override (Tensor, Tensor) forward(Tensor input)
+        {
+            return (input * _scale, input + _scale);
         }
     }
 }

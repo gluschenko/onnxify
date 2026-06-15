@@ -115,6 +115,30 @@ public sealed class DeepImportExportParityTests
         Assert.Equal([1, 2, 4, 4], result.OutputShape);
     }
 
+    [Fact]
+    public void RoundTrip_ForYolo26sAsset_ExportsGeneratedTorchModule()
+    {
+        var modelPath = Path.Combine(AppContext.BaseDirectory, "Assets", "yolo26s.onnx");
+        var model = OnnxModel.FromFile(modelPath);
+
+        var roundTrippedModel = DeepImportExportParity.AssertRoundTripExports(
+            model,
+            modelFileName: "yolo26s.onnx"
+        );
+
+        Assert.Equal(model.Graph.Inputs.Count, roundTrippedModel.Graph.Inputs.Count);
+        Assert.Equal(model.Graph.Outputs.Count, roundTrippedModel.Graph.Outputs.Count);
+        Assert.Contains(roundTrippedModel.Graph.Nodes, node => node.OpType == "Sigmoid");
+
+        foreach (var resize in roundTrippedModel.Graph.Nodes.Where(static node => node.OpType == "Resize"))
+        {
+            var hasScales = resize.Inputs.Count > 2 && !string.IsNullOrWhiteSpace(resize.Inputs[2].Name);
+            var hasSizes = resize.Inputs.Count > 3 && !string.IsNullOrWhiteSpace(resize.Inputs[3].Name);
+            Assert.False(hasScales && hasSizes, $"Resize node '{resize.Name}' must not provide both scales and sizes.");
+            Assert.True(hasScales || hasSizes, $"Resize node '{resize.Name}' must provide either scales or sizes.");
+        }
+    }
+
     private static OnnxModel CreateClassifierHeadModel()
     {
         var model = CreateModel();

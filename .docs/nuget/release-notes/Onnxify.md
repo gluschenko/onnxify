@@ -1,3 +1,10 @@
+## 0.3.3
+
+- Added `OnnxDimensionNone` and ONNX shape parsing support for dimensions whose protobuf value case is `None`.
+- Preserved empty optional node input and output slots when loading, editing, and saving ONNX graphs, fixing operators such as `Resize` that rely on positional optional inputs.
+- Improved graph string output and project-generation rendering for unknown `None` dimensions by displaying them as `[none]`.
+- Added regression coverage with `yolo26s.onnx` for loading `OnnxModel`, saving it back to ONNX, and rendering `OnnxGraph.ToString()`.
+
 ## 0.3.2
 
 - Fixed ONNX graph loading for models whose `graph.value_info` repeats a graph input or output name, preserving the first loaded value metadata while marking the value as an input or output.

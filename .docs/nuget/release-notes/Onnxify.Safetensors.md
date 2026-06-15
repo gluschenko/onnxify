@@ -1,3 +1,7 @@
+## 0.3.3
+
+- Kept the safetensors package aligned with the TorchSharp integration changes that allow safetensors state helpers to work with any `torch.nn.Module` subclass.
+
 ## 0.3.2
 
 - Aligned the package version with the 0.3.2 Onnxify package family release.

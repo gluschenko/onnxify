@@ -2,6 +2,7 @@ extern alias ModelGen;
 
 using System.Reflection;
 using System.Runtime.Loader;
+using System.Runtime.CompilerServices;
 using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -11,12 +12,58 @@ using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using Onnxify.TorchSharp;
 using OnnxModelGenerator = ModelGen::Onnxify.ModelGenerator.OnnxModelGenerator;
-using TorchModule = TorchSharp.torch.nn.Module<TorchSharp.torch.Tensor, TorchSharp.torch.Tensor>;
+using TorchModule = TorchSharp.torch.nn.Module;
 
 namespace Onnxify.Tests;
 
 internal static class DeepImportExportParity
 {
+    public static OnnxModel AssertRoundTripExports(
+        OnnxModel model,
+        string modelFileName = "round-trip.onnx"
+    )
+    {
+        ArgumentNullException.ThrowIfNull(model);
+
+        string tempRoot = Path.Combine(Path.GetTempPath(), "DeepImportExportParity", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+        var modelPath = Path.Combine(tempRoot, modelFileName);
+
+        try
+        {
+            model.Save(modelPath, overwrite: true);
+
+            using var imported = CompileAndLoadTorchModule(tempRoot, modelPath, model);
+            var roundTrippedModel = imported.Module.ExportOnnxModel(
+                inputs: CreateTensorMetadata(model.Graph.Inputs, "input"),
+                outputs: CreateTensorMetadata(model.Graph.Outputs, "output"),
+                options: new OnnxModelCreationOptions
+                {
+                    Opset = 23,
+                    ProducerName = "onnxify-tests",
+                }
+            );
+
+            var roundTrippedPath = Path.Combine(tempRoot, "round-tripped.onnx");
+            roundTrippedModel.Save(roundTrippedPath, overwrite: true);
+            using var session = new InferenceSession(roundTrippedPath);
+            return OnnxModel.FromFile(
+                roundTrippedPath,
+                new OnnxModelBaseOptions
+                {
+                    NodeTypeResolutionStrategy = NodeTypeResolutionStrategy.IgnoreIncompatible,
+                }
+            );
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                DeleteTempRoot(tempRoot);
+            }
+        }
+    }
+
     public static DeepImportExportParityResult AssertRoundTripMse(
         OnnxModel model,
         IReadOnlyList<NamedOnnxValue> inputs,
@@ -56,10 +103,14 @@ internal static class DeepImportExportParity
             );
             var eagerMse = MeanSquaredError(originalOutput, eagerTensor);
             var roundTrippedModel = imported.Module.ExportOnnxModel(
-                inputName: inputs[0].Name,
-                outputName: outputName,
-                input: OnnxTensorType.Create<float>(ToOnnxShape(inputTensor.Dimensions)),
-                output: OnnxTensorType.Create<float>(ToOnnxShape(originalOutput.Dimensions)),
+                inputs: new Dictionary<string, OnnxTensorType>(StringComparer.Ordinal)
+                {
+                    [inputs[0].Name] = OnnxTensorType.Create<float>(ToOnnxShape(inputTensor.Dimensions)),
+                },
+                outputs: new Dictionary<string, OnnxTensorType>(StringComparer.Ordinal)
+                {
+                    [outputName] = OnnxTensorType.Create<float>(ToOnnxShape(originalOutput.Dimensions)),
+                },
                 options: new OnnxModelCreationOptions
                 {
                     Opset = 22,
@@ -221,8 +272,26 @@ internal static class DeepImportExportParity
             input.Dimensions.ToArray().Select(static dimension => (long)dimension).ToArray(),
             dtype: global::TorchSharp.torch.ScalarType.Float32
         );
-        using var output = module.forward(tensor);
+        using var output = GetTorchOutputs(module, [tensor]).Single();
         return output.detach().cpu();
+    }
+
+    private static global::TorchSharp.torch.Tensor[] GetTorchOutputs(
+        TorchModule module,
+        object?[] inputs
+    )
+    {
+        var output = module.GetType().GetMethod("forward")!.Invoke(module, inputs);
+        return output switch
+        {
+            global::TorchSharp.torch.Tensor tensor => [tensor],
+            ITuple tuple => Enumerable.Range(0, tuple.Length)
+                .Select(index => Assert.IsType<global::TorchSharp.torch.Tensor>(tuple[index]))
+                .ToArray(),
+            _ => throw new NotSupportedException(
+                $"Generated TorchModule returned unsupported output type '{output?.GetType().FullName ?? "<null>"}'."
+            ),
+        };
     }
 
     private static float MeanSquaredError(DenseTensor<float> expected, DenseTensor<float> actual)
@@ -249,6 +318,27 @@ internal static class DeepImportExportParity
         for (var index = 0; index < shape.Length; index++)
         {
             result[index] = shape[index];
+        }
+
+        return result;
+    }
+
+    private static IReadOnlyDictionary<string, OnnxTensorType> CreateTensorMetadata(
+        IEnumerable<OnnxValue> values,
+        string kind
+    )
+    {
+        var result = new Dictionary<string, OnnxTensorType>(StringComparer.Ordinal);
+        foreach (var value in values)
+        {
+            if (value.Type is not OnnxTensorType tensorType)
+            {
+                throw new NotSupportedException(
+                    $"Deep import/export parity only supports tensor {kind}s, but '{value.Name}' is '{value.Type.GetType().Name}'."
+                );
+            }
+
+            result.Add(value.Name, tensorType);
         }
 
         return result;

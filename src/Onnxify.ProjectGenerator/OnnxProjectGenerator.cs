@@ -601,6 +601,11 @@ public sealed class OnnxProjectGenerator
 
     private static string RenderDimension(OnnxDimension dimension)
     {
+        if (dimension is OnnxDimensionNone)
+        {
+            return "[none]";
+        }
+
         return dimension.GetValue() switch
         {
             long value => $"{value.ToString(CultureInfo.InvariantCulture)}L",

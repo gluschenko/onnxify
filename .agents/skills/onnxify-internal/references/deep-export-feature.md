@@ -18,11 +18,11 @@ Run the observer project first so you are working from a fresh snapshot:
 
 By default it rewrites:
 
-- `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md`
+- `TORCH_OPERATOR_COVERAGE.md`
 
 ## 2. Choose A Good Porting Candidate
 
-Open `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md` and inspect the table.
+Open `TORCH_OPERATOR_COVERAGE.md` and inspect the table.
 
 - `Found` means the observer found a corresponding TorchSharp API or module surface.
 - `Onnxify.TorchSharp coverage` means `Onnxify.TorchSharp` already declares support for that ONNXScript operator through `[TorchOp(...)]`.

@@ -22,13 +22,13 @@ Prefer candidates that unblock real ONNX models or common model families before 
 Good signals:
 
 - `Onnxify.ConsoleTest` or an example model fails with `OMG006` for an unsupported ONNX operator.
-- `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md` shows a missing `Onnxify.ModelGenerator coverage` entry for a common TorchSharp API or module.
+- `TORCH_OPERATOR_COVERAGE.md` shows a missing `Onnxify.ModelGenerator coverage` entry for a common TorchSharp API or module.
 - The operator is common in classification, CNN, transformer, quantized, or shape-manipulation graphs.
 - The ONNX operator maps cleanly to a TorchSharp tensor method, `torch.nn.functional` call, or a TorchSharp module.
 
 For large batches, do not choose only from intuition. Inspect:
 
-- `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md`
+- `TORCH_OPERATOR_COVERAGE.md`
 - existing generated failures in `src/Onnxify.ConsoleTest`
 - real ONNX assets under `src/Onnxify.ConsoleTest/Assets`
 - existing TorchSharp exporter behavior in `src/Onnxify.TorchSharp`
@@ -171,7 +171,7 @@ The Observer and generated skill reports discover ModelGenerator coverage throug
 
 The current tooling scans `Onnxify.ModelGenerator` for `[TorchSharpOp(...)]` attributes and uses those names for:
 
-- `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md`
+- `TORCH_OPERATOR_COVERAGE.md`
 - `.agents/skills/onnxify/references/operators`
 
 For module-backed converters, decorate the converter class with the matching TorchSharp API/module name:
@@ -196,7 +196,7 @@ dotnet run --project src\Onnxify.AgentSkillGenerator
 
 Expected outputs include:
 
-- `src/Onnxify.TorchSharp.Observer/torchsharp-operator-report.md`
+- `TORCH_OPERATOR_COVERAGE.md`
 - `.agents/skills/onnxify/references/operators/**`
 - `.agents/skills/onnxify/references/torchsharp-converters/**`
 
@@ -209,7 +209,7 @@ Before finishing:
 - run focused tests, usually `dotnet test src\Onnxify.Tests\Onnxify.Tests.csproj --no-restore --framework net10.0 --filter OnnxModelGeneratorTests`
 - run or add relevant `deep roundtrip tests` when the operator should be complementary with `deep export`
 - build `src\Onnxify.ConsoleTest\Onnxify.ConsoleTest.csproj` when real asset generation might be affected
-- inspect `torchsharp-operator-report.md` when coverage reporting was expected to change
+- inspect `TORCH_OPERATOR_COVERAGE.md` when coverage reporting was expected to change
 - inspect generated skill docs when AgentSkillGenerator was rerun
 
 Warnings such as `OMG004` for external tensor data can be expected for large external-data assets; do not treat them as operator support failures unless the task is specifically about external tensor deployment.

@@ -22,7 +22,7 @@ public static class TorchModuleSafetensorsExtensions
     /// <exception cref="InvalidOperationException">Thrown when the module exposes no serializable state tensors.</exception>
     /// <exception cref="NotSupportedException">Thrown when a state tensor uses a Torch dtype that cannot be represented by the current safetensors mapping.</exception>
     public static void SaveStateAsSafetensors(
-        this TorchModule module,
+        this global::TorchSharp.torch.nn.Module module,
         string path,
         IReadOnlyDictionary<string, string>? metadata = null
     )
@@ -50,7 +50,7 @@ public static class TorchModuleSafetensorsExtensions
     /// <exception cref="InvalidOperationException">Thrown when the module exposes no serializable state tensors.</exception>
     /// <exception cref="NotSupportedException">Thrown when a state tensor uses a Torch dtype that cannot be represented by the current safetensors mapping.</exception>
     public static async Task SaveStateAsSafetensorsAsync(
-        this TorchModule module,
+        this global::TorchSharp.torch.nn.Module module,
         string path,
         IReadOnlyDictionary<string, string>? metadata = null,
         CancellationToken cancellationToken = default
@@ -79,7 +79,7 @@ public static class TorchModuleSafetensorsExtensions
     /// <exception cref="InvalidOperationException">Thrown when strict matching fails or a tensor shape or dtype does not match the target state tensor.</exception>
     /// <exception cref="NotSupportedException">Thrown when a target tensor dtype cannot be loaded by the current mapping.</exception>
     public static void LoadStateFromSafetensors(
-        this TorchModule module,
+        this global::TorchSharp.torch.nn.Module module,
         string path,
         bool strict = true
     )
@@ -101,7 +101,7 @@ public static class TorchModuleSafetensorsExtensions
     /// <exception cref="InvalidOperationException">Thrown when strict matching fails or a tensor shape or dtype does not match the target state tensor.</exception>
     /// <exception cref="NotSupportedException">Thrown when a target tensor dtype cannot be loaded by the current mapping.</exception>
     public static async Task LoadStateFromSafetensorsAsync(
-        this TorchModule module,
+        this global::TorchSharp.torch.nn.Module module,
         string path,
         bool strict = true,
         CancellationToken cancellationToken = default
@@ -119,7 +119,7 @@ public static class TorchModuleSafetensorsExtensions
     }
 
     private static void LoadState(
-        TorchModule module,
+        global::TorchSharp.torch.nn.Module module,
         global::Onnxify.Safetensors.SafeTensors safetensors,
         bool strict
     )
@@ -156,7 +156,7 @@ public static class TorchModuleSafetensorsExtensions
     }
 
     private static PreparedTorchModuleSafetensorsState PrepareStateForSerialization(
-        TorchModule module,
+        global::TorchSharp.torch.nn.Module module,
         IReadOnlyDictionary<string, string>? metadata
     )
     {
@@ -197,7 +197,7 @@ public static class TorchModuleSafetensorsExtensions
         }
     }
 
-    private static IEnumerable<StateTensorEntry> EnumerateStateTensors(TorchModule module)
+    private static IEnumerable<StateTensorEntry> EnumerateStateTensors(global::TorchSharp.torch.nn.Module module)
     {
         foreach (var (name, tensor) in module.state_dict())
         {

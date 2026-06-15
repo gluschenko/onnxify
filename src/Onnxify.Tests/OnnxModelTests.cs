@@ -444,6 +444,75 @@ public sealed class OnnxModelTests
     }
 
     [Fact]
+    public void Save_AndLoad_PreservesEmptyOptionalInputSlots()
+    {
+        var modelProto = new ModelProto
+        {
+            IrVersion = 11,
+            Graph = new GraphProto
+            {
+                Input =
+                {
+                    new OnnxValue<OnnxTensorType>(
+                        "input",
+                        OnnxTensorType.Create<float>([1L, 1L, 2L, 2L]),
+                        null).ToProto(),
+                },
+                Output =
+                {
+                    new OnnxValue<OnnxTensorType>(
+                        "output",
+                        OnnxTensorType.Create<float>([1L, 1L, 4L, 4L]),
+                        null).ToProto(),
+                },
+                Initializer =
+                {
+                    new TensorProto
+                    {
+                        Name = "scales",
+                        DataType = (int)TensorProto.Types.DataType.Float,
+                        Dims = { 4L },
+                        FloatData = { 1.0f, 1.0f, 2.0f, 2.0f },
+                    },
+                },
+                Node =
+                {
+                    new NodeProto
+                    {
+                        Name = "resize",
+                        OpType = "Resize",
+                        Input = { "input", "", "scales" },
+                        Output = { "output" },
+                        Attribute =
+                        {
+                            new AttributeProto { Name = "mode", Type = AttributeProto.Types.AttributeType.String, S = ByteString.CopyFromUtf8("nearest") },
+                        },
+                    },
+                },
+            },
+        };
+        modelProto.OpsetImport.Add(new OperatorSetIdProto
+        {
+            Domain = "",
+            Version = 18,
+        });
+
+        using var inputStream = new MemoryStream(modelProto.ToByteArray());
+        var model = OnnxModel.FromStream(inputStream);
+
+        var resize = Assert.IsType<Resize>(Assert.Single(model.Graph.Nodes));
+        Assert.Null(resize.Roi);
+        Assert.Equal("scales", resize.Scales!.Name);
+
+        using var outputStream = new MemoryStream();
+        model.Save(outputStream);
+
+        var savedProto = ModelProto.Parser.ParseFrom(outputStream.ToArray());
+        var savedNode = Assert.Single(savedProto.Graph.Node);
+        Assert.Equal(["input", "", "scales"], savedNode.Input.ToArray());
+    }
+
+    [Fact]
     public void Save_AndLoad_RoundTripsNonTensorGraphValueTypes()
     {
         var model = OnnxModel.Create(new OnnxModelCreationOptions
@@ -552,7 +621,8 @@ public sealed class OnnxModelTests
             docString: "",
             inputs: [left, right],
             outputs: [output],
-            attributes: []);
+            attributes: []
+        );
 
         var result = model.ValidateCompatibility();
 
@@ -580,7 +650,8 @@ public sealed class OnnxModelTests
             docString: "",
             inputs: [left, right],
             outputs: [output],
-            attributes: []);
+            attributes: []
+        );
 
         var result = model.ValidateCompatibility();
 
@@ -607,7 +678,8 @@ public sealed class OnnxModelTests
             docString: "",
             inputs: [left, right],
             outputs: [output],
-            attributes: []);
+            attributes: []
+        );
 
         var result = model.ValidateCompatibility();
 
@@ -634,7 +706,8 @@ public sealed class OnnxModelTests
             docString: "",
             inputs: [input],
             outputs: [output],
-            attributes: []);
+            attributes: []
+        );
 
         var result = model.ValidateCompatibility();
 
@@ -662,7 +735,8 @@ public sealed class OnnxModelTests
             docString: "",
             inputs: [left, right],
             outputs: [output],
-            attributes: []);
+            attributes: []
+        );
 
         var result = model.ValidateCompatibility(new OnnxCompatibilityValidationOptions
         {
@@ -701,7 +775,8 @@ public sealed class OnnxModelTests
             docString: "",
             inputs: [left, right],
             outputs: [output],
-            attributes: [new OnnxAttribute<float>("alpha", 0.5f)]);
+            attributes: [new OnnxAttribute<float>("alpha", 0.5f)]
+        );
 
         var result = model.ValidateCompatibility();
 
@@ -809,7 +884,8 @@ public sealed class OnnxModelTests
             [
                 new OnnxAttribute<long>("broadcast", 1),
                 new OnnxAttribute<long>("axis", 0),
-            ]);
+            ]
+        );
 
         var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
 
@@ -852,7 +928,8 @@ public sealed class OnnxModelTests
             [
                 new OnnxAttribute<long>("broadcast", 1),
                 new OnnxAttribute<long>("axis", 0),
-            ]);
+            ]
+        );
 
         var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
         var roundTripPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
@@ -918,7 +995,8 @@ public sealed class OnnxModelTests
             docString: "",
             inputs: [left, right],
             outputs: [output],
-            attributes: []);
+            attributes: []
+        );
 
         var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
 
@@ -988,6 +1066,41 @@ public sealed class OnnxGraphTests
     }
 
     [Fact]
+    public void FromFile_WithYolo26sNoneDimension_LoadsExportsAndPrintsGraph()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "Assets", "yolo26s.onnx");
+        var roundTripPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+
+        try
+        {
+            var model = OnnxModel.FromFile(path);
+
+            Assert.Contains(
+                model.Graph.Inputs.Concat(model.Graph.Outputs).Concat(model.Graph.IntermediateValues),
+                value => value.Type is OnnxTensorType tensorType
+                    && tensorType.Shape is not null
+                    && tensorType.Shape.Dimensions.Any(static dimension => dimension is OnnxDimensionNone)
+            );
+
+            model.Save(roundTripPath);
+            var roundTripped = OnnxModel.FromFile(roundTripPath);
+
+            Assert.NotEmpty(roundTripped.Graph.Nodes);
+
+            var graphText = roundTripped.Graph.ToString();
+            Assert.Contains("OnnxGraph(", graphText);
+            Assert.Contains("[none]", graphText);
+        }
+        finally
+        {
+            if (File.Exists(roundTripPath))
+            {
+                File.Delete(roundTripPath);
+            }
+        }
+    }
+
+    [Fact]
     public void AddMembers_WithDuplicateNames_ThrowsInvalidOperationException()
     {
         var graph = OnnxModel.Create().Graph;
@@ -1002,7 +1115,8 @@ public sealed class OnnxGraphTests
             docString: "",
             inputs: [graph.GetValue("value")!],
             outputs: [graph.GetValue("edge")!],
-            attributes: []);
+            attributes: []
+        );
 
         Assert.Throws<InvalidOperationException>(() => graph.AddInput("value", OnnxTensorType.Create<float>([1])));
         Assert.Throws<InvalidOperationException>(() => graph.AddTensor("weights", [1], [13.0f]));
@@ -1014,7 +1128,8 @@ public sealed class OnnxGraphTests
             docString: "",
             inputs: [],
             outputs: [],
-            attributes: []));
+            attributes: []
+        ));
     }
 
     [Fact]
@@ -1051,7 +1166,8 @@ public sealed class OnnxGraphTests
             docString: "",
             inputs: [input],
             outputs: [looseOutput],
-            attributes: []);
+            attributes: []
+        );
 
         var value = graph.AddValue("typed_later", OnnxTensorType.Create<float>([1]));
 
@@ -1072,7 +1188,8 @@ public sealed class OnnxGraphTests
             docString: "",
             inputs: [input],
             outputs: [hidden],
-            attributes: []);
+            attributes: []
+        );
         var replacement = new OnnxValue<OnnxTensorType>("renamed_hidden", OnnxTensorType.Create<float>([1]));
 
         graph.ReplaceValue("hidden", replacement);
@@ -1098,7 +1215,8 @@ public sealed class OnnxGraphTests
             docString: "",
             inputs: [input, weights],
             outputs: [edge],
-            attributes: []);
+            attributes: []
+        );
         var second = graph.AddNode(
             name: "second",
             opType: "Custom",
@@ -1106,7 +1224,8 @@ public sealed class OnnxGraphTests
             docString: "",
             inputs: [edge],
             outputs: [output],
-            attributes: []);
+            attributes: []
+        );
 
         Assert.True(graph.RemoveValue("input"));
         Assert.True(graph.RemoveTensor("weights"));
@@ -1132,7 +1251,8 @@ public sealed class OnnxGraphTests
             docString: "",
             inputs: [input],
             outputs: [edge],
-            attributes: []);
+            attributes: []
+        );
 
         Assert.True(graph.RemoveNode("identity"));
 
@@ -1162,7 +1282,9 @@ public sealed class OnnxGraphTests
                 docString: "",
                 inputs: [firstOutput],
                 outputs: [middleOutput],
-                attributes: []));
+                attributes: []
+            )
+        );
 
         Assert.Equal(["first", "replacement", "last"], graph.Nodes.Select(x => x.Name).ToArray());
     }

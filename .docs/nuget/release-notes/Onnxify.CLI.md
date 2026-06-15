@@ -1,3 +1,7 @@
+## 0.3.3
+
+- Picked up the core graph-loading fixes for ONNX models with `None` tensor dimensions and positional empty optional node inputs.
+
 ## 0.3.2
 
 - Aligned the package version with the 0.3.2 Onnxify package family release.
