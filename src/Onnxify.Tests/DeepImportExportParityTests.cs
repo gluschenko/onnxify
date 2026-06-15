@@ -129,6 +129,14 @@ public sealed class DeepImportExportParityTests
         Assert.Equal(model.Graph.Inputs.Count, roundTrippedModel.Graph.Inputs.Count);
         Assert.Equal(model.Graph.Outputs.Count, roundTrippedModel.Graph.Outputs.Count);
         Assert.Contains(roundTrippedModel.Graph.Nodes, node => node.OpType == "Sigmoid");
+
+        foreach (var resize in roundTrippedModel.Graph.Nodes.Where(static node => node.OpType == "Resize"))
+        {
+            var hasScales = resize.Inputs.Count > 2 && !string.IsNullOrWhiteSpace(resize.Inputs[2].Name);
+            var hasSizes = resize.Inputs.Count > 3 && !string.IsNullOrWhiteSpace(resize.Inputs[3].Name);
+            Assert.False(hasScales && hasSizes, $"Resize node '{resize.Name}' must not provide both scales and sizes.");
+            Assert.True(hasScales || hasSizes, $"Resize node '{resize.Name}' must provide either scales or sizes.");
+        }
     }
 
     private static OnnxModel CreateClassifierHeadModel()

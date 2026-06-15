@@ -940,7 +940,7 @@ public static class TorchModuleExportExtensions
 
     private static bool IsTensorMethod(string methodName)
     {
-        return methodName is "view" or "reshape" or "flatten" or "permute" or "transpose" or "contiguous" or "unsqueeze" or "slice" or "expand" or "repeat" or "ne" or "to_type" or "sum" or "clamp" or "sigmoid" or "softmax";
+        return methodName is "view" or "reshape" or "flatten" or "permute" or "transpose" or "contiguous" or "unsqueeze" or "slice" or "expand" or "repeat" or "gather" or "ne" or "to_type" or "sum" or "clamp" or "sigmoid" or "softmax";
     }
 
     private static ExportValue ExportTensorMethodInvocation(
@@ -1028,6 +1028,14 @@ public static class TorchModuleExportExtensions
                         Input = input,
                         Repeats = ResolveAxesTensor(context, invocation.Arguments.Single()),
                     }
+                )
+            ),
+            "gather" => new ExportValue(
+                context.Graph.ExportGather(
+                    input,
+                    dim: ResolveLongArgument(context, invocation.Arguments.ElementAtOrDefault(0)),
+                    index: ExportAsGraphEdge(context, invocation.Arguments.ElementAtOrDefault(1)
+                        ?? throw new NotSupportedException($"gather requires an index tensor: {invocation}"))
                 )
             ),
             "slice" => new ExportValue(
@@ -2305,6 +2313,13 @@ public static class TorchModuleExportExtensions
             return true;
         }
 
+        if (method.ReturnType == typeof(void))
+        {
+            throw new NotSupportedException(
+                $"Method '{method.Name}' did not return a supported export value."
+            );
+        }
+
         if (TryExportGeneratedGraphHelper(context, method.Name, arguments, out result))
         {
             return true;
@@ -2458,6 +2473,7 @@ public static class TorchModuleExportExtensions
                 return true;
 
             case "ResizeTensor" when arguments.Count == 5:
+                var resizeSizes = IsNullLiteral(arguments[2]) ? null : ExportAsGraphEdge(context, arguments[2]);
                 result = new ExportValue(
                     context.Graph.Resize(
                         name: context.Graph.NextName("resize"),
@@ -2465,8 +2481,10 @@ public static class TorchModuleExportExtensions
                         {
                             X = ExportAsGraphEdge(context, arguments[0]),
                             Roi = new OnnxEdge(string.Empty),
-                            Scales = IsNullLiteral(arguments[1]) ? null : ExportAsGraphEdge(context, arguments[1]),
-                            Sizes = IsNullLiteral(arguments[2]) ? null : ExportAsGraphEdge(context, arguments[2]),
+                            Scales = resizeSizes is null && !IsNullLiteral(arguments[1])
+                                ? ExportAsGraphEdge(context, arguments[1])
+                                : null,
+                            Sizes = resizeSizes,
                             Antialias = 0L,
                             CoordinateTransformationMode = ResolveStringArgument(context, arguments[4]),
                             CubicCoeffA = -0.75f,

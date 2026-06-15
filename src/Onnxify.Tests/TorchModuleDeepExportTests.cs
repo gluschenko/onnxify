@@ -364,6 +364,22 @@ public sealed class TorchModuleDeepExportTests
     }
 
     [Fact]
+    public void DeepExport_ForTensorGather_EmitsGatherElements()
+    {
+        using var module = new DeepExportTensorGatherModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 3]),
+            output: OnnxTensorType.Create<float>([2, 3])
+        );
+
+        var gather = Assert.Single(model.Graph.Nodes, node => node.OpType == "GatherElements");
+        Assert.Equal(1L, Assert.IsType<long>(gather.Attributes.Single(x => x.Name == "axis").GetValue()));
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Cast");
+    }
+
+    [Fact]
     public void DeepExport_ForPermuteCollectionExpression_ResolvesInlineArrayPermutation()
     {
         using var module = new DeepExportPermuteCollectionExpressionModule();
@@ -622,6 +638,19 @@ public sealed class TorchModuleDeepExportTests
             var logits = tokens + features;
             var boxes = tokens * features;
             return (logits, boxes);
+        }
+    }
+
+    private sealed class DeepExportTensorGatherModule : TorchModule
+    {
+        public DeepExportTensorGatherModule()
+            : base(nameof(DeepExportTensorGatherModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            var index = input.to_type(ScalarType.Int64);
+            return input.gather(1L, index);
         }
     }
 

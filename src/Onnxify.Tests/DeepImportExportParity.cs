@@ -39,14 +39,21 @@ internal static class DeepImportExportParity
                 outputs: CreateTensorMetadata(model.Graph.Outputs, "output"),
                 options: new OnnxModelCreationOptions
                 {
-                    Opset = 22,
+                    Opset = 23,
                     ProducerName = "onnxify-tests",
                 }
             );
 
             var roundTrippedPath = Path.Combine(tempRoot, "round-tripped.onnx");
             roundTrippedModel.Save(roundTrippedPath, overwrite: true);
-            return OnnxModel.FromFile(roundTrippedPath);
+            using var session = new InferenceSession(roundTrippedPath);
+            return OnnxModel.FromFile(
+                roundTrippedPath,
+                new OnnxModelBaseOptions
+                {
+                    NodeTypeResolutionStrategy = NodeTypeResolutionStrategy.IgnoreIncompatible,
+                }
+            );
         }
         finally
         {

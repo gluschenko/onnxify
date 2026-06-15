@@ -687,7 +687,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             var nodeSpecification = new TorchNodeSpecification(
                 FormatNodeName(node),
                 node.OpType,
-                node.Inputs.Select(static x => x.Name).Where(static x => !string.IsNullOrWhiteSpace(x)).ToImmutableArray(),
+                node.Inputs.Select(static x => x.Name).ToImmutableArray(),
                 outputs.ToImmutableArray(),
                 attributes
             );
