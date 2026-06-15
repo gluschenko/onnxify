@@ -2325,7 +2325,7 @@ public static class TorchModuleExportExtensions
             return true;
         }
 
-        if (method.IsStatic)
+        if (method.IsStatic && IsGeneratedTorchModuleHelper(method.Name))
         {
             throw new NotSupportedException(
                 $"Generated helper '{method.Name}' is not supported by deep export."
@@ -2350,6 +2350,13 @@ public static class TorchModuleExportExtensions
 
         result = ExportMethodBody(nestedContext, declaration);
         return true;
+    }
+
+    private static bool IsGeneratedTorchModuleHelper(string methodName)
+    {
+        return methodName.EndsWith("Tensor", StringComparison.Ordinal)
+            || methodName.EndsWith("Tensors", StringComparison.Ordinal)
+            || methodName is "CreateShapeTensor" or "GatherTensor" or "ToOnnxLstmY";
     }
 
     private static bool TryExportGeneratedGraphHelper(
