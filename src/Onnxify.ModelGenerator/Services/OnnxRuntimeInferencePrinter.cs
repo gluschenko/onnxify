@@ -436,12 +436,12 @@ internal sealed class OnnxRuntimeInferencePrinter
 
     private static string BuildOnnxTensorTypeExpression(ModelTensorContract tensor)
     {
-        if (tensor.Shape.Any(static x => x.IsUnknown))
+        if (tensor.Shape.Length == 0)
         {
             return $$"""
                 new Onnxify.OnnxTensorType(
                     type: typeof({{tensor.ElementClrTypeName}}),
-                    shape: null,
+                    shape: Onnxify.OnnxTensorShape.Create(Array.Empty<Onnxify.OnnxDimension>()),
                     denotation: {{tensor.DenotationLiteral}}
                 )
                 """;
@@ -472,7 +472,7 @@ internal sealed class OnnxRuntimeInferencePrinter
             return $"{dimension.SymbolicNameLiteral},";
         }
 
-        throw new InvalidOperationException("Unknown ONNX dimensions cannot be expressed through the public Onnxify OnnxDimension API.");
+        return "new Onnxify.OnnxDimensionNone(),";
     }
 
     private static string BuildTensorMethodParameterSignature(ModelTensorContract tensor)

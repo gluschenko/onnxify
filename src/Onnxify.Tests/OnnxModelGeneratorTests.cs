@@ -1421,6 +1421,109 @@ public sealed class OnnxModelGeneratorTests
     }
 
     [Fact]
+    public void Generate_OnnxRuntimeInferenceImportType_WithYolo26s_UsesProtoMetadata()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(AppContext.BaseDirectory, "Assets", "yolo26s.onnx");
+
+        try
+        {
+            var driver = CreateDriver(
+                additionalFiles: [new BinaryAdditionalText(modelPath)],
+                globalOptions: new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["build_property.ProjectDir"] = tempRoot + Path.DirectorySeparatorChar,
+                    ["build_property.RootNamespace"] = "Demo.App",
+                },
+                fileOptions: new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal)
+                {
+                    [modelPath] = new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["build_metadata.additionalfiles.OnnxifyModelImportType"] = "OnnxRuntimeInference",
+                    }
+                });
+
+            var compilation = CreateCompilation();
+            driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var updatedCompilation, out var generatorDiagnostics);
+
+            Assert.DoesNotContain(generatorDiagnostics, static x => x.Severity == DiagnosticSeverity.Error);
+            Assert.DoesNotContain(updatedCompilation.GetDiagnostics(), static x => x.Severity == DiagnosticSeverity.Error);
+
+            var generatedSource = GetGeneratedSource(driver);
+            Assert.Contains("public sealed class Yolo26sModel", generatedSource);
+            Assert.Contains("public static IReadOnlyList<Onnxify.OnnxValue> Inputs { get; } = CreateInputs();", generatedSource);
+            Assert.DoesNotContain("Onnxify.OnnxModel", generatedSource, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Generate_OnnxRuntimeInferenceImportType_PreservesUnknownTensorDimensions()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelPath = Path.Combine(tempRoot, "unknown-dimension.onnx");
+
+        try
+        {
+            var model = new ModelProto
+            {
+                Graph = new GraphProto()
+            };
+            model.Graph.Input.Add(CreateTensorValueInfo(
+                "input",
+                TensorProto.Types.DataType.Float,
+                new TensorShapeProto.Types.Dimension(),
+                new TensorShapeProto.Types.Dimension { DimValue = 3L }
+            ));
+            model.Graph.Output.Add(CreateTensorValueInfo("output", TensorProto.Types.DataType.Float, 1L, 3L));
+            File.WriteAllBytes(modelPath, model.ToByteArray());
+
+            var driver = CreateDriver(
+                additionalFiles: [new BinaryAdditionalText(modelPath)],
+                globalOptions: new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["build_property.ProjectDir"] = tempRoot + Path.DirectorySeparatorChar,
+                    ["build_property.RootNamespace"] = "Demo.App",
+                },
+                fileOptions: new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal)
+                {
+                    [modelPath] = new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["build_metadata.additionalfiles.OnnxifyModelImportType"] = "OnnxRuntimeInference",
+                    }
+                });
+
+            var compilation = CreateCompilation();
+            driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var updatedCompilation, out var generatorDiagnostics);
+
+            Assert.DoesNotContain(generatorDiagnostics, static x => x.Severity == DiagnosticSeverity.Error);
+            Assert.DoesNotContain(updatedCompilation.GetDiagnostics(), static x => x.Severity == DiagnosticSeverity.Error);
+
+            var generatedSource = GetGeneratedSource(driver);
+            Assert.Contains("new Onnxify.OnnxDimensionNone()", generatedSource);
+            Assert.Contains("Onnxify.OnnxTensorType.Create<float>(", generatedSource);
+            Assert.DoesNotContain("Onnxify.OnnxModel", generatedSource, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void Generate_WithTorchModuleImportType_EmitsMultiInputMultiOutputTorchModule()
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
@@ -1709,6 +1812,29 @@ public sealed class OnnxModelGeneratorTests
         {
             tensorShape.Dim.Add(new TensorShapeProto.Types.Dimension { DimValue = dimension });
         }
+
+        return new ValueInfoProto
+        {
+            Name = name,
+            Type = new TypeProto
+            {
+                TensorType = new TypeProto.Types.Tensor
+                {
+                    ElemType = (int)dataType,
+                    Shape = tensorShape,
+                }
+            }
+        };
+    }
+
+    private static ValueInfoProto CreateTensorValueInfo(
+        string name,
+        TensorProto.Types.DataType dataType,
+        params TensorShapeProto.Types.Dimension[] dimensions
+    )
+    {
+        var tensorShape = new TensorShapeProto();
+        tensorShape.Dim.AddRange(dimensions);
 
         return new ValueInfoProto
         {

@@ -51,6 +51,7 @@ public class OnnxNode : IOnnxGraphNode
     private readonly List<IOnnxGraphEdge> _inputs = [];
     private readonly List<IOnnxGraphEdge> _outputs = [];
     private readonly LazyDictionary<string, OnnxAttribute> _attributes = new(x => x.Name, EqualityComparer<string>.Default);
+    private static readonly OnnxEdge _emptyOptionalEdge = new(string.Empty);
 
     private readonly NodeProto _node;
 
@@ -110,10 +111,14 @@ public class OnnxNode : IOnnxGraphNode
             _inputs.Add(x);
         }
 
+        TrimTrailingEmptyOptionalEdges(_inputs);
+
         foreach (var x in outputs)
         {
             _outputs.Add(x);
         }
+
+        TrimTrailingEmptyOptionalEdges(_outputs);
 
         foreach (var x in attributes)
         {
@@ -320,9 +325,16 @@ public class OnnxNode : IOnnxGraphNode
             _inputs.RemoveAt(index);
         }
 
-        if (value != null)
+        if (value is not null)
         {
             _inputs.Insert(Math.Min(index, _inputs.Count), value);
+            return;
+        }
+
+        if (index < _inputs.Count)
+        {
+            _inputs.Insert(index, _emptyOptionalEdge);
+            TrimTrailingEmptyOptionalEdges(_inputs);
         }
     }
 
@@ -360,9 +372,29 @@ public class OnnxNode : IOnnxGraphNode
             _outputs.RemoveAt(index);
         }
 
-        if (value != null)
+        if (value is not null)
         {
             _outputs.Insert(Math.Min(index, _outputs.Count), value);
+            return;
+        }
+
+        if (index < _outputs.Count)
+        {
+            _outputs.Insert(index, _emptyOptionalEdge);
+            TrimTrailingEmptyOptionalEdges(_outputs);
+        }
+    }
+
+    private static void TrimTrailingEmptyOptionalEdges(List<IOnnxGraphEdge> edges)
+    {
+        for (var index = edges.Count - 1; index >= 0; index--)
+        {
+            if (!string.IsNullOrEmpty(edges[index].Name))
+            {
+                return;
+            }
+
+            edges.RemoveAt(index);
         }
     }
 
