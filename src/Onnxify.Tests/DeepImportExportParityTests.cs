@@ -115,6 +115,22 @@ public sealed class DeepImportExportParityTests
         Assert.Equal([1, 2, 4, 4], result.OutputShape);
     }
 
+    [Fact]
+    public void RoundTrip_ForYolo26sAsset_ExportsGeneratedTorchModule()
+    {
+        var modelPath = Path.Combine(AppContext.BaseDirectory, "Assets", "yolo26s.onnx");
+        var model = OnnxModel.FromFile(modelPath);
+
+        var roundTrippedModel = DeepImportExportParity.AssertRoundTripExports(
+            model,
+            modelFileName: "yolo26s.onnx"
+        );
+
+        Assert.Equal(model.Graph.Inputs.Count, roundTrippedModel.Graph.Inputs.Count);
+        Assert.Equal(model.Graph.Outputs.Count, roundTrippedModel.Graph.Outputs.Count);
+        Assert.Contains(roundTrippedModel.Graph.Nodes, node => node.OpType == "Sigmoid");
+    }
+
     private static OnnxModel CreateClassifierHeadModel()
     {
         var model = CreateModel();
