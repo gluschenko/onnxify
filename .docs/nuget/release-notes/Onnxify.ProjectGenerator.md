@@ -1,3 +1,8 @@
+## 0.3.3
+
+- Added project-generation rendering for ONNX tensor dimensions whose protobuf value case is `None`, displaying them as `[none]`.
+- Picked up the core graph-loading fixes for empty optional node inputs and `None` tensor dimensions.
+
 ## 0.3.2
 
 - Aligned the package version with the 0.3.2 Onnxify package family release.

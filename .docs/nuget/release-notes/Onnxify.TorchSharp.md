@@ -1,3 +1,13 @@
+## 0.3.3
+
+- Added dictionary-based deep `ExportOnnxModel(...)` overloads for TorchSharp modules with multiple tensor inputs and multiple tensor outputs, including tuple-output forwards.
+- Added deep export support on the base `torch.nn.Module` type and generic `Module<Tensor, ..., TOutput>` shapes so generated modules such as `Module<Tensor, (Tensor, Tensor)>` can be exported.
+- Added deep export support for tensor instance `sigmoid()`, `softmax(...)`, `repeat(...)`, and `gather(...)`, plus generated TorchModule helper patterns for `Slice`, `Split`, `Resize`, `Squeeze`, reductions, and `TopK`.
+- Fixed deep export of generated `ResizeTensor(...)` calls so ONNX `Resize` emits either `scales` or `sizes`, never both, producing models accepted by ONNX Runtime.
+- Improved deep export materialization of runtime Torch tensor constants and `.data<T>().ToArray()` expressions used by generated TorchModule initializers.
+- Generalized TorchModule safetensors extension methods to all `torch.nn.Module` instances, including modules whose `forward` returns tuples.
+- Added yolo26s deep roundtrip coverage and focused tests for multi-input tuple-output export, `gather`, and tuple-output safetensors modules.
+
 ## 0.3.2
 
 - Added deep TorchSharp export support for tensor instance `flatten(...)` calls, including full flatten, `flatten(1, -1)`, and statically shaped partial flatten ranges.

@@ -1,3 +1,9 @@
+## 0.3.3
+
+- Changed the default `OnnxRuntimeInference` generator path to read ONNX metadata through generated protobuf classes instead of loading models through the public Onnxify object model, improving wrapper generation stability when core graph APIs have unrelated import bugs.
+- Preserved unknown `None` tensor dimensions in generated runtime metadata by emitting `OnnxDimensionNone`.
+- Preserved empty optional ONNX input slots in TorchModule generation so positional optional inputs such as `Resize` `scales` and `sizes` remain distinguishable.
+
 ## 0.3.2
 
 - Aligned the package version with the 0.3.2 Onnxify package family release.
