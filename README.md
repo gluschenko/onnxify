@@ -28,6 +28,8 @@ The repository currently implements the following NuGet packages. Package-specif
 | [`Onnxify.HuggingFace`](.docs/nuget/Onnxify.HuggingFace.md)           | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.HuggingFace)](https://www.nuget.org/packages/Onnxify.HuggingFace/)           |
 | [`Onnxify.CLI`](.docs/nuget/Onnxify.CLI.md)                           | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.CLI)](https://www.nuget.org/packages/Onnxify.CLI/)                           |                  
 
+See [`TORCH_OPERATOR_COVERAGE.md`](TORCH_OPERATOR_COVERAGE.md) for the current TorchSharp operator support matrix across ONNX import and export features.
+
 ## Requirements
 
 - .NET 8 SDK + .NET 10 SDK
