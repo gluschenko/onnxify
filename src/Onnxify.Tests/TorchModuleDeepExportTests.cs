@@ -412,6 +412,169 @@ public sealed class TorchModuleDeepExportTests
     }
 
     [Fact]
+    public void DeepExport_ForSizedNewLongArrayInitializerShape_ResolvesLocalShape()
+    {
+        using var module = new DeepExportSizedArrayInitializerShapeModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 3, 4]),
+            output: OnnxTensorType.Create<float>([2, 3, 1, 2, 2])
+        );
+
+        Assert.Contains(
+            model.Graph.Initializers.OfType<OnnxTensor<long>>(),
+            initializer => initializer.Value.SequenceEqual([2L, 3L, 1L, 2L, 2L])
+        );
+    }
+
+    [Fact]
+    public void DeepExport_ForImplicitNewArrayShape_ResolvesLocalShape()
+    {
+        using var module = new DeepExportImplicitArrayShapeModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 2, 3]),
+            output: OnnxTensorType.Create<float>([2, 6])
+        );
+
+        Assert.Contains(
+            model.Graph.Initializers.OfType<OnnxTensor<long>>(),
+            initializer => initializer.Value.SequenceEqual([2L, 6L])
+        );
+    }
+
+    [Fact]
+    public void DeepExport_ForAssignedNewLongArrayShape_ResolvesLocalShape()
+    {
+        using var module = new DeepExportAssignedArrayShapeModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 3, 4]),
+            output: OnnxTensorType.Create<float>([2, 12])
+        );
+
+        Assert.Contains(
+            model.Graph.Initializers.OfType<OnnxTensor<long>>(),
+            initializer => initializer.Value.SequenceEqual([2L, 12L])
+        );
+    }
+
+    [Fact]
+    public void DeepExport_ForLocalTensorArrayConcat_ResolvesTensorList()
+    {
+        using var module = new DeepExportLocalTensorArrayConcatModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 2]),
+            output: OnnxTensorType.Create<float>([2, 4])
+        );
+
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Concat");
+    }
+
+    [Fact]
+    public void DeepExport_ForTensorInstanceMatMul_EmitsMatMul()
+    {
+        using var module = new DeepExportTensorInstanceMatMulModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 3]),
+            output: OnnxTensorType.Create<float>([2, 2])
+        );
+
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "MatMul");
+    }
+
+    [Fact]
+    public void DeepExport_ForBareMm_EmitsMatMul()
+    {
+        using var module = new DeepExportBareMmModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 3]),
+            output: OnnxTensorType.Create<float>([2, 2])
+        );
+
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "MatMul");
+    }
+
+    [Fact]
+    public void DeepExport_ForTorchMm_EmitsMatMul()
+    {
+        using var module = new DeepExportTorchMmModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 3]),
+            output: OnnxTensorType.Create<float>([2, 2])
+        );
+
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "MatMul");
+    }
+
+    [Fact]
+    public void DeepExport_ForTensorInstanceMm_EmitsMatMul()
+    {
+        using var module = new DeepExportTensorInstanceMmModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 3]),
+            output: OnnxTensorType.Create<float>([2, 2])
+        );
+
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "MatMul");
+    }
+
+    [Fact]
+    public void DeepExport_ForBareBmm_EmitsMatMul()
+    {
+        using var module = new DeepExportBareBmmModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 3, 4]),
+            output: OnnxTensorType.Create<float>([2, 3, 3])
+        );
+
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "MatMul");
+    }
+
+    [Fact]
+    public void DeepExport_ForTorchBmm_EmitsMatMul()
+    {
+        using var module = new DeepExportTorchBmmModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 3, 4]),
+            output: OnnxTensorType.Create<float>([2, 3, 3])
+        );
+
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "MatMul");
+    }
+
+    [Fact]
+    public void DeepExport_ForTensorInstanceBmm_EmitsMatMul()
+    {
+        using var module = new DeepExportTensorInstanceBmmModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 3, 4]),
+            output: OnnxTensorType.Create<float>([2, 3, 3])
+        );
+
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "MatMul");
+    }
+
+    [Fact]
     public void DeepExport_ForFunctionalActivationCalls_ExportsTorchSharpExamplesSyntax()
     {
         using var module = new DeepExportFunctionalActivationModule();
@@ -505,6 +668,73 @@ public sealed class TorchModuleDeepExportTests
         );
 
         Assert.Contains(model.Graph.Nodes, node => node.OpType == expectedOperator);
+    }
+
+    [Fact]
+    public void DeepExport_ForNullGuardedConditionalAnd_ShortCircuitsRightSide()
+    {
+        using var module = new DeepExportNullGuardedConditionalAndModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 2]),
+            output: OnnxTensorType.Create<float>([2, 2])
+        );
+
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Add");
+        Assert.DoesNotContain(model.Graph.Nodes, node => node.OpType == "Mul");
+    }
+
+    [Fact]
+    public void DeepExport_ForNoGradUsingStatement_IgnoresScopeGuard()
+    {
+        using var module = new DeepExportNoGradUsingModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 2]),
+            output: OnnxTensorType.Create<float>([2, 2])
+        );
+
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Add");
+    }
+
+    [Fact]
+    public void DeepExport_ForStaticModuleForeach_UnrollsBody()
+    {
+        using var module = new DeepExportModuleForeachModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 3]),
+            output: OnnxTensorType.Create<float>([2, 3])
+        );
+
+        Assert.Equal(2, model.Graph.Nodes.Count(node => node.OpType == "MatMul"));
+    }
+
+    [Fact]
+    public void DeepExport_WithModuleTensorContractAttributes_UsesDeclaredMetadata()
+    {
+        using var module = new DeepExportAttributedContractModule();
+
+        var model = module.ExportOnnxModel(
+            options: new OnnxModelCreationOptions
+            {
+                Opset = 22,
+            }
+        );
+
+        var inputType = Assert.IsType<OnnxTensorType>(model.Graph.Inputs.Single().Type);
+        var outputType = Assert.IsType<OnnxTensorType>(model.Graph.Outputs.Single().Type);
+
+        Assert.Equal("tokens", model.Graph.Inputs.Single().Name);
+        Assert.Equal(typeof(long), inputType.Type);
+        Assert.Equal(["batch", "sequence"], inputType.Shape!.Dimensions.Select(static x => x.GetValue()));
+
+        Assert.Equal("logits", model.Graph.Outputs.Single().Name);
+        Assert.Equal(typeof(float), outputType.Type);
+        Assert.Equal([1L, "sequence", 32000L], outputType.Shape!.Dimensions.Select(static x => x.GetValue()));
     }
 
     [Fact]
@@ -888,6 +1118,157 @@ public sealed class TorchModuleDeepExportTests
         }
     }
 
+    private sealed class DeepExportSizedArrayInitializerShapeModule : TorchModule
+    {
+        public DeepExportSizedArrayInitializerShapeModule()
+            : base(nameof(DeepExportSizedArrayInitializerShapeModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            var shape = new long[5] { input.shape[0], input.shape[1], 1L, 2L, 2L };
+            return input.view(shape);
+        }
+    }
+
+    private sealed class DeepExportImplicitArrayShapeModule : TorchModule
+    {
+        public DeepExportImplicitArrayShapeModule()
+            : base(nameof(DeepExportImplicitArrayShapeModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            var shape = new[] { input.shape[0], 6L };
+            return input.view(shape);
+        }
+    }
+
+    private sealed class DeepExportAssignedArrayShapeModule : TorchModule
+    {
+        public DeepExportAssignedArrayShapeModule()
+            : base(nameof(DeepExportAssignedArrayShapeModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            var shape = new long[2];
+            shape[0] = input.shape[0];
+            shape[1] = 12L;
+
+            return input.view(shape);
+        }
+    }
+
+    private sealed class DeepExportLocalTensorArrayConcatModule : TorchModule
+    {
+        public DeepExportLocalTensorArrayConcatModule()
+            : base(nameof(DeepExportLocalTensorArrayConcatModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            var shifted = input + 1f;
+            var parts = new Tensor[] { input, shifted };
+
+            return cat(parts, dim: 1);
+        }
+    }
+
+    private sealed class DeepExportTensorInstanceMatMulModule : TorchModule
+    {
+        private readonly global::TorchSharp.Modules.Linear _projection;
+
+        public DeepExportTensorInstanceMatMulModule()
+            : base(nameof(DeepExportTensorInstanceMatMulModule))
+        {
+            _projection = nn.Linear(3, 2, hasBias: false);
+
+            RegisterComponents();
+        }
+
+        public override Tensor forward(Tensor input)
+        {
+            var weight = _projection.weight
+                ?? throw new InvalidOperationException("Projection weights are not initialized.");
+            var target = weight.transpose(0, 1);
+
+            return input.matmul(target);
+        }
+    }
+
+    private sealed class DeepExportBareMmModule : TorchModule
+    {
+        public DeepExportBareMmModule()
+            : base(nameof(DeepExportBareMmModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            return mm(input, input.transpose(0, 1));
+        }
+    }
+
+    private sealed class DeepExportTorchMmModule : TorchModule
+    {
+        public DeepExportTorchMmModule()
+            : base(nameof(DeepExportTorchMmModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            return global::TorchSharp.torch.mm(input, input.transpose(0, 1));
+        }
+    }
+
+    private sealed class DeepExportTensorInstanceMmModule : TorchModule
+    {
+        public DeepExportTensorInstanceMmModule()
+            : base(nameof(DeepExportTensorInstanceMmModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            return input.mm(input.transpose(0, 1));
+        }
+    }
+
+    private sealed class DeepExportBareBmmModule : TorchModule
+    {
+        public DeepExportBareBmmModule()
+            : base(nameof(DeepExportBareBmmModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            return bmm(input, input.transpose(1, 2));
+        }
+    }
+
+    private sealed class DeepExportTorchBmmModule : TorchModule
+    {
+        public DeepExportTorchBmmModule()
+            : base(nameof(DeepExportTorchBmmModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            return global::TorchSharp.torch.bmm(input, input.transpose(1, 2));
+        }
+    }
+
+    private sealed class DeepExportTensorInstanceBmmModule : TorchModule
+    {
+        public DeepExportTensorInstanceBmmModule()
+            : base(nameof(DeepExportTensorInstanceBmmModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            return input.bmm(input.transpose(1, 2));
+        }
+    }
+
     private sealed class DeepExportFunctionalActivationModule : TorchModule
     {
         private readonly global::TorchSharp.Modules.Linear _linear;
@@ -1006,6 +1387,77 @@ public sealed class TorchModuleDeepExportTests
             return _useAdd
                 ? input + 1f
                 : input * 2f;
+        }
+    }
+
+    private sealed class DeepExportNullGuardedConditionalAndModule : TorchModule
+    {
+        private readonly Tensor? _cache = null;
+
+        public DeepExportNullGuardedConditionalAndModule()
+            : base(nameof(DeepExportNullGuardedConditionalAndModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            if (_cache is not null && !_cache.IsInvalid)
+            {
+                return input * 2f;
+            }
+
+            return input + 1f;
+        }
+    }
+
+    private sealed class DeepExportNoGradUsingModule : TorchModule
+    {
+        public DeepExportNoGradUsingModule()
+            : base(nameof(DeepExportNoGradUsingModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            using var noGrad = global::TorchSharp.torch.no_grad();
+            return input + 1f;
+        }
+    }
+
+    private sealed class DeepExportModuleForeachModule : TorchModule
+    {
+        private readonly global::TorchSharp.Modules.Linear[] _blocks;
+
+        public DeepExportModuleForeachModule()
+            : base(nameof(DeepExportModuleForeachModule))
+        {
+            _blocks =
+            [
+                nn.Linear(3, 3),
+                nn.Linear(3, 3),
+            ];
+        }
+
+        public override Tensor forward(Tensor input)
+        {
+            foreach (var block in _blocks)
+            {
+                input = block.forward(input);
+            }
+
+            return input;
+        }
+    }
+
+    [ModuleInput("tokens", ScalarType.Int64, "batch", "sequence")]
+    [ModuleOutput("logits", ScalarType.Float32, 1, "sequence", 32000)]
+    private sealed class DeepExportAttributedContractModule : TorchModule
+    {
+        public DeepExportAttributedContractModule()
+            : base(nameof(DeepExportAttributedContractModule))
+        { }
+
+        public override Tensor forward(Tensor tokens)
+        {
+            return tokens.to_type(ScalarType.Float32);
         }
     }
 
