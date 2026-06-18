@@ -180,6 +180,74 @@ public sealed class TorchModuleDeepExportTests
     }
 
     [Fact]
+    public void DeepExport_ForOnesWithInlineArrayShapeAndRuntimeDType_EmitsTypedInitializer()
+    {
+        using var module = new DeepExportOnesRuntimeDTypeModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 3]),
+            output: OnnxTensorType.Create<long>([2, 2])
+        );
+
+        Assert.Contains(
+            model.Graph.Initializers.OfType<OnnxTensor<long>>(),
+            initializer => initializer.Shape.SequenceEqual([2, 2])
+                && initializer.Value.SequenceEqual([1L, 1L, 1L, 1L])
+        );
+    }
+
+    [Fact]
+    public void DeepExport_ForZerosWithNamedMetadata_EmitsTypedInitializer()
+    {
+        using var module = new DeepExportZerosRuntimeDTypeModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 3]),
+            output: OnnxTensorType.Create<int>([2, 3])
+        );
+
+        Assert.Contains(
+            model.Graph.Initializers.OfType<OnnxTensor<int>>(),
+            initializer => initializer.Shape.SequenceEqual([2, 3])
+                && initializer.Value.All(static value => value == 0)
+        );
+    }
+
+    [Fact]
+    public void DeepExport_ForRandomTensorFactories_EmitsRandomOperators()
+    {
+        using var module = new DeepExportRandomFactoryModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 2]),
+            output: OnnxTensorType.Create<float>([2, 2])
+        );
+
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "RandomUniformLike");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "RandomNormalLike");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Add");
+    }
+
+    [Fact]
+    public void DeepExport_ForRandIntFactory_EmitsIntegerRandomGraph()
+    {
+        using var module = new DeepExportRandIntFactoryModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([1]),
+            output: OnnxTensorType.Create<long>([2, 3])
+        );
+
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "RandomUniformLike");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Floor");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Cast");
+    }
+
+    [Fact]
     public void DeepExport_ForSymbolicSliceEndOnIntermediate_DoesNotCollapseEndToZero()
     {
         using var module = new DeepExportSymbolicSliceEndModule();
@@ -905,6 +973,85 @@ public sealed class TorchModuleDeepExportTests
             return input + mask;
         }
     }
+
+    private sealed class DeepExportOnesRuntimeDTypeModule : TorchModule
+    {
+        private readonly TensorFactorySettings _settings = new(ScalarType.Int64);
+
+        public DeepExportOnesRuntimeDTypeModule()
+            : base(nameof(DeepExportOnesRuntimeDTypeModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            return global::TorchSharp.torch.ones(
+                [input.shape[0], 2L],
+                device: input.device,
+                dtype: _settings.ScalarTypeInt
+            );
+        }
+    }
+
+    private sealed class DeepExportZerosRuntimeDTypeModule : TorchModule
+    {
+        private readonly TensorFactorySettings _settings = new(ScalarType.Int32);
+
+        public DeepExportZerosRuntimeDTypeModule()
+            : base(nameof(DeepExportZerosRuntimeDTypeModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            return global::TorchSharp.torch.zeros(
+                [input.shape[0], input.shape[1]],
+                dtype: _settings.ScalarTypeInt,
+                device: input.device
+            );
+        }
+    }
+
+    private sealed class DeepExportRandomFactoryModule : TorchModule
+    {
+        public DeepExportRandomFactoryModule()
+            : base(nameof(DeepExportRandomFactoryModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            var uniform = global::TorchSharp.torch.rand(
+                [input.shape[0], input.shape[1]],
+                dtype: input.dtype,
+                device: input.device
+            );
+            var normal = global::TorchSharp.torch.randn(
+                [input.shape[0], input.shape[1]],
+                dtype: ScalarType.Float32,
+                device: input.device
+            );
+
+            return uniform + normal;
+        }
+    }
+
+    private sealed class DeepExportRandIntFactoryModule : TorchModule
+    {
+        public DeepExportRandIntFactoryModule()
+            : base(nameof(DeepExportRandIntFactoryModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            return global::TorchSharp.torch.randint(
+                3L,
+                11L,
+                [2L, 3L],
+                dtype: ScalarType.Int64,
+                device: input.device
+            );
+        }
+    }
+
+    private sealed record TensorFactorySettings(ScalarType ScalarTypeInt);
 
     private sealed class DeepExportSymbolicSliceEndModule : TorchModule
     {

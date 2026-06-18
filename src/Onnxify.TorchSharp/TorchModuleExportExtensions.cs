@@ -987,10 +987,16 @@ public static class TorchModuleExportExtensions
             return ExportTorchArange(context, invocation);
         }
 
-        if (string.Equals(memberReference.MemberName, "full", StringComparison.Ordinal)
+        if (IsTorchFillFactoryName(memberReference.MemberName)
             && IsTorchReference(memberReference.Target))
         {
-            return ExportTorchFull(context, invocation);
+            return ExportTorchFillFactory(context, memberReference.MemberName, invocation);
+        }
+
+        if (IsTorchRandomFactoryName(memberReference.MemberName)
+            && IsTorchReference(memberReference.Target))
+        {
+            return ExportTorchRandomFactory(context, memberReference.MemberName, invocation);
         }
 
         if (string.Equals(memberReference.MemberName, "triu", StringComparison.Ordinal)
@@ -1179,6 +1185,16 @@ public static class TorchModuleExportExtensions
     private static bool IsTorchMatMulName(string name)
     {
         return name is "matmul" or "mm" or "bmm";
+    }
+
+    private static bool IsTorchFillFactoryName(string name)
+    {
+        return name is "full" or "ones" or "zeros" or "empty";
+    }
+
+    private static bool IsTorchRandomFactoryName(string name)
+    {
+        return name is "rand" or "randn" or "randint" or "normal";
     }
 
     private static ExportValue ExportTensorMethodInvocation(
@@ -2331,29 +2347,140 @@ public static class TorchModuleExportExtensions
         );
     }
 
-    private static ExportValue ExportTorchFull(
+    private static ExportValue ExportTorchFillFactory(
         ForwardExportContext context,
+        string factoryName,
         InvocationExpression invocation
     )
     {
         var arguments = GetPositionalArguments(invocation).ToArray();
-        if (arguments.Length < 2)
+        if (factoryName == "full" && arguments.Length < 2)
         {
             throw new NotSupportedException($"Unsupported torch.full argument count: {invocation}");
         }
 
+        if (factoryName != "full" && arguments.Length < 1)
+        {
+            throw new NotSupportedException($"Unsupported torch.{factoryName} argument count: {invocation}");
+        }
+
         var shape = ResolveLongArray(context, arguments[0]).ToArray();
         var elementCount = shape.Aggregate(1L, checked((total, dimension) => total * dimension));
-        var fillValue = Convert.ToSingle(ExportExpression(context, arguments[1]).Value);
-        var values = Enumerable.Repeat(fillValue, checked((int)elementCount)).ToArray();
+        var fillValue = factoryName switch
+        {
+            "ones" => 1d,
+            "zeros" or "empty" => 0d,
+            "full" => Convert.ToDouble(ExportExpression(context, arguments[1]).Value),
+            _ => throw new NotSupportedException($"Unsupported torch fill factory '{factoryName}'."),
+        };
+        var dtype = ResolveFactoryElementType(
+            context,
+            invocation,
+            defaultType: typeof(float),
+            positionalDtypeIndex: factoryName == "full" ? 2 : 1
+        );
 
-        // Constant factories such as "full([context, context], -10_000f, ...)" become
-        // ONNX initializers instead of runtime graph operators.
+        // Constant factories such as "ones([batch, seq], dtype: ...)" and
+        // "full([context, context], -10_000f, ...)" become ONNX initializers.
+        return new ExportValue(AddRepeatedTensorInitializer(
+            context.Graph,
+            context.Graph.NextName(factoryName),
+            shape,
+            fillValue,
+            checked((int)elementCount),
+            dtype
+        ));
+    }
+
+    private static ExportValue ExportTorchRandomFactory(
+        ForwardExportContext context,
+        string factoryName,
+        InvocationExpression invocation
+    )
+    {
+        var arguments = GetPositionalArguments(invocation).ToArray();
+        if (arguments.Length < 1)
+        {
+            throw new NotSupportedException($"Unsupported torch.{factoryName} argument count: {invocation}");
+        }
+
+        var dtype = ResolveFactoryTorchTensorDataType(
+            context,
+            invocation,
+            defaultType: factoryName == "randint" ? TorchTensorDataType.Int64 : TorchTensorDataType.Float,
+            positionalDtypeIndex: factoryName switch
+            {
+                "randint" => arguments.Length >= 3 && TryResolveLongArray(context, arguments[2], out _)
+                    ? 3
+                    : 2,
+                "normal" => 3,
+                _ => 1,
+            }
+        );
+
+        return factoryName switch
+        {
+            "rand" => new ExportValue(context.Graph.ExportRand(
+                ResolveLongArray(context, arguments[0]).ToArray(),
+                dtype
+            )),
+            "randn" => new ExportValue(context.Graph.ExportRandN(
+                ResolveLongArray(context, arguments[0]).ToArray(),
+                dtype
+            )),
+            "randint" => ExportTorchRandInt(context, invocation, arguments, dtype),
+            "normal" => ExportTorchNormal(context, invocation, arguments, dtype),
+            _ => throw new NotSupportedException($"Unsupported torch random factory '{factoryName}'."),
+        };
+    }
+
+    private static ExportValue ExportTorchRandInt(
+        ForwardExportContext context,
+        InvocationExpression invocation,
+        IReadOnlyList<Expression> arguments,
+        TorchTensorDataType dtype
+    )
+    {
+        if (arguments.Count >= 3 && TryResolveLongArray(context, arguments[2], out var lowHighShape))
+        {
+            return new ExportValue(context.Graph.ExportRandInt(
+                ResolveLongArgument(context, arguments[0]),
+                ResolveLongArgument(context, arguments[1]),
+                lowHighShape,
+                dtype
+            ));
+        }
+
+        if (arguments.Count >= 2)
+        {
+            return new ExportValue(context.Graph.ExportRandInt(
+                ResolveLongArgument(context, arguments[0]),
+                ResolveLongArray(context, arguments[1]).ToArray(),
+                dtype
+            ));
+        }
+
+        throw new NotSupportedException($"Unsupported torch.randint argument count: {invocation}");
+    }
+
+    private static ExportValue ExportTorchNormal(
+        ForwardExportContext context,
+        InvocationExpression invocation,
+        IReadOnlyList<Expression> arguments,
+        TorchTensorDataType dtype
+    )
+    {
+        if (arguments.Count < 3)
+        {
+            throw new NotSupportedException($"Unsupported torch.normal argument count: {invocation}");
+        }
+
         return new ExportValue(
-            context.Graph.AddTensor(
-                name: context.Graph.NextName("full"),
-                shape: shape,
-                value: values
+            context.Graph.ExportNormal(
+                ResolveDoubleArgument(context, arguments[0]),
+                ResolveDoubleArgument(context, arguments[1]),
+                ResolveLongArray(context, arguments[2]).ToArray(),
+                dtype
             )
         );
     }
@@ -3356,6 +3483,59 @@ public static class TorchModuleExportExtensions
         };
     }
 
+    private static OnnxTensor AddRepeatedTensorInitializer(
+        OnnxGraph graph,
+        string name,
+        IReadOnlyList<long> shape,
+        double value,
+        int elementCount,
+        Type dataType
+    )
+    {
+        var shapeArray = shape.ToArray();
+        if (dataType == typeof(double))
+        {
+            return graph.AddTensor(name, shapeArray, Enumerable.Repeat(value, elementCount).ToArray());
+        }
+
+        if (dataType == typeof(long))
+        {
+            return graph.AddTensor(name, shapeArray, Enumerable.Repeat(checked((long)value), elementCount).ToArray());
+        }
+
+        if (dataType == typeof(int))
+        {
+            return graph.AddTensor(name, shapeArray, Enumerable.Repeat(checked((int)value), elementCount).ToArray());
+        }
+
+        if (dataType == typeof(short))
+        {
+            return graph.AddTensor(name, shapeArray, Enumerable.Repeat(checked((short)value), elementCount).ToArray());
+        }
+
+        if (dataType == typeof(sbyte))
+        {
+            return graph.AddTensor(name, shapeArray, Enumerable.Repeat(checked((sbyte)value), elementCount).ToArray());
+        }
+
+        if (dataType == typeof(byte))
+        {
+            return graph.AddTensor(name, shapeArray, Enumerable.Repeat(checked((byte)value), elementCount).ToArray());
+        }
+
+        if (dataType == typeof(bool))
+        {
+            return graph.AddTensor(name, shapeArray, Enumerable.Repeat(value != 0d, elementCount).ToArray());
+        }
+
+        if (dataType == typeof(float))
+        {
+            return graph.AddTensor(name, shapeArray, Enumerable.Repeat(checked((float)value), elementCount).ToArray());
+        }
+
+        throw new NotSupportedException($"Tensor factory dtype '{dataType.Name}' is not supported by deep export.");
+    }
+
     private static float[] GetFloatTensorValues(OnnxTensor tensor)
     {
         return tensor is OnnxTensor<float> typedTensor
@@ -3791,6 +3971,24 @@ public static class TorchModuleExportExtensions
                 }
 
                 return [ConvertExportValueToLong(new ExportValue(value), expression)];
+        }
+    }
+
+    private static bool TryResolveLongArray(
+        ForwardExportContext context,
+        Expression expression,
+        out IReadOnlyList<long> values
+    )
+    {
+        try
+        {
+            values = ResolveLongArray(context, expression);
+            return true;
+        }
+        catch (NotSupportedException)
+        {
+            values = [];
+            return false;
         }
     }
 
@@ -4463,6 +4661,79 @@ public static class TorchModuleExportExtensions
         }
 
         throw new NotSupportedException($"Unsupported tensor dtype expression: {expression}");
+    }
+
+    private static Type ResolveFactoryElementType(
+        ForwardExportContext context,
+        InvocationExpression invocation,
+        Type defaultType,
+        int positionalDtypeIndex
+    )
+    {
+        var dtypeExpression = GetNamedArgument(invocation, "dtype")
+            ?? GetPositionalArguments(invocation).ElementAtOrDefault(positionalDtypeIndex);
+        return dtypeExpression is null
+            ? defaultType
+            : ResolveTensorElementType(context, dtypeExpression);
+    }
+
+    private static TorchTensorDataType ResolveFactoryTorchTensorDataType(
+        ForwardExportContext context,
+        InvocationExpression invocation,
+        TorchTensorDataType defaultType,
+        int positionalDtypeIndex
+    )
+    {
+        var dtypeExpression = GetNamedArgument(invocation, "dtype")
+            ?? GetPositionalArguments(invocation).ElementAtOrDefault(positionalDtypeIndex);
+        return dtypeExpression is null
+            ? defaultType
+            : ToTorchTensorDataType(ResolveTensorElementType(context, dtypeExpression));
+    }
+
+    private static TorchTensorDataType ToTorchTensorDataType(Type type)
+    {
+        if (type == typeof(float))
+        {
+            return TorchTensorDataType.Float;
+        }
+
+        if (type == typeof(double))
+        {
+            return TorchTensorDataType.Double;
+        }
+
+        if (type == typeof(long))
+        {
+            return TorchTensorDataType.Int64;
+        }
+
+        if (type == typeof(int))
+        {
+            return TorchTensorDataType.Int32;
+        }
+
+        if (type == typeof(short))
+        {
+            return TorchTensorDataType.Int16;
+        }
+
+        if (type == typeof(sbyte))
+        {
+            return TorchTensorDataType.Int8;
+        }
+
+        if (type == typeof(byte))
+        {
+            return TorchTensorDataType.UInt8;
+        }
+
+        if (type == typeof(bool))
+        {
+            return TorchTensorDataType.Bool;
+        }
+
+        throw new NotSupportedException($"Torch tensor dtype '{type.Name}' is not supported by deep export.");
     }
 
     private static long ConvertExportValueToLong(
