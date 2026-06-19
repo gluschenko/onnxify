@@ -39,7 +39,7 @@ Scale takes one input data (Tensor<float>) and produces one output data
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `scale` | `AttributeScale` | `float` | no | `1.0` | The scale to apply. |
+| `scale` | `AttributeScale` | `Nullable<float>` | no | `1.0` | The scale to apply. |
 
 ## TorchSharp Coverage
 

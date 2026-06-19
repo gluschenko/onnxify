@@ -62,9 +62,9 @@ is equivalent to LayerNormalization.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `epsilon` | `Epsilon` | `float` | no | `9.999999747378752e-06` | The epsilon value to use to avoid division by zero. |
+| `epsilon` | `Epsilon` | `Nullable<float>` | no | `9.999999747378752e-06` | The epsilon value to use to avoid division by zero. |
 | `num_groups` | `NumGroups` | `long` | yes | `[null]` | The number of groups of channels. It should be a divisor of the number of channels `C`. |
-| `stash_type` | `StashType` | `long` | no | `1` | The floating-point precision used in stage one of the computation. |
+| `stash_type` | `StashType` | `Nullable<long>` | no | `1` | The floating-point precision used in stage one of the computation. |
 
 ## TorchSharp Coverage
 

@@ -39,7 +39,7 @@ Schema description was not found in `onnx_operators.json`.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `axis` | `Axis` | `long` | no | `-1` | Describes the dimension Softmax will be performed on.Defaults to -1. Negative value means counting dimensions from the back. |
+| `axis` | `Axis` | `Nullable<long>` | no | `-1` | Describes the dimension Softmax will be performed on.Defaults to -1. Negative value means counting dimensions from the back. |
 
 ## TorchSharp Coverage
 

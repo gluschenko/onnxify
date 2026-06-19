@@ -57,8 +57,8 @@ output = [5, 3, 0]
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `exclusive` | `Exclusive` | `long` | no | `0` | If set to 1 will return exclusive sum in which the top element is not included. In other terms, if set to 1, the j-th output element would be the sum of the first (j-1) elements. Otherwise, it would be the sum of the first j elements. |
-| `reverse` | `Reverse` | `long` | no | `0` | If set to 1 will perform the sums in reverse direction. |
+| `exclusive` | `Exclusive` | `Nullable<long>` | no | `0` | If set to 1 will return exclusive sum in which the top element is not included. In other terms, if set to 1, the j-th output element would be the sum of the first (j-1) elements. Otherwise, it would be the sum of the first j elements. |
+| `reverse` | `Reverse` | `Nullable<long>` | no | `0` | If set to 1 will perform the sums in reverse direction. |
 
 ## TorchSharp Coverage
 

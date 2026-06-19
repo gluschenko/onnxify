@@ -56,8 +56,8 @@ Maps each element in the input tensor to another value.<br>
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `default_float` | `DefaultFloat` | `float` | no | `-0.0` | A float. |
-| `default_int64` | `DefaultInt64` | `long` | no | `-1` | An integer. |
+| `default_float` | `DefaultFloat` | `Nullable<float>` | no | `-0.0` | A float. |
+| `default_int64` | `DefaultInt64` | `Nullable<long>` | no | `-1` | An integer. |
 | `default_string` | `DefaultString` | `string` | no | `_Unused` | A string. |
 | `default_tensor` | `DefaultTensor` | `OnnxTensor` | no | `[null]` | A default tensor. {"_Unused"} if values_* has string type, {-1} if values_* has integral type, and {-0.f} if values_* has float type. |
 | `keys_floats` | `KeysFloats` | `float[]` | no | `[null]` | A list of floats. |

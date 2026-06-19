@@ -50,9 +50,9 @@ is the same as `x_scale`. The output type also determines the precision of the m
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `axis` | `Axis` | `long` | no | `1` | (Optional) The axis of the dequantizing dimension of the input tensor. Used for per-axis and blocked quantization. Negative value means counting dimensions from the back. Accepted range is `[-r, r-1]` where `r = rank(input)`. |
-| `block_size` | `BlockSize` | `long` | no | `0` | (Optional) The size of the quantization block (number of times every scale is replicated). Used only for blocked quantization. The block size is a positive integer. Given `x` shape `(D0, ..., Di, ..., Dn)`, `y_scale` shape `(S0, ... Si, ...Sn)` and `axis=i`, the accepted range is `[ceil(Di/Si), ceil(Di/(Si-1))-1]` |
-| `output_dtype` | `OutputDtype` | `long` | no | `0` | (Optional) The output data type. If not supplied, the output data type is inferred from `x_scale` data type (`T2`) |
+| `axis` | `Axis` | `Nullable<long>` | no | `1` | (Optional) The axis of the dequantizing dimension of the input tensor. Used for per-axis and blocked quantization. Negative value means counting dimensions from the back. Accepted range is `[-r, r-1]` where `r = rank(input)`. |
+| `block_size` | `BlockSize` | `Nullable<long>` | no | `0` | (Optional) The size of the quantization block (number of times every scale is replicated). Used only for blocked quantization. The block size is a positive integer. Given `x` shape `(D0, ..., Di, ..., Dn)`, `y_scale` shape `(S0, ... Si, ...Sn)` and `axis=i`, the accepted range is `[ceil(Di/Si), ceil(Di/(Si-1))-1]` |
+| `output_dtype` | `OutputDtype` | `Nullable<long>` | no | `0` | (Optional) The output data type. If not supplied, the output data type is inferred from `x_scale` data type (`T2`) |
 
 ## TorchSharp Coverage
 

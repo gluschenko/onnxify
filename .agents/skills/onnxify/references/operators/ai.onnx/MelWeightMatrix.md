@@ -49,7 +49,7 @@ The returned MelWeightMatrix can be used to right-multiply a spectrogram S of sh
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `output_datatype` | `OutputDatatype` | `long` | no | `1` | The data type of the output tensor. Strictly must be one of the values from DataType enum in TensorProto whose values correspond to T3. The default value is 1 = FLOAT. |
+| `output_datatype` | `OutputDatatype` | `Nullable<long>` | no | `1` | The data type of the output tensor. Strictly must be one of the values from DataType enum in TensorProto whose values correspond to T3. The default value is 1 = FLOAT. |
 
 ## TorchSharp Coverage
 

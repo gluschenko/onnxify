@@ -71,8 +71,8 @@ Example 2:
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `batch_axis` | `BatchAxis` | `long` | no | `1` | (Optional) Specify which axis is batch axis. Must be one of 1 (default), or 0. |
-| `time_axis` | `TimeAxis` | `long` | no | `0` | (Optional) Specify which axis is time axis. Must be one of 0 (default), or 1. |
+| `batch_axis` | `BatchAxis` | `Nullable<long>` | no | `1` | (Optional) Specify which axis is batch axis. Must be one of 1 (default), or 0. |
+| `time_axis` | `TimeAxis` | `Nullable<long>` | no | `0` | (Optional) Specify which axis is time axis. Must be one of 0 (default), or 1. |
 
 ## TorchSharp Coverage
 

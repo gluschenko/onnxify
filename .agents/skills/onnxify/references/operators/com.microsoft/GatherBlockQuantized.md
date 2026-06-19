@@ -49,10 +49,10 @@ GatherBlockQuantized is a Gather with data quantized. It is similar to Gather (h
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `bits` | `Bits` | `long` | no | `4` | Number of bits used for weight quantization. Must be either 4 or 8. |
-| `block_size` | `BlockSize` | `long` | no | `128` | (Optional) block size used for weight quantization. It needs to be a power of 2 and not smaller than 16. |
-| `gather_axis` | `GatherAxis` | `long` | no | `0` | (Optional) Which axis to gather on. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(data). |
-| `quantize_axis` | `QuantizeAxis` | `long` | no | `1` | (Optional) Which axis to block-wise quantize. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(data). |
+| `bits` | `Bits` | `Nullable<long>` | no | `4` | Number of bits used for weight quantization. Must be either 4 or 8. |
+| `block_size` | `BlockSize` | `Nullable<long>` | no | `128` | (Optional) block size used for weight quantization. It needs to be a power of 2 and not smaller than 16. |
+| `gather_axis` | `GatherAxis` | `Nullable<long>` | no | `0` | (Optional) Which axis to gather on. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(data). |
+| `quantize_axis` | `QuantizeAxis` | `Nullable<long>` | no | `1` | (Optional) Which axis to block-wise quantize. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(data). |
 
 ## TorchSharp Coverage
 

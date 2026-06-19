@@ -545,6 +545,20 @@ public class OnnxTensorShape
 public abstract class OnnxDimension
 {
     /// <summary>
+    /// Gets the optional ONNX dimension denotation string that describes the semantic meaning of this dimension.
+    /// </summary>
+    public string Denotation { get; }
+
+    /// <summary>
+    /// Initializes a dimension descriptor with an optional ONNX dimension denotation.
+    /// </summary>
+    /// <param name="denotation">Semantic dimension denotation to write into ONNX shape metadata, or an empty string when none is needed.</param>
+    protected OnnxDimension(string denotation = "")
+    {
+        Denotation = denotation;
+    }
+
+    /// <summary>
     /// Gets the dimension payload as either <see cref="long"/> for fixed sizes or <see cref="string"/> for symbolic dimensions.
     /// </summary>
     /// <returns>The dimension value to serialize into ONNX shape metadata.</returns>
@@ -556,9 +570,9 @@ public abstract class OnnxDimension
     {
         return x.ValueCase switch
         {
-            TensorShapeProto.Types.Dimension.ValueOneofCase.DimValue => new OnnxDimension<long>(x.DimValue),
-            TensorShapeProto.Types.Dimension.ValueOneofCase.DimParam => new OnnxDimension<string>(x.DimParam),
-            TensorShapeProto.Types.Dimension.ValueOneofCase.None => new OnnxDimensionNone(),
+            TensorShapeProto.Types.Dimension.ValueOneofCase.DimValue => new OnnxDimension<long>(x.DimValue, x.Denotation),
+            TensorShapeProto.Types.Dimension.ValueOneofCase.DimParam => new OnnxDimension<string>(x.DimParam, x.Denotation),
+            TensorShapeProto.Types.Dimension.ValueOneofCase.None => new OnnxDimensionNone(x.Denotation),
             _ => throw new NotImplementedException($"Not implemented for '{x.ValueCase}'"),
         };
     }
@@ -607,7 +621,7 @@ public sealed class OnnxDimension<T> : OnnxDimension where T : notnull
     /// </summary>
     /// <param name="value">Fixed dimension size or symbolic dimension name.</param>
     /// <exception cref="NotSupportedException">Thrown when <typeparamref name="T"/> is neither <see cref="long"/> nor <see cref="string"/>.</exception>
-    public OnnxDimension(T value)
+    public OnnxDimension(T value, string denotation = "") : base(denotation)
     {
         if (value is not long and not string)
         {
@@ -619,7 +633,10 @@ public sealed class OnnxDimension<T> : OnnxDimension where T : notnull
 
     internal override TensorShapeProto.Types.Dimension ToProto()
     {
-        var proto = new TensorShapeProto.Types.Dimension();
+        var proto = new TensorShapeProto.Types.Dimension
+        {
+            Denotation = Denotation,
+        };
 
         if (Value is long longValue)
         {
@@ -645,6 +662,10 @@ public sealed class OnnxDimension<T> : OnnxDimension where T : notnull
 
 public sealed class OnnxDimensionNone : OnnxDimension
 {
+    public OnnxDimensionNone(string denotation = "") : base(denotation)
+    {
+    }
+
     /// <inheritdoc />
     public override object GetValue()
     {
@@ -653,7 +674,10 @@ public sealed class OnnxDimensionNone : OnnxDimension
 
     internal override TensorShapeProto.Types.Dimension ToProto()
     {
-        var proto = new TensorShapeProto.Types.Dimension();
+        var proto = new TensorShapeProto.Types.Dimension
+        {
+            Denotation = Denotation,
+        };
         return proto;
     }
 

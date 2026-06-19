@@ -122,7 +122,7 @@ output  = [[2,3],[4,5]]                 # output_shape  = [2, 2]
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `batch_dims` | `BatchDims` | `long` | no | `0` | The number of batch dimensions. The gather of indexing starts from dimension of data[batch_dims:] |
+| `batch_dims` | `BatchDims` | `Nullable<long>` | no | `0` | The number of batch dimensions. The gather of indexing starts from dimension of data[batch_dims:] |
 
 ## TorchSharp Coverage
 

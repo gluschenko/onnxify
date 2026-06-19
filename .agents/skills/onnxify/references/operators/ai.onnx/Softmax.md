@@ -44,7 +44,7 @@ and contains the Softmax values of the corresponding input.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `axis` | `Axis` | `long` | no | `-1` | Describes the dimension Softmax will be performed on. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(input). |
+| `axis` | `Axis` | `Nullable<long>` | no | `-1` | Describes the dimension Softmax will be performed on. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(input). |
 
 ## TorchSharp Coverage
 

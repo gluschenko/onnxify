@@ -100,12 +100,12 @@ Q*sqrt(scale) K*sqrt(scale) |
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `is_causal` | `IsCausal` | `long` | no | `0` | If set to `1`, the attention masking is a lower triangular matrix when the mask is a square matrix. The attention masking has the form of the upper left causal bias due to the alignment. |
+| `is_causal` | `IsCausal` | `Nullable<long>` | no | `0` | If set to `1`, the attention masking is a lower triangular matrix when the mask is a square matrix. The attention masking has the form of the upper left causal bias due to the alignment. |
 | `kv_num_heads` | `KvNumHeads` | `Nullable<long>` | no | `[null]` | Number of heads of key and value. Must be used with 3D inputs of Q, K and V. |
 | `q_num_heads` | `QNumHeads` | `Nullable<long>` | no | `[null]` | Number of heads of query. Must be used with 3D inputs of Q, K and V. |
-| `qk_matmul_output_mode` | `QkMatmulOutputMode` | `long` | no | `0` | If set to `0`, qk_matmul_output is the output of qk matmul. If set to `1`, qk_matmul_output includes the addition of the attention mask to the output of qk matmul. If set to `2`, qk_matmul_output is the output after the softcap operation. If set to `3`, qk_matmul_output is the output after the softmax operation. Default value is 0. |
+| `qk_matmul_output_mode` | `QkMatmulOutputMode` | `Nullable<long>` | no | `0` | If set to `0`, qk_matmul_output is the output of qk matmul. If set to `1`, qk_matmul_output includes the addition of the attention mask to the output of qk matmul. If set to `2`, qk_matmul_output is the output after the softcap operation. If set to `3`, qk_matmul_output is the output after the softmax operation. Default value is 0. |
 | `scale` | `Scale` | `Nullable<float>` | no | `[null]` | Scaling factor applied to $Q*K^T$. Default value is `1/sqrt(head_size)`. To prevent [numerical overflow](https://tinyurl.com/sudb9s96), scale `Q`, `K` by `sqrt(scale)` before matmul. |
-| `softcap` | `Softcap` | `float` | no | `0.0` | Softcap value for attention weights. Default value is 0. |
+| `softcap` | `Softcap` | `Nullable<float>` | no | `0.0` | Softcap value for attention weights. Default value is 0. |
 | `softmax_precision` | `SoftmaxPrecision` | `Nullable<long>` | no | `[null]` | The floating-point precision used in softmax computation. If softmax precision is not provided, the same precision as the input of softmax (Q and K) is used. |
 
 ## TorchSharp Coverage

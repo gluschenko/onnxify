@@ -382,6 +382,49 @@ public sealed class OnnxModelTests
     }
 
     [Fact]
+    public void Save_AndLoad_RoundTripsTensorDimensionDenotations()
+    {
+        var model = OnnxModel.Create();
+
+        model.Graph.AddInput(
+            "input",
+            OnnxTensorType.Create<float>(
+                new OnnxDimension[]
+                {
+                    new OnnxDimension<long>(1L, "DATA_BATCH"),
+                    new OnnxDimension<string>("sequence", "DATA_TIME"),
+                    new OnnxDimensionNone("DATA_FEATURE"),
+                }));
+
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+
+        try
+        {
+            model.Save(path);
+            var loaded = OnnxModel.FromFile(path);
+
+            var loadedInput = Assert.IsType<OnnxValue<OnnxTensorType>>(Assert.Single(loaded.Graph.Inputs));
+            var loadedShape = loadedInput.Type.Shape!;
+            Assert.Equal("DATA_BATCH", loadedShape.Dimensions[0].Denotation);
+            Assert.Equal("DATA_TIME", loadedShape.Dimensions[1].Denotation);
+            Assert.Equal("DATA_FEATURE", loadedShape.Dimensions[2].Denotation);
+
+            var savedProto = ModelProto.Parser.ParseFrom(File.ReadAllBytes(path));
+            var savedShape = Assert.Single(savedProto.Graph.Input).Type.TensorType.Shape;
+            Assert.Equal("DATA_BATCH", savedShape.Dim[0].Denotation);
+            Assert.Equal("DATA_TIME", savedShape.Dim[1].Denotation);
+            Assert.Equal("DATA_FEATURE", savedShape.Dim[2].Denotation);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
     public void Save_AndLoad_RoundTripsVariadicInputsAndOutputs()
     {
         var model = OnnxModel.Create(new OnnxModelCreationOptions

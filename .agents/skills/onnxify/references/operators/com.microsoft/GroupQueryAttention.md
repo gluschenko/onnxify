@@ -61,12 +61,12 @@ Supports continuous decoding for batch_size == 1 for CPU and CUDA.
 | --- | --- | --- | --- | --- | --- |
 | `do_rotary` | `DoRotary` | `Nullable<long>` | no | `[null]` | Whether to use rotary position embedding. Default value is 0. |
 | `kv_num_heads` | `KvNumHeads` | `long` | yes | `[null]` | Number of attention heads for k and v |
-| `local_window_size` | `LocalWindowSize` | `long` | no | `-1` | left_window_size for local attention (like Mistral). Default value is -1 meaning unused. |
+| `local_window_size` | `LocalWindowSize` | `Nullable<long>` | no | `-1` | left_window_size for local attention (like Mistral). Default value is -1 meaning unused. |
 | `num_heads` | `NumHeads` | `long` | yes | `[null]` | Number of attention heads for q |
-| `qk_output` | `QkOutput` | `long` | no | `0` | Output values of QK matrix multiplication before (1) or after (2) softmax normalization. Default value is 0 (don't output). |
+| `qk_output` | `QkOutput` | `Nullable<long>` | no | `0` | Output values of QK matrix multiplication before (1) or after (2) softmax normalization. Default value is 0 (don't output). |
 | `rotary_interleaved` | `RotaryInterleaved` | `Nullable<long>` | no | `[null]` | Rotate using interleaved pattern. Default value is 0 (False). |
 | `scale` | `Scale` | `Nullable<float>` | no | `[null]` | Custom scale will be used if specified. Default value is 1/sqrt(head_size) |
-| `smooth_softmax` | `SmoothSoftmax` | `long` | no | `-1` | Use a smooth factor in softmax. |
+| `smooth_softmax` | `SmoothSoftmax` | `Nullable<long>` | no | `-1` | Use a smooth factor in softmax. |
 | `softcap` | `Softcap` | `Nullable<float>` | no | `[null]` | Softcap value for attention weights. Default value is 0. |
 
 ## TorchSharp Coverage

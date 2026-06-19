@@ -50,7 +50,7 @@ Tree Ensemble operator.  Returns the regressed values for each input in a batch.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `aggregate_function` | `AggregateFunction` | `long` | no | `1` | Defines how to aggregate leaf values within a target. <br>One of 'AVERAGE' (0) 'SUM' (1) 'MIN' (2) 'MAX (3) defaults to 'SUM' (1) |
+| `aggregate_function` | `AggregateFunction` | `Nullable<long>` | no | `1` | Defines how to aggregate leaf values within a target. <br>One of 'AVERAGE' (0) 'SUM' (1) 'MIN' (2) 'MAX (3) defaults to 'SUM' (1) |
 | `leaf_targetids` | `LeafTargetids` | `long[]` | yes | `[null]` | The index of the target that this leaf contributes to (this must be in range `[0, n_targets)`). |
 | `leaf_weights` | `LeafWeights` | `OnnxTensor` | yes | `[null]` | The weight for each leaf. |
 | `membership_values` | `MembershipValues` | `OnnxTensor` | no | `[null]` | Members to test membership of for each set membership node. List all of the members to test again in the order that the 'BRANCH_MEMBER' mode appears in `node_modes`, delimited by `NaN`s. Will have the same number of sets of values as nodes with mode 'BRANCH_MEMBER'. This may be omitted if the node doesn't contain any 'BRANCH_MEMBER' nodes. |
@@ -64,7 +64,7 @@ Tree Ensemble operator.  Returns the regressed values for each input in a batch.
 | `nodes_splits` | `NodesSplits` | `OnnxTensor` | yes | `[null]` | Thresholds to do the splitting on for each node with mode that is not 'BRANCH_MEMBER'. |
 | `nodes_trueleafs` | `NodesTrueleafs` | `long[]` | yes | `[null]` | 1 if true branch is leaf for each node and 0 an interior node. To represent a tree that is a leaf (only has one node), one can do so by having a single `nodes_*` entry with true and false branches referencing the same `leaf_*` entry |
 | `nodes_truenodeids` | `NodesTruenodeids` | `long[]` | yes | `[null]` | If `nodes_trueleafs` is false at an entry, this represents the position of the true branch node. This position can be used to index into a `nodes_*` entry. If `nodes_trueleafs` is false, it is an index into the leaf_* attributes. |
-| `post_transform` | `PostTransform` | `long` | no | `0` | Indicates the transform to apply to the score. <br>One of 'NONE' (0), 'SOFTMAX' (1), 'LOGISTIC' (2), 'SOFTMAX_ZERO' (3) or 'PROBIT' (4), defaults to 'NONE' (0) |
+| `post_transform` | `PostTransform` | `Nullable<long>` | no | `0` | Indicates the transform to apply to the score. <br>One of 'NONE' (0), 'SOFTMAX' (1), 'LOGISTIC' (2), 'SOFTMAX_ZERO' (3) or 'PROBIT' (4), defaults to 'NONE' (0) |
 | `tree_roots` | `TreeRoots` | `long[]` | yes | `[null]` | Index into `nodes_*` for the root of each tree. The tree structure is derived from the branching of each node. |
 
 ## TorchSharp Coverage

@@ -58,8 +58,8 @@ For example, for 4 bits, the first 4 bits are stored in the lower 4 bits of a by
 | --- | --- | --- | --- | --- | --- |
 | `K` | `K` | `long` | yes | `[null]` | Input feature dimension of the weight matrix. |
 | `N` | `N` | `long` | yes | `[null]` | Output feature dimension of the weight matrix. |
-| `accuracy_level` | `AccuracyLevel` | `long` | no | `0` | The minimum accuracy level of input A, can be: 0(unset), 1(fp32), 2(fp16), 3(bf16), or 4(int8) (default unset). It is used to control how input A is quantized or downcast internally while doing computation, for example: 0 means input A will not be quantized or downcast while doing computation. 4 means input A can be quantized with the same block_size to int8 internally from type T1. |
-| `bits` | `Bits` | `long` | no | `4` | Bit-width used to quantize the weights (valid range: 2~8) |
+| `accuracy_level` | `AccuracyLevel` | `Nullable<long>` | no | `0` | The minimum accuracy level of input A, can be: 0(unset), 1(fp32), 2(fp16), 3(bf16), or 4(int8) (default unset). It is used to control how input A is quantized or downcast internally while doing computation, for example: 0 means input A will not be quantized or downcast while doing computation. 4 means input A can be quantized with the same block_size to int8 internally from type T1. |
+| `bits` | `Bits` | `Nullable<long>` | no | `4` | Bit-width used to quantize the weights (valid range: 2~8) |
 | `block_size` | `BlockSize` | `long` | yes | `[null]` | Size of each quantization block along the K (input feature) dimension. Must be a power of two and ≥ 16 (e.g., 16, 32, 64, 128). |
 
 ## TorchSharp Coverage

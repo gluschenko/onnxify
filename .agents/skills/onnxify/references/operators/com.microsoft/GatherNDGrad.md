@@ -40,7 +40,7 @@ Schema description was not found in `onnx_operators.json`.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `batch_dims` | `BatchDims` | `long` | no | `0` | The number of batch dims. The gather of indexing starts from dimension of data[batch_dims+1:] |
+| `batch_dims` | `BatchDims` | `Nullable<long>` | no | `0` | The number of batch dims. The gather of indexing starts from dimension of data[batch_dims+1:] |
 
 ## TorchSharp Coverage
 

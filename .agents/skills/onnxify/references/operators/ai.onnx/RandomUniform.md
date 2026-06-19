@@ -43,9 +43,9 @@ TensorProto message.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `dtype` | `Dtype` | `long` | no | `1` | The data type for the elements of the output tensor. If not specified, default is TensorProto::FLOAT. |
-| `high` | `High` | `float` | no | `1.0` | Upper boundary of the output values. |
-| `low` | `Low` | `float` | no | `0.0` | Lower boundary of the output values. |
+| `dtype` | `Dtype` | `Nullable<long>` | no | `1` | The data type for the elements of the output tensor. If not specified, default is TensorProto::FLOAT. |
+| `high` | `High` | `Nullable<float>` | no | `1.0` | Upper boundary of the output values. |
+| `low` | `Low` | `Nullable<float>` | no | `0.0` | Lower boundary of the output values. |
 | `seed` | `Seed` | `Nullable<float>` | no | `[null]` | (Optional) Seed to the random generator, if not specified we will auto generate one. |
 | `shape` | `Shape` | `long[]` | yes | `[null]` | The shape of the output tensor. |
 

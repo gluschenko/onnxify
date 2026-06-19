@@ -64,9 +64,9 @@ Wrapper of PyTorch's autograd.Function implementation.
 | `input_tensor_types` | `InputTensorTypes` | `long[]` | yes | `[null]` | Input types of autograd.Function.apply. |
 | `output_tensor_ranks` | `OutputTensorRanks` | `long[]` | yes | `[null]` | Output tensors' ranks of autograd.Function.apply. |
 | `output_tensor_types` | `OutputTensorTypes` | `long[]` | yes | `[null]` | Output types of autograd.Function.apply. |
-| `safe_run_mode` | `SafeRunMode` | `long` | no | `1` | Indicate if the function is running in safe mode or not. Safe mode support common use cases of PyTorch ctx for example, save for backward, mark as dirty,or materialize gradient. In this mode, inplace operation is detected on the fly. Unsafe mode is used to run the function faster not considering the above ctx usage.Additional requirement running in this mode: provide correct input alias map. |
+| `safe_run_mode` | `SafeRunMode` | `Nullable<long>` | no | `1` | Indicate if the function is running in safe mode or not. Safe mode support common use cases of PyTorch ctx for example, save for backward, mark as dirty,or materialize gradient. In this mode, inplace operation is detected on the fly. Unsafe mode is used to run the function faster not considering the above ctx usage.Additional requirement running in this mode: provide correct input alias map. |
 | `tensor_reuse_map` | `TensorReuseMap` | `long[]` | no | `[null]` | A int array indicating whether output at each index is reusing specific input or not.If the given index is -1, it means the output is not reusing any input.For example, there are 2 tensor inputs and 3 tensor outputs (including ctx), tensor_reuse_map = [-1, 1, 0] means- the output 0 (ctx) don't reuse any input buffer.- the output 1 reuses the input 1.- the output 2 reuses the input 0. |
-| `training_mode` | `TrainingMode` | `long` | no | `0` | Indicate if the model is exported in training_mode, by default, False. |
+| `training_mode` | `TrainingMode` | `Nullable<long>` | no | `0` | Indicate if the model is exported in training_mode, by default, False. |
 
 ## TorchSharp Coverage
 

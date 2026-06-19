@@ -11,7 +11,7 @@
 - Kept the source generator strictly on `netstandard2.0` while referencing the core `Onnxify` package for shared graph loading and `OnnxGraph.SortTopologically()`.
 - Removed the duplicated raw-protobuf topological sort from TorchModule analysis; TorchModule generation now walks the shared `OnnxGraph` wrapper in `PreserveUntyped` mode to retain raw ONNX node inputs and attributes.
 - Fixed TorchModule deep import for ONNX `Conv` nodes with asymmetric `pads` by emitting an explicit `torch.nn.functional.pad(...)` before `conv2d(...)` instead of dropping the ending spatial padding values.
-- Added deep roundtrip tests that import ONNX graphs as TorchSharp modules, export them back to ONNX, and compare runtime outputs for classifier-head, convolution, and MobileNet-style residual patterns.
+- Added deep roundtrip tests that import ONNX graphs as TorchSharp modules, export them back to ONNX, and compare runtime outputs for classifier-head, convolution, and residual patterns.
 
 ## 0.3.1
 

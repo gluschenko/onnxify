@@ -40,7 +40,7 @@ Elu takes one input data (Tensor<T>) and produces one output data
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `alpha` | `Alpha` | `float` | no | `1.0` | Coefficient of ELU. |
+| `alpha` | `Alpha` | `Nullable<float>` | no | `1.0` | Coefficient of ELU. |
 
 ## TorchSharp Coverage
 

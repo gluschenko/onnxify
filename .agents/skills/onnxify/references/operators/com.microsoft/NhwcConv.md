@@ -42,7 +42,7 @@ Schema description was not found in `onnx_operators.json`.
 | --- | --- | --- | --- | --- | --- |
 | `auto_pad` | `AutoPad` | `string` | no | `NOTSET` |  |
 | `dilations` | `Dilations` | `long[]` | no | `[null]` | dilation value along each spatial axis of the filter. If not present, the dilation defaults is 1 along each spatial axis. |
-| `group` | `Group` | `long` | no | `1` | number of groups input channels and output channels are divided into. |
+| `group` | `Group` | `Nullable<long>` | no | `1` | number of groups input channels and output channels are divided into. |
 | `kernel_shape` | `KernelShape` | `long[]` | no | `[null]` | The shape of the convolution kernel. If not present, should be inferred from input W. |
 | `pads` | `Pads` | `long[]` | no | `[null]` |  |
 | `strides` | `Strides` | `long[]` | no | `[null]` | Stride along each spatial axis. If not present, the stride defaults is 1 along each spatial axis. |

@@ -140,9 +140,9 @@ def rotary_embedding(
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `interleaved` | `Interleaved` | `long` | no | `0` | Rotate using interleaved pattern. Default value is 0 (False). |
+| `interleaved` | `Interleaved` | `Nullable<long>` | no | `0` | Rotate using interleaved pattern. Default value is 0 (False). |
 | `num_heads` | `NumHeads` | `Nullable<long>` | no | `[null]` | Number of attention heads. Must be provided when input is a 3D tensor. |
-| `rotary_embedding_dim` | `RotaryEmbeddingDim` | `long` | no | `0` | Rotary embedding dimension used to apply partial rotary embeddings. |
+| `rotary_embedding_dim` | `RotaryEmbeddingDim` | `Nullable<long>` | no | `0` | Rotary embedding dimension used to apply partial rotary embeddings. |
 
 ## TorchSharp Coverage
 

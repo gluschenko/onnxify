@@ -46,7 +46,7 @@ Generalized linear regression evaluation.<br>
 | `coefficients` | `Coefficients` | `float[]` | no | `[null]` | Weights of the model(s). |
 | `intercepts` | `Intercepts` | `float[]` | no | `[null]` | Weights of the intercepts, if used. |
 | `post_transform` | `PostTransform` | `string` | no | `NONE` | Indicates the transform to apply to the regression output vector.<br>One of 'NONE,' 'SOFTMAX,' 'LOGISTIC,' 'SOFTMAX_ZERO,' or 'PROBIT' |
-| `targets` | `Targets` | `long` | no | `1` | The total number of regression targets, 1 if not defined. |
+| `targets` | `Targets` | `Nullable<long>` | no | `1` | The total number of regression targets, 1 if not defined. |
 
 ## TorchSharp Coverage
 

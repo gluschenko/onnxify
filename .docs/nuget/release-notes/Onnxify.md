@@ -1,14 +1,18 @@
+## 0.3.4
+
+- Fixed ONNX attribute type detection for `OnnxTensor` subclasses so tensor-valued attributes, including `ConstantOfShape.value`, serialize correctly.
+
 ## 0.3.3
 
 - Added `OnnxDimensionNone` and ONNX shape parsing support for dimensions whose protobuf value case is `None`.
 - Preserved empty optional node input and output slots when loading, editing, and saving ONNX graphs, fixing operators such as `Resize` that rely on positional optional inputs.
 - Improved graph string output and project-generation rendering for unknown `None` dimensions by displaying them as `[none]`.
-- Added regression coverage with `yolo26s.onnx` for loading `OnnxModel`, saving it back to ONNX, and rendering `OnnxGraph.ToString()`.
+- Added regression coverage for loading `OnnxModel`, saving it back to ONNX, and rendering `OnnxGraph.ToString()` with unknown dimensions and positional optional node inputs.
 
 ## 0.3.2
 
 - Fixed ONNX graph loading for models whose `graph.value_info` repeats a graph input or output name, preserving the first loaded value metadata while marking the value as an input or output.
-- Added regression coverage for loading a MobileNetV2 ONNX model whose `logits` output is also present in `value_info`.
+- Added regression coverage for loading an ONNX graph whose output is also present in `value_info`.
 - Added a `netstandard2.0` target for core graph/model APIs so analyzer packages can share the same `OnnxModel` and `OnnxGraph` implementation.
 - Added `NodeTypeResolutionStrategy.PreserveUntyped` for callers that need to inspect loaded graphs without projecting nodes into generated typed wrappers.
 - Aligned the package version with the 0.3.2 Onnxify package family release.

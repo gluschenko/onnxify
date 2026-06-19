@@ -1,3 +1,16 @@
+## 0.3.4
+
+- Added `ModuleInputAttribute`, `ModuleOutputAttribute`, and `TensorDimension` so TorchSharp modules can declare tensor contracts with `ScalarType` and mixed fixed/symbolic dimensions, then export through attribute-driven `ExportOnnxModel(options)`.
+- Added deep export support for static tensor factories such as `torch.ones(...)`, `torch.zeros(...)`, `torch.empty(...)`, `torch.rand(...)`, `torch.randn(...)`, `torch.randint(...)`, and `torch.normal(...)`, including named `dtype`/`device` metadata and compiler-generated inline-array shapes.
+- Added deep export support for dynamic-shape tensor factories and reshapes that use `x.shape[i]` values, lowering them through ONNX `Shape`, `Gather`, `Concat`, and `ConstantOfShape` instead of treating unresolved dimensions as zero-sized initializers.
+- Added deep export support for tensor `tril(...)`, `triu(...)`, `eq(...)`, `torch.where(...)`, `torch.full_like(...)`, `torch.ones_like(...)`, `torch.zeros_like(...)`, `torch.empty_like(...)`, `torch.nn.functional.softmax(...)`, and `torch.nn.functional.gelu(...)`.
+- Added deep export lowering for nearest-neighbor 2D upsampling helper patterns, emitting ONNX `Resize` with spatial scale factors.
+- Added deep export support for bare, `torch.*`, and tensor instance `matmul(...)`, `mm(...)`, and `bmm(...)` calls, all lowered through ONNX `MatMul`.
+- Added deep export normalization for local C# array expressions, including sized initializers, implicit arrays, assigned arrays, empty arrays, and tensor arrays used as shape, permutation, scalar, or tensor-list arguments.
+- Fixed deep export of compound assignments such as `scores += mask` so they preserve the previous graph value and emit the corresponding arithmetic node before rebinding the local variable.
+- Fixed deep export helper-method body handling so local helper returns stop evaluation and preserve the actual returned graph value.
+- Expanded deep export coverage for multi-input tuple-output modules, tensor `gather(...)`, attention-style tensor programs, and tuple-output safetensors modules.
+
 ## 0.3.3
 
 - Added dictionary-based deep `ExportOnnxModel(...)` overloads for TorchSharp modules with multiple tensor inputs and multiple tensor outputs, including tuple-output forwards.
@@ -6,15 +19,15 @@
 - Fixed deep export of generated `ResizeTensor(...)` calls so ONNX `Resize` emits either `scales` or `sizes`, never both, producing models accepted by ONNX Runtime.
 - Improved deep export materialization of runtime Torch tensor constants and `.data<T>().ToArray()` expressions used by generated TorchModule initializers.
 - Generalized TorchModule safetensors extension methods to all `torch.nn.Module` instances, including modules whose `forward` returns tuples.
-- Added yolo26s deep roundtrip coverage and focused tests for multi-input tuple-output export, `gather`, and tuple-output safetensors modules.
+- Added deep roundtrip coverage and focused tests for multi-input tuple-output export, tensor `gather(...)`, and tuple-output safetensors modules.
 
 ## 0.3.2
 
 - Added deep TorchSharp export support for tensor instance `flatten(...)` calls, including full flatten, `flatten(1, -1)`, and statically shaped partial flatten ranges.
 - Kept `flatten(1, -1)` lowered to ONNX `Flatten(axis: 1)` for common classifier heads and used ONNX `Reshape` for PyTorch flatten forms whose result is not rank 2.
 - Added deep TorchSharp export support for `torch.nn.functional.pad(...)`, including rank tracking for intermediate graph edges so generated TorchModule imports can round-trip asymmetric convolution padding back to ONNX.
-- Improved deep import plus deep export parity for MobileNet-style stride-2 convolutions whose ONNX padding is asymmetric, avoiding spatial computation drift after round-tripping.
-- Added deep roundtrip tests that import ONNX graphs as TorchSharp modules, export them back to ONNX, and compare runtime outputs for classifier-head, convolution, and MobileNet-style residual patterns.
+- Improved deep import plus deep export parity for stride-2 convolutions whose ONNX padding is asymmetric, avoiding spatial computation drift after round-tripping.
+- Added deep roundtrip tests that import ONNX graphs as TorchSharp modules, export them back to ONNX, and compare runtime outputs for classifier-head, convolution, and residual patterns.
 - Aligned the package version with the 0.3.2 Onnxify package family release.
 
 ## 0.3.0
@@ -48,9 +61,9 @@
 
 - Added deep export for single-input TorchSharp modules via `TorchModule.ExportOnnxModel(...)`, which decompiles supported `forward(Tensor)` methods and lowers the resulting data flow into ONNX.
 - Added recursive export support for user-defined child modules when a built-in module exporter is not available.
-- Added lowering for common forward-body patterns used by LSTM, CNN, and MiniGPT-style models, including local helper calls, tuple deconstruction, validation guards, shape reads, tensor indexing, scalar arithmetic, `using var` temporaries, `torch.arange`, `torch.full`, `torch.triu`, `torch.matmul`, `torch.softmax`, and tensor reshape/transpose/slice/expand methods.
+- Added lowering for common forward-body patterns, including local helper calls, tuple deconstruction, validation guards, shape reads, tensor indexing, scalar arithmetic, `using var` temporaries, `torch.arange`, `torch.full`, `torch.triu`, `torch.matmul`, `torch.softmax`, and tensor reshape/transpose/slice/expand methods.
 - Changed `nn.Linear` export from `Gemm` to `MatMul` plus optional `Add`, preserving leading batch dimensions for higher-rank inputs.
-- Added deep-export smoke and unit coverage for LSTM-style, MiniGPT-style, AlexNet-like, and MobileNet-like TorchSharp modules.
+- Added deep-export smoke and unit coverage for recurrent, convolutional, attention-like, and classifier-style TorchSharp module patterns.
 
 ## 0.0.0.15
 

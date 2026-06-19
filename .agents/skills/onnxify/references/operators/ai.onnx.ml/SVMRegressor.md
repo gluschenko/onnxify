@@ -41,8 +41,8 @@ Support Vector Machine regression prediction and one-class SVM anomaly detection
 | `coefficients` | `Coefficients` | `float[]` | no | `[null]` | Support vector coefficients. |
 | `kernel_params` | `KernelParams` | `float[]` | no | `[null]` | List of 3 elements containing gamma, coef0, and degree, in that order. Zero if unused for the kernel. |
 | `kernel_type` | `KernelType` | `string` | no | `LINEAR` | The kernel type, one of 'LINEAR,' 'POLY,' 'RBF,' 'SIGMOID'. |
-| `n_supports` | `NSupports` | `long` | no | `0` | The number of support vectors. |
-| `one_class` | `OneClass` | `long` | no | `0` | Flag indicating whether the regression is a one-class SVM or not. |
+| `n_supports` | `NSupports` | `Nullable<long>` | no | `0` | The number of support vectors. |
+| `one_class` | `OneClass` | `Nullable<long>` | no | `0` | Flag indicating whether the regression is a one-class SVM or not. |
 | `post_transform` | `PostTransform` | `string` | no | `NONE` | Indicates the transform to apply to the score. <br>One of 'NONE,' 'SOFTMAX,' 'LOGISTIC,' 'SOFTMAX_ZERO,' or 'PROBIT.' |
 | `rho` | `Rho` | `float[]` | no | `[null]` |  |
 | `support_vectors` | `SupportVectors` | `float[]` | no | `[null]` | Chosen support vectors |

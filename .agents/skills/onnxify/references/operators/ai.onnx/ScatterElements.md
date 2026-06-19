@@ -101,7 +101,7 @@ output = [[1.0, 1.1, 3.0, 2.1, 5.0]]
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `axis` | `Axis` | `long` | no | `0` | Which axis to scatter on. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(data). |
+| `axis` | `Axis` | `Nullable<long>` | no | `0` | Which axis to scatter on. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(data). |
 | `reduction` | `Reduction` | `string` | no | `none` | Type of reduction to apply: none (default), add, mul, max, min. 'none': no reduction applied. 'add': reduction using the addition operation. 'mul': reduction using the multiplication operation.'max': reduction using the maximum operation.'min': reduction using the minimum operation. |
 
 ## TorchSharp Coverage

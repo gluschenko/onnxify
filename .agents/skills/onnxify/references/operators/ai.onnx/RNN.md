@@ -89,7 +89,7 @@ This operator has **optional** inputs/outputs. See [the doc](../common/IR.md) fo
 | `clip` | `Clip` | `Nullable<float>` | no | `[null]` | Cell clip threshold. Clipping bounds the elements of a tensor in the range of [-threshold, +threshold] and is applied to the input of activations. No clip if not specified. |
 | `direction` | `Direction` | `string` | no | `forward` | Specify if the RNN is forward, reverse, or bidirectional. Must be one of forward (default), reverse, or bidirectional. |
 | `hidden_size` | `HiddenSize` | `Nullable<long>` | no | `[null]` | Number of neurons in the hidden layer |
-| `layout` | `Layout` | `long` | no | `0` | The shape format of inputs X, initial_h and outputs Y, Y_h. If 0, the following shapes are expected: X.shape = [seq_length, batch_size, input_size], Y.shape = [seq_length, num_directions, batch_size, hidden_size], initial_h.shape = Y_h.shape = [num_directions, batch_size, hidden_size]. If 1, the following shapes are expected: X.shape = [batch_size, seq_length, input_size], Y.shape = [batch_size, seq_length, num_directions, hidden_size], initial_h.shape = Y_h.shape = [batch_size, num_directions, hidden_size]. |
+| `layout` | `Layout` | `Nullable<long>` | no | `0` | The shape format of inputs X, initial_h and outputs Y, Y_h. If 0, the following shapes are expected: X.shape = [seq_length, batch_size, input_size], Y.shape = [seq_length, num_directions, batch_size, hidden_size], initial_h.shape = Y_h.shape = [num_directions, batch_size, hidden_size]. If 1, the following shapes are expected: X.shape = [batch_size, seq_length, input_size], Y.shape = [batch_size, seq_length, num_directions, hidden_size], initial_h.shape = Y_h.shape = [batch_size, num_directions, hidden_size]. |
 
 ## TorchSharp Coverage
 

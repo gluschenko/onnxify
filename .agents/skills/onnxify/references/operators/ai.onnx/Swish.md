@@ -39,7 +39,7 @@ where $Swish(x) = x * sigmoid(alpha * x)$.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `alpha` | `Alpha` | `float` | no | `1.0` | Coefficient to multiply with input before sigmoid. |
+| `alpha` | `Alpha` | `Nullable<float>` | no | `1.0` | Coefficient to multiply with input before sigmoid. |
 
 ## TorchSharp Coverage
 

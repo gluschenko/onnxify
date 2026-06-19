@@ -73,8 +73,8 @@ MatMulBnb4 is a MatMul with weight quantized with 4 bits using either FP4 or NF4
 | `N` | `N` | `long` | yes | `[null]` | size of each output feature |
 | `block_size` | `BlockSize` | `long` | yes | `[null]` | number of groupsize used for weight quantization. It needs to be a power of 2 and not smaller than 16. |
 | `quant_type` | `QuantType` | `long` | yes | `[null]` | quantization data type. 0 for FP4, 1 for NF4. |
-| `training_mode` | `TrainingMode` | `long` | no | `0` | Indicate if the ops run in training_mode, by default, False. |
-| `transB` | `TransB` | `long` | no | `1` | Whether B should be transposed on the last two dimensions before doing multiplication. Default to be 1. |
+| `training_mode` | `TrainingMode` | `Nullable<long>` | no | `0` | Indicate if the ops run in training_mode, by default, False. |
+| `transB` | `TransB` | `Nullable<long>` | no | `1` | Whether B should be transposed on the last two dimensions before doing multiplication. Default to be 1. |
 
 ## TorchSharp Coverage
 

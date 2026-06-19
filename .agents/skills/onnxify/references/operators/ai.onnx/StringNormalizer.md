@@ -47,7 +47,7 @@ if input shape is [C] and shape [1, 1] if input shape is [1, C].
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `case_change_action` | `CaseChangeAction` | `string` | no | `NONE` | string enum that cases output to be lowercased/uppercases/unchanged. Valid values are "LOWER", "UPPER", "NONE". Default is "NONE" |
-| `is_case_sensitive` | `IsCaseSensitive` | `long` | no | `0` | Boolean. Whether the identification of stop words in X is case-sensitive. Default is false |
+| `is_case_sensitive` | `IsCaseSensitive` | `Nullable<long>` | no | `0` | Boolean. Whether the identification of stop words in X is case-sensitive. Default is false |
 | `locale` | `Locale` | `string` | no | `[null]` | Environment dependent string that denotes the locale according to which output strings needs to be upper/lowercased.Default en_US or platform specific equivalent as decided by the implementation. |
 | `stopwords` | `Stopwords` | `string[]` | no | `[null]` | List of stop words. If not set, no word would be removed from X. |
 

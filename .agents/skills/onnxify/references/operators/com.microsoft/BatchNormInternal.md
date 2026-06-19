@@ -46,9 +46,9 @@ Variant of BatchNormalization with additional output for saved_mean/inv_std_dev.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `epsilon` | `Epsilon` | `float` | no | `9.999999747378752e-06` | epsilon value |
-| `momentum` | `Momentum` | `float` | no | `0.8999999761581421` | momentum value |
-| `training_mode` | `TrainingMode` | `long` | no | `1` | true if training |
+| `epsilon` | `Epsilon` | `Nullable<float>` | no | `9.999999747378752e-06` | epsilon value |
+| `momentum` | `Momentum` | `Nullable<float>` | no | `0.8999999761581421` | momentum value |
+| `training_mode` | `TrainingMode` | `Nullable<long>` | no | `1` | true if training |
 
 ## TorchSharp Coverage
 

@@ -38,9 +38,9 @@ Returns a tensor which contains all slices of size `size` from input tensor in t
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `dim` | `Dim` | `long` | no | `-1` | specify the dimension to unfold |
+| `dim` | `Dim` | `Nullable<long>` | no | `-1` | specify the dimension to unfold |
 | `size` | `Size` | `long` | yes | `[null]` | specify the size |
-| `step` | `Step` | `long` | no | `1` | specify the step. |
+| `step` | `Step` | `Nullable<long>` | no | `1` | specify the step. |
 
 ## TorchSharp Coverage
 

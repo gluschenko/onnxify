@@ -38,8 +38,8 @@ The underlying implementation is MurmurHash3_x86_32 generating low latency 32bit
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `positive` | `Positive` | `long` | no | `1` | If value is 1, output type is uint32_t, else int32_t. Default value is 1. |
-| `seed` | `Seed` | `long` | no | `0` | Seed for the hashing algorithm, unsigned 32-bit integer, default to 0. |
+| `positive` | `Positive` | `Nullable<long>` | no | `1` | If value is 1, output type is uint32_t, else int32_t. Default value is 1. |
+| `seed` | `Seed` | `Nullable<long>` | no | `0` | Seed for the hashing algorithm, unsigned 32-bit integer, default to 0. |
 
 ## TorchSharp Coverage
 

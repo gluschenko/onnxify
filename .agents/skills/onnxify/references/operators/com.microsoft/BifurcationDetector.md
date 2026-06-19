@@ -51,8 +51,8 @@ No matching if found if src tokens contain multiple or zero matching n-grams. Re
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `max_ngram_size` | `MaxNgramSize` | `long` | no | `3` | The maximum NGram size for suffix matching. |
-| `min_ngram_size` | `MinNgramSize` | `long` | no | `1` | The minimum NGram size for suffix matching. |
+| `max_ngram_size` | `MaxNgramSize` | `Nullable<long>` | no | `3` | The maximum NGram size for suffix matching. |
+| `min_ngram_size` | `MinNgramSize` | `Nullable<long>` | no | `1` | The minimum NGram size for suffix matching. |
 
 ## TorchSharp Coverage
 

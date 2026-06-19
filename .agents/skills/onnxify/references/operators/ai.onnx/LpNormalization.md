@@ -38,8 +38,8 @@ Given a matrix, apply Lp-normalization along the provided axis.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `axis` | `Axis` | `long` | no | `-1` | The axis on which to apply normalization, -1 mean last axis. |
-| `p` | `P` | `long` | no | `2` | The order of the normalization, only 1 or 2 are supported. |
+| `axis` | `Axis` | `Nullable<long>` | no | `-1` | The axis on which to apply normalization, -1 mean last axis. |
+| `p` | `P` | `Nullable<long>` | no | `2` | The order of the normalization, only 1 or 2 are supported. |
 
 ## TorchSharp Coverage
 

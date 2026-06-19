@@ -65,7 +65,7 @@ in the batch.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `axis` | `Axis` | `long` | no | `-2` | Sequence dimension of the `past_cache` and `update` tensors. It cannot be 0 (the batch dimension). Default is -2. |
+| `axis` | `Axis` | `Nullable<long>` | no | `-2` | Sequence dimension of the `past_cache` and `update` tensors. It cannot be 0 (the batch dimension). Default is -2. |
 | `mode` | `Mode` | `string` | no | `linear` | Write mode of cache update. Supported modes include `linear` and `circular`. `linear` mode requires write_indices+sequence_length<=max_sequence_length. For `circular` mode, the updates happen in wrap-around fashion, ie, the update index is modulo `max_sequence_length` |
 
 ## TorchSharp Coverage

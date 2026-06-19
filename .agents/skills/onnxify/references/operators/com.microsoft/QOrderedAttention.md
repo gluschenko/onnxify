@@ -72,7 +72,7 @@ TODO: Support them if needed in the future.
 | `order_output` | `OrderOutput` | `long` | yes | `[null]` | cublasLt order of global bias |
 | `order_weight` | `OrderWeight` | `long` | yes | `[null]` | cublasLt order of weight matrix |
 | `qkv_hidden_sizes` | `QkvHiddenSizes` | `long[]` | no | `[null]` | Hidden layer sizes of Q, K, V paths in Attention |
-| `unidirectional` | `Unidirectional` | `long` | no | `0` | Whether every token can only attend to previous tokens. Default value is 0. |
+| `unidirectional` | `Unidirectional` | `Nullable<long>` | no | `0` | Whether every token can only attend to previous tokens. Default value is 0. |
 
 ## TorchSharp Coverage
 

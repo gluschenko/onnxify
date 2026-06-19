@@ -42,7 +42,7 @@ Converts a map to a tensor.<br>The map key must be an int64 and the values will 
 | --- | --- | --- | --- | --- | --- |
 | `cast_to` | `CastTo` | `string` | no | `TO_FLOAT` | A string indicating the desired element type of the output tensor, one of 'TO_FLOAT', 'TO_STRING', 'TO_INT64'. |
 | `map_form` | `MapForm` | `string` | no | `DENSE` | Indicates whether to only output as many values as are in the input (dense), or position the input based on using the key of the map as the index of the output (sparse).<br>One of 'DENSE', 'SPARSE'. |
-| `max_map` | `MaxMap` | `long` | no | `1` | If the value of map_form is 'SPARSE,' this attribute indicates the total length of the output tensor. |
+| `max_map` | `MaxMap` | `Nullable<long>` | no | `1` | If the value of map_form is 'SPARSE,' this attribute indicates the total length of the output tensor. |
 
 ## TorchSharp Coverage
 

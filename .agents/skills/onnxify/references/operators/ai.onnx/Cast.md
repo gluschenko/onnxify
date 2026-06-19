@@ -120,7 +120,7 @@ The following table describes the casting behavior of special values to FLOAT8E8
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `round_mode` | `RoundMode` | `string` | no | `up` | Rounding mode for conversion to float8e8m0. It only applies to casting to float8e8m0 and is `up` by default. `up`: round to nearest value away from zero, `down`: round to nearest value towards zero, `nearest`: round to nearest value and ties round up. |
-| `saturate` | `Saturate` | `long` | no | `1` | The parameter defines how the conversion behaves if an input value is out of range of the destination type. It only applies for float 8 conversion (float8e4m3fn, float8e4m3fnuz, float8e5m2, float8e5m2fnuz, float8e8m0). It is true by default. All cases are fully described in the tables inserted in the operator description. |
+| `saturate` | `Saturate` | `Nullable<long>` | no | `1` | The parameter defines how the conversion behaves if an input value is out of range of the destination type. It only applies for float 8 conversion (float8e4m3fn, float8e4m3fnuz, float8e5m2, float8e5m2fnuz, float8e8m0). It is true by default. All cases are fully described in the tables inserted in the operator description. |
 | `to` | `To` | `long` | yes | `[null]` | The data type to which the elements of the input tensor are cast. Strictly must be one of the types from DataType enum in TensorProto |
 
 ## TorchSharp Coverage

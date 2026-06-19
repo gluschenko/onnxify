@@ -1,6 +1,6 @@
 ## 0.3.3
 
-- Picked up the TorchSharp package-family deep export improvements for multi-input, tuple-output, generated TorchModule, and yolo26s roundtrip scenarios.
+- Picked up the TorchSharp package-family deep export improvements for multi-input, tuple-output, generated TorchModule, and large-graph roundtrip scenarios.
 
 ## 0.3.2
 

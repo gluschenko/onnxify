@@ -54,9 +54,9 @@ a tiebreaker. That is, the element with the lower index will appear first.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `axis` | `Axis` | `long` | no | `-1` | Dimension on which to do the sort. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(input). |
-| `largest` | `Largest` | `long` | no | `1` | Whether to return the top-K largest or smallest elements. |
-| `sorted` | `Sorted` | `long` | no | `1` | Whether to return the elements in sorted order. |
+| `axis` | `Axis` | `Nullable<long>` | no | `-1` | Dimension on which to do the sort. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(input). |
+| `largest` | `Largest` | `Nullable<long>` | no | `1` | Whether to return the top-K largest or smallest elements. |
+| `sorted` | `Sorted` | `Nullable<long>` | no | `1` | Whether to return the elements in sorted order. |
 
 ## TorchSharp Coverage
 

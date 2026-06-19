@@ -41,8 +41,8 @@ If x > lambd, y = x - bias; Otherwise, y = 0.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `bias` | `Bias` | `float` | no | `0.0` | The bias value added to output. Default is 0. |
-| `lambd` | `Lambd` | `float` | no | `0.5` | The lambd value for the Shrink formulation. Default is 0.5. |
+| `bias` | `Bias` | `Nullable<float>` | no | `0.0` | The bias value added to output. Default is 0. |
+| `lambd` | `Lambd` | `Nullable<float>` | no | `0.5` | The lambd value for the Shrink formulation. Default is 0.5. |
 
 ## TorchSharp Coverage
 

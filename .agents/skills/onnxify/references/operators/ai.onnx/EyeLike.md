@@ -45,7 +45,7 @@ TensorProto message and be valid as an output type.
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `dtype` | `Dtype` | `Nullable<long>` | no | `[null]` | (Optional) The data type for the elements of the output tensor. If not specified, the data type of the input tensor T1 is used. |
-| `k` | `K` | `long` | no | `0` | (Optional) Index of the diagonal to be populated with ones. Default is 0. If T2 is the output, this op sets T2[i, i+k] = 1. k = 0 populates the main diagonal, k > 0 populates an upper diagonal, and k < 0 populates a lower diagonal. |
+| `k` | `K` | `Nullable<long>` | no | `0` | (Optional) Index of the diagonal to be populated with ones. Default is 0. If T2 is the output, this op sets T2[i, i+k] = 1. k = 0 populates the main diagonal, k > 0 populates an upper diagonal, and k < 0 populates a lower diagonal. |
 
 ## TorchSharp Coverage
 

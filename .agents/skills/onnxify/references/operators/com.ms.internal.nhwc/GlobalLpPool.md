@@ -40,7 +40,7 @@ GlobalLpPool consumes an input tensor X and applies lp pool pooling across
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `p` | `P` | `long` | no | `2` | p value of the Lp norm used to pool over the input data. |
+| `p` | `P` | `Nullable<long>` | no | `2` | p value of the Lp norm used to pool over the input data. |
 
 ## TorchSharp Coverage
 

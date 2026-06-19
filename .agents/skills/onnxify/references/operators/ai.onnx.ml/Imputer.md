@@ -47,8 +47,8 @@ Replaces inputs that equal one value with another, leaving all other elements al
 | --- | --- | --- | --- | --- | --- |
 | `imputed_value_floats` | `ImputedValueFloats` | `float[]` | no | `[null]` | Value(s) to change to |
 | `imputed_value_int64s` | `ImputedValueInt64s` | `long[]` | no | `[null]` | Value(s) to change to. |
-| `replaced_value_float` | `ReplacedValueFloat` | `float` | no | `0.0` | A value that needs replacing. |
-| `replaced_value_int64` | `ReplacedValueInt64` | `long` | no | `0` | A value that needs replacing. |
+| `replaced_value_float` | `ReplacedValueFloat` | `Nullable<float>` | no | `0.0` | A value that needs replacing. |
+| `replaced_value_int64` | `ReplacedValueInt64` | `Nullable<long>` | no | `0` | A value that needs replacing. |
 
 ## TorchSharp Coverage
 

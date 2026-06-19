@@ -51,7 +51,7 @@ to -1 cannot be determined uniquely.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `allowzero` | `Allowzero` | `long` | no | `0` | (Optional) By default, when any value in the 'shape' input is equal to zero the corresponding dimension value is copied from the input tensor dynamically. allowzero=1 indicates that if any value in the 'shape' input is set to zero, the zero value is honored, similar to NumPy. |
+| `allowzero` | `Allowzero` | `Nullable<long>` | no | `0` | (Optional) By default, when any value in the 'shape' input is equal to zero the corresponding dimension value is copied from the input tensor dynamically. allowzero=1 indicates that if any value in the 'shape' input is set to zero, the zero value is honored, similar to NumPy. |
 
 ## TorchSharp Coverage
 

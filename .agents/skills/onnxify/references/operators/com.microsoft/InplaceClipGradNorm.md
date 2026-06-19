@@ -38,7 +38,7 @@ InplaceClipGradNorm operator, taking multiple gradients as inputs (seq<tensor>).
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `max_norm` | `MaxNorm` | `float` | no | `1.0` | Coefficient of previously accumulated gradient in running average. |
+| `max_norm` | `MaxNorm` | `Nullable<float>` | no | `1.0` | Coefficient of previously accumulated gradient in running average. |
 | `norm_type` | `NormType` | `string` | no | `fro` | Type of normalization to perform during execution of clip grad norm.Currently, the only norm supported is the frobenius norm (which is also the default). |
 
 ## TorchSharp Coverage

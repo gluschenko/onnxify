@@ -52,10 +52,10 @@ through bilinear interpolation.
 | --- | --- | --- | --- | --- | --- |
 | `coordinate_transformation_mode` | `CoordinateTransformationMode` | `string` | no | `half_pixel` | Allowed values are 'half_pixel' and 'output_half_pixel'. Use the value 'half_pixel' to pixel shift the input coordinates by -0.5 (the recommended behavior). Use the value 'output_half_pixel' to omit the pixel shift for the input (use this for a backward-compatible behavior). |
 | `mode` | `Mode` | `string` | no | `avg` | The pooling method. Two modes are supported: 'avg' and 'max'. Default is 'avg'. |
-| `output_height` | `OutputHeight` | `long` | no | `1` | default 1; Pooled output Y's height. |
-| `output_width` | `OutputWidth` | `long` | no | `1` | default 1; Pooled output Y's width. |
-| `sampling_ratio` | `SamplingRatio` | `long` | no | `0` | Number of sampling points in the interpolation grid used to compute the output value of each pooled output bin. If > 0, then exactly sampling_ratio x sampling_ratio grid points are used. If == 0, then an adaptive number of grid points are used (computed as ceil(roi_width / output_width), and likewise for height). Default is 0. |
-| `spatial_scale` | `SpatialScale` | `float` | no | `1.0` | Multiplicative spatial scale factor to translate ROI coordinates from their input spatial scale to the scale used when pooling, i.e., spatial scale of the input feature map X relative to the input image. E.g.; default is 1.0f. |
+| `output_height` | `OutputHeight` | `Nullable<long>` | no | `1` | default 1; Pooled output Y's height. |
+| `output_width` | `OutputWidth` | `Nullable<long>` | no | `1` | default 1; Pooled output Y's width. |
+| `sampling_ratio` | `SamplingRatio` | `Nullable<long>` | no | `0` | Number of sampling points in the interpolation grid used to compute the output value of each pooled output bin. If > 0, then exactly sampling_ratio x sampling_ratio grid points are used. If == 0, then an adaptive number of grid points are used (computed as ceil(roi_width / output_width), and likewise for height). Default is 0. |
+| `spatial_scale` | `SpatialScale` | `Nullable<float>` | no | `1.0` | Multiplicative spatial scale factor to translate ROI coordinates from their input spatial scale to the scale used when pooling, i.e., spatial scale of the input feature map X relative to the input image. E.g.; default is 1.0f. |
 
 ## TorchSharp Coverage
 

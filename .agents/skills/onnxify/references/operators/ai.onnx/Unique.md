@@ -138,7 +138,7 @@ output_counts:
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `axis` | `Axis` | `Nullable<long>` | no | `[null]` | (Optional) The dimension to apply unique. If not specified, the unique elements of the flattened input are returned. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(input). |
-| `sorted` | `Sorted` | `long` | no | `1` | (Optional) Whether to sort the unique elements in ascending order before returning as output. Must be one of 0, or 1 (default). |
+| `sorted` | `Sorted` | `Nullable<long>` | no | `1` | (Optional) Whether to sort the unique elements in ascending order before returning as output. Must be one of 0, or 1 (default). |
 
 ## TorchSharp Coverage
 

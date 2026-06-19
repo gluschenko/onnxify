@@ -55,8 +55,8 @@ The activation attribute can be used to enable activation after group normalizat
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `activation` | `Activation` | `long` | yes | `[null]` | Activation after group normalization: 0 for None, 1 for SiLU |
-| `channels_last` | `ChannelsLast` | `long` | no | `1` | 1 if the input and output are in the NHWC layout, 0 if it is in the NCHW layout. Defaults to 1. |
-| `epsilon` | `Epsilon` | `float` | no | `9.999999747378752e-06` | The epsilon value to use to avoid division by zero |
+| `channels_last` | `ChannelsLast` | `Nullable<long>` | no | `1` | 1 if the input and output are in the NHWC layout, 0 if it is in the NCHW layout. Defaults to 1. |
+| `epsilon` | `Epsilon` | `Nullable<float>` | no | `9.999999747378752e-06` | The epsilon value to use to avoid division by zero |
 | `groups` | `Groups` | `long` | yes | `[null]` | The number of groups of channels. It should be a divisor of the number of channels C |
 
 ## TorchSharp Coverage

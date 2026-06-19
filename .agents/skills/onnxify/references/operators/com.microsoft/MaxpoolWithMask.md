@@ -42,7 +42,7 @@ For internal use.
 | `auto_pad` | `AutoPad` | `string` | no | `NOTSET` |  |
 | `kernel_shape` | `KernelShape` | `long[]` | no | `[null]` |  |
 | `pads` | `Pads` | `long[]` | no | `[null]` |  |
-| `storage_order` | `StorageOrder` | `long` | no | `0` |  |
+| `storage_order` | `StorageOrder` | `Nullable<long>` | no | `0` |  |
 | `strides` | `Strides` | `long[]` | no | `[null]` |  |
 
 ## TorchSharp Coverage

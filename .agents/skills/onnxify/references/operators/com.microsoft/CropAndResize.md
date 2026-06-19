@@ -46,7 +46,7 @@ Extracts crops from the input image tensor and resizes them using bilinear sampl
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `extrapolation_value` | `ExtrapolationValue` | `float` | no | `0.0` | Value used for extrapolation, when applicable. Default is 0.0f. |
+| `extrapolation_value` | `ExtrapolationValue` | `Nullable<float>` | no | `0.0` | Value used for extrapolation, when applicable. Default is 0.0f. |
 | `mode` | `Mode` | `string` | no | `bilinear` | The pooling method. Two modes are supported: 'bilinear' and 'nearest'. Default is 'bilinear'. |
 
 ## TorchSharp Coverage

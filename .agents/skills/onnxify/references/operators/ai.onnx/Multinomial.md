@@ -39,8 +39,8 @@ of each of the possible outcomes.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `dtype` | `Dtype` | `long` | no | `6` | (Optional) The data type for the elements of the output tensor, if not specified, we will use int32. |
-| `sample_size` | `SampleSize` | `long` | no | `1` | Number of times to sample. |
+| `dtype` | `Dtype` | `Nullable<long>` | no | `6` | (Optional) The data type for the elements of the output tensor, if not specified, we will use int32. |
+| `sample_size` | `SampleSize` | `Nullable<long>` | no | `1` | Number of times to sample. |
 | `seed` | `Seed` | `Nullable<float>` | no | `[null]` | (Optional) Seed to the random generator, if not specified we will auto generate one. |
 
 ## TorchSharp Coverage

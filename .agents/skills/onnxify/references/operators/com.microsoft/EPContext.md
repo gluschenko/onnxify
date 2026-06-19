@@ -37,12 +37,12 @@ Onnx node container for EP context.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `embed_mode` | `EmbedMode` | `long` | no | `1` | 1: indicate ep_cache_context is the context content. 0: indicate ep_cache_context is the file path to the context content.The path is relative to this Onnx file. Default is 1. |
+| `embed_mode` | `EmbedMode` | `Nullable<long>` | no | `1` | 1: indicate ep_cache_context is the context content. 0: indicate ep_cache_context is the file path to the context content.The path is relative to this Onnx file. Default is 1. |
 | `ep_cache_context` | `EpCacheContext` | `string` | no | `[null]` | payload of the execution provider context if embed_mode=1, or path to the context file if embed_mode=0. |
 | `ep_sdk_version` | `EpSdkVersion` | `string` | no | `[null]` | (Optional) SDK version used to convert the model. |
 | `hardware_architecture` | `HardwareArchitecture` | `string` | no | `[null]` | (Optional) Hardware architecture. |
-| `main_context` | `MainContext` | `long` | no | `1` | Usually each single EPContext associate with a graph partition.But for some case like QNN, it has single EPContext contains all partitions.In that case, the node with ep_cache_context should set main_context=1. Other nodes set main_context=0 and skip ep_cache_context.The path is relative to this Onnx file. Default is 1. |
-| `max_size` | `MaxSize` | `long` | no | `0` | max size in the context. Usage depend on the EP. |
+| `main_context` | `MainContext` | `Nullable<long>` | no | `1` | Usually each single EPContext associate with a graph partition.But for some case like QNN, it has single EPContext contains all partitions.In that case, the node with ep_cache_context should set main_context=1. Other nodes set main_context=0 and skip ep_cache_context.The path is relative to this Onnx file. Default is 1. |
+| `max_size` | `MaxSize` | `Nullable<long>` | no | `0` | max size in the context. Usage depend on the EP. |
 | `notes` | `Notes` | `string` | no | `[null]` | (Optional) Some notes for the model |
 | `onnx_model_filename` | `OnnxModelFilename` | `string` | no | `[null]` | (Optional) Filename of the original ONNX model. |
 | `partition_name` | `PartitionName` | `string` | no | `[null]` | (Optional) partitioned graph name. |

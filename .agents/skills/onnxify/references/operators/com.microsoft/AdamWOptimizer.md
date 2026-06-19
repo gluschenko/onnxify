@@ -47,12 +47,12 @@ Schema description was not found in `onnx_operators.json`.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `adam_mode` | `AdamMode` | `long` | no | `0` | Modes for applying bias correction and weight decay (default 0) 0 : Weight decay is applied before weight is updated. Computation aligned with Torch AdamW. In this mode, correct_bias should be 1 to keep aligned with PyTorch.1 : Weight decay is applied after weight is updated. Computation is aligned with Huggingface AdamW. |
-| `alpha` | `Alpha` | `float` | no | `0.8999999761581421` | Coefficient of previously accumulated gradient in running average. |
-| `beta` | `Beta` | `float` | no | `0.9990000128746033` | Coefficient of previously accumulated squared-gradient in running average. |
-| `correct_bias` | `CorrectBias` | `long` | no | `1` | Whether or not to correct bias, enabled by default. |
-| `epsilon` | `Epsilon` | `float` | no | `9.99999993922529e-09` | Small scalar to avoid dividing by zero. |
-| `weight_decay` | `WeightDecay` | `float` | no | `0.009999999776482582` | weight decay coefficient. |
+| `adam_mode` | `AdamMode` | `Nullable<long>` | no | `0` | Modes for applying bias correction and weight decay (default 0) 0 : Weight decay is applied before weight is updated. Computation aligned with Torch AdamW. In this mode, correct_bias should be 1 to keep aligned with PyTorch.1 : Weight decay is applied after weight is updated. Computation is aligned with Huggingface AdamW. |
+| `alpha` | `Alpha` | `Nullable<float>` | no | `0.8999999761581421` | Coefficient of previously accumulated gradient in running average. |
+| `beta` | `Beta` | `Nullable<float>` | no | `0.9990000128746033` | Coefficient of previously accumulated squared-gradient in running average. |
+| `correct_bias` | `CorrectBias` | `Nullable<long>` | no | `1` | Whether or not to correct bias, enabled by default. |
+| `epsilon` | `Epsilon` | `Nullable<float>` | no | `9.99999993922529e-09` | Small scalar to avoid dividing by zero. |
+| `weight_decay` | `WeightDecay` | `Nullable<float>` | no | `0.009999999776482582` | weight decay coefficient. |
 
 ## TorchSharp Coverage
 

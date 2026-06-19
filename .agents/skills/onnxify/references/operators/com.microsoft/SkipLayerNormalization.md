@@ -45,7 +45,7 @@ Skip and Layer Normalization Fusion
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `epsilon` | `Epsilon` | `float` | no | `9.999999960041972e-13` | The epsilon value to use to avoid division by zero. |
+| `epsilon` | `Epsilon` | `Nullable<float>` | no | `9.999999960041972e-13` | The epsilon value to use to avoid division by zero. |
 
 ## TorchSharp Coverage
 

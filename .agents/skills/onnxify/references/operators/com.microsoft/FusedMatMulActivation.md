@@ -44,11 +44,11 @@ Executes the same operation as FusedMatMul, but also has an activation function 
 | `activation_axis` | `ActivationAxis` | `Nullable<long>` | no | `[null]` |  |
 | `activation_beta` | `ActivationBeta` | `Nullable<float>` | no | `[null]` |  |
 | `activation_gamma` | `ActivationGamma` | `Nullable<float>` | no | `[null]` |  |
-| `alpha` | `Alpha` | `float` | no | `1.0` | Scalar multiplier for the product of the input tensors. |
-| `transA` | `TransA` | `long` | no | `0` | Whether A should be transposed on the last two dimensions before doing multiplication |
-| `transB` | `TransB` | `long` | no | `0` | Whether B should be transposed on the last two dimensions before doing multiplication |
-| `transBatchA` | `TransBatchA` | `long` | no | `0` | Whether A should be transposed on the 1st dimension and batch dimensions (dim-1 to dim-rank-2) before doing multiplication |
-| `transBatchB` | `TransBatchB` | `long` | no | `0` | Whether B should be transposed on the 1st dimension and batch dimensions (dim-1 to dim-rank-2) before doing multiplication |
+| `alpha` | `Alpha` | `Nullable<float>` | no | `1.0` | Scalar multiplier for the product of the input tensors. |
+| `transA` | `TransA` | `Nullable<long>` | no | `0` | Whether A should be transposed on the last two dimensions before doing multiplication |
+| `transB` | `TransB` | `Nullable<long>` | no | `0` | Whether B should be transposed on the last two dimensions before doing multiplication |
+| `transBatchA` | `TransBatchA` | `Nullable<long>` | no | `0` | Whether A should be transposed on the 1st dimension and batch dimensions (dim-1 to dim-rank-2) before doing multiplication |
+| `transBatchB` | `TransBatchB` | `Nullable<long>` | no | `0` | Whether B should be transposed on the 1st dimension and batch dimensions (dim-1 to dim-rank-2) before doing multiplication |
 
 ## TorchSharp Coverage
 

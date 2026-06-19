@@ -42,7 +42,7 @@ When 'new_axis' is 1, the behavior is similar to numpy.stack.
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `axis` | `Axis` | `long` | yes | `[null]` | Which axis to concat on. Accepted range in `[-r, r - 1]`, where `r` is the rank of input tensors. When `new_axis` is 1, accepted range is `[-r - 1, r]`. |
-| `new_axis` | `NewAxis` | `long` | no | `0` | Insert and concatenate on a new axis or not, default 0 means do not insert new axis. |
+| `new_axis` | `NewAxis` | `Nullable<long>` | no | `0` | Insert and concatenate on a new axis or not, default 0 means do not insert new axis. |
 
 ## TorchSharp Coverage
 

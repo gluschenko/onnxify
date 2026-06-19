@@ -57,7 +57,7 @@ GRUGrad operator that computes the partial derivative of the loss with respect t
 | `clip` | `Clip` | `Nullable<float>` | no | `[null]` | Cell clip threshold. Clipping bounds the elements of a tensor in the range of [-threshold, +threshold] and is applied to the input of activations. No clip if not specified. |
 | `direction` | `Direction` | `string` | no | `forward` | Specify if the RNN is forward, reverse, or bidirectional. Must be one of forward (default), reverse, or bidirectional. |
 | `hidden_size` | `HiddenSize` | `Nullable<long>` | no | `[null]` | Number of neurons in the hidden layer. |
-| `linear_before_reset` | `LinearBeforeReset` | `long` | no | `0` | When computing the output of the hidden gate, apply the linear transformation before multiplying by the output of the reset gate. |
+| `linear_before_reset` | `LinearBeforeReset` | `Nullable<long>` | no | `0` | When computing the output of the hidden gate, apply the linear transformation before multiplying by the output of the reset gate. |
 
 ## TorchSharp Coverage
 

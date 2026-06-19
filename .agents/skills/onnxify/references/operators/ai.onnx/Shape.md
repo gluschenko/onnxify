@@ -76,7 +76,7 @@ Output: [3]
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `end` | `End` | `Nullable<long>` | no | `[null]` | (Optional) Ending axis for slicing the shape. Negative value means counting dimensions from the back. If omitted, sizes of all axes upto (including) the last one will be included. |
-| `start` | `Start` | `long` | no | `0` | (Optional) Starting axis for slicing the shape. Default value is 0.Negative value means counting dimensions from the back. |
+| `start` | `Start` | `Nullable<long>` | no | `0` | (Optional) Starting axis for slicing the shape. Default value is 0.Negative value means counting dimensions from the back. |
 
 ## TorchSharp Coverage
 

@@ -39,7 +39,7 @@ Schema description was not found in `onnx_operators.json`.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `axis` | `Axis` | `long` | no | `1` | Describes the axis of the inputs when coerced to 2D; defaults to one because the 0th axis most likely describes the batch_size |
+| `axis` | `Axis` | `Nullable<long>` | no | `1` | Describes the axis of the inputs when coerced to 2D; defaults to one because the 0th axis most likely describes the batch_size |
 
 ## TorchSharp Coverage
 

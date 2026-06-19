@@ -39,7 +39,7 @@ Scale
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `scale_down` | `ScaleDown` | `long` | no | `0` | If true, the output tensor is input tensor divided by scale, otherwise, it's input tensor multiplied by scale. The default value is false. |
+| `scale_down` | `ScaleDown` | `Nullable<long>` | no | `0` | If true, the output tensor is input tensor divided by scale, otherwise, it's input tensor multiplied by scale. The default value is false. |
 
 ## TorchSharp Coverage
 

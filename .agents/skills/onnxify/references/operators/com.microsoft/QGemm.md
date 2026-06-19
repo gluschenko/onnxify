@@ -46,9 +46,9 @@ Quantized Gemm
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `alpha` | `Alpha` | `float` | no | `1.0` | Scalar multiplier for the product of input tensors A * B. |
-| `transA` | `TransA` | `long` | no | `0` | Whether A should be transposed |
-| `transB` | `TransB` | `long` | no | `0` | Whether B should be transposed |
+| `alpha` | `Alpha` | `Nullable<float>` | no | `1.0` | Scalar multiplier for the product of input tensors A * B. |
+| `transA` | `TransA` | `Nullable<long>` | no | `0` | Whether A should be transposed |
+| `transB` | `TransB` | `Nullable<long>` | no | `0` | Whether B should be transposed |
 
 ## TorchSharp Coverage
 

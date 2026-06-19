@@ -46,7 +46,7 @@ no offset
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `blk_quant_type` | `BlkQuantType` | `long` | no | `1` | Quantization type |
+| `blk_quant_type` | `BlkQuantType` | `Nullable<long>` | no | `1` | Quantization type |
 
 ## TorchSharp Coverage
 

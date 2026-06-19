@@ -43,7 +43,7 @@ Linear classifier
 | `classlabels_strings` | `ClasslabelsStrings` | `string[]` | no | `[null]` | Class labels when using string labels. One and only one 'classlabels' attribute must be defined. |
 | `coefficients` | `Coefficients` | `float[]` | yes | `[null]` | A collection of weights of the model(s). |
 | `intercepts` | `Intercepts` | `float[]` | no | `[null]` | A collection of intercepts. |
-| `multi_class` | `MultiClass` | `long` | no | `0` | Indicates whether to do OvR or multinomial (0=OvR is the default). |
+| `multi_class` | `MultiClass` | `Nullable<long>` | no | `0` | Indicates whether to do OvR or multinomial (0=OvR is the default). |
 | `post_transform` | `PostTransform` | `string` | no | `NONE` | Indicates the transform to apply to the scores vector.<br>One of 'NONE,' 'SOFTMAX,' 'LOGISTIC,' 'SOFTMAX_ZERO,' or 'PROBIT' |
 
 ## TorchSharp Coverage

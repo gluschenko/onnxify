@@ -39,7 +39,7 @@ Schema description was not found in `onnx_operators.json`.
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `auto_pad` | `AutoPad` | `string` | no | `NOTSET` | auto_pad doc |
-| `count_include_pad` | `CountIncludePad` | `long` | no | `0` |  |
+| `count_include_pad` | `CountIncludePad` | `Nullable<long>` | no | `0` |  |
 | `kernel_shape` | `KernelShape` | `long[]` | yes | `[null]` | The size of the kernel along each axis. |
 | `pads` | `Pads` | `long[]` | no | `[null]` | pads_doc |
 | `strides` | `Strides` | `long[]` | no | `[null]` | Stride along each axis. |

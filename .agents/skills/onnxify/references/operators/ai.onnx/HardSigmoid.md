@@ -40,8 +40,8 @@ is applied to the tensor elementwise.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `alpha` | `Alpha` | `float` | no | `0.20000000298023224` | Value of alpha. |
-| `beta` | `Beta` | `float` | no | `0.5` | Value of beta. |
+| `alpha` | `Alpha` | `Nullable<float>` | no | `0.20000000298023224` | Value of alpha. |
+| `beta` | `Beta` | `Nullable<float>` | no | `0.5` | Value of beta. |
 
 ## TorchSharp Coverage
 

@@ -42,7 +42,7 @@ ROI max pool consumes an input tensor X and region of interests (RoIs) to
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `pooled_shape` | `PooledShape` | `long[]` | yes | `[null]` | ROI pool output shape (height, width). |
-| `spatial_scale` | `SpatialScale` | `float` | no | `1.0` | Multiplicative spatial scale factor to translate ROI coordinates from their input scale to the scale used when pooling. |
+| `spatial_scale` | `SpatialScale` | `Nullable<float>` | no | `1.0` | Multiplicative spatial scale factor to translate ROI coordinates from their input scale to the scale used when pooling. |
 
 ## TorchSharp Coverage
 

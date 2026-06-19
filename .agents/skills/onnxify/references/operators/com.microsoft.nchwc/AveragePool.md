@@ -39,8 +39,8 @@ For internal use.
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `auto_pad` | `AutoPad` | `string` | no | `NOTSET` |  |
-| `ceil_mode` | `CeilMode` | `long` | no | `0` |  |
-| `count_include_pad` | `CountIncludePad` | `long` | no | `0` |  |
+| `ceil_mode` | `CeilMode` | `Nullable<long>` | no | `0` |  |
+| `count_include_pad` | `CountIncludePad` | `Nullable<long>` | no | `0` |  |
 | `dilations` | `Dilations` | `long[]` | no | `[null]` |  |
 | `kernel_shape` | `KernelShape` | `long[]` | yes | `[null]` |  |
 | `pads` | `Pads` | `long[]` | no | `[null]` |  |

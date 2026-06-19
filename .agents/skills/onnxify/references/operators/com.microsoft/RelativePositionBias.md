@@ -40,7 +40,7 @@ Compute binned relative position bias for T5 model. ref: https://arxiv.org/abs/1
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `is_bidirectional` | `IsBidirectional` | `long` | no | `0` | Default value is 0. |
+| `is_bidirectional` | `IsBidirectional` | `Nullable<long>` | no | `0` | Default value is 0. |
 | `max_distance` | `MaxDistance` | `long` | yes | `[null]` | Max distance |
 
 ## TorchSharp Coverage

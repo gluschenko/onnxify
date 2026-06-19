@@ -47,7 +47,7 @@ Converts strings to integers and vice versa.<br>
 | --- | --- | --- | --- | --- | --- |
 | `cats_int64s` | `CatsInt64s` | `long[]` | no | `[null]` | The integers of the map. This sequence must be the same length as the 'cats_strings' sequence. |
 | `cats_strings` | `CatsStrings` | `string[]` | no | `[null]` | The strings of the map. This sequence must be the same length as the 'cats_int64s' sequence |
-| `default_int64` | `DefaultInt64` | `long` | no | `-1` | An integer to use when an input string value is not found in the map.<br>One and only one of the 'default_*' attributes must be defined. |
+| `default_int64` | `DefaultInt64` | `Nullable<long>` | no | `-1` | An integer to use when an input string value is not found in the map.<br>One and only one of the 'default_*' attributes must be defined. |
 | `default_string` | `DefaultString` | `string` | no | `_Unused` | A string to use when an input integer value is not found in the map.<br>One and only one of the 'default_*' attributes must be defined. |
 
 ## TorchSharp Coverage

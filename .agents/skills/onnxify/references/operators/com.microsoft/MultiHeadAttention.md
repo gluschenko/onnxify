@@ -57,7 +57,7 @@ each key sequence excluding paddings.
 | `mask_filter_value` | `MaskFilterValue` | `Nullable<float>` | no | `[null]` | The value to be filled in the attention mask. Default value is -10000.0f |
 | `num_heads` | `NumHeads` | `long` | yes | `[null]` | Number of attention heads |
 | `scale` | `Scale` | `Nullable<float>` | no | `[null]` | Custom scale will be used if specified. Default value is 1/sqrt(head_size) |
-| `unidirectional` | `Unidirectional` | `long` | no | `0` | Whether every token can only attend to previous tokens. Default value is 0. |
+| `unidirectional` | `Unidirectional` | `Nullable<long>` | no | `0` | Whether every token can only attend to previous tokens. Default value is 0. |
 
 ## TorchSharp Coverage
 

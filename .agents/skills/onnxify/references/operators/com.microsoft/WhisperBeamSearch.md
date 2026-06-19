@@ -59,20 +59,20 @@ Beam Search for whisper model, especially with cross_qk features etc.
 | `beginning_timestamp_token_id` | `BeginningTimestampTokenId` | `Nullable<long>` | no | `[null]` | The id of the first timestamp |
 | `decoder` | `Decoder` | `OnnxGraph` | yes | `[null]` | Decoder subgraph to execute in a loop. |
 | `decoder_output_cross_qk` | `DecoderOutputCrossQk` | `Nullable<long>` | no | `[null]` | If nozero, decoder subgraph contains output Q*K from cross attentions. Default 0. |
-| `decoder_start_token_id` | `DecoderStartTokenId` | `long` | no | `-1` | The id of the token that indicates decoding starts (i.e. the start of transcription token id) |
-| `early_stopping` | `EarlyStopping` | `long` | no | `0` | early stop or not |
+| `decoder_start_token_id` | `DecoderStartTokenId` | `Nullable<long>` | no | `-1` | The id of the token that indicates decoding starts (i.e. the start of transcription token id) |
+| `early_stopping` | `EarlyStopping` | `Nullable<long>` | no | `0` | early stop or not |
 | `encoder` | `Encoder` | `OnnxGraph` | no | `[null]` | The subgraph for initialization of encoder and decoder. It will be called once before decoder subgraph. |
 | `eos_token_id` | `EosTokenId` | `long` | yes | `[null]` | The id of the end-of-sequence token |
 | `init_decoder` | `InitDecoder` | `OnnxGraph` | no | `[null]` | The subgraph for the first decoding run. It will be called once before `decoder` subgraph. This is relevant only for the GPT2 model. If this attribute is missing, the `decoder` subgraph will be used for all decoding runs |
-| `model_type` | `ModelType` | `long` | no | `2` | Must be 2 for whisper |
-| `no_repeat_ngram_size` | `NoRepeatNgramSize` | `long` | no | `0` | no repeat ngrams size |
+| `model_type` | `ModelType` | `Nullable<long>` | no | `2` | Must be 2 for whisper |
+| `no_repeat_ngram_size` | `NoRepeatNgramSize` | `Nullable<long>` | no | `0` | no repeat ngrams size |
 | `no_speech_token_id` | `NoSpeechTokenId` | `Nullable<long>` | no | `[null]` | The token in whisper model that marks all sequence empty. With this model, whisper could output no_speech_prob after. Default -1. |
 | `no_timestamps_token_id` | `NoTimestampsTokenId` | `Nullable<long>` | no | `[null]` | The id of the token that indicates no timestamps |
 | `pad_token_id` | `PadTokenId` | `long` | yes | `[null]` | The id of the padding token |
 | `start_of_lm_token_id` | `StartOfLmTokenId` | `Nullable<long>` | no | `[null]` | The id of the token that indicates LM starts |
 | `transcribe_token_id` | `TranscribeTokenId` | `Nullable<long>` | no | `[null]` | The id of the transcribe task |
 | `translate_token_id` | `TranslateTokenId` | `Nullable<long>` | no | `[null]` | The id of the translate task |
-| `vocab_size` | `VocabSize` | `long` | no | `-1` | Size of the vocabulary. If not provided, it will be inferred from the decoder subgraph's output shape |
+| `vocab_size` | `VocabSize` | `Nullable<long>` | no | `-1` | Size of the vocabulary. If not provided, it will be inferred from the decoder subgraph's output shape |
 
 ## TorchSharp Coverage
 

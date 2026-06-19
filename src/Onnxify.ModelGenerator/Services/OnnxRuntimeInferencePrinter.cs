@@ -464,15 +464,21 @@ internal sealed class OnnxRuntimeInferencePrinter
     {
         if (dimension.NumericValueLiteral is not null)
         {
-            return $"{dimension.NumericValueLiteral},";
+            return dimension.DenotationLiteral is null
+                ? $"{dimension.NumericValueLiteral},"
+                : $"new Onnxify.OnnxDimension<long>({dimension.NumericValueLiteral}, {dimension.DenotationLiteral}),";
         }
 
         if (dimension.SymbolicNameLiteral is not null)
         {
-            return $"{dimension.SymbolicNameLiteral},";
+            return dimension.DenotationLiteral is null
+                ? $"{dimension.SymbolicNameLiteral},"
+                : $"new Onnxify.OnnxDimension<string>({dimension.SymbolicNameLiteral}, {dimension.DenotationLiteral}),";
         }
 
-        return "new Onnxify.OnnxDimensionNone(),";
+        return dimension.DenotationLiteral is null
+            ? "new Onnxify.OnnxDimensionNone(),"
+            : $"new Onnxify.OnnxDimensionNone({dimension.DenotationLiteral}),";
     }
 
     private static string BuildTensorMethodParameterSignature(ModelTensorContract tensor)

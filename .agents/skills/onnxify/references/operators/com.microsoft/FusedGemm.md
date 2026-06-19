@@ -45,10 +45,10 @@ activation and leaky_relu_alpha.
 | `activation_alpha` | `ActivationAlpha` | `Nullable<float>` | no | `[null]` |  |
 | `activation_beta` | `ActivationBeta` | `Nullable<float>` | no | `[null]` |  |
 | `activation_gamma` | `ActivationGamma` | `Nullable<float>` | no | `[null]` |  |
-| `alpha` | `Alpha` | `float` | no | `1.0` | Scalar multiplier for the product of input tensors A * B. |
-| `beta` | `Beta` | `float` | no | `1.0` | Scalar multiplier for input tensor C. |
-| `transA` | `TransA` | `long` | no | `0` | Whether A should be transposed |
-| `transB` | `TransB` | `long` | no | `0` | Whether B should be transposed |
+| `alpha` | `Alpha` | `Nullable<float>` | no | `1.0` | Scalar multiplier for the product of input tensors A * B. |
+| `beta` | `Beta` | `Nullable<float>` | no | `1.0` | Scalar multiplier for input tensor C. |
+| `transA` | `TransA` | `Nullable<long>` | no | `0` | Whether A should be transposed |
+| `transB` | `TransB` | `Nullable<long>` | no | `0` | Whether B should be transposed |
 
 ## TorchSharp Coverage
 

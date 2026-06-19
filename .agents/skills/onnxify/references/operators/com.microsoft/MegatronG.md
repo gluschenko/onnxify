@@ -38,7 +38,7 @@ Schema description was not found in `onnx_operators.json`.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `group_type` | `GroupType` | `long` | no | `0` | 0 - data parallel group, 1 - horizontal parallel group |
+| `group_type` | `GroupType` | `Nullable<long>` | no | `0` | 0 - data parallel group, 1 - horizontal parallel group |
 
 ## TorchSharp Coverage
 
