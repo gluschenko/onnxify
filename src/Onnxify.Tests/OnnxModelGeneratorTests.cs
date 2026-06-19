@@ -27,9 +27,22 @@ public sealed class OnnxModelGeneratorTests
             CreateTensorModel(
                 modelPath: modelPath,
                 inputName: "input_ids",
-                inputType: OnnxTensorType.Create<long>(new OnnxDimension[] { 1L, "sequence_length" }, "token_ids"),
+                inputType: OnnxTensorType.Create<long>(
+                    new OnnxDimension[]
+                    {
+                        new OnnxDimension<long>(1L, "DATA_BATCH"),
+                        new OnnxDimension<string>("sequence_length", "DATA_TIME"),
+                    },
+                    "token_ids"),
                 outputName: "logits",
-                outputType: OnnxTensorType.Create<float>(new OnnxDimension[] { 1L, "sequence_length", 128L }, "class_scores"));
+                outputType: OnnxTensorType.Create<float>(
+                    new OnnxDimension[]
+                    {
+                        new OnnxDimension<long>(1L, "DATA_BATCH"),
+                        new OnnxDimension<string>("sequence_length", "DATA_TIME"),
+                        new OnnxDimension<long>(128L, "DATA_FEATURE"),
+                    },
+                    "class_scores"));
 
             var driver = CreateDriver(
                 additionalFiles: [new BinaryAdditionalText(modelPath)],
@@ -76,6 +89,9 @@ public sealed class OnnxModelGeneratorTests
             Assert.Contains("public SampleClassifierModel(SessionOptions? sessionOptions)", generatedSource);
             Assert.Contains("new Onnxify.OnnxValue<Onnxify.OnnxTensorType>(", generatedSource);
             Assert.Contains("Onnxify.OnnxTensorType.Create<long>(", generatedSource);
+            Assert.Contains("new Onnxify.OnnxDimension<long>(1L, \"DATA_BATCH\")", generatedSource);
+            Assert.Contains("new Onnxify.OnnxDimension<string>(\"sequence_length\", \"DATA_TIME\")", generatedSource);
+            Assert.Contains("new Onnxify.OnnxDimension<long>(128L, \"DATA_FEATURE\")", generatedSource);
             Assert.Contains("\"sequence_length\"", generatedSource);
         }
         finally

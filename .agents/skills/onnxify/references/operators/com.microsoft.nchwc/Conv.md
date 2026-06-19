@@ -45,7 +45,7 @@ For internal use.
 | `activation_params` | `ActivationParams` | `float[]` | no | `[null]` |  |
 | `auto_pad` | `AutoPad` | `string` | no | `NOTSET` |  |
 | `dilations` | `Dilations` | `long[]` | no | `[null]` |  |
-| `group` | `Group` | `long` | no | `1` |  |
+| `group` | `Group` | `Nullable<long>` | no | `1` |  |
 | `kernel_shape` | `KernelShape` | `long[]` | no | `[null]` |  |
 | `pads` | `Pads` | `long[]` | no | `[null]` |  |
 | `strides` | `Strides` | `long[]` | no | `[null]` |  |

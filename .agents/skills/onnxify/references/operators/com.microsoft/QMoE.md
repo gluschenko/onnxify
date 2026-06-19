@@ -75,16 +75,16 @@ Quantized mixture of experts (MoE).
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `activation_alpha` | `ActivationAlpha` | `float` | no | `1.0` | Alpha parameter used in activation function. |
-| `activation_beta` | `ActivationBeta` | `float` | no | `0.0` | Beta parameter used in activation function. |
+| `activation_alpha` | `ActivationAlpha` | `Nullable<float>` | no | `1.0` | Alpha parameter used in activation function. |
+| `activation_beta` | `ActivationBeta` | `Nullable<float>` | no | `0.0` | Beta parameter used in activation function. |
 | `activation_type` | `ActivationType` | `string` | no | `relu` | Activation function to use. Choose from relu, gelu, silu, swiglu and identity. Default is relu |
 | `block_size` | `BlockSize` | `Nullable<long>` | no | `[null]` | Size of each quantization block along the K (input feature) dimension. Must be power of two and ≥ 16 (e.g., 16, 32, 64, 128). If provided, both hidden_size and inter_size must be divisible by the block size. Otherwise, there is no blocking and a whole column shares one scaling factor. |
-| `expert_weight_bits` | `ExpertWeightBits` | `long` | no | `4` | Number of bits used in quantized weights. Default is 4 bits |
-| `k` | `K` | `long` | no | `1` | Number of top experts to select from expert pool |
-| `normalize_routing_weights` | `NormalizeRoutingWeights` | `long` | no | `0` | Whether to normalize routing weights |
-| `swiglu_fusion` | `SwigluFusion` | `long` | no | `0` | 0: not fused, 1: fused and interleaved. 2: fused and not interleaved. |
+| `expert_weight_bits` | `ExpertWeightBits` | `Nullable<long>` | no | `4` | Number of bits used in quantized weights. Default is 4 bits |
+| `k` | `K` | `Nullable<long>` | no | `1` | Number of top experts to select from expert pool |
+| `normalize_routing_weights` | `NormalizeRoutingWeights` | `Nullable<long>` | no | `0` | Whether to normalize routing weights |
+| `swiglu_fusion` | `SwigluFusion` | `Nullable<long>` | no | `0` | 0: not fused, 1: fused and interleaved. 2: fused and not interleaved. |
 | `swiglu_limit` | `SwigluLimit` | `Nullable<float>` | no | `[null]` | The limit used to clamp inputs in SwiGLU. It is infinite when limit is not provided. |
-| `use_sparse_mixer` | `UseSparseMixer` | `long` | no | `0` | Whether to use sparse mixer |
+| `use_sparse_mixer` | `UseSparseMixer` | `Nullable<long>` | no | `0` | Whether to use sparse mixer |
 
 ## TorchSharp Coverage
 

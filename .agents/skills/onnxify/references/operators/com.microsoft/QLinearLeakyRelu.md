@@ -44,7 +44,7 @@ and produces one output data (Tensor<T>) where the function `f(x) = quantize(alp
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `alpha` | `Alpha` | `float` | no | `0.009999999776482582` | Coefficient of leakage. |
+| `alpha` | `Alpha` | `Nullable<float>` | no | `0.009999999776482582` | Coefficient of leakage. |
 
 ## TorchSharp Coverage
 

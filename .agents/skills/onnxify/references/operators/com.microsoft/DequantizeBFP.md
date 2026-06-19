@@ -43,8 +43,8 @@ More documentation on the BFP format can be found in this paper: https://www.mic
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `bfp_type` | `BfpType` | `long` | yes | `[null]` | The type of BFP - must match with the BFPType enum |
-| `block_dim` | `BlockDim` | `long` | no | `-1` | Each bounding box spans this dimension.Typically, the block dimension corresponds to the reduction dimension of the matrix multipication that consumes the output of this operator.For example, for a 2D matrix multiplication A@W, QuantizeBFP(A) would use block_dim 1 and QuantizeBFP(W) would use block_dim 0.The default is the last dimension. |
-| `dtype` | `Dtype` | `long` | no | `1` | The datatype to dequantize to. |
+| `block_dim` | `BlockDim` | `Nullable<long>` | no | `-1` | Each bounding box spans this dimension.Typically, the block dimension corresponds to the reduction dimension of the matrix multipication that consumes the output of this operator.For example, for a 2D matrix multiplication A@W, QuantizeBFP(A) would use block_dim 1 and QuantizeBFP(W) would use block_dim 0.The default is the last dimension. |
+| `dtype` | `Dtype` | `Nullable<long>` | no | `1` | The datatype to dequantize to. |
 
 ## TorchSharp Coverage
 

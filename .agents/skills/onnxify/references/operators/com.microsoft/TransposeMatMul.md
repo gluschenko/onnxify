@@ -40,9 +40,9 @@ Matrix product that behaves like numpy.matmul: https://docs.scipy.org/doc/numpy-
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `alpha` | `Alpha` | `float` | no | `1.0` | Scalar multiplier for the product of the input tensors. |
-| `transA` | `TransA` | `long` | no | `0` | Whether A should be transposed on the last two dimensions before doing multiplication |
-| `transB` | `TransB` | `long` | no | `0` | Whether B should be transposed on the last two dimensions before doing multiplication |
+| `alpha` | `Alpha` | `Nullable<float>` | no | `1.0` | Scalar multiplier for the product of the input tensors. |
+| `transA` | `TransA` | `Nullable<long>` | no | `0` | Whether A should be transposed on the last two dimensions before doing multiplication |
+| `transB` | `TransB` | `Nullable<long>` | no | `0` | Whether B should be transposed on the last two dimensions before doing multiplication |
 
 ## TorchSharp Coverage
 

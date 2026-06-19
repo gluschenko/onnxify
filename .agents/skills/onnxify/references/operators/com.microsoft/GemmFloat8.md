@@ -44,11 +44,11 @@ Generic Gemm for float and float 8.
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `activation` | `Activation` | `string` | no | `[null]` | Activation function, RELU or GELU or NONE (default). |
-| `alpha` | `Alpha` | `float` | no | `1.0` | Scalar multiplier for the product of input tensors A * B. |
-| `beta` | `Beta` | `float` | no | `0.0` | Scalar multiplier for the product of input bias C. |
-| `dtype` | `Dtype` | `long` | no | `1` | Output Type. Same definition as attribute 'to' for operator Cast. |
-| `transA` | `TransA` | `long` | no | `0` | Whether A should be transposed. Float 8 only supported transA=0. |
-| `transB` | `TransB` | `long` | no | `0` | Whether B should be transposed. Float 8 only supported transB=1. |
+| `alpha` | `Alpha` | `Nullable<float>` | no | `1.0` | Scalar multiplier for the product of input tensors A * B. |
+| `beta` | `Beta` | `Nullable<float>` | no | `0.0` | Scalar multiplier for the product of input bias C. |
+| `dtype` | `Dtype` | `Nullable<long>` | no | `1` | Output Type. Same definition as attribute 'to' for operator Cast. |
+| `transA` | `TransA` | `Nullable<long>` | no | `0` | Whether A should be transposed. Float 8 only supported transA=0. |
+| `transB` | `TransB` | `Nullable<long>` | no | `0` | Whether B should be transposed. Float 8 only supported transB=1. |
 
 ## TorchSharp Coverage
 

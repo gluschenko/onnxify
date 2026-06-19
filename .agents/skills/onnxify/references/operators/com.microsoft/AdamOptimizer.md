@@ -52,13 +52,13 @@ Schema description was not found in `onnx_operators.json`.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `alpha` | `Alpha` | `float` | no | `0.8999999761581421` | Coefficient of previous gradient in running average. |
-| `beta` | `Beta` | `float` | no | `0.9990000128746033` | Coefficient of previous squared gradient in running average.The effective learning rate is computed by r = R / (1 + T * decay_factor). Default to 0 so that increasing update counts doesn't reduce the learning rate. |
-| `do_bias_correction` | `DoBiasCorrection` | `long` | no | `1` | Compute unbiased 1st and 2nd momentums. |
-| `epsilon` | `Epsilon` | `float` | no | `9.99999993922529e-09` | Small scalar to avoid dividing by zero. |
-| `lambda` | `Lambda` | `float` | no | `0.0` | Regularization coefficient of 0.5 * lambda * \|\|X\|\|_2^2. Default to 0, which means no regularization. |
-| `max_norm_clip` | `MaxNormClip` | `float` | no | `1.0` | clip threshold of gradients. |
-| `weight_decay_mode` | `WeightDecayMode` | `long` | no | `0` | Modes for applying weight decay, 0 means applying decay before weight update, 1 means applying decay after weight update. |
+| `alpha` | `Alpha` | `Nullable<float>` | no | `0.8999999761581421` | Coefficient of previous gradient in running average. |
+| `beta` | `Beta` | `Nullable<float>` | no | `0.9990000128746033` | Coefficient of previous squared gradient in running average.The effective learning rate is computed by r = R / (1 + T * decay_factor). Default to 0 so that increasing update counts doesn't reduce the learning rate. |
+| `do_bias_correction` | `DoBiasCorrection` | `Nullable<long>` | no | `1` | Compute unbiased 1st and 2nd momentums. |
+| `epsilon` | `Epsilon` | `Nullable<float>` | no | `9.99999993922529e-09` | Small scalar to avoid dividing by zero. |
+| `lambda` | `Lambda` | `Nullable<float>` | no | `0.0` | Regularization coefficient of 0.5 * lambda * \|\|X\|\|_2^2. Default to 0, which means no regularization. |
+| `max_norm_clip` | `MaxNormClip` | `Nullable<float>` | no | `1.0` | clip threshold of gradients. |
+| `weight_decay_mode` | `WeightDecayMode` | `Nullable<long>` | no | `0` | Modes for applying weight decay, 0 means applying decay before weight update, 1 means applying decay after weight update. |
 
 ## TorchSharp Coverage
 

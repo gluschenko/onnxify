@@ -40,7 +40,7 @@ is applied to the tensor elementwise.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `alpha` | `Alpha` | `float` | no | `1.0` | Threshold value |
+| `alpha` | `Alpha` | `Nullable<float>` | no | `1.0` | Threshold value |
 
 ## TorchSharp Coverage
 

@@ -50,8 +50,8 @@ in 'split' must be equal to the dimension size of input tensor on 'axis'.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `axis` | `Axis` | `long` | no | `0` | Which axis to split on. A negative value means counting dimensions from the back. Accepted range is [-rank, rank-1]. |
-| `keepdims` | `Keepdims` | `long` | no | `1` | Keep the split dimension or not. Default 1, which means we keep split dimension. If input 'split' is specified, this attribute is ignored. |
+| `axis` | `Axis` | `Nullable<long>` | no | `0` | Which axis to split on. A negative value means counting dimensions from the back. Accepted range is [-rank, rank-1]. |
+| `keepdims` | `Keepdims` | `Nullable<long>` | no | `1` | Keep the split dimension or not. Default 1, which means we keep split dimension. If input 'split' is specified, this attribute is ignored. |
 
 ## TorchSharp Coverage
 

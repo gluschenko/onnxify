@@ -52,7 +52,7 @@ Quantization of Multi-Head Self Attention.
 | `num_heads` | `NumHeads` | `long` | yes | `[null]` | Number of attention heads |
 | `past_present_share_buffer` | `PastPresentShareBuffer` | `Nullable<long>` | no | `[null]` | Corresponding past and present are same tensor, its shape is (2, batch_size, num_heads, max_sequence_length, head_size) |
 | `scale` | `Scale` | `Nullable<float>` | no | `[null]` | Custom scale will be used if specified. Default value is 1/sqrt(head_size) |
-| `unidirectional` | `Unidirectional` | `long` | no | `0` | Whether every token can only attend to previous tokens. Default value is 0. |
+| `unidirectional` | `Unidirectional` | `Nullable<long>` | no | `0` | Whether every token can only attend to previous tokens. Default value is 0. |
 
 ## TorchSharp Coverage
 

@@ -45,8 +45,8 @@ TensorProto message and be valid as an output type.
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `dtype` | `Dtype` | `Nullable<long>` | no | `[null]` | (Optional) The data type for the elements of the output tensor, if not specified, we will use the data type of the input tensor. |
-| `high` | `High` | `float` | no | `1.0` | Upper boundary of the output values. |
-| `low` | `Low` | `float` | no | `0.0` | Lower boundary of the output values. |
+| `high` | `High` | `Nullable<float>` | no | `1.0` | Upper boundary of the output values. |
+| `low` | `Low` | `Nullable<float>` | no | `0.0` | Lower boundary of the output values. |
 | `seed` | `Seed` | `Nullable<float>` | no | `[null]` | (Optional) Seed to the random generator, if not specified we will auto generate one. |
 
 ## TorchSharp Coverage

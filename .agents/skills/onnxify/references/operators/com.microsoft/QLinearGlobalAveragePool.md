@@ -44,7 +44,7 @@ equal to the spatial dimension of input tensor. Input is of type uint8_t or int8
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `channels_last` | `ChannelsLast` | `long` | no | `0` |  |
+| `channels_last` | `ChannelsLast` | `Nullable<long>` | no | `0` |  |
 
 ## TorchSharp Coverage
 

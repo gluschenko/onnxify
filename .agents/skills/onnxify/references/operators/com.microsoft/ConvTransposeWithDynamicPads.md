@@ -43,7 +43,7 @@ Schema description was not found in `onnx_operators.json`.
 | --- | --- | --- | --- | --- | --- |
 | `auto_pad` | `AutoPad` | `string` | no | `NOTSET` |  |
 | `dilations` | `Dilations` | `long[]` | no | `[null]` |  |
-| `group` | `Group` | `long` | no | `1` |  |
+| `group` | `Group` | `Nullable<long>` | no | `1` |  |
 | `kernel_shape` | `KernelShape` | `long[]` | no | `[null]` |  |
 | `output_padding` | `OutputPadding` | `long[]` | no | `[null]` |  |
 | `strides` | `Strides` | `long[]` | no | `[null]` |  |

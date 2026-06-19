@@ -25,7 +25,15 @@ public sealed class OnnxProjectGeneratorTests
             model.Document = "Generated project";
             model.AddMetadataProps("generator-key", "generator-value");
 
-            var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([1, 2], "input-denotation"));
+            var input = model.Graph.AddInput(
+                "input",
+                OnnxTensorType.Create<float>(
+                    new OnnxDimension[]
+                    {
+                        new OnnxDimension<long>(1, "DATA_BATCH"),
+                        new OnnxDimension<string>("width", "DATA_FEATURE"),
+                    },
+                    "input-denotation"));
             var hidden = model.Graph.AddValue("hidden", OnnxTensorType.Create<float>([1, 2]));
             var output = model.Graph.AddOutput("output", OnnxTensorType.Create<float>([1, 2]));
             var weights = model.Graph.AddTensor("weights", [1, 2], [1.0f, 2.0f]);
@@ -91,6 +99,8 @@ public sealed class OnnxProjectGeneratorTests
             Assert.Contains("new OnnxAttribute<long[]>(\"axes\", [0L, 1L])", programText);
             Assert.Contains("new OnnxAttribute<string>(\"note\", \"hello\")", programText);
             Assert.Contains("model.AddMetadataProps(\"generator-key\", \"generator-value\");", programText);
+            Assert.Contains("new OnnxDimension<long>(1L, \"DATA_BATCH\")", programText);
+            Assert.Contains("new OnnxDimension<string>(\"width\", \"DATA_FEATURE\")", programText);
             Assert.DoesNotContain("StringStringEntryProto", programText);
             Assert.DoesNotContain("OperatorSetIdProto", programText);
             Assert.DoesNotContain("MetadataProps.Clear()", programText);

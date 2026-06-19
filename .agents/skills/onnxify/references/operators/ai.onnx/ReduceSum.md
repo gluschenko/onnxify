@@ -46,8 +46,8 @@ to `False` instead of `True`.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `keepdims` | `Keepdims` | `long` | no | `1` | Keep the reduced dimension or not, default 1 means keep reduced dimension. |
-| `noop_with_empty_axes` | `NoopWithEmptyAxes` | `long` | no | `0` | Defines behavior when axes is not provided or is empty. If false (default), reduction happens over all axes (similar to the case when `axis=None` in numpy). If true, reduction happens over an empty set of axes (similar to the case when `axis=()` in numpy). Note that reduction over an empty set of axes means that the reduction step behaves like a no-op (identity function), but composite-reduction operators will still perform the non-reduction steps as needed. Thus, ReduceLogSum returns the Log of input tensor, and ReduceSumSquare returns the Square of the input tensor, in this case. |
+| `keepdims` | `Keepdims` | `Nullable<long>` | no | `1` | Keep the reduced dimension or not, default 1 means keep reduced dimension. |
+| `noop_with_empty_axes` | `NoopWithEmptyAxes` | `Nullable<long>` | no | `0` | Defines behavior when axes is not provided or is empty. If false (default), reduction happens over all axes (similar to the case when `axis=None` in numpy). If true, reduction happens over an empty set of axes (similar to the case when `axis=()` in numpy). Note that reduction over an empty set of axes means that the reduction step behaves like a no-op (identity function), but composite-reduction operators will still perform the non-reduction steps as needed. Thus, ReduceLogSum returns the Log of input tensor, and ReduceSumSquare returns the Square of the input tensor, in this case. |
 
 ## TorchSharp Coverage
 

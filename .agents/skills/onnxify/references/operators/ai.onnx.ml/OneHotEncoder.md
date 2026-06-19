@@ -47,7 +47,7 @@ Replace each input element with an array of ones and zeros, where a single
 | --- | --- | --- | --- | --- | --- |
 | `cats_int64s` | `CatsInt64s` | `long[]` | no | `[null]` | List of categories, ints.<br>One and only one of the 'cats_*' attributes must be defined. |
 | `cats_strings` | `CatsStrings` | `string[]` | no | `[null]` | List of categories, strings.<br>One and only one of the 'cats_*' attributes must be defined. |
-| `zeros` | `Zeros` | `long` | no | `1` | If true and category is not present, will return all zeros; if false and a category if not found, the operator will fail. |
+| `zeros` | `Zeros` | `Nullable<long>` | no | `1` | If true and category is not present, will return all zeros; if false and a category if not found, the operator will fail. |
 
 ## TorchSharp Coverage
 

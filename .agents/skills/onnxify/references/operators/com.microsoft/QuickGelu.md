@@ -38,7 +38,7 @@ Compute x * Sigmoid(alpha * x).
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `alpha` | `Alpha` | `float` | no | `1.7020000219345093` | Alpha value. |
+| `alpha` | `Alpha` | `Nullable<float>` | no | `1.7020000219345093` | Alpha value. |
 
 ## TorchSharp Coverage
 

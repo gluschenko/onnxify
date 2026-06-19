@@ -48,7 +48,7 @@ Returns the upper or lower triangular part of a 2-D matrix, or batches of 2-D ma
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `upper` | `Upper` | `long` | no | `1` | Boolean. Indicates whether upper or lower part of matrix is retained. Default is true. |
+| `upper` | `Upper` | `Nullable<long>` | no | `1` | Boolean. Indicates whether upper or lower part of matrix is retained. Default is true. |
 
 ## TorchSharp Coverage
 

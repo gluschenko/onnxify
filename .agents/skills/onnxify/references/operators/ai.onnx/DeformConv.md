@@ -44,9 +44,9 @@ This operator specification supports the general N-D case. Note that most common
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `dilations` | `Dilations` | `long[]` | no | `[null]` | Dilation value along each spatial axis of the kernel. Default is 1 along each axis. |
-| `group` | `Group` | `long` | no | `1` | Number of groups the input and output channels, C and oC, are divided into. C and oC must both be divisible by group. Default is 1. |
+| `group` | `Group` | `Nullable<long>` | no | `1` | Number of groups the input and output channels, C and oC, are divided into. C and oC must both be divisible by group. Default is 1. |
 | `kernel_shape` | `KernelShape` | `long[]` | no | `[null]` | Shape of the convolution kernel. If not present, it is inferred from the shape of input W. |
-| `offset_group` | `OffsetGroup` | `long` | no | `1` | Number of groups of offset. C must be divisible by offset_group. Default is 1. |
+| `offset_group` | `OffsetGroup` | `Nullable<long>` | no | `1` | Number of groups of offset. C must be divisible by offset_group. Default is 1. |
 | `pads` | `Pads` | `long[]` | no | `[null]` | Padding for the beginning and end along each spatial axis. The values represent the number of pixels added to the beginning and end of the corresponding axis and can take any nonnegative value. The format should be as follows: [x1_begin, x2_begin, ..., x1_end, x2_end, ...], where xi_begin is the number of pixels added at the beginning of axis `i` and xi_end is the number of pixels added at the end of axis `i`. Default is 0 along each axis. |
 | `strides` | `Strides` | `long[]` | no | `[null]` | Stride along each spatial axis. Default is 1 along each axis. |
 

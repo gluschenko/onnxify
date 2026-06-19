@@ -41,8 +41,8 @@ FakeQuant operator that fuses quantization->dequantization pattern into a single
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `quant_max` | `QuantMax` | `long` | no | `255` | Maximum quantization value. |
-| `quant_min` | `QuantMin` | `long` | no | `0` | Minimum quantization value. |
+| `quant_max` | `QuantMax` | `Nullable<long>` | no | `255` | Maximum quantization value. |
+| `quant_min` | `QuantMin` | `Nullable<long>` | no | `0` | Minimum quantization value. |
 
 ## TorchSharp Coverage
 

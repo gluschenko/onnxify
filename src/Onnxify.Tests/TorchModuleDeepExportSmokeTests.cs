@@ -76,6 +76,26 @@ public sealed class TorchModuleDeepExportSmokeTests
     }
 
     [Fact]
+    public void DeepExport_ForPanlingoTransformerExampleModel_MatchesTorchSharpOutput()
+    {
+        ResetTorchSeed();
+
+        using var module = new PanlingoTransformer();
+        using var input = CreateInt64Tensor(
+            [2, module.MaxContextLength],
+            [0, 1, 2, 3, 4, 5, 6, 7]
+        );
+
+        AssertDeepExportMatchesTorchSharp(
+            module,
+            input,
+            inputType: OnnxTensorType.Create<long>([2, module.MaxContextLength]),
+            outputType: OnnxTensorType.Create<float>([2, module.MaxContextLength, module.VocabularySize]),
+            absoluteTolerance: 5e-4f
+        );
+    }
+
+    [Fact]
     public void DeepExport_ForTinyYoloLikeExampleModel_MatchesTorchSharpOutput()
     {
         ResetTorchSeed();

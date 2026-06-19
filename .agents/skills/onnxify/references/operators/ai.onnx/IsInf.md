@@ -38,8 +38,8 @@ Map infinity to true and other values to false.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `detect_negative` | `DetectNegative` | `long` | no | `1` | (Optional) Whether map negative infinity to true. Default to 1 so that negative infinity induces true. Set this attribute to 0 if negative infinity should be mapped to false. |
-| `detect_positive` | `DetectPositive` | `long` | no | `1` | (Optional) Whether map positive infinity to true. Default to 1 so that positive infinity induces true. Set this attribute to 0 if positive infinity should be mapped to false. |
+| `detect_negative` | `DetectNegative` | `Nullable<long>` | no | `1` | (Optional) Whether map negative infinity to true. Default to 1 so that negative infinity induces true. Set this attribute to 0 if negative infinity should be mapped to false. |
+| `detect_positive` | `DetectPositive` | `Nullable<long>` | no | `1` | (Optional) Whether map positive infinity to true. Default to 1 so that positive infinity induces true. Set this attribute to 0 if positive infinity should be mapped to false. |
 
 ## TorchSharp Coverage
 

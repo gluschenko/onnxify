@@ -38,7 +38,7 @@ SplitTraining
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `axis` | `Axis` | `long` | no | `0` | Which axis to split on. A negative value means counting dimensions from the back. Accepted range is [-rank, rank-1] where r = rank(input). |
+| `axis` | `Axis` | `Nullable<long>` | no | `0` | Which axis to split on. A negative value means counting dimensions from the back. Accepted range is [-rank, rank-1] where r = rank(input). |
 
 ## TorchSharp Coverage
 

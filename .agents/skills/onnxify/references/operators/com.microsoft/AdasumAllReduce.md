@@ -37,7 +37,7 @@ Schema description was not found in `onnx_operators.json`.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `reduce_algo` | `ReduceAlgo` | `long` | no | `0` | Algorithms for Adasum. Valid values are: CpuReduction(1) or GpuHierarchicalReduction(2) |
+| `reduce_algo` | `ReduceAlgo` | `Nullable<long>` | no | `0` | Algorithms for Adasum. Valid values are: CpuReduction(1) or GpuHierarchicalReduction(2) |
 
 ## TorchSharp Coverage
 

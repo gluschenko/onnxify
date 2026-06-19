@@ -39,8 +39,8 @@ ReduceSumTraining
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `keepdims` | `Keepdims` | `long` | no | `1` | Keep the reduced dimension or not, default 1 mean keep reduced dimension. |
-| `noop_with_empty_axes` | `NoopWithEmptyAxes` | `long` | no | `0` | Perform reduction or not when axes is empty, default false mean perform reduction.when axes is empty and this attribute is set to true, input tensor will not be reduced,thus output tensor would be equivalent to input tensor. |
+| `keepdims` | `Keepdims` | `Nullable<long>` | no | `1` | Keep the reduced dimension or not, default 1 mean keep reduced dimension. |
+| `noop_with_empty_axes` | `NoopWithEmptyAxes` | `Nullable<long>` | no | `0` | Perform reduction or not when axes is empty, default false mean perform reduction.when axes is empty and this attribute is set to true, input tensor will not be reduced,thus output tensor would be equivalent to input tensor. |
 
 ## TorchSharp Coverage
 

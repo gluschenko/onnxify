@@ -501,7 +501,7 @@ public static class TorchModuleExportExtensions
             //   x = _block.forward(x);
             //   attentionScores = attentionScores + causalMask;
             case ExpressionStatement { Expression: AssignmentExpression assignment }:
-                AssignValue(context, assignment.Left, ExportExpression(context, assignment.Right));
+                AssignValue(context, assignment.Left, ExportAssignmentExpression(context, assignment));
                 return null;
 
             // Handles side-effect-shaped calls, usually validation guards:
@@ -941,7 +941,8 @@ public static class TorchModuleExportExtensions
         // lowered here because they are not nn.Module calls and therefore do not go
         // through TorchModuleExtensions.Export dispatch.
         if (IsTensorMethod(memberReference.MemberName)
-            && !IsTorchReference(memberReference.Target))
+            && !IsTorchReference(memberReference.Target)
+            && !IsTorchFunctionalReference(memberReference.Target))
         {
             return ExportTensorMethodInvocation(context, memberReference, invocation);
         }
@@ -993,6 +994,12 @@ public static class TorchModuleExportExtensions
             return ExportTorchFillFactory(context, memberReference.MemberName, invocation);
         }
 
+        if (IsTorchLikeFactoryName(memberReference.MemberName)
+            && IsTorchReference(memberReference.Target))
+        {
+            return ExportTorchLikeFactory(context, memberReference.MemberName, invocation);
+        }
+
         if (IsTorchRandomFactoryName(memberReference.MemberName)
             && IsTorchReference(memberReference.Target))
         {
@@ -1015,6 +1022,12 @@ public static class TorchModuleExportExtensions
             && IsTorchReference(memberReference.Target))
         {
             return ExportTorchConcat(context, invocation);
+        }
+
+        if (string.Equals(memberReference.MemberName, "where", StringComparison.Ordinal)
+            && IsTorchReference(memberReference.Target))
+        {
+            return ExportTorchWhere(context, invocation);
         }
 
         if (string.Equals(memberReference.MemberName, "interpolate", StringComparison.Ordinal)
@@ -1053,10 +1066,22 @@ public static class TorchModuleExportExtensions
             return ExportTorchAdaptiveAvgPool2d(context, invocation);
         }
 
+        if (string.Equals(memberReference.MemberName, "gelu", StringComparison.Ordinal)
+            && IsTorchFunctionalReference(memberReference.Target))
+        {
+            return ExportTorchGelu(context, invocation);
+        }
+
         if (string.Equals(memberReference.MemberName, "log_softmax", StringComparison.Ordinal)
             && IsTorchFunctionalReference(memberReference.Target))
         {
             return ExportTorchLogSoftmax(context, invocation);
+        }
+
+        if (string.Equals(memberReference.MemberName, "softmax", StringComparison.Ordinal)
+            && IsTorchFunctionalReference(memberReference.Target))
+        {
+            return ExportTorchSoftmax(context, invocation);
         }
 
         throw new NotSupportedException($"Unsupported forward invocation: {invocation}");
@@ -1116,6 +1141,7 @@ public static class TorchModuleExportExtensions
             "conv2d" => ExportTorchConv2d(context, invocation),
             "pad" => ExportTorchPad(context, invocation),
             "adaptive_avg_pool2d" => ExportTorchAdaptiveAvgPool2d(context, invocation),
+            "gelu" => ExportTorchGelu(context, invocation),
             "log_softmax" => ExportTorchLogSoftmax(context, invocation),
             "matmul" or "mm" or "bmm" => ExportTorchMatMul(context, invocation),
             _ => default,
@@ -1179,7 +1205,7 @@ public static class TorchModuleExportExtensions
 
     private static bool IsTensorMethod(string methodName)
     {
-        return methodName is "view" or "reshape" or "flatten" or "permute" or "transpose" or "contiguous" or "unsqueeze" or "slice" or "expand" or "repeat" or "gather" or "ne" or "to_type" or "sum" or "clamp" or "sigmoid" or "softmax" or "matmul" or "mm" or "bmm";
+        return methodName is "view" or "reshape" or "flatten" or "permute" or "transpose" or "contiguous" or "unsqueeze" or "slice" or "expand" or "repeat" or "gather" or "ne" or "eq" or "to_type" or "sum" or "clamp" or "sigmoid" or "softmax" or "matmul" or "mm" or "bmm" or "tril" or "triu";
     }
 
     private static bool IsTorchMatMulName(string name)
@@ -1190,6 +1216,11 @@ public static class TorchModuleExportExtensions
     private static bool IsTorchFillFactoryName(string name)
     {
         return name is "full" or "ones" or "zeros" or "empty";
+    }
+
+    private static bool IsTorchLikeFactoryName(string name)
+    {
+        return name is "full_like" or "ones_like" or "zeros_like" or "empty_like";
     }
 
     private static bool IsTorchRandomFactoryName(string name)
@@ -1224,14 +1255,7 @@ public static class TorchModuleExportExtensions
                 ExportTensorFlatten(context, input, invocation)
             ),
             "permute" => new ExportValue(
-                context.Graph.Transpose(
-                    name: context.Graph.NextName("transpose"),
-                    options: new TransposeInputOptions
-                    {
-                        Data = input,
-                        Perm = ResolveLongArguments(context, invocation.Arguments).ToArray(),
-                    }
-                )
+                ExportPermute(context, input, invocation)
             ),
             "transpose" => new ExportValue(
                 ExportTranspose(context, input, invocation)
@@ -1242,6 +1266,9 @@ public static class TorchModuleExportExtensions
             ),
             "ne" => new ExportValue(
                 ExportNotEqual(context, input, invocation)
+            ),
+            "eq" => new ExportValue(
+                ExportEqual(context, input, invocation)
             ),
             "to_type" => new ExportValue(
                 ExportToType(context, input, invocation)
@@ -1293,6 +1320,12 @@ public static class TorchModuleExportExtensions
                 )
             ),
             "matmul" or "mm" or "bmm" => ExportTensorMatMul(context, input, invocation),
+            "tril" => new ExportValue(
+                ExportTril(context, input, invocation)
+            ),
+            "triu" => new ExportValue(
+                ExportTriu(context, input, invocation)
+            ),
             "slice" => new ExportValue(
                 ExportSlice(
                     context,
@@ -1357,6 +1390,26 @@ public static class TorchModuleExportExtensions
         return context.Graph.ExportReshape(input, outputShape);
     }
 
+    private static IOnnxGraphEdge ExportPermute(
+        ForwardExportContext context,
+        IOnnxGraphEdge input,
+        InvocationExpression invocation
+    )
+    {
+        var permutation = ResolveLongArguments(context, invocation.Arguments).ToArray();
+        var output = context.Graph.Transpose(
+            name: context.Graph.NextName("transpose"),
+            options: new TransposeInputOptions
+            {
+                Data = input,
+                Perm = permutation,
+            }
+        );
+
+        TrackRank(context, output, permutation.Length);
+        return output;
+    }
+
     private static ExportValue ExportTensorMatMul(
         ForwardExportContext context,
         IOnnxGraphEdge input,
@@ -1383,23 +1436,59 @@ public static class TorchModuleExportExtensions
     )
     {
         var arguments = GetPositionalArguments(invocation).ToArray();
-        if (arguments.Length == 1 && TryResolveTensorDataToArrayEdge(context, arguments[0], out var shape))
+        if (arguments.Length > 1 && TryResolveDynamicShapeEdge(context, arguments, out var positionalDynamicShape, out var positionalDynamicRank))
         {
-            return new ExportValue(
-                context.Graph.Reshape(
-                    name: context.Graph.NextName("reshape"),
-                    options: new ReshapeInputOptions
-                    {
-                        Data = input,
-                        Shape = shape,
-                    }
-                )
+            var output = context.Graph.Reshape(
+                name: context.Graph.NextName("reshape"),
+                options: new ReshapeInputOptions
+                {
+                    Data = input,
+                    Shape = positionalDynamicShape,
+                }
             );
+
+            TrackRank(context, output, positionalDynamicRank);
+            return new ExportValue(output);
         }
 
-        return new ExportValue(
-            context.Graph.ExportReshape(input, ResolveLongArguments(context, invocation.Arguments).ToArray())
-        );
+        if (arguments.Length == 1 && TryResolveDynamicShapeEdge(context, arguments[0], out var dynamicShape, out var dynamicRank))
+        {
+            var output = context.Graph.Reshape(
+                name: context.Graph.NextName("reshape"),
+                options: new ReshapeInputOptions
+                {
+                    Data = input,
+                    Shape = dynamicShape,
+                }
+            );
+
+            TrackRank(context, output, dynamicRank);
+            return new ExportValue(output);
+        }
+
+        if (arguments.Length == 1 && TryResolveTensorDataToArrayEdge(context, arguments[0], out var shape))
+        {
+            var output = context.Graph.Reshape(
+                name: context.Graph.NextName("reshape"),
+                options: new ReshapeInputOptions
+                {
+                    Data = input,
+                    Shape = shape,
+                }
+            );
+
+            if (TryResolveLongArray(context, arguments[0], out var shapeValues))
+            {
+                TrackRank(context, output, shapeValues.Count);
+            }
+
+            return new ExportValue(output);
+        }
+
+        var outputShape = ResolveLongArguments(context, invocation.Arguments).ToArray();
+        var reshape = context.Graph.ExportReshape(input, outputShape);
+        TrackRank(context, reshape, outputShape.Length);
+        return new ExportValue(reshape);
     }
 
     private static IOnnxGraphEdge ExportNotEqual(
@@ -1415,8 +1504,59 @@ public static class TorchModuleExportExtensions
 
         var other = ExportExpression(context, invocation.Arguments.Single());
         return TryGetScalar(other, out var scalar)
-            ? context.Graph.ExportNotEqual(input, scalar)
+            ? context.Graph.ExportNotEqual(input, AddScalar(
+                context.Graph,
+                "ne",
+                scalar,
+                ResolveScalarComparisonType(input, other)
+            ))
             : context.Graph.ExportNotEqual(input, other.GetRequiredEdge(invocation.Arguments.Single()));
+    }
+
+    private static IOnnxGraphEdge ExportEqual(
+        ForwardExportContext context,
+        IOnnxGraphEdge input,
+        InvocationExpression invocation
+    )
+    {
+        if (invocation.Arguments.Count != 1)
+        {
+            throw new NotSupportedException($"eq requires one argument: {invocation}");
+        }
+
+        var other = ExportExpression(context, invocation.Arguments.Single());
+        return TryGetScalar(other, out var scalar)
+            ? context.Graph.ExportEqual(input, AddScalar(
+                context.Graph,
+                "eq",
+                scalar,
+                ResolveScalarComparisonType(input, other)
+            ))
+            : context.Graph.ExportEqual(input, other.GetRequiredEdge(invocation.Arguments.Single()));
+    }
+
+    private static Type ResolveScalarComparisonType(
+        IOnnxGraphEdge input,
+        ExportValue scalar
+    )
+    {
+        if (TryGetTensorElementType(input, out var inputType))
+        {
+            return inputType;
+        }
+
+        return scalar.Value switch
+        {
+            byte => typeof(byte),
+            sbyte => typeof(sbyte),
+            short => typeof(short),
+            int => typeof(long),
+            long => typeof(long),
+            float => typeof(float),
+            double => typeof(double),
+            bool => typeof(bool),
+            _ => typeof(float),
+        };
     }
 
     private static IOnnxGraphEdge ExportToType(
@@ -1558,16 +1698,14 @@ public static class TorchModuleExportExtensions
             throw new NotSupportedException($"transpose requires two dimensions: {invocation}");
         }
 
-        // The exporter does not run full shape inference yet. Multi-head attention commonly
-        // transposes rank-4 tensors, so rank 4 is the conservative floor when only axis ids exist.
-        var rank = Math.Max(arguments.Max(static x => Math.Abs(x)), 0) + 1;
-        rank = Math.Max(rank, 4);
+        var rank = TryGetRank(context, input)
+            ?? Math.Max(Math.Max(arguments.Max(static x => Math.Abs(x)), 0) + 1, 4);
         var permutation = Enumerable.Range(0, checked((int)rank)).Select(static x => (long)x).ToArray();
         var dim0 = NormalizeAxis(arguments[0], rank);
         var dim1 = NormalizeAxis(arguments[1], rank);
         (permutation[dim0], permutation[dim1]) = (permutation[dim1], permutation[dim0]);
 
-        return context.Graph.Transpose(
+        var output = context.Graph.Transpose(
             name: context.Graph.NextName("transpose"),
             options: new TransposeInputOptions
             {
@@ -1575,6 +1713,9 @@ public static class TorchModuleExportExtensions
                 Perm = permutation,
             }
         );
+
+        TrackRank(context, output, checked((int)rank));
+        return output;
     }
 
     private static IOnnxGraphEdge ExportUnsqueeze(
@@ -1595,7 +1736,7 @@ public static class TorchModuleExportExtensions
             value: [axis]
         );
 
-        return context.Graph.Unsqueeze(
+        var output = context.Graph.Unsqueeze(
             name: name,
             options: new UnsqueezeInputOptions
             {
@@ -1603,6 +1744,43 @@ public static class TorchModuleExportExtensions
                 Axes = axes,
             }
         );
+
+        if (TryGetRank(context, input) is int inputRank)
+        {
+            TrackRank(context, output, inputRank + 1);
+        }
+
+        return output;
+    }
+
+    private static IOnnxGraphEdge ExportTril(
+        ForwardExportContext context,
+        IOnnxGraphEdge input,
+        InvocationExpression invocation
+    )
+    {
+        var output = context.Graph.ExportTril(input, ResolveLongArgument(context, invocation.Arguments.ElementAtOrDefault(0), defaultValue: 0));
+        if (TryGetRank(context, input) is int rank)
+        {
+            TrackRank(context, output, rank);
+        }
+
+        return output;
+    }
+
+    private static IOnnxGraphEdge ExportTriu(
+        ForwardExportContext context,
+        IOnnxGraphEdge input,
+        InvocationExpression invocation
+    )
+    {
+        var output = context.Graph.ExportTriu(input, ResolveLongArgument(context, invocation.Arguments.ElementAtOrDefault(0), defaultValue: 0));
+        if (TryGetRank(context, input) is int rank)
+        {
+            TrackRank(context, output, rank);
+        }
+
+        return output;
     }
 
     private static IOnnxGraphEdge ExportSlice(
@@ -1674,17 +1852,22 @@ public static class TorchModuleExportExtensions
         var name = context.Graph.NextName("gather");
         var indexTensor = context.Graph.AddTensor($"{name}_index", [], [index]);
 
-        return new ExportValue(
-            context.Graph.Gather(
-                name: name,
-                options: new GatherInputOptions
-                {
-                    Data = target,
-                    Indices = indexTensor,
-                    Axis = 0,
-                }
-            )
+        var output = context.Graph.Gather(
+            name: name,
+            options: new GatherInputOptions
+            {
+                Data = target,
+                Indices = indexTensor,
+                Axis = 0,
+            }
         );
+
+        if (TryGetRank(context, target) is int rank)
+        {
+            TrackRank(context, output, rank - 1);
+        }
+
+        return new ExportValue(output);
     }
 
     private static ExportValue ExportBinaryOperator(
@@ -1715,7 +1898,48 @@ public static class TorchModuleExportExtensions
             return folded;
         }
 
-        return binaryOperator.Operator switch
+        return ExportBinaryOperatorValue(context, binaryOperator.Operator, left, right, binaryOperator.Left, binaryOperator.Right);
+    }
+
+    private static ExportValue ExportAssignmentExpression(
+        ForwardExportContext context,
+        AssignmentExpression assignment
+    )
+    {
+        if (assignment.Operator == AssignmentOperatorType.Assign)
+        {
+            return ExportExpression(context, assignment.Right);
+        }
+
+        var binaryOperator = assignment.Operator switch
+        {
+            AssignmentOperatorType.Add => BinaryOperatorType.Add,
+            AssignmentOperatorType.Subtract => BinaryOperatorType.Subtract,
+            AssignmentOperatorType.Multiply => BinaryOperatorType.Multiply,
+            AssignmentOperatorType.Divide => BinaryOperatorType.Divide,
+            _ => throw new NotSupportedException($"Unsupported assignment operator '{assignment.Operator}': {assignment}"),
+        };
+
+        var left = ExportExpression(context, assignment.Left);
+        var right = ExportExpression(context, assignment.Right);
+        if (TryFoldNumericBinary(binaryOperator, left, right, out var folded))
+        {
+            return folded;
+        }
+
+        return ExportBinaryOperatorValue(context, binaryOperator, left, right, assignment.Left, assignment.Right);
+    }
+
+    private static ExportValue ExportBinaryOperatorValue(
+        ForwardExportContext context,
+        BinaryOperatorType binaryOperator,
+        ExportValue left,
+        ExportValue right,
+        Expression leftExpression,
+        Expression rightExpression
+    )
+    {
+        return binaryOperator switch
         {
             // Tensor arithmetic accepts tensor-tensor and tensor-scalar forms:
             //   input + mask
@@ -1727,8 +1951,8 @@ public static class TorchModuleExportExtensions
                     : TryGetGraphEdge(right, out var rightEdge) && TryGetScalar(left, out var leftScalar)
                         ? context.Graph.ExportAdd(rightEdge, leftScalar)
                         : context.Graph.ExportAdd(
-                            ExportValueAsGraphEdge(context, left, "add", binaryOperator.Left),
-                            ExportValueAsGraphEdge(context, right, "add", binaryOperator.Right)
+                            ExportValueAsGraphEdge(context, left, "add", leftExpression),
+                            ExportValueAsGraphEdge(context, right, "add", rightExpression)
                         )
             ),
             BinaryOperatorType.Subtract => new ExportValue(
@@ -1737,8 +1961,8 @@ public static class TorchModuleExportExtensions
                     : TryGetGraphEdge(right, out var rightEdge) && TryGetScalar(left, out var leftScalar)
                         ? context.Graph.ExportSub(AddScalar(context.Graph, "sub", leftScalar), rightEdge)
                         : context.Graph.ExportSub(
-                            ExportValueAsGraphEdge(context, left, "sub", binaryOperator.Left),
-                            ExportValueAsGraphEdge(context, right, "sub", binaryOperator.Right)
+                            ExportValueAsGraphEdge(context, left, "sub", leftExpression),
+                            ExportValueAsGraphEdge(context, right, "sub", rightExpression)
                         )
             ),
             BinaryOperatorType.Multiply => new ExportValue(
@@ -1748,8 +1972,8 @@ public static class TorchModuleExportExtensions
                     : TryGetGraphEdge(right, out var rightEdge) && TryGetScalar(left, out var leftScalar)
                         ? context.Graph.ExportMul(rightEdge, AddScalar(context.Graph, "mul", leftScalar))
                         : context.Graph.ExportMul(
-                            ExportValueAsGraphEdge(context, left, "mul", binaryOperator.Left),
-                            ExportValueAsGraphEdge(context, right, "mul", binaryOperator.Right)
+                            ExportValueAsGraphEdge(context, left, "mul", leftExpression),
+                            ExportValueAsGraphEdge(context, right, "mul", rightExpression)
                         )
             ),
             BinaryOperatorType.Divide => new ExportValue(
@@ -1758,8 +1982,8 @@ public static class TorchModuleExportExtensions
                     : TryGetGraphEdge(right, out var rightEdge) && TryGetScalar(left, out var leftScalar)
                         ? context.Graph.ExportDiv(AddScalar(context.Graph, "div", leftScalar), rightEdge)
                         : context.Graph.ExportDiv(
-                            ExportValueAsGraphEdge(context, left, "div", binaryOperator.Left),
-                            ExportValueAsGraphEdge(context, right, "div", binaryOperator.Right)
+                            ExportValueAsGraphEdge(context, left, "div", leftExpression),
+                            ExportValueAsGraphEdge(context, right, "div", rightExpression)
                         )
             ),
             _ => throw new NotSupportedException($"Unsupported binary operator: {binaryOperator}"),
@@ -1949,6 +2173,31 @@ public static class TorchModuleExportExtensions
                 options: new ReluInputOptions
                 {
                     X = ExportExpression(context, invocation.Arguments.Single()).GetRequiredEdge(invocation),
+                }
+            )
+        );
+    }
+
+    private static ExportValue ExportTorchGelu(
+        ForwardExportContext context,
+        InvocationExpression invocation
+    )
+    {
+        var arguments = GetPositionalArguments(invocation).ToArray();
+        if (arguments.Length < 1 || arguments.Length > 2)
+        {
+            throw new NotSupportedException($"Unsupported gelu argument count: {invocation}");
+        }
+
+        return new ExportValue(
+            context.Graph.Gelu(
+                name: context.Graph.NextName("gelu"),
+                options: new GeluInputOptions
+                {
+                    X = ExportExpression(context, arguments[0]).GetRequiredEdge(invocation),
+                    Approximate = arguments.Length == 2
+                        ? ResolveStringArgument(context, arguments[1])
+                        : "none",
                 }
             )
         );
@@ -2364,8 +2613,6 @@ public static class TorchModuleExportExtensions
             throw new NotSupportedException($"Unsupported torch.{factoryName} argument count: {invocation}");
         }
 
-        var shape = ResolveLongArray(context, arguments[0]).ToArray();
-        var elementCount = shape.Aggregate(1L, checked((total, dimension) => total * dimension));
         var fillValue = factoryName switch
         {
             "ones" => 1d,
@@ -2380,6 +2627,21 @@ public static class TorchModuleExportExtensions
             positionalDtypeIndex: factoryName == "full" ? 2 : 1
         );
 
+        if (TryResolveDynamicShapeEdge(context, arguments[0], out var dynamicShape, out var dynamicRank))
+        {
+            return new ExportValue(ExportConstantOfShape(
+                context,
+                dynamicShape,
+                factoryName,
+                fillValue,
+                dtype,
+                dynamicRank
+            ));
+        }
+
+        var shape = ResolveLongArray(context, arguments[0]).ToArray();
+        var elementCount = shape.Aggregate(1L, checked((total, dimension) => total * dimension));
+
         // Constant factories such as "ones([batch, seq], dtype: ...)" and
         // "full([context, context], -10_000f, ...)" become ONNX initializers.
         return new ExportValue(AddRepeatedTensorInitializer(
@@ -2390,6 +2652,144 @@ public static class TorchModuleExportExtensions
             checked((int)elementCount),
             dtype
         ));
+    }
+
+    private static ExportValue ExportTorchLikeFactory(
+        ForwardExportContext context,
+        string factoryName,
+        InvocationExpression invocation
+    )
+    {
+        var arguments = GetPositionalArguments(invocation).ToArray();
+        if (arguments.Length < 1 || factoryName == "full_like" && arguments.Length < 2)
+        {
+            throw new NotSupportedException($"Unsupported torch.{factoryName} argument count: {invocation}");
+        }
+
+        var input = ExportExpression(context, arguments[0]).GetRequiredEdge(invocation);
+        var dtype = ResolveFactoryTorchTensorDataType(
+            context,
+            invocation,
+            defaultType: TorchTensorDataType.Preserve,
+            positionalDtypeIndex: factoryName == "full_like" ? 2 : 1
+        );
+
+        return factoryName switch
+        {
+            "full_like" => new ExportValue(CastFactoryLikeResult(
+                context,
+                "full_like",
+                dtype == TorchTensorDataType.Preserve
+                    ? context.Graph.ExportFullLike(
+                        input,
+                        Convert.ToDouble(ExportExpression(context, arguments[1]).Value)
+                    )
+                    : ExportConstantOfShapeLike(
+                        context,
+                        input,
+                        "full_like",
+                        Convert.ToDouble(ExportExpression(context, arguments[1]).Value),
+                        dtype
+                    ),
+                dtype
+            )),
+            "ones_like" => new ExportValue(CastFactoryLikeResult(
+                context,
+                "ones_like",
+                dtype == TorchTensorDataType.Preserve
+                    ? context.Graph.ExportOnesLike(input)
+                    : ExportConstantOfShapeLike(context, input, "ones_like", 1d, dtype),
+                dtype
+            )),
+            "zeros_like" => new ExportValue(CastFactoryLikeResult(
+                context,
+                "zeros_like",
+                dtype == TorchTensorDataType.Preserve
+                    ? context.Graph.ExportZerosLike(input)
+                    : ExportConstantOfShapeLike(context, input, "zeros_like", 0d, dtype),
+                dtype
+            )),
+            "empty_like" => new ExportValue(
+                dtype == TorchTensorDataType.Preserve
+                    ? context.Graph.ExportEmptyLike(input, dtype)
+                    : ExportConstantOfShapeLike(context, input, "empty_like", 0d, dtype)
+            ),
+            _ => throw new NotSupportedException($"Unsupported torch like-factory '{factoryName}'."),
+        };
+    }
+
+    private static IOnnxGraphEdge ExportConstantOfShapeLike(
+        ForwardExportContext context,
+        IOnnxGraphEdge input,
+        string prefix,
+        double fillValue,
+        TorchTensorDataType dtype
+    )
+    {
+        var shape = context.Graph.Shape(
+            name: context.Graph.NextName($"{prefix}_shape"),
+            options: new ShapeInputOptions
+            {
+                Data = input,
+            }
+        );
+        return ExportConstantOfShape(context, shape, prefix, fillValue, GetSystemType(dtype), TryGetRank(context, input));
+    }
+
+    private static IOnnxGraphEdge ExportConstantOfShape(
+        ForwardExportContext context,
+        IOnnxGraphEdge shape,
+        string prefix,
+        double fillValue,
+        Type dtype,
+        int? rank
+    )
+    {
+        var name = context.Graph.NextName(prefix);
+        var output = context.Graph.AddEdge($"{name}_output");
+        var scalar = AddRepeatedTensorInitializer(
+            context.Graph,
+            $"{name}_value",
+            [1],
+            fillValue,
+            elementCount: 1,
+            dtype
+        );
+
+        context.Graph.AddNode(
+            name: name,
+            opType: "ConstantOfShape",
+            domain: string.Empty,
+            docString: string.Empty,
+            inputs: [shape],
+            outputs: [output],
+            attributes: [new OnnxAttribute<OnnxTensor>("value", scalar)]
+        );
+
+        context.EdgeElementTypes[output.Name] = dtype;
+        if (rank is int knownRank)
+        {
+            TrackRank(context, output, knownRank);
+        }
+
+        return output;
+    }
+
+    private static IOnnxGraphEdge CastFactoryLikeResult(
+        ForwardExportContext context,
+        string prefix,
+        IOnnxGraphEdge input,
+        TorchTensorDataType dtype
+    )
+    {
+        if (dtype == TorchTensorDataType.Preserve)
+        {
+            return input;
+        }
+
+        var output = ExportCastTo(context.Graph, prefix, input, GetOnnxTensorDataType(dtype));
+        context.EdgeElementTypes[output.Name] = GetSystemType(dtype);
+        return output;
     }
 
     private static ExportValue ExportTorchRandomFactory(
@@ -2607,6 +3007,54 @@ public static class TorchModuleExportExtensions
         return new ExportValue(context.Graph.ExportConcat(inputs, dim));
     }
 
+    private static ExportValue ExportTorchWhere(
+        ForwardExportContext context,
+        InvocationExpression invocation
+    )
+    {
+        var arguments = GetPositionalArguments(invocation).ToArray();
+        if (arguments.Length != 3)
+        {
+            throw new NotSupportedException($"torch.where requires condition, self, and other arguments: {invocation}");
+        }
+
+        var condition = ExportExpression(context, arguments[0]).GetRequiredEdge(invocation);
+        var self = ExportExpression(context, arguments[1]).GetRequiredEdge(invocation);
+        var other = ExportExpression(context, arguments[2]).GetRequiredEdge(invocation);
+        (self, other) = AlignWhereBranchTypes(context, self, other);
+
+        return new ExportValue(
+            context.Graph.ExportWhere(condition, self, other)
+        );
+    }
+
+    private static (IOnnxGraphEdge Self, IOnnxGraphEdge Other) AlignWhereBranchTypes(
+        ForwardExportContext context,
+        IOnnxGraphEdge self,
+        IOnnxGraphEdge other
+    )
+    {
+        var hasSelfType = TryGetTensorElementType(context, self, out var selfType);
+        var hasOtherType = TryGetTensorElementType(context, other, out var otherType);
+
+        if (hasSelfType && hasOtherType && selfType != otherType)
+        {
+            return (self, ExportCastTo(context.Graph, "where", other, GetOnnxTensorDataType(selfType)));
+        }
+
+        if (hasSelfType && !hasOtherType)
+        {
+            return (self, ExportCastTo(context.Graph, "where", other, GetOnnxTensorDataType(selfType)));
+        }
+
+        if (!hasSelfType && hasOtherType)
+        {
+            return (ExportCastTo(context.Graph, "where", self, GetOnnxTensorDataType(otherType)), other);
+        }
+
+        return (self, other);
+    }
+
     private static ExportValue ExportTorchInterpolate(
         ForwardExportContext context,
         InvocationExpression invocation
@@ -2706,6 +3154,13 @@ public static class TorchModuleExportExtensions
             return true;
         }
 
+        if (string.Equals(method.Name, "UpsampleNearest2D", StringComparison.Ordinal)
+            && arguments.Length == 1)
+        {
+            result = new ExportValue(ExportNearestUpsample2D(context, ExportExpression(context, arguments[0]).GetRequiredEdge(invocation)));
+            return true;
+        }
+
         if (method.IsStatic && IsGeneratedTorchModuleHelper(method.Name))
         {
             throw new NotSupportedException(
@@ -2731,6 +3186,41 @@ public static class TorchModuleExportExtensions
 
         result = ExportMethodBody(nestedContext, declaration);
         return true;
+    }
+
+    private static IOnnxGraphEdge ExportNearestUpsample2D(
+        ForwardExportContext context,
+        IOnnxGraphEdge input
+    )
+    {
+        var name = context.Graph.NextName("interpolate");
+        var scales = context.Graph.AddTensor<float>(
+            name: $"{name}_scales",
+            shape: [2],
+            value: [2f, 2f]
+        );
+        var output = context.Graph.Resize(
+            name: name,
+            options: new ResizeInputOptions
+            {
+                X = input,
+                Roi = new OnnxEdge(string.Empty),
+                Scales = scales,
+                Axes = [2, 3],
+                Antialias = 0,
+                CoordinateTransformationMode = "asymmetric",
+                CubicCoeffA = -0.75f,
+                Mode = "nearest",
+                NearestMode = "floor",
+            }
+        );
+
+        if (TryGetRank(context, input) is int rank)
+        {
+            TrackRank(context, output, rank);
+        }
+
+        return output;
     }
 
     private static bool IsGeneratedTorchModuleHelper(string methodName)
@@ -3075,9 +3565,13 @@ public static class TorchModuleExportExtensions
         foreach (var statement in method.Body.Statements)
         {
             result = ExportStatement(context, statement) ?? result;
+            if (context.HasReturned)
+            {
+                break;
+            }
         }
 
-        return result
+        return context.ReturnValue ?? result
             ?? throw new NotSupportedException(
                 $"Method '{method.Name}' did not return a supported export value."
             );
@@ -3088,6 +3582,11 @@ public static class TorchModuleExportExtensions
         MemberReferenceExpression memberReference
     )
     {
+        if (memberReference.Target is TypeReferenceExpression typeReference)
+        {
+            return ExportStaticTypeMemberReference(typeReference, memberReference.MemberName, memberReference);
+        }
+
         var target = ExportExpression(context, memberReference.Target);
         if (target.Value is IOnnxGraphEdge edge)
         {
@@ -3118,6 +3617,27 @@ public static class TorchModuleExportExtensions
         //   _tokenEmbedding.weight
         //   tokens.device
         return new ExportValue(GetRequiredMemberValue(value, memberReference.MemberName));
+    }
+
+    private static ExportValue ExportStaticTypeMemberReference(
+        TypeReferenceExpression typeReference,
+        string memberName,
+        MemberReferenceExpression memberReference
+    )
+    {
+        var typeName = typeReference.Type.ToString();
+        return (typeName, memberName) switch
+        {
+            ("float", "NegativeInfinity") => new ExportValue(float.NegativeInfinity),
+            ("float", "PositiveInfinity") => new ExportValue(float.PositiveInfinity),
+            ("float", "NaN") => new ExportValue(float.NaN),
+            ("float", "Epsilon") => new ExportValue(float.Epsilon),
+            ("double", "NegativeInfinity") => new ExportValue(double.NegativeInfinity),
+            ("double", "PositiveInfinity") => new ExportValue(double.PositiveInfinity),
+            ("double", "NaN") => new ExportValue(double.NaN),
+            ("double", "Epsilon") => new ExportValue(double.Epsilon),
+            _ => throw new NotSupportedException($"Unsupported static member reference: {memberReference}"),
+        };
     }
 
     private static void AssignValue(
@@ -4006,6 +4526,170 @@ public static class TorchModuleExportExtensions
             null => [],
             _ => ResolveLongArray(context, expression),
         };
+    }
+
+    private static bool TryResolveDynamicShapeEdge(
+        ForwardExportContext context,
+        Expression expression,
+        out IOnnxGraphEdge shape,
+        out int rank
+    )
+    {
+        if (!TryResolveShapeValues(context, expression, out var values)
+            || !values.Any(static value =>
+                value.Value is ShapeDimensionReference reference
+                && !TryResolveShapeDimension(reference, out _)))
+        {
+            shape = null!;
+            rank = 0;
+            return false;
+        }
+
+        var dimensions = values
+            .Select(value => ExportShapeDimensionVector(context, value, expression))
+            .ToArray();
+
+        rank = dimensions.Length;
+        shape = dimensions.Length == 1
+            ? dimensions[0]
+            : context.Graph.ExportConcat(dimensions, 0);
+        return true;
+    }
+
+    private static bool TryResolveDynamicShapeEdge(
+        ForwardExportContext context,
+        IReadOnlyList<Expression> expressions,
+        out IOnnxGraphEdge shape,
+        out int rank
+    )
+    {
+        var values = expressions
+            .Select(expression => ExportExpression(context, expression))
+            .ToArray();
+
+        if (!values.Any(static value =>
+            value.Value is ShapeDimensionReference reference
+            && !TryResolveShapeDimension(reference, out _)))
+        {
+            shape = null!;
+            rank = 0;
+            return false;
+        }
+
+        var dimensions = values
+            .Select((value, index) => ExportShapeDimensionVector(context, value, expressions[index]))
+            .ToArray();
+
+        rank = dimensions.Length;
+        shape = dimensions.Length == 1
+            ? dimensions[0]
+            : context.Graph.ExportConcat(dimensions, 0);
+        return true;
+    }
+
+    private static bool TryResolveShapeValues(
+        ForwardExportContext context,
+        Expression expression,
+        out IReadOnlyList<ExportValue> values
+    )
+    {
+        expression = UnwrapNamedArgument(expression);
+
+        switch (expression)
+        {
+            case ParenthesizedExpression parenthesized:
+                return TryResolveShapeValues(context, parenthesized.Expression, out values);
+
+            case CastExpression cast:
+                return TryResolveShapeValues(context, cast.Expression, out values);
+
+            case ArrayCreateExpression { Initializer.IsNull: false } arrayCreate:
+                values = arrayCreate.Initializer.Elements
+                    .OfType<Expression>()
+                    .Select(element => ExportExpression(context, element))
+                    .ToArray();
+                return true;
+
+            case ArrayInitializerExpression arrayInitializer:
+                values = arrayInitializer.Elements
+                    .OfType<Expression>()
+                    .Select(element => ExportExpression(context, element))
+                    .ToArray();
+                return true;
+
+            case InvocationExpression invocation
+                when TryResolveInlineArrayBuilder(context, invocation, out _, out var builder):
+                values = builder.Values
+                    .Select(item => item ?? throw new NotSupportedException($"Inline array '{expression}' has unassigned elements."))
+                    .ToArray();
+                return true;
+        }
+
+        var value = ExportExpression(context, expression).Value;
+        switch (value)
+        {
+            case InlineArrayBuilder builder:
+                values = builder.Values
+                    .Select(item => item ?? throw new NotSupportedException($"Inline array '{expression}' has unassigned elements."))
+                    .ToArray();
+                return true;
+            case object?[] array:
+                values = array.Select(item => new ExportValue(item)).ToArray();
+                return true;
+            case System.Collections.IEnumerable enumerable when value is not string:
+                values = enumerable.Cast<object?>().Select(item => new ExportValue(item)).ToArray();
+                return true;
+            default:
+                values = [new ExportValue(value)];
+                return true;
+        }
+    }
+
+    private static IOnnxGraphEdge ExportShapeDimensionVector(
+        ForwardExportContext context,
+        ExportValue value,
+        AstNode source
+    )
+    {
+        if (value.Value is ShapeDimensionReference reference)
+        {
+            if (reference.Source is null)
+            {
+                throw new NotSupportedException($"Shape dimension '{source}' does not reference a graph tensor.");
+            }
+
+            var name = context.Graph.NextName("shape_dim");
+            var shape = context.Graph.Shape(
+                name: $"{name}_shape",
+                options: new ShapeInputOptions
+                {
+                    Data = reference.Source,
+                }
+            );
+            var index = context.Graph.AddTensor<long>(
+                name: $"{name}_index",
+                shape: [1],
+                value: [reference.Index]
+            );
+
+            return context.Graph.Gather(
+                name: name,
+                options: new GatherInputOptions
+                {
+                    Data = shape,
+                    Indices = index,
+                    Axis = 0,
+                }
+            );
+        }
+
+        var dimension = ConvertExportValueToLong(value, source);
+        var constantName = context.Graph.NextName("shape_dim");
+        return context.Graph.AddTensor<long>(
+            name: constantName,
+            shape: [1],
+            value: [dimension]
+        );
     }
 
     private static IReadOnlyList<float> ResolveFloatArray(
@@ -4967,6 +5651,20 @@ public static class TorchModuleExportExtensions
         }
     }
 
+    private static bool TryGetTensorElementType(
+        ForwardExportContext context,
+        IOnnxGraphEdge edge,
+        out Type type
+    )
+    {
+        if (TryGetTensorElementType(edge, out type))
+        {
+            return true;
+        }
+
+        return context.EdgeElementTypes.TryGetValue(edge.Name, out type!);
+    }
+
     private static long GetOnnxTensorDataType(Type type)
     {
         if (type == typeof(float))
@@ -5032,6 +5730,25 @@ public static class TorchModuleExportExtensions
         throw new NotSupportedException($"ONNX cast export does not support tensor element type '{type.Name}'.");
     }
 
+    private static long GetOnnxTensorDataType(TorchTensorDataType type)
+    {
+        return type switch
+        {
+            TorchTensorDataType.Float => 1L,
+            TorchTensorDataType.UInt8 => 2L,
+            TorchTensorDataType.Int8 => 3L,
+            TorchTensorDataType.UInt16 => 4L,
+            TorchTensorDataType.Int16 => 5L,
+            TorchTensorDataType.Int32 => 6L,
+            TorchTensorDataType.Int64 => 7L,
+            TorchTensorDataType.Bool => 9L,
+            TorchTensorDataType.Double => 11L,
+            TorchTensorDataType.UInt32 => 12L,
+            TorchTensorDataType.UInt64 => 13L,
+            _ => throw new NotSupportedException($"ONNX cast export does not support tensor dtype '{type}'."),
+        };
+    }
+
     private static Type GetSystemType(global::TorchSharp.torch.ScalarType scalarType)
     {
         return scalarType switch
@@ -5045,6 +5762,22 @@ public static class TorchModuleExportExtensions
             global::TorchSharp.torch.ScalarType.Byte => typeof(byte),
             global::TorchSharp.torch.ScalarType.Bool => typeof(bool),
             _ => throw new NotSupportedException($"Torch dtype '{scalarType}' is not supported by deep export.")
+        };
+    }
+
+    private static Type GetSystemType(TorchTensorDataType dtype)
+    {
+        return dtype switch
+        {
+            TorchTensorDataType.Float => typeof(float),
+            TorchTensorDataType.Double => typeof(double),
+            TorchTensorDataType.Int64 => typeof(long),
+            TorchTensorDataType.Int32 => typeof(int),
+            TorchTensorDataType.Int16 => typeof(short),
+            TorchTensorDataType.Int8 => typeof(sbyte),
+            TorchTensorDataType.UInt8 => typeof(byte),
+            TorchTensorDataType.Bool => typeof(bool),
+            _ => throw new NotSupportedException($"Torch dtype '{dtype}' is not supported by deep export."),
         };
     }
 
@@ -5252,6 +5985,8 @@ public static class TorchModuleExportExtensions
 
         public Dictionary<string, int> EdgeRanks { get; } = new(StringComparer.Ordinal);
 
+        public Dictionary<string, Type> EdgeElementTypes { get; } = new(StringComparer.Ordinal);
+
         public bool HasReturned { get; private set; }
 
         public ExportValue? ReturnValue { get; private set; }
@@ -5273,7 +6008,7 @@ public static class TorchModuleExportExtensions
             //   _linear.forward(x)
             return Value as IOnnxGraphEdge
                 ?? throw new NotSupportedException(
-                    $"Expression '{source}' did not produce an ONNX graph edge."
+                    $"Expression '{source}' produced '{Value?.GetType().FullName ?? "<null>"}' instead of an ONNX graph edge."
                 );
         }
     }

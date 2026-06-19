@@ -603,13 +603,17 @@ public sealed class OnnxProjectGenerator
     {
         if (dimension is OnnxDimensionNone)
         {
-            return "[none]";
+            return string.IsNullOrEmpty(dimension.Denotation)
+                ? "new OnnxDimensionNone()"
+                : $"new OnnxDimensionNone({AsStringLiteral(dimension.Denotation)})";
         }
 
         return dimension.GetValue() switch
         {
-            long value => $"{value.ToString(CultureInfo.InvariantCulture)}L",
-            string value => AsStringLiteral(value),
+            long value when string.IsNullOrEmpty(dimension.Denotation) => $"{value.ToString(CultureInfo.InvariantCulture)}L",
+            long value => $"new OnnxDimension<long>({value.ToString(CultureInfo.InvariantCulture)}L, {AsStringLiteral(dimension.Denotation)})",
+            string value when string.IsNullOrEmpty(dimension.Denotation) => AsStringLiteral(value),
+            string value => $"new OnnxDimension<string>({AsStringLiteral(value)}, {AsStringLiteral(dimension.Denotation)})",
             _ => throw new NotSupportedException($"Dimension type '{dimension.GetValue().GetType().Name}' is not supported."),
         };
     }

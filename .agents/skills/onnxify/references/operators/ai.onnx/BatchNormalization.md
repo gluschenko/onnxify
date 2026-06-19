@@ -82,9 +82,9 @@ This operator has **optional** inputs/outputs. See [the doc](../common/IR.md) fo
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `epsilon` | `Epsilon` | `float` | no | `9.999999747378752e-06` | The epsilon value to use to avoid division by zero. |
-| `momentum` | `Momentum` | `float` | no | `0.8999999761581421` | Factor used in computing the running mean and variance.e.g., running_mean = running_mean * momentum + mean * (1 - momentum). |
-| `training_mode` | `TrainingMode` | `long` | no | `0` | If set to true, it indicates BatchNormalization is being used for training, and outputs 1 and 2 are to be computed. |
+| `epsilon` | `Epsilon` | `Nullable<float>` | no | `9.999999747378752e-06` | The epsilon value to use to avoid division by zero. |
+| `momentum` | `Momentum` | `Nullable<float>` | no | `0.8999999761581421` | Factor used in computing the running mean and variance.e.g., running_mean = running_mean * momentum + mean * (1 - momentum). |
+| `training_mode` | `TrainingMode` | `Nullable<long>` | no | `0` | If set to true, it indicates BatchNormalization is being used for training, and outputs 1 and 2 are to be computed. |
 
 ## TorchSharp Coverage
 

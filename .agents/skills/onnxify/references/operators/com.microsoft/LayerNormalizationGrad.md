@@ -44,7 +44,7 @@ LayerNormalizationGrad
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `axis` | `Axis` | `long` | no | `-1` | The first normalization dimension: normalization will be performed along dimensions axis : rank(inputs). |
+| `axis` | `Axis` | `Nullable<long>` | no | `-1` | The first normalization dimension: normalization will be performed along dimensions axis : rank(inputs). |
 
 ## TorchSharp Coverage
 

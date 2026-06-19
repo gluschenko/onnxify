@@ -71,7 +71,7 @@ cumulative_sequence_length records cumulated length of each sequence length.
 | --- | --- | --- | --- | --- | --- |
 | `do_rotary` | `DoRotary` | `Nullable<long>` | no | `[null]` | Whether to use rotary position embedding. Default value is 0. |
 | `kv_num_heads` | `KvNumHeads` | `long` | yes | `[null]` | Number of attention heads for k and v |
-| `local_window_size` | `LocalWindowSize` | `long` | no | `-1` | left_window_size for local attention (like Mistral). Default value is -1 meaning unused. |
+| `local_window_size` | `LocalWindowSize` | `Nullable<long>` | no | `-1` | left_window_size for local attention (like Mistral). Default value is -1 meaning unused. |
 | `num_heads` | `NumHeads` | `long` | yes | `[null]` | Number of attention heads for q |
 | `rotary_interleaved` | `RotaryInterleaved` | `Nullable<long>` | no | `[null]` | Rotate using interleaved pattern. Default value is 0 (False). |
 | `scale` | `Scale` | `Nullable<float>` | no | `[null]` | Custom scale will be used if specified. Default value is 1/sqrt(head_size) |

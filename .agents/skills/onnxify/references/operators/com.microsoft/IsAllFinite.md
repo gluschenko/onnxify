@@ -38,8 +38,8 @@ IsAllFinite
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `isinf_only` | `IsinfOnly` | `long` | no | `0` | If true, check only for Inf, -Inf. |
-| `isnan_only` | `IsnanOnly` | `long` | no | `0` | If true, check only for NaN. |
+| `isinf_only` | `IsinfOnly` | `Nullable<long>` | no | `0` | If true, check only for Inf, -Inf. |
+| `isnan_only` | `IsnanOnly` | `Nullable<long>` | no | `0` | If true, check only for NaN. |
 
 ## TorchSharp Coverage
 

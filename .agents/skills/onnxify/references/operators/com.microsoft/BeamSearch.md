@@ -52,15 +52,15 @@ Beam Search for text generation. Supports GPT-2 decoder.
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `decoder` | `Decoder` | `OnnxGraph` | yes | `[null]` | Decoder subgraph to execute in a loop. |
-| `decoder_start_token_id` | `DecoderStartTokenId` | `long` | no | `-1` | The id of the token that indicates decoding starts. |
-| `early_stopping` | `EarlyStopping` | `long` | no | `0` | early stop or not |
+| `decoder_start_token_id` | `DecoderStartTokenId` | `Nullable<long>` | no | `-1` | The id of the token that indicates decoding starts. |
+| `early_stopping` | `EarlyStopping` | `Nullable<long>` | no | `0` | early stop or not |
 | `encoder` | `Encoder` | `OnnxGraph` | no | `[null]` | The subgraph for initialization of encoder and decoder. It will be called once before decoder subgraph. |
 | `eos_token_id` | `EosTokenId` | `long` | yes | `[null]` | The id of the end-of-sequence token |
 | `init_decoder` | `InitDecoder` | `OnnxGraph` | no | `[null]` | The subgraph for the first decoding run. It will be called once before `decoder` subgraph. This is relevant only for the GPT2 model. If this attribute is missing, the `decoder` subgraph will be used for all decoding runs |
-| `model_type` | `ModelType` | `long` | no | `0` | model type: 0 for GPT-2; 1 for encoder decoder like T5 |
-| `no_repeat_ngram_size` | `NoRepeatNgramSize` | `long` | no | `0` | no repeat ngrams size |
+| `model_type` | `ModelType` | `Nullable<long>` | no | `0` | model type: 0 for GPT-2; 1 for encoder decoder like T5 |
+| `no_repeat_ngram_size` | `NoRepeatNgramSize` | `Nullable<long>` | no | `0` | no repeat ngrams size |
 | `pad_token_id` | `PadTokenId` | `long` | yes | `[null]` | The id of the padding token |
-| `vocab_size` | `VocabSize` | `long` | no | `-1` | Size of the vocabulary. If not provided, it will be inferred from the decoder subgraph's output shape |
+| `vocab_size` | `VocabSize` | `Nullable<long>` | no | `-1` | Size of the vocabulary. If not provided, it will be inferred from the decoder subgraph's output shape |
 
 ## TorchSharp Coverage
 

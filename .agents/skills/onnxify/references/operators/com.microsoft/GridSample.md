@@ -45,7 +45,7 @@ Given an `input` and a flow-field `grid`, computes the `output` using `input` va
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `align_corners` | `AlignCorners` | `long` | no | `0` | If align_corners=1, the extrema (-1 and 1) are considered as referring to the center points of the input's corner pixels. If align_corners=0, they are instead considered as referring to the corner points of the input's corner pixels, making the sampling more resolution agnostic. |
+| `align_corners` | `AlignCorners` | `Nullable<long>` | no | `0` | If align_corners=1, the extrema (-1 and 1) are considered as referring to the center points of the input's corner pixels. If align_corners=0, they are instead considered as referring to the corner points of the input's corner pixels, making the sampling more resolution agnostic. |
 | `mode` | `Mode` | `string` | no | `bilinear` | Three interpolation modes: bilinear (default), nearest and bicubic. |
 | `padding_mode` | `PaddingMode` | `string` | no | `zeros` | Support padding modes for outside grid values: `zeros`(default), `border`, `reflection`. zeros: use 0 for out-of-bound grid locations, border: use border values for out-of-bound grid locations, reflection: use values at locations reflected by the border for out-of-bound grid locations. |
 

@@ -55,7 +55,7 @@ This operator supports **multidirectional (i.e., NumPy-style) broadcasting**; fo
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `fmod` | `Fmod` | `long` | no | `0` | Whether the operator should behave like fmod (default=0 meaning it will do integer mods); Set this to 1 to force fmod treatment |
+| `fmod` | `Fmod` | `Nullable<long>` | no | `0` | Whether the operator should behave like fmod (default=0 meaning it will do integer mods); Set this to 1 to force fmod treatment |
 
 ## TorchSharp Coverage
 

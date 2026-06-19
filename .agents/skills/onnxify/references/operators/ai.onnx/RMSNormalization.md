@@ -66,9 +66,9 @@ This is RMS normalization defined in ONNX as function as described in the paper 
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `axis` | `Axis` | `long` | no | `-1` | The first normalization dimension. If rank(X) is r, axis' allowed range is [-r, r). Negative value means counting dimensions from the back. |
-| `epsilon` | `Epsilon` | `float` | no | `9.999999747378752e-06` | The epsilon value to use to avoid division by zero. |
-| `stash_type` | `StashType` | `long` | no | `1` | The floating-point precision used in stage one of the computation. |
+| `axis` | `Axis` | `Nullable<long>` | no | `-1` | The first normalization dimension. If rank(X) is r, axis' allowed range is [-r, r). Negative value means counting dimensions from the back. |
+| `epsilon` | `Epsilon` | `Nullable<float>` | no | `9.999999747378752e-06` | The epsilon value to use to avoid division by zero. |
+| `stash_type` | `StashType` | `Nullable<long>` | no | `1` | The floating-point precision used in stage one of the computation. |
 
 ## TorchSharp Coverage
 

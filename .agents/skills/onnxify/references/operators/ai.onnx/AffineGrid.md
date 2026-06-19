@@ -65,7 +65,7 @@ When `align_corners=0`, consider `-1` and `1` to refer to the outer edge of the 
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `align_corners` | `AlignCorners` | `long` | no | `0` | if align_corners=1, consider -1 and 1 to refer to the centers of the corner pixels. if align_corners=0, consider -1 and 1 to refer to the outer edge the corner pixels. |
+| `align_corners` | `AlignCorners` | `Nullable<long>` | no | `0` | if align_corners=1, consider -1 and 1 to refer to the centers of the corner pixels. if align_corners=0, consider -1 and 1 to refer to the outer edge the corner pixels. |
 
 ## TorchSharp Coverage
 

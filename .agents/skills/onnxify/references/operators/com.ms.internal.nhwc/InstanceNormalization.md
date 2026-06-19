@@ -46,7 +46,7 @@ where mean and variance are computed per instance per channel.
 | --- | --- | --- | --- | --- | --- |
 | `activation` | `Activation` | `string` | no | `[null]` |  |
 | `activation_params` | `ActivationParams` | `float[]` | no | `[null]` |  |
-| `epsilon` | `Epsilon` | `float` | no | `9.999999747378752e-06` | The epsilon value to use to avoid division by zero. |
+| `epsilon` | `Epsilon` | `Nullable<float>` | no | `9.999999747378752e-06` | The epsilon value to use to avoid division by zero. |
 
 ## TorchSharp Coverage
 

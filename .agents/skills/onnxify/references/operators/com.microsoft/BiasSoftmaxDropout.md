@@ -42,7 +42,7 @@ dropout_output, mask, softmax_output = Dropout(Softmax(data + bias), ratio), Int
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `axis` | `Axis` | `long` | no | `1` | apply softmax to elements for dimensions axis or higher |
+| `axis` | `Axis` | `Nullable<long>` | no | `1` | apply softmax to elements for dimensions axis or higher |
 | `is_inner_broadcast` | `IsInnerBroadcast` | `long` | yes | `[null]` | true if broadcast bias across input for dimensions broadcast_axis to axis-1, otherwise broadcast bias across input for dimensions 0 to broadcast_axis-1 |
 | `seed` | `Seed` | `Nullable<long>` | no | `[null]` | (Optional) Seed to the random generator, if not specified we will auto generate one. |
 

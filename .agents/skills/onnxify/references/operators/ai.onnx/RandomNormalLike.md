@@ -45,8 +45,8 @@ TensorProto message, and be valid as an output type.
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `dtype` | `Dtype` | `Nullable<long>` | no | `[null]` | (Optional) The data type for the elements of the output tensor, if not specified, we will use the data type of the input tensor. |
-| `mean` | `Mean` | `float` | no | `0.0` | The mean of the normal distribution. |
-| `scale` | `Scale` | `float` | no | `1.0` | The standard deviation of the normal distribution. |
+| `mean` | `Mean` | `Nullable<float>` | no | `0.0` | The mean of the normal distribution. |
+| `scale` | `Scale` | `Nullable<float>` | no | `1.0` | The standard deviation of the normal distribution. |
 | `seed` | `Seed` | `Nullable<float>` | no | `[null]` | (Optional) Seed to the random generator, if not specified we will auto generate one. |
 
 ## TorchSharp Coverage

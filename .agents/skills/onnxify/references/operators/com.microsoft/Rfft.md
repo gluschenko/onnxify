@@ -38,9 +38,9 @@ This function computes the n-point one dimensional Fourier transform for a real-
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `normalized` | `Normalized` | `long` | no | `0` | must be 0, normalization currently not supported |
-| `onesided` | `Onesided` | `long` | no | `1` | must be 1, only one sided FFTs supported |
-| `signal_ndim` | `SignalNdim` | `long` | no | `1` | number of dimensions comprising the signal, collected in reverse order (e.g. 1 = last dimension is the signal) |
+| `normalized` | `Normalized` | `Nullable<long>` | no | `0` | must be 0, normalization currently not supported |
+| `onesided` | `Onesided` | `Nullable<long>` | no | `1` | must be 1, only one sided FFTs supported |
+| `signal_ndim` | `SignalNdim` | `Nullable<long>` | no | `1` | number of dimensions comprising the signal, collected in reverse order (e.g. 1 = last dimension is the signal) |
 
 ## TorchSharp Coverage
 

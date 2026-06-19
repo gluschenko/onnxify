@@ -42,10 +42,10 @@ QOrderedLayerNormalization
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `axis` | `Axis` | `long` | no | `-1` | The first normalization dimension: normalization will be performed along dimensions axis : rank(inputs). |
-| `epsilon` | `Epsilon` | `float` | no | `9.999999747378752e-06` | The epsilon value to use to avoid division by zero. |
-| `order_X` | `OrderX` | `long` | no | `1` | cublasLt order of input X. Default is ROW MAJOR. See the schema of QuantizeWithOrder for order definition. |
-| `order_Y` | `OrderY` | `long` | no | `1` | cublasLt order of matrix Y, must be same as order_X. Default is ROW MAJOR. |
+| `axis` | `Axis` | `Nullable<long>` | no | `-1` | The first normalization dimension: normalization will be performed along dimensions axis : rank(inputs). |
+| `epsilon` | `Epsilon` | `Nullable<float>` | no | `9.999999747378752e-06` | The epsilon value to use to avoid division by zero. |
+| `order_X` | `OrderX` | `Nullable<long>` | no | `1` | cublasLt order of input X. Default is ROW MAJOR. See the schema of QuantizeWithOrder for order definition. |
+| `order_Y` | `OrderY` | `Nullable<long>` | no | `1` | cublasLt order of matrix Y, must be same as order_X. Default is ROW MAJOR. |
 
 ## TorchSharp Coverage
 

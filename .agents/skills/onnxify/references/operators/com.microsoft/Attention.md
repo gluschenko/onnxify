@@ -73,7 +73,7 @@ For cross attention, query and key might have different lengths.
 | `qkv_hidden_sizes` | `QkvHiddenSizes` | `long[]` | no | `[null]` | Hidden dimension of Q, K, V: hidden_size, hidden_size and v_hidden_size |
 | `rotary_embedding_dim` | `RotaryEmbeddingDim` | `Nullable<long>` | no | `[null]` | Dimension of rotary embedding. Limited to 32, 64 or 128. Default value is head_size |
 | `scale` | `Scale` | `Nullable<float>` | no | `[null]` | Custom scale will be used if specified. Default value is 1/sqrt(head_size) |
-| `unidirectional` | `Unidirectional` | `long` | no | `0` | Whether every token can only attend to previous tokens. Default value is 0. |
+| `unidirectional` | `Unidirectional` | `Nullable<long>` | no | `0` | Whether every token can only attend to previous tokens. Default value is 0. |
 
 ## TorchSharp Coverage
 

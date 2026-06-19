@@ -44,9 +44,9 @@ The type of the output tensor is integer.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `axis` | `Axis` | `long` | no | `0` | The axis in which to compute the arg indices. Accepted range is [-r, r-1] where r = rank(data). |
-| `keepdims` | `Keepdims` | `long` | no | `1` | Keep the reduced dimension or not, default 1 means keep reduced dimension. |
-| `select_last_index` | `SelectLastIndex` | `long` | no | `0` | Whether to select the last index or the first index if the {name} appears in multiple indices, default is False (first index). |
+| `axis` | `Axis` | `Nullable<long>` | no | `0` | The axis in which to compute the arg indices. Accepted range is [-r, r-1] where r = rank(data). |
+| `keepdims` | `Keepdims` | `Nullable<long>` | no | `1` | Keep the reduced dimension or not, default 1 means keep reduced dimension. |
+| `select_last_index` | `SelectLastIndex` | `Nullable<long>` | no | `0` | Whether to select the last index or the first index if the {name} appears in multiple indices, default is False (first index). |
 
 ## TorchSharp Coverage
 

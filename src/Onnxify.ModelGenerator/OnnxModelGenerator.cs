@@ -462,12 +462,17 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
 
     private static ModelDimensionContract ToDimensionContract(TensorShapeProto.Types.Dimension dimension)
     {
+        var denotationLiteral = string.IsNullOrWhiteSpace(dimension.Denotation)
+            ? null
+            : $"\"{Escape(dimension.Denotation)}\"";
+
         if (dimension.HasDimValue)
         {
             return new ModelDimensionContract(
                 $"{dimension.DimValue}L",
                 null,
-                false
+                false,
+                denotationLiteral
             );
         }
 
@@ -476,14 +481,16 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             return new ModelDimensionContract(
                 null,
                 $"\"{Escape(dimension.DimParam)}\"",
-                false
+                false,
+                denotationLiteral
             );
         }
 
         return new ModelDimensionContract(
             null,
             null,
-            true
+            true,
+            denotationLiteral
         );
     }
 
@@ -1570,7 +1577,8 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
     internal sealed record ModelDimensionContract(
         string? NumericValueLiteral,
         string? SymbolicNameLiteral,
-        bool IsUnknown
+        bool IsUnknown,
+        string? DenotationLiteral
     );
 }
 

@@ -89,7 +89,7 @@ output = [
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `axis` | `Axis` | `long` | no | `0` | Which axis to gather on. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(data). |
+| `axis` | `Axis` | `Nullable<long>` | no | `0` | Which axis to gather on. Negative value means counting dimensions from the back. Accepted range is [-r, r-1] where r = rank(data). |
 
 ## TorchSharp Coverage
 

@@ -56,8 +56,8 @@ Reference: https://docs.scipy.org/doc/scipy/tutorial/fft.html
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `inverse` | `Inverse` | `long` | no | `0` | Whether to perform the inverse discrete Fourier Transform. Default is 0, which corresponds to `false`. |
-| `onesided` | `Onesided` | `long` | no | `0` | If `onesided` is `1` and input is real, only values for `k` in `[0, 1, 2, ..., floor(n_fft/2) + 1]` are returned because the real-to-complex Fourier transform satisfies the conjugate symmetry, i.e., `X[m, k] = X[m, n_fft-k]*`, where `m` denotes "all other dimensions" DFT was not applied on. If the input tensor is complex, onesided output is not possible. Value can be `0` or `1`. Default is `0`. |
+| `inverse` | `Inverse` | `Nullable<long>` | no | `0` | Whether to perform the inverse discrete Fourier Transform. Default is 0, which corresponds to `false`. |
+| `onesided` | `Onesided` | `Nullable<long>` | no | `0` | If `onesided` is `1` and input is real, only values for `k` in `[0, 1, 2, ..., floor(n_fft/2) + 1]` are returned because the real-to-complex Fourier transform satisfies the conjugate symmetry, i.e., `X[m, k] = X[m, n_fft-k]*`, where `m` denotes "all other dimensions" DFT was not applied on. If the input tensor is complex, onesided output is not possible. Value can be `0` or `1`. Default is `0`. |
 
 ## TorchSharp Coverage
 

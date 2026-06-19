@@ -39,7 +39,7 @@ Gradient operator for LeakyRelu.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `alpha` | `Alpha` | `float` | no | `0.009999999776482582` | Alpha (negative slope) value. |
+| `alpha` | `Alpha` | `Nullable<float>` | no | `0.009999999776482582` | Alpha (negative slope) value. |
 
 ## TorchSharp Coverage
 

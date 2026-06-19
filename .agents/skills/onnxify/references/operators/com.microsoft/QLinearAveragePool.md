@@ -74,9 +74,9 @@ Output = Dequantize(Input) -> AveragePool on fp32 data -> Quantize(output)
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `auto_pad` | `AutoPad` | `string` | no | `NOTSET` | auto_pad must be either NOTSET, SAME_UPPER, SAME_LOWER or VALID. Where default value is NOTSET, which means explicit padding is used. SAME_UPPER or SAME_LOWER mean pad the input so that the output spatial size match the input.In case of odd number add the extra padding at the end for SAME_UPPER and at the beginning for SAME_LOWER. VALID mean no padding. |
-| `ceil_mode` | `CeilMode` | `long` | no | `0` | Whether to use ceil or floor (default) to compute the output shape. |
-| `channels_last` | `ChannelsLast` | `long` | no | `0` | Works on NHWC layout or not? Default not. |
-| `count_include_pad` | `CountIncludePad` | `long` | no | `0` | Whether include pad pixels when calculating values for the edges. Default is 0, doesn't count include pad. |
+| `ceil_mode` | `CeilMode` | `Nullable<long>` | no | `0` | Whether to use ceil or floor (default) to compute the output shape. |
+| `channels_last` | `ChannelsLast` | `Nullable<long>` | no | `0` | Works on NHWC layout or not? Default not. |
+| `count_include_pad` | `CountIncludePad` | `Nullable<long>` | no | `0` | Whether include pad pixels when calculating values for the edges. Default is 0, doesn't count include pad. |
 | `kernel_shape` | `KernelShape` | `long[]` | yes | `[null]` | The size of the kernel along each axis. |
 | `pads` | `Pads` | `long[]` | no | `[null]` | Padding for the beginning and ending along each spatial axis, it can take any value greater than or equal to 0. The value represent the number of pixels added to the beginning and end part of the corresponding axis. `pads` format should be as follow [x1_begin, x2_begin...x1_end, x2_end,...], where xi_begin the number of pixels added at the beginning of axis `i` and xi_end, the number of pixels added at the end of axis `i`. This attribute cannot be used simultaneously with auto_pad attribute. If not present, the padding defaults to 0 along start and end of each spatial axis. |
 | `strides` | `Strides` | `long[]` | no | `[null]` | Stride along each spatial axis. If not present, the stride defaults to 1 along each spatial axis. |

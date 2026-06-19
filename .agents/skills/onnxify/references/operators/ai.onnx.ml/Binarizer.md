@@ -38,7 +38,7 @@ Maps the values of the input tensor to either 0 or 1, element-wise, based on the
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `threshold` | `Threshold` | `float` | no | `0.0` | Values greater than this are mapped to 1, others to 0. |
+| `threshold` | `Threshold` | `Nullable<float>` | no | `0.0` | Values greater than this are mapped to 1, others to 0. |
 
 ## TorchSharp Coverage
 

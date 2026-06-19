@@ -41,8 +41,8 @@ is applied to the tensor elementwise.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `alpha` | `Alpha` | `float` | no | `1.6732631921768188` | Coefficient of SELU default to 1.67326319217681884765625 (i.e., float32 approximation of 1.6732632423543772848170429916717). |
-| `gamma` | `Gamma` | `float` | no | `1.0507010221481323` | Coefficient of SELU default to 1.05070102214813232421875 (i.e., float32 approximation of 1.0507009873554804934193349852946). |
+| `alpha` | `Alpha` | `Nullable<float>` | no | `1.6732631921768188` | Coefficient of SELU default to 1.67326319217681884765625 (i.e., float32 approximation of 1.6732632423543772848170429916717). |
+| `gamma` | `Gamma` | `Nullable<float>` | no | `1.0507010221481323` | Coefficient of SELU default to 1.05070102214813232421875 (i.e., float32 approximation of 1.0507009873554804934193349852946). |
 
 ## TorchSharp Coverage
 

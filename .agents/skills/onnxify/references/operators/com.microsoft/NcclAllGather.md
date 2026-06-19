@@ -37,7 +37,7 @@ Schema description was not found in `onnx_operators.json`.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `group_type` | `GroupType` | `long` | no | `0` | 0 - global parallel group, 1 - data parallel group, 2 - node local data parallel group, 3 - cross node data parallel group, 4 - horozontal parallel, 5 - model parallel. |
+| `group_type` | `GroupType` | `Nullable<long>` | no | `0` | 0 - global parallel group, 1 - data parallel group, 2 - node local data parallel group, 3 - cross node data parallel group, 4 - horozontal parallel, 5 - model parallel. |
 
 ## TorchSharp Coverage
 

@@ -44,7 +44,7 @@ max(0,x) + min(0,alpha*(exp(x/alpha)-1))
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `alpha` | `Alpha` | `float` | no | `1.0` | The Alpha value in Celu formula which control the shape of the unit. The default value is 1.0. |
+| `alpha` | `Alpha` | `Nullable<float>` | no | `1.0` | The Alpha value in Celu formula which control the shape of the unit. The default value is 1.0. |
 
 ## TorchSharp Coverage
 

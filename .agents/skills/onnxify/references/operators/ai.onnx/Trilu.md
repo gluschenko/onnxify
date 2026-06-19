@@ -50,7 +50,7 @@ A negative k value excludes the main diagonal and (|k|-1) diagonals below it.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `upper` | `Upper` | `long` | no | `1` | Boolean. Indicates whether upper or lower part of matrix is retained. Default is true. |
+| `upper` | `Upper` | `Nullable<long>` | no | `1` | Boolean. Indicates whether upper or lower part of matrix is retained. Default is true. |
 
 ## TorchSharp Coverage
 

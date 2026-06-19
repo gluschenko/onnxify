@@ -40,7 +40,7 @@ the same ordering as the image pixel format.
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `bias` | `Bias` | `float[]` | no | `[null]` | Bias applied to each channel, same size as C. |
-| `scale` | `Scale` | `float` | no | `1.0` | The scale to apply. |
+| `scale` | `Scale` | `Nullable<float>` | no | `1.0` | The scale to apply. |
 
 ## TorchSharp Coverage
 

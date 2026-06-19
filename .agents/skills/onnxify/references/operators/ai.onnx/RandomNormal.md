@@ -44,9 +44,9 @@ TensorProto message.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `dtype` | `Dtype` | `long` | no | `1` | The data type for the elements of the output tensor. Default is TensorProto::FLOAT. |
-| `mean` | `Mean` | `float` | no | `0.0` | The mean of the normal distribution. |
-| `scale` | `Scale` | `float` | no | `1.0` | The standard deviation of the normal distribution. |
+| `dtype` | `Dtype` | `Nullable<long>` | no | `1` | The data type for the elements of the output tensor. Default is TensorProto::FLOAT. |
+| `mean` | `Mean` | `Nullable<float>` | no | `0.0` | The mean of the normal distribution. |
+| `scale` | `Scale` | `Nullable<float>` | no | `1.0` | The standard deviation of the normal distribution. |
 | `seed` | `Seed` | `Nullable<float>` | no | `[null]` | (Optional) Seed to the random generator, if not specified we will auto generate one. |
 | `shape` | `Shape` | `long[]` | yes | `[null]` | The shape of the output tensor. |
 

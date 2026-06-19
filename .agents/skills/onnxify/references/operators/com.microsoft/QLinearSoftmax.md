@@ -47,7 +47,7 @@ The output tensor has the same shape.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `axis` | `Axis` | `long` | no | `-1` | apply softmax to elements for dimensions axis,or all dims along with axis according to op-version |
+| `axis` | `Axis` | `Nullable<long>` | no | `-1` | apply softmax to elements for dimensions axis,or all dims along with axis according to op-version |
 | `opset` | `Opset` | `long` | yes | `[null]` | opset version of corresponding SoftMax. |
 
 ## TorchSharp Coverage

@@ -47,9 +47,9 @@ Schema description was not found in `onnx_operators.json`.
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `auto_pad` | `AutoPad` | `string` | no | `NOTSET` |  |
-| `channels_last` | `ChannelsLast` | `long` | no | `0` |  |
+| `channels_last` | `ChannelsLast` | `Nullable<long>` | no | `0` |  |
 | `dilations` | `Dilations` | `long[]` | no | `[null]` |  |
-| `group` | `Group` | `long` | no | `1` |  |
+| `group` | `Group` | `Nullable<long>` | no | `1` |  |
 | `kernel_shape` | `KernelShape` | `long[]` | no | `[null]` |  |
 | `pads` | `Pads` | `long[]` | no | `[null]` |  |
 | `strides` | `Strides` | `long[]` | no | `[null]` |  |

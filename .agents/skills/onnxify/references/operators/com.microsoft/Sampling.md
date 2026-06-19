@@ -47,21 +47,21 @@ Greedy Sampling for text generation.
 
 | Name | Onnxify property | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `custom` | `Custom` | `long` | no | `0` | If 1 custom sampling logic |
+| `custom` | `Custom` | `Nullable<long>` | no | `0` | If 1 custom sampling logic |
 | `decoder` | `Decoder` | `OnnxGraph` | yes | `[null]` | Decoder subgraph to execute in a loop. |
-| `decoder_start_token_id` | `DecoderStartTokenId` | `long` | no | `-1` | The id of the token that indicates decoding starts. |
+| `decoder_start_token_id` | `DecoderStartTokenId` | `Nullable<long>` | no | `-1` | The id of the token that indicates decoding starts. |
 | `encoder` | `Encoder` | `OnnxGraph` | no | `[null]` | The subgraph for initialization of encoder and decoder. It will be called once before decoder subgraph. |
 | `eos_token_id` | `EosTokenId` | `long` | yes | `[null]` | The id of the end-of-sequence token |
-| `filter_value` | `FilterValue` | `float` | no | `-1.0000000200408773e+20` | All filtered values will be set to this float value. |
+| `filter_value` | `FilterValue` | `Nullable<float>` | no | `-1.0000000200408773e+20` | All filtered values will be set to this float value. |
 | `init_decoder` | `InitDecoder` | `OnnxGraph` | no | `[null]` | The subgraph for the first decoding run. It will be called once before `decoder` subgraph. This is relevant only for the GPT2 model. If this attribute is missing, the `decoder` subgraph will be used for all decoding runs |
-| `min_tokens_to_keep` | `MinTokensToKeep` | `long` | no | `0` | Minimumber of tokens we keep per batch example in the output. |
-| `model_type` | `ModelType` | `long` | no | `0` | Model type: 0 for decoder only like GPT-2; 1 for encoder decoder like Bart |
-| `no_repeat_ngram_size` | `NoRepeatNgramSize` | `long` | no | `0` | no repeat ngrams size |
+| `min_tokens_to_keep` | `MinTokensToKeep` | `Nullable<long>` | no | `0` | Minimumber of tokens we keep per batch example in the output. |
+| `model_type` | `ModelType` | `Nullable<long>` | no | `0` | Model type: 0 for decoder only like GPT-2; 1 for encoder decoder like Bart |
+| `no_repeat_ngram_size` | `NoRepeatNgramSize` | `Nullable<long>` | no | `0` | no repeat ngrams size |
 | `pad_token_id` | `PadTokenId` | `long` | yes | `[null]` | The id of the padding token |
-| `presence_penalty` | `PresencePenalty` | `float` | no | `0.0` | Presence penalty for custom sampling |
-| `temperature` | `Temperature` | `float` | no | `1.0` | The value used to module the next token probabilities. |
-| `top_p` | `TopP` | `float` | no | `0.0` | If set to float < 1, only the smallest set of most probable tokens with probabilities that add up to `top_p` or higher are kept for generation. |
-| `vocab_size` | `VocabSize` | `long` | no | `-1` | Size of the vocabulary. If not provided, it will be inferred from the decoder subgraph's output shape |
+| `presence_penalty` | `PresencePenalty` | `Nullable<float>` | no | `0.0` | Presence penalty for custom sampling |
+| `temperature` | `Temperature` | `Nullable<float>` | no | `1.0` | The value used to module the next token probabilities. |
+| `top_p` | `TopP` | `Nullable<float>` | no | `0.0` | If set to float < 1, only the smallest set of most probable tokens with probabilities that add up to `top_p` or higher are kept for generation. |
+| `vocab_size` | `VocabSize` | `Nullable<long>` | no | `-1` | Size of the vocabulary. If not provided, it will be inferred from the decoder subgraph's output shape |
 
 ## TorchSharp Coverage
 

@@ -61,7 +61,7 @@ LSTMGrad operator that computes the partial derivative of the loss with respect 
 | `clip` | `Clip` | `Nullable<float>` | no | `[null]` | Cell clip threshold. Clipping bounds the elements of a tensor in the range of [-threshold, +threshold] and is applied to the input of activations. No clip if not specified. |
 | `direction` | `Direction` | `string` | no | `forward` | Specify if the RNN is forward, reverse, or bidirectional. Must be one of forward (default), reverse, or bidirectional. |
 | `hidden_size` | `HiddenSize` | `Nullable<long>` | no | `[null]` | Number of neurons in the hidden layer. |
-| `input_forget` | `InputForget` | `long` | no | `0` | Couple the input and forget gates if 1, default 0. |
+| `input_forget` | `InputForget` | `Nullable<long>` | no | `0` | Couple the input and forget gates if 1, default 0. |
 
 ## TorchSharp Coverage
 
