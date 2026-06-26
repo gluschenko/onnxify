@@ -2340,10 +2340,11 @@ public static class TorchModuleExportExtensions
         // Handles batched and plain matrix multiplies with the same ONNX MatMul:
         //   matmul(query, key.transpose(2, 3))
         //   matmul(hiddenStates, tiedWeight)
+        //   matmul(input, _importedWeightInitializer)
         return new ExportValue(
             context.Graph.ExportMatMul(
-                ExportExpression(context, invocation.Arguments.ElementAt(0)).GetRequiredEdge(invocation),
-                ExportExpression(context, invocation.Arguments.ElementAt(1)).GetRequiredEdge(invocation)
+                ExportAsGraphEdge(context, invocation.Arguments.ElementAt(0)),
+                ExportAsGraphEdge(context, invocation.Arguments.ElementAt(1))
             )
         );
     }

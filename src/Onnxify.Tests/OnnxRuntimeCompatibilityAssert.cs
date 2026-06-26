@@ -27,7 +27,8 @@ internal static class OnnxRuntimeCompatibilityAssert
     public static InferenceSession CreateSession(
         string modelPath,
         OnnxModel model,
-        string scenario
+        string scenario,
+        SessionOptions? sessionOptions = null
     )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(modelPath);
@@ -36,7 +37,9 @@ internal static class OnnxRuntimeCompatibilityAssert
 
         try
         {
-            return new InferenceSession(modelPath);
+            return sessionOptions is null
+                ? new InferenceSession(modelPath)
+                : new InferenceSession(modelPath, sessionOptions);
         }
         catch (Exception exception) when (
             exception is OnnxRuntimeException

@@ -1,3 +1,18 @@
+## 0.3.7
+
+- Fixed `nn.Linear` export for rank-3 and higher inputs by explicitly flattening leading dimensions before `MatMul` and restoring them afterwards, avoiding ONNX Runtime extended-optimizer `Gemm` fusion failures on transformer activations such as `[batch, sequence, hidden]`.
+- Fixed deep export of `torch.matmul(...)` calls whose operands include imported TorchSharp `Parameter` fields, materializing those parameters as ONNX initializers so deep-imported `MatMul` graphs can round-trip back through ONNX Runtime.
+
+## 0.3.6
+
+- Fixed deep export scalar comparison typing for runtime tensor masks, preserving propagated tensor element types through factory outputs such as `torch.ones(..., dtype: ScalarType.Int32)` before lowering `eq(...)` / `ne(...)`.
+- Added regression coverage for an `Int32` triangular runtime mask equality pattern, ensuring scalar comparison initializers are emitted with `int32` rather than widening to `int64`.
+- Aligned the package version with the 0.3.6 Onnxify package family release.
+
+## 0.3.5
+
+- Aligned the package version with the 0.3.5 Onnxify package family release.
+
 ## 0.3.4
 
 - Added `ModuleInputAttribute`, `ModuleOutputAttribute`, and `TensorDimension` so TorchSharp modules can declare tensor contracts with `ScalarType` and mixed fixed/symbolic dimensions, then export through attribute-driven `ExportOnnxModel(options)`.

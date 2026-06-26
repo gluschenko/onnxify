@@ -9,6 +9,32 @@ namespace Onnxify.Tests;
 public sealed class TorchModuleExtensionsTests
 {
     [Fact]
+    public void Export_ForBatchedLinear_FlattensAndRestoresLeadingDimensions()
+    {
+        using var module = nn.Linear(128, 384);
+        module.eval();
+
+        var graph = CreateGraph(opset: 21);
+        var input = graph.AddInput("input", OnnxTensorType.Create<float>([1L, 256L, 128L]));
+
+        var output = module.Export(graph, input);
+
+        Assert.NotNull(output);
+        Assert.Contains(graph.Nodes, node => node.Name == "linear_flatten" && node.OpType == "Reshape");
+        Assert.Contains(graph.Nodes, node => node.Name == "linear" && node.OpType == "MatMul");
+        Assert.Contains(graph.Nodes, node => node.Name == "linear_bias" && node.OpType == "Add");
+        Assert.Contains(graph.Nodes, node => node.Name == "linear_restore_shape" && node.OpType == "Reshape");
+
+        var flatten = Assert.Single(graph.Nodes, node => node.Name == "linear_flatten");
+        var flattenShape = Assert.Single(graph.Nodes, node => node.Name == "linear_flatten_shape_concat");
+        Assert.Equal(flattenShape.Outputs.Single().Name, flatten.Inputs[1].Name);
+
+        var restore = Assert.Single(graph.Nodes, node => node.Name == "linear_restore_shape");
+        var outputShape = Assert.Single(graph.Nodes, node => node.Name == "linear_output_shape");
+        Assert.Equal(outputShape.Outputs.Single().Name, restore.Inputs[1].Name);
+    }
+
+    [Fact]
     public void Export_ForGlu_EmitsSplitSigmoidAndMul()
     {
         var graph = CreateGraph(opset: 21);

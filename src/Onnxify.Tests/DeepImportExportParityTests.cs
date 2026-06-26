@@ -94,6 +94,32 @@ public sealed class DeepImportExportParityTests
     }
 
     [Fact]
+    public void RoundTrip_ForRank3LinearMatMulAdd_PreservesOutputWithExtendedOptimization()
+    {
+        var model = CreateRank3LinearMatMulAddModel();
+        var input = NamedOnnxValue.CreateFromTensor(
+            "input",
+            new DenseTensor<float>(
+                Enumerable.Range(0, 1 * 4 * 3)
+                    .Select(static x => ((x % 9) - 4) / 7f)
+                    .ToArray(),
+                [1, 4, 3]
+            )
+        );
+
+        var result = DeepImportExportParity.AssertRoundTripMse(
+            model,
+            [input],
+            outputName: "output",
+            threshold: 1e-8f,
+            graphOptimizationLevel: GraphOptimizationLevel.ORT_ENABLE_EXTENDED
+        );
+
+        Assert.Equal([1, 4, 5], result.OutputShape);
+    }
+
+
+    [Fact]
     public void RoundTrip_ForMobileNetInvertedResidualOperators_PreservesOutput()
     {
         var model = CreateInvertedResidualModel();
@@ -330,6 +356,36 @@ public sealed class DeepImportExportParityTests
             {
                 A = input,
                 B = projected,
+                C = output,
+            }
+        );
+
+        return model;
+    }
+
+    private static OnnxModel CreateRank3LinearMatMulAddModel()
+    {
+        var model = CreateModel();
+        var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([1L, 4L, 3L]));
+        var output = model.Graph.AddOutput("output", OnnxTensorType.Create<float>([1L, 4L, 5L]));
+        var weightTransposed = model.Graph.AddTensor("linear.weight_t", [3L, 5L], CreateSequence(15, 0.075f));
+        var bias = model.Graph.AddTensor("linear.bias", [5L], [0.05f, -0.025f, 0.1f, -0.075f, 0.125f]);
+
+        var matMul = model.Graph.MatMul(
+            name: "linear_matmul",
+            options: new MatMulInputOptions
+            {
+                A = input,
+                B = weightTransposed,
+            }
+        );
+
+        model.Graph.Add(
+            name: "linear_bias",
+            options: new AddInputOutputOptions
+            {
+                A = matMul,
+                B = bias,
                 C = output,
             }
         );

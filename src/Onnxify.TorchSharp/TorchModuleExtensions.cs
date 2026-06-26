@@ -1617,6 +1617,19 @@ public static class TorchModuleExtensions
             )
         );
 
+        if (TryGetTensorRank(input) is > 2 and var inputRank)
+        {
+            return ExportBatchedLinear(
+                graph: graph,
+                input: input,
+                weight: weight,
+                biasTensor: module.bias,
+                outputFeatures: weightShape[0],
+                name: name,
+                inputRank: inputRank
+            );
+        }
+
         var output = graph.MatMul(
             name: name,
             options: new MatMulInputOptions
@@ -1645,6 +1658,135 @@ public static class TorchModuleExtensions
         }
 
         return output;
+    }
+
+    private static IOnnxGraphEdge ExportBatchedLinear(
+        OnnxGraph graph,
+        IOnnxGraphEdge input,
+        IOnnxGraphEdge weight,
+        Tensor? biasTensor,
+        long outputFeatures,
+        string name,
+        int inputRank
+    )
+    {
+        var inputShape = graph.Shape(
+            name: $"{name}_input_shape",
+            options: new ShapeInputOptions
+            {
+                Data = input,
+            }
+        );
+
+        var flattenedLeadingDimension = graph.AddTensor<long>(
+            name: $"{name}_flattened_leading_dim",
+            shape: [1],
+            value: [-1L]
+        );
+
+        var flattenedInput = graph.Reshape(
+            name: $"{name}_flatten",
+            options: new ReshapeInputOptions
+            {
+                Data = input,
+                Shape = graph.Concat(
+                    name: $"{name}_flatten_shape_concat",
+                    options: new ConcatInputOptions
+                    {
+                        In = [flattenedLeadingDimension, GatherShapeDimensions(graph, inputShape, name, inputRank - 1)],
+                        Axis = 0,
+                    }
+                ),
+            }
+        );
+
+        var flattenedOutput = graph.MatMul(
+            name: name,
+            options: new MatMulInputOptions
+            {
+                A = flattenedInput,
+                B = weight,
+            }
+        );
+
+        if (biasTensor is not null)
+        {
+            var bias = graph.AddTensor(
+                name: $"{name}_b",
+                shape: TorchHelper.GetShape(biasTensor),
+                value: TorchHelper.GetFloatData(biasTensor)
+            );
+
+            flattenedOutput = graph.Add(
+                name: graph.NextName($"{name}_bias"),
+                options: new AddInputOptions
+                {
+                    A = flattenedOutput,
+                    B = bias,
+                }
+            );
+        }
+
+        var outputFeaturesTensor = graph.AddTensor<long>(
+            name: $"{name}_output_features",
+            shape: [1],
+            value: [outputFeatures]
+        );
+
+        var outputShape = graph.Concat(
+            name: $"{name}_output_shape",
+            options: new ConcatInputOptions
+            {
+                In =
+                [
+                    GatherShapeDimensions(graph, inputShape, name, Enumerable.Range(0, inputRank - 1)),
+                    outputFeaturesTensor,
+                ],
+                Axis = 0,
+            }
+        );
+
+        return graph.Reshape(
+            name: $"{name}_restore_shape",
+            options: new ReshapeInputOptions
+            {
+                Data = flattenedOutput,
+                Shape = outputShape,
+            }
+        );
+    }
+
+    private static IOnnxGraphEdge GatherShapeDimensions(
+        OnnxGraph graph,
+        IOnnxGraphEdge shape,
+        string name,
+        int index
+    )
+    {
+        return GatherShapeDimensions(graph, shape, name, [index]);
+    }
+
+    private static IOnnxGraphEdge GatherShapeDimensions(
+        OnnxGraph graph,
+        IOnnxGraphEdge shape,
+        string name,
+        IEnumerable<int> indices
+    )
+    {
+        var indexArray = indices.Select(static x => (long)x).ToArray();
+        return graph.Gather(
+            name: graph.NextName($"{name}_shape_gather"),
+            options: new GatherInputOptions
+            {
+                Data = shape,
+                Indices = graph.AddTensor<long>(
+                    name: graph.NextName($"{name}_shape_gather_indices"),
+                    shape: [indexArray.Length],
+                    value: indexArray
+                ),
+                Axis = 0,
+            }
+        );
     }
 
     /// <summary>
