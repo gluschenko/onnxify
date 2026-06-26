@@ -1508,7 +1508,7 @@ public static class TorchModuleExportExtensions
                 context.Graph,
                 "ne",
                 scalar,
-                ResolveScalarComparisonType(input, other)
+                ResolveScalarComparisonType(context, input, other)
             ))
             : context.Graph.ExportNotEqual(input, other.GetRequiredEdge(invocation.Arguments.Single()));
     }
@@ -1530,17 +1530,18 @@ public static class TorchModuleExportExtensions
                 context.Graph,
                 "eq",
                 scalar,
-                ResolveScalarComparisonType(input, other)
+                ResolveScalarComparisonType(context, input, other)
             ))
             : context.Graph.ExportEqual(input, other.GetRequiredEdge(invocation.Arguments.Single()));
     }
 
     private static Type ResolveScalarComparisonType(
+        ForwardExportContext context,
         IOnnxGraphEdge input,
         ExportValue scalar
     )
     {
-        if (TryGetTensorElementType(input, out var inputType))
+        if (TryGetTensorElementType(context, input, out var inputType))
         {
             return inputType;
         }
@@ -1765,6 +1766,11 @@ public static class TorchModuleExportExtensions
             TrackRank(context, output, rank);
         }
 
+        if (TryGetTensorElementType(context, input, out var type))
+        {
+            context.EdgeElementTypes[output.Name] = type;
+        }
+
         return output;
     }
 
@@ -1778,6 +1784,11 @@ public static class TorchModuleExportExtensions
         if (TryGetRank(context, input) is int rank)
         {
             TrackRank(context, output, rank);
+        }
+
+        if (TryGetTensorElementType(context, input, out var type))
+        {
+            context.EdgeElementTypes[output.Name] = type;
         }
 
         return output;
