@@ -227,8 +227,11 @@ public sealed class TorchModuleDeepExportTests
         );
 
         Assert.Contains(model.Graph.Nodes, node => node.OpType == "ConstantOfShape");
-        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Trilu");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Range");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "LessOrEqual");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Where");
         Assert.Contains(model.Graph.Nodes, node => node.OpType == "Equal");
+        Assert.DoesNotContain(model.Graph.Nodes, node => node.OpType == "Trilu");
         Assert.Contains(
             model.Graph.Initializers.OfType<OnnxTensor<int>>(),
             initializer => initializer.Name.StartsWith("eq_", StringComparison.Ordinal)
