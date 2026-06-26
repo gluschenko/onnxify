@@ -321,8 +321,7 @@ internal static partial class Program
         IReadOnlySet<string> modelGeneratorCoveredOperators)
     {
         string normalizedOperator = NormalizeOperatorName(op.Name, op.SourceModule);
-        TorchSharpCandidate? match = candidates.FirstOrDefault(candidate =>
-            string.Equals(candidate.NormalizedName, normalizedOperator, StringComparison.OrdinalIgnoreCase));
+        TorchSharpCandidate? match = FindTorchSharpCandidate(op, normalizedOperator, candidates);
         var modelGeneratorCovered =
             modelGeneratorCoveredOperators.Contains(op.Name) ||
             modelGeneratorCoveredOperators.Contains(normalizedOperator) ||
@@ -334,6 +333,126 @@ internal static partial class Program
             match is not null,
             torchSharpCoveredOperators.Contains(op.Name),
             modelGeneratorCovered);
+    }
+
+    private static TorchSharpCandidate? FindTorchSharpCandidate(
+        OperatorRecord op,
+        string normalizedOperator,
+        IReadOnlyList<TorchSharpCandidate> candidates)
+    {
+        foreach (var candidateName in GetTorchSharpCandidateNames(op, normalizedOperator))
+        {
+            var normalizedCandidateName = NormalizeTorchSharpName(candidateName);
+            var match = candidates.FirstOrDefault(candidate =>
+                string.Equals(candidate.NormalizedName, normalizedCandidateName, StringComparison.OrdinalIgnoreCase));
+
+            if (match is not null)
+            {
+                return match;
+            }
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> GetTorchSharpCandidateNames(OperatorRecord op, string normalizedOperator)
+    {
+        yield return normalizedOperator;
+
+        foreach (var alias in GetTorchSharpAliases(op.Name, normalizedOperator))
+        {
+            yield return alias;
+        }
+    }
+
+    private static IEnumerable<string> GetTorchSharpAliases(string operatorName, string normalizedOperator)
+    {
+        switch (operatorName)
+        {
+            case "_operator::__lshift__":
+            case "aten::__lshift__.Scalar":
+                yield return "bitwise_left_shift";
+                yield return "left_shift";
+                break;
+
+            case "_operator::__rshift__":
+            case "aten::__rshift__.Scalar":
+                yield return "bitwise_right_shift";
+                yield return "right_shift";
+                break;
+
+            case "_operator::and_":
+                yield return "bitwise_and";
+                yield return "logical_and";
+                break;
+
+            case "_operator::or_":
+                yield return "bitwise_or";
+                yield return "logical_or";
+                break;
+
+            case "_operator::floordiv":
+                yield return "floor_divide";
+                break;
+
+            case "_operator::mod":
+                yield return "remainder";
+                yield return "fmod";
+                break;
+
+            case "_operator::truediv":
+                yield return "true_divide";
+                yield return "div";
+                yield return "divide";
+                break;
+
+            case "aten::_to_copy":
+                yield return "to";
+                yield return "to_type";
+                yield return "type_as";
+                break;
+
+            case "aten::special_softmax":
+                yield return "softmax";
+                break;
+
+            case "aten::split_with_sizes":
+                yield return "split";
+                break;
+        }
+
+        if (operatorName.Contains("native_batch_norm", StringComparison.Ordinal))
+        {
+            yield return "batch_norm";
+            yield return "batchnorm";
+            yield return "batchnorm1d";
+            yield return "batchnorm2d";
+            yield return "batchnorm3d";
+        }
+
+        switch (operatorName)
+        {
+            case "aten::native_dropout":
+                yield return "dropout";
+                break;
+
+            case "aten::native_group_norm":
+                yield return "group_norm";
+                yield return "groupnorm";
+                break;
+
+            case "aten::native_layer_norm":
+                yield return "layer_norm";
+                yield return "layernorm";
+                break;
+        }
+
+        if (normalizedOperator.StartsWith("upsample", StringComparison.Ordinal))
+        {
+            yield return normalizedOperator;
+            yield return "upsample";
+            yield return "interpolate";
+        }
     }
 
     private static string NormalizeOperatorName(string operatorName, string sourceModule)

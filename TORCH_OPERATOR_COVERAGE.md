@@ -1,8 +1,8 @@
 # TorchSharp operator coverage
 
-* Found: 84.34% (420/498)
+* Found: 90.16% (449/498)
 * Onnxify.TorchSharp coverage: 83.53% (416/498)
-* Onnxify.ModelGenerator coverage: 30.12% (150/498)
+* Onnxify.ModelGenerator coverage: 30.72% (153/498)
 
 ## Coverage Columns
 
@@ -13,28 +13,28 @@
 
 | ONNXScript operator | TorchSharp module | Found | Onnxify.TorchSharp coverage | Onnxify.ModelGenerator coverage |
 | --- | --- | --- | --- | --- |
-| `_operator::__lshift__` |  | ❌ | ✅ | ❌ |
-| `_operator::__rshift__` |  | ❌ | ✅ | ❌ |
+| `_operator::__lshift__` | `TorchSharp.torch+Tensor.bitwise_left_shift` | ✅ | ✅ | ❌ |
+| `_operator::__rshift__` | `TorchSharp.torch+Tensor.bitwise_right_shift` | ✅ | ✅ | ❌ |
 | `_operator::abs` | `TorchSharp.torch+Tensor.abs` | ✅ | ✅ | ✅ |
 | `_operator::add` | `TorchSharp.torch+Tensor.add` | ✅ | ✅ | ✅ |
-| `_operator::and_` |  | ❌ | ✅ | ✅ |
+| `_operator::and_` | `TorchSharp.torch+Tensor.bitwise_and` | ✅ | ✅ | ✅ |
 | `_operator::eq` | `TorchSharp.torch+Tensor.eq` | ✅ | ✅ | ❌ |
-| `_operator::floordiv` |  | ❌ | ✅ | ❌ |
+| `_operator::floordiv` | `TorchSharp.torch+Tensor.floor_divide` | ✅ | ✅ | ❌ |
 | `_operator::ge` | `TorchSharp.torch+Tensor.ge` | ✅ | ✅ | ❌ |
 | `_operator::getitem` |  | ❌ | ❌ | ❌ |
 | `_operator::gt` | `TorchSharp.torch+Tensor.gt` | ✅ | ✅ | ❌ |
 | `_operator::le` | `TorchSharp.torch+Tensor.le` | ✅ | ✅ | ❌ |
 | `_operator::lt` | `TorchSharp.torch+Tensor.lt` | ✅ | ✅ | ❌ |
-| `_operator::mod` |  | ❌ | ✅ | ✅ |
+| `_operator::mod` | `TorchSharp.torch+Tensor.remainder` | ✅ | ✅ | ✅ |
 | `_operator::mul` | `TorchSharp.torch+Tensor.mul` | ✅ | ✅ | ✅ |
 | `_operator::ne` | `TorchSharp.torch+Tensor.ne` | ✅ | ✅ | ❌ |
 | `_operator::neg` | `TorchSharp.torch+Tensor.neg` | ✅ | ✅ | ✅ |
-| `_operator::or_` |  | ❌ | ✅ | ✅ |
+| `_operator::or_` | `TorchSharp.torch+Tensor.bitwise_or` | ✅ | ✅ | ✅ |
 | `_operator::pow` | `TorchSharp.torch+Tensor.pow` | ✅ | ✅ | ✅ |
 | `_operator::sub` | `TorchSharp.torch+Tensor.sub` | ✅ | ✅ | ✅ |
-| `_operator::truediv` |  | ❌ | ✅ | ❌ |
-| `aten::__lshift__.Scalar` |  | ❌ | ✅ | ❌ |
-| `aten::__rshift__.Scalar` |  | ❌ | ✅ | ❌ |
+| `_operator::truediv` | `TorchSharp.torch+Tensor.true_divide` | ✅ | ✅ | ❌ |
+| `aten::__lshift__.Scalar` | `TorchSharp.torch+Tensor.bitwise_left_shift` | ✅ | ✅ | ❌ |
+| `aten::__rshift__.Scalar` | `TorchSharp.torch+Tensor.bitwise_right_shift` | ✅ | ✅ | ❌ |
 | `aten::_conj` | `TorchSharp.torch+Tensor.conj` | ✅ | ✅ | ❌ |
 | `aten::_embedding_bag` | `TorchSharp.Modules.EmbeddingBag` | ✅ | ❌ | ❌ |
 | `aten::_embedding_bag_forward_only` |  | ❌ | ❌ | ❌ |
@@ -44,23 +44,23 @@
 | `aten::_linalg_det` | `TorchSharp.torch+Tensor.det` | ✅ | ✅ | ✅ |
 | `aten::_local_scalar_dense` |  | ❌ | ❌ | ❌ |
 | `aten::_log_softmax` | `TorchSharp.Modules.LogSoftmax` | ✅ | ✅ | ✅ |
-| `aten::_native_batch_norm_legit` |  | ❌ | ✅ | ❌ |
-| `aten::_native_batch_norm_legit.no_stats` |  | ❌ | ✅ | ❌ |
-| `aten::_native_batch_norm_legit_functional` |  | ❌ | ✅ | ❌ |
-| `aten::_native_batch_norm_legit_no_training` |  | ❌ | ✅ | ❌ |
+| `aten::_native_batch_norm_legit` | `TorchSharp.Modules.BatchNorm` | ✅ | ✅ | ❌ |
+| `aten::_native_batch_norm_legit.no_stats` | `TorchSharp.Modules.BatchNorm` | ✅ | ✅ | ❌ |
+| `aten::_native_batch_norm_legit_functional` | `TorchSharp.Modules.BatchNorm` | ✅ | ✅ | ❌ |
+| `aten::_native_batch_norm_legit_no_training` | `TorchSharp.Modules.BatchNorm` | ✅ | ✅ | ❌ |
 | `aten::_prelu_kernel` |  | ❌ | ❌ | ❌ |
 | `aten::_scaled_dot_product_efficient_attention` |  | ❌ | ❌ | ❌ |
 | `aten::_scaled_dot_product_flash_attention` |  | ❌ | ❌ | ❌ |
 | `aten::_scaled_dot_product_flash_attention_for_cpu` |  | ❌ | ❌ | ❌ |
 | `aten::_softmax` | `TorchSharp.Modules.Softmax` | ✅ | ✅ | ✅ |
-| `aten::_to_copy` |  | ❌ | ✅ | ❌ |
+| `aten::_to_copy` | `TorchSharp.ModuleExtensionMethods.to` | ✅ | ✅ | ❌ |
 | `aten::_unique` | `TorchSharp.torch+Tensor.unique` | ✅ | ❌ | ❌ |
 | `aten::_unique2` |  | ❌ | ❌ | ❌ |
 | `aten::_unsafe_index.Tensor` |  | ❌ | ❌ | ❌ |
 | `aten::_unsafe_index_put` |  | ❌ | ❌ | ❌ |
 | `aten::_unsafe_view` |  | ❌ | ❌ | ❌ |
-| `aten::_upsample_bicubic2d_aa` |  | ❌ | ❌ | ❌ |
-| `aten::_upsample_bilinear2d_aa` |  | ❌ | ❌ | ❌ |
+| `aten::_upsample_bicubic2d_aa` | `TorchSharp.Modules.Upsample` | ✅ | ❌ | ❌ |
+| `aten::_upsample_bilinear2d_aa` | `TorchSharp.Modules.Upsample` | ✅ | ❌ | ❌ |
 | `aten::abs` | `TorchSharp.torch+Tensor.abs` | ✅ | ✅ | ✅ |
 | `aten::acos` | `TorchSharp.torch+Tensor.acos` | ✅ | ✅ | ✅ |
 | `aten::acosh` | `TorchSharp.torch+Tensor.acosh` | ✅ | ✅ | ✅ |
@@ -297,10 +297,10 @@
 | `aten::multiply.Tensor` | `TorchSharp.torch+Tensor.multiply` | ✅ | ✅ | ❌ |
 | `aten::mv` | `TorchSharp.torch+Tensor.mv` | ✅ | ✅ | ❌ |
 | `aten::narrow` | `TorchSharp.torch+Tensor.narrow` | ✅ | ✅ | ❌ |
-| `aten::native_batch_norm` |  | ❌ | ✅ | ❌ |
-| `aten::native_dropout` |  | ❌ | ✅ | ❌ |
-| `aten::native_group_norm` |  | ❌ | ✅ | ❌ |
-| `aten::native_layer_norm` |  | ❌ | ✅ | ❌ |
+| `aten::native_batch_norm` | `TorchSharp.Modules.BatchNorm` | ✅ | ✅ | ❌ |
+| `aten::native_dropout` | `TorchSharp.Modules.Dropout` | ✅ | ✅ | ✅ |
+| `aten::native_group_norm` | `TorchSharp.Modules.GroupNorm` | ✅ | ✅ | ❌ |
+| `aten::native_layer_norm` | `TorchSharp.Modules.LayerNorm` | ✅ | ✅ | ❌ |
 | `aten::ne` | `TorchSharp.torch+Tensor.ne` | ✅ | ✅ | ❌ |
 | `aten::ne.Scalar` | `TorchSharp.torch+Tensor.ne` | ✅ | ✅ | ❌ |
 | `aten::ne.Tensor` | `TorchSharp.torch+Tensor.ne` | ✅ | ✅ | ❌ |
@@ -389,10 +389,10 @@
 | `aten::special_expm1` | `TorchSharp.torch+Tensor.expm1` | ✅ | ✅ | ❌ |
 | `aten::special_log_softmax` | `TorchSharp.Modules.LogSoftmax` | ✅ | ✅ | ✅ |
 | `aten::special_sinc` | `TorchSharp.torch+Tensor.sinc` | ✅ | ✅ | ❌ |
-| `aten::special_softmax` |  | ❌ | ✅ | ❌ |
+| `aten::special_softmax` | `TorchSharp.Modules.Softmax` | ✅ | ✅ | ✅ |
 | `aten::split` | `TorchSharp.torch+Tensor.split` | ✅ | ✅ | ✅ |
 | `aten::split.Tensor` | `TorchSharp.torch+Tensor.split` | ✅ | ✅ | ✅ |
-| `aten::split_with_sizes` |  | ❌ | ✅ | ❌ |
+| `aten::split_with_sizes` | `TorchSharp.torch+Tensor.split` | ✅ | ✅ | ✅ |
 | `aten::sqrt` | `TorchSharp.torch+Tensor.sqrt` | ✅ | ✅ | ✅ |
 | `aten::squeeze` | `TorchSharp.torch+Tensor.squeeze` | ✅ | ✅ | ✅ |
 | `aten::squeeze.dim` | `TorchSharp.torch+Tensor.squeeze` | ✅ | ✅ | ✅ |
@@ -428,19 +428,19 @@
 | `aten::unique_dim` |  | ❌ | ❌ | ❌ |
 | `aten::unsafe_split.Tensor` |  | ❌ | ❌ | ❌ |
 | `aten::unsqueeze` | `TorchSharp.torch+Tensor.unsqueeze` | ✅ | ✅ | ✅ |
-| `aten::upsample_bicubic2d` |  | ❌ | ✅ | ❌ |
-| `aten::upsample_bicubic2d.vec` |  | ❌ | ✅ | ❌ |
-| `aten::upsample_bilinear2d` |  | ❌ | ✅ | ❌ |
-| `aten::upsample_bilinear2d.vec` |  | ❌ | ✅ | ❌ |
-| `aten::upsample_linear1d` |  | ❌ | ✅ | ❌ |
+| `aten::upsample_bicubic2d` | `TorchSharp.Modules.Upsample` | ✅ | ✅ | ❌ |
+| `aten::upsample_bicubic2d.vec` | `TorchSharp.Modules.Upsample` | ✅ | ✅ | ❌ |
+| `aten::upsample_bilinear2d` | `TorchSharp.Modules.Upsample` | ✅ | ✅ | ❌ |
+| `aten::upsample_bilinear2d.vec` | `TorchSharp.Modules.Upsample` | ✅ | ✅ | ❌ |
+| `aten::upsample_linear1d` | `TorchSharp.Modules.Upsample` | ✅ | ✅ | ❌ |
 | `aten::upsample_nearest1d` | `TorchSharp.torch+nn+functional.upsample_nearest1d` | ✅ | ✅ | ❌ |
 | `aten::upsample_nearest1d.vec` | `TorchSharp.torch+nn+functional.upsample_nearest1d` | ✅ | ✅ | ❌ |
 | `aten::upsample_nearest2d` | `TorchSharp.torch+nn+functional.upsample_nearest2d` | ✅ | ✅ | ❌ |
 | `aten::upsample_nearest2d.vec` | `TorchSharp.torch+nn+functional.upsample_nearest2d` | ✅ | ✅ | ❌ |
 | `aten::upsample_nearest3d` | `TorchSharp.torch+nn+functional.upsample_nearest3d` | ✅ | ✅ | ❌ |
 | `aten::upsample_nearest3d.vec` | `TorchSharp.torch+nn+functional.upsample_nearest3d` | ✅ | ✅ | ❌ |
-| `aten::upsample_trilinear3d` |  | ❌ | ✅ | ❌ |
-| `aten::upsample_trilinear3d.vec` |  | ❌ | ✅ | ❌ |
+| `aten::upsample_trilinear3d` | `TorchSharp.Modules.Upsample` | ✅ | ✅ | ❌ |
+| `aten::upsample_trilinear3d.vec` | `TorchSharp.Modules.Upsample` | ✅ | ✅ | ❌ |
 | `aten::view` | `TorchSharp.torch+Tensor.view` | ✅ | ✅ | ❌ |
 | `aten::view_as` | `TorchSharp.torch+Tensor.view_as` | ✅ | ✅ | ❌ |
 | `aten::view_as_complex` | `TorchSharp.torch+Tensor.view_as_complex` | ✅ | ❌ | ❌ |
