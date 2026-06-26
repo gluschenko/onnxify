@@ -47,7 +47,8 @@ When the task is specifically about `Onnxify.ModelGenerator` ONNX-to-TorchModule
 2. Use `third_party/onnxscript` as semantic context by reading the TorchSharp-to-ONNX lowering in reverse.
 3. Implement support through a focused `TorchModuleInlineOperator` or `TorchModuleOperator` subclass instead of adding a central switch-case or a duplicated hard-coded support list.
 4. Add focused source-generator smoke tests in `src/Onnxify.Tests/OnnxModelGeneratorTests.cs`.
-5. Refresh `TORCH_OPERATOR_COVERAGE.md` and generated skill references when `[TorchSharpOp(...)]` coverage changes.
+5. When the operator participates in deep import/export roundtrips, include ONNX Runtime session creation through `OnnxRuntimeCompatibilityAssert` so valid-looking ONNX that lacks runtime kernel support fails in repo tests.
+6. Refresh `TORCH_OPERATOR_COVERAGE.md` and generated skill references when `[TorchSharpOp(...)]` coverage changes.
 
 When the task is specifically about validating an existing TorchSharp exporter against ONNXScript:
 
@@ -187,5 +188,6 @@ private const long InlineTensorElementThreshold = 20L;
 - If generated output changed, did you update generator code and the closest generator tests?
 - If solution or project wiring changed, did you inspect both `src/Onnxify.slnx` and the affected `*.csproj` files?
 - If model I/O changed, did you cover both file and stream surfaces where relevant, including async overloads and `DataLocation` behavior for external data?
+- If deep import/export roundtrip behavior changed, did the tests create an ONNX Runtime `InferenceSession` via `OnnxRuntimeCompatibilityAssert`, not only compare graph structure or generated TorchSharp output?
 - If the task changed only playground or sample code, did you avoid implying that production behavior changed too?
 - If the task introduced a new internal workflow, did you document it in the most discoverable place?

@@ -158,6 +158,8 @@ Avoid dragging Python-specific conventions into C# when they conflict with local
 
 When the ported operator is also supported, or is being made supportable, by the ModelGenerator TorchModule backend, add or extend `deep roundtrip tests` in `src/Onnxify.Tests/DeepImportExportParityTests.cs`.
 Use them to cover the full complementary path: author a small ONNX graph, deep import it into a generated TorchSharp module, deep export it back to ONNX, and compare inference outputs.
+Also verify that the exported or round-tripped ONNX model can create a `Microsoft.ML.OnnxRuntime.InferenceSession`.
+Use `OnnxRuntimeCompatibilityAssert` for this check when working in `src/Onnxify.Tests`; it catches runtime-kernel failures such as an ONNX operator/version/type combination that serializes correctly but cannot be executed by the target ONNX Runtime package.
 Keep the focused structural exporter tests too when they catch local graph details that a roundtrip test would not diagnose clearly.
 
 ## 7. Refresh The Generated Skill Docs

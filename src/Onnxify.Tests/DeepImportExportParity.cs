@@ -46,7 +46,11 @@ internal static class DeepImportExportParity
 
             var roundTrippedPath = Path.Combine(tempRoot, "round-tripped.onnx");
             roundTrippedModel.Save(roundTrippedPath, overwrite: true);
-            using var session = new InferenceSession(roundTrippedPath);
+            using var session = OnnxRuntimeCompatibilityAssert.CreateSession(
+                roundTrippedPath,
+                roundTrippedModel,
+                "deep import/export round-trip"
+            );
             return OnnxModel.FromFile(
                 roundTrippedPath,
                 new OnnxModelBaseOptions
@@ -255,7 +259,17 @@ internal static class DeepImportExportParity
         string outputName
     )
     {
-        using var session = new InferenceSession(modelPath);
+        using var session = OnnxRuntimeCompatibilityAssert.CreateSession(
+            modelPath,
+            OnnxModel.FromFile(
+                modelPath,
+                new OnnxModelBaseOptions
+                {
+                    NodeTypeResolutionStrategy = NodeTypeResolutionStrategy.IgnoreIncompatible,
+                }
+            ),
+            $"deep import/export runtime output '{outputName}'"
+        );
         using var results = session.Run(inputs);
         var output = results.Single(x => string.Equals(x.Name, outputName, StringComparison.Ordinal));
         var tensor = output.AsTensor<float>();

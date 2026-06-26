@@ -161,6 +161,8 @@ Use `src/Onnxify.ConsoleTest` for manual repros against real assets, but do not 
 
 When the operator is also supported, or is being made supportable, by `Onnxify.TorchSharp` deep export, add or extend `deep roundtrip tests` in `src/Onnxify.Tests/DeepImportExportParityTests.cs`.
 Use them to cover the complementary path: construct a small ONNX graph, deep import it into a generated TorchSharp module, deep export that module back to ONNX, and compare inference outputs.
+Also verify ONNX Runtime compatibility for the emitted model by creating an `InferenceSession`, preferably through `OnnxRuntimeCompatibilityAssert` in `src/Onnxify.Tests`.
+Generated TorchSharp code compiling and re-exporting is not enough when the resulting ONNX uses an operator or op-version that the target `Microsoft.ML.OnnxRuntime` package cannot instantiate.
 Keep focused generator smoke tests for compile-time and source-shape assertions; use deep roundtrip tests for cross-feature behavior.
 
 ## 7. Declare Coverage For Reports

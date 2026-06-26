@@ -272,6 +272,9 @@ If tests are missing an important semantic branch, record that gap explicitly an
 For operators that can be represented by both `deep import` and `deep export`, prefer covering the validated behavior with `deep roundtrip tests` in `src/Onnxify.Tests/DeepImportExportParityTests.cs`.
 Those tests should construct or load a small ONNX graph, deep import it into a generated TorchSharp module, deep export it back to ONNX, and compare runtime outputs.
 This is the strongest evidence that the two feature paths are complementary: the import side can reconstruct the operator, and the export side can emit an ONNX graph that preserves the same behavior.
+Deep roundtrip tests must also verify ONNX Runtime session creation for the original or round-tripped model, preferably through `OnnxRuntimeCompatibilityAssert`.
+Do not treat a graph-shape assertion, serialization round trip, generated-code compilation, or TorchSharp eager comparison as enough by itself; operators can be valid ONNX and still fail in `Microsoft.ML.OnnxRuntime` because a kernel is unavailable or unsupported for the emitted op version/type combination.
+When a roundtrip or deep-export test writes a temporary model and creates an `InferenceSession`, route that session creation through `OnnxRuntimeCompatibilityAssert.CreateSession(...)` so failures include the exported operator summary.
 Keep focused exporter or importer unit tests for local ONNXScript parity branches that cannot be exercised clearly through a roundtrip.
 
 ## 9. Record The Validation Outcome Clearly

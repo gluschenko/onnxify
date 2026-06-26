@@ -2494,7 +2494,11 @@ public sealed class TorchTensorOperatorExtensionsTests
         {
             model.Save(path);
 
-            using var session = new InferenceSession(path);
+            using var session = OnnxRuntimeCompatibilityAssert.CreateSession(
+                path,
+                model,
+                "Torch tensor operator export"
+            );
             using var results = session.Run(inputs);
 
             return results.ToDictionary(

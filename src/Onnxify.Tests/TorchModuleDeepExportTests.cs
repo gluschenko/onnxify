@@ -242,6 +242,10 @@ public sealed class TorchModuleDeepExportTests
             model.Graph.Initializers.OfType<OnnxTensor<long>>(),
             initializer => initializer.Name.StartsWith("eq_", StringComparison.Ordinal)
         );
+        OnnxRuntimeCompatibilityAssert.CanCreateSession(
+            model,
+            "deep-export runtime int32 tril mask"
+        );
     }
 
     [Fact]
