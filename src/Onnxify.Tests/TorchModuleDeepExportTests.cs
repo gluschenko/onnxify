@@ -216,6 +216,32 @@ public sealed class TorchModuleDeepExportTests
     }
 
     [Fact]
+    public void DeepExport_ForInt32RuntimeMaskEqualScalar_EmitsInt32ComparisonScalar()
+    {
+        using var module = new DeepExportInt32RuntimeMaskEqualModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>(["batch_size", "seq_len"]),
+            output: OnnxTensorType.Create<bool>(["seq_len", "seq_len"])
+        );
+
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "ConstantOfShape");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Trilu");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Equal");
+        Assert.Contains(
+            model.Graph.Initializers.OfType<OnnxTensor<int>>(),
+            initializer => initializer.Name.StartsWith("eq_", StringComparison.Ordinal)
+                && initializer.Shape.SequenceEqual([])
+                && initializer.Value.SequenceEqual([0])
+        );
+        Assert.DoesNotContain(
+            model.Graph.Initializers.OfType<OnnxTensor<long>>(),
+            initializer => initializer.Name.StartsWith("eq_", StringComparison.Ordinal)
+        );
+    }
+
+    [Fact]
     public void DeepExport_ForRandomTensorFactories_EmitsRandomOperators()
     {
         using var module = new DeepExportRandomFactoryModule();
@@ -1007,6 +1033,25 @@ public sealed class TorchModuleDeepExportTests
                 dtype: _settings.ScalarTypeInt,
                 device: input.device
             );
+        }
+    }
+
+    private sealed class DeepExportInt32RuntimeMaskEqualModule : TorchModule
+    {
+        public DeepExportInt32RuntimeMaskEqualModule()
+            : base(nameof(DeepExportInt32RuntimeMaskEqualModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            var sequenceLength = input.shape[1];
+            var ones = global::TorchSharp.torch.ones(
+                [sequenceLength, sequenceLength],
+                dtype: ScalarType.Int32,
+                device: input.device
+            );
+
+            return ones.tril().eq(0);
         }
     }
 
