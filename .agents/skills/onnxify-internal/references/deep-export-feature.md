@@ -98,6 +98,20 @@ From the ONNXScript exporter plus its tests, extract the smallest high-value C# 
 These C# tests should encode the same semantic expectations, but they must remain idiomatic for this repo.
 Do not mirror Python-specific helper structure, naming style, or language-specific mechanics when those clash with the C# test style or the local export architecture.
 
+Treat the following as the minimum deep-export correctness ladder for any non-trivial converter:
+
+1. read the ONNXScript implementation for the exact Torch op spelling
+2. read the ONNXScript tests for the same op or conversion path
+3. understand the supported semantics, including overloads, default arguments, dtype/rank/shape constraints, and unsupported cases
+4. implement or adjust the C# lowering in `Onnxify.TorchSharp`
+5. assert the emitted ONNX graph structurally, including nodes, attributes, constants, casts, and shape/rank-sensitive wiring
+6. save the emitted model and create a `Microsoft.ML.OnnxRuntime.InferenceSession`, preferably through `OnnxRuntimeCompatibilityAssert`
+7. compare TorchSharp eager output with ONNX Runtime output on deterministic representative inputs whenever the operation can be executed end to end
+
+Do not mark a deep-export converter correct from graph-shape assertions alone.
+Do not skip ONNX Runtime session creation just because the emitted graph serializes or matches the ONNX schema.
+Do not skip TorchSharp-vs-ONNX Runtime numerical parity for executable tensor operators; this is the check that catches silently wrong casts, broadcasts, axes, and constants.
+
 ## 4. Mirror The Conversion In `Onnxify.TorchSharp`
 
 Most direct TorchSharp exports live in:
@@ -177,7 +191,7 @@ This refreshes the generated TorchSharp converter references under:
 Before finishing:
 
 - rerun `src/Onnxify.TorchSharp.Observer` if you want to confirm the new operator now shows coverage
-- run the focused `Onnxify.Tests` coverage you added
+- run the focused `Onnxify.Tests` coverage you added, including structural graph assertions, ONNX Runtime session creation, and TorchSharp-vs-ONNX Runtime output comparison when executable
 - run or add relevant `deep roundtrip tests` when the operator should be complementary with `deep import`
 - inspect the regenerated converter docs if the new exporter should now appear there
 
@@ -188,4 +202,5 @@ Before finishing:
 - Keep the `TorchOp` names aligned with ONNXScript operator names, including overload suffixes when relevant.
 - If the Python version handles more cases than the current C# export layer can support safely, implement the safe subset first and fail clearly for the rest.
 - Use ONNXScript tests to learn the operator contract, then restate that contract as idiomatic `Onnxify.Tests` coverage instead of transliterating Python test code.
+- Treat emitted-graph tests as necessary but insufficient; pair them with `InferenceSession` creation and eager/runtime output parity whenever possible.
 - Prefer adding `deep roundtrip tests` for operators that affect both `deep export` and `deep import`; this is the main guardrail for keeping the two feature paths complementary.

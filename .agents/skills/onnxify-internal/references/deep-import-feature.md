@@ -57,6 +57,22 @@ rg -n "aten::where|aten::sum|aten::conv2d" third_party\onnxscript\onnxscript\fun
 rg -n "Where|ReduceSum|Conv" third_party\onnxscript
 ```
 
+Treat the following as the minimum deep-import correctness ladder for any non-trivial ONNX operator or pattern:
+
+1. read the ONNX schema for the operator or graph pattern
+2. read the ONNXScript lowering for the corresponding Torch op in reverse to identify the canonical ONNX pattern
+3. read the ONNXScript tests that demonstrate the expected semantics
+4. generate TorchSharp module code through the owning `TorchModuleInlineOperator` or `TorchModuleOperator`
+5. compile the generated code and inspect representative generated source snippets only as a local shape check
+6. instantiate and execute the generated TorchSharp module on deterministic inputs when the imported graph is executable
+7. deep-export the generated module back to ONNX
+8. save the round-tripped model and create a `Microsoft.ML.OnnxRuntime.InferenceSession`, preferably through `OnnxRuntimeCompatibilityAssert`
+9. compare original ONNX Runtime output with round-tripped ONNX Runtime output within an explicit tolerance
+
+Do not treat generated-code compilation or source-string assertions as proof of semantic correctness.
+Do not trust a printer change until generated TorchSharp has executed and the round-tripped ONNX has opened in ONNX Runtime.
+For printer work especially, the output contract is runtime behavior, not just pleasing generated C#.
+
 ## 3. Decide Inline Operator Vs Module Operator
 
 ModelGenerator has two TorchModule reconstruction shapes.
@@ -209,7 +225,7 @@ Do not hand-edit generated skill reference pages when the change should come fro
 Before finishing:
 
 - run focused tests, usually `dotnet test src\Onnxify.Tests\Onnxify.Tests.csproj --no-restore --framework net10.0 --filter OnnxModelGeneratorTests`
-- run or add relevant `deep roundtrip tests` when the operator should be complementary with `deep export`
+- run or add relevant `deep roundtrip tests` when the operator should be complementary with `deep export`; those tests should compile generated code, execute generated TorchSharp, deep-export back to ONNX, create an ONNX Runtime session, and compare original-vs-roundtripped runtime outputs
 - build `src\Onnxify.ConsoleTest\Onnxify.ConsoleTest.csproj` when real asset generation might be affected
 - inspect `TORCH_OPERATOR_COVERAGE.md` when coverage reporting was expected to change
 - inspect generated skill docs when AgentSkillGenerator was rerun
@@ -225,6 +241,7 @@ Warnings such as `OMG004` for external tensor data can be expected for large ext
 - For shape, axes, and reduction ops, handle both attribute-style older ONNX forms and input-tensor newer forms when practical.
 - For pooling and convolution, normalize pads, strides, dilations, groups, and ceil behavior explicitly.
 - For comparison and selection ops, verify TorchSharp bool tensor methods through generated-code compilation, not just string assertions.
+- For printer changes, generated source snippets are only smoke checks; require generated-code compilation plus runtime execution or roundtrip parity for semantic claims.
 - For `Cast`, map ONNX `TensorProto.DataType` to TorchSharp `ScalarType` explicitly and fail clearly for unsupported dtypes.
 - For quantized models, expect QDQ nodes and integer zero-point tensors.
 - For real-model failures, fix the general operator path rather than adding model-specific architecture shortcuts.

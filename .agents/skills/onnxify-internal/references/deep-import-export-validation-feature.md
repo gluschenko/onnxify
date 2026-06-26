@@ -230,6 +230,28 @@ Do not mark two exporters equivalent just because both eventually use the same O
 Also compare the C# behavior against the intent visible in the Python tests, not just the raw Python exporter body.
 For `deep import`, do not mark a converter equivalent just because generated code compiles; compare the generated TorchSharp runtime behavior against the ONNX pattern produced by ONNXScript.
 
+Use these minimum evidence ladders when declaring equivalence.
+
+For `deep export`:
+
+1. ONNXScript implementation plus ONNXScript tests were read for the exact op spelling
+2. the C# lowering was traced through all semantic helpers
+3. emitted ONNX was checked structurally
+4. the emitted model created an ONNX Runtime `InferenceSession`
+5. TorchSharp eager output was compared with ONNX Runtime output on deterministic representative inputs when executable
+
+For `deep import`:
+
+1. ONNX schema plus ONNXScript lowering were read in reverse to identify the canonical ONNX pattern
+2. the ModelGenerator converter and any printer helpers were traced through generated source
+3. generated TorchSharp code compiled
+4. generated TorchSharp executed on deterministic representative inputs when executable
+5. the generated module deep-exported back to ONNX
+6. the round-tripped ONNX created an ONNX Runtime `InferenceSession`
+7. original ONNX Runtime output was compared with round-tripped ONNX Runtime output within an explicit tolerance
+
+If any applicable rung is missing, report the result as partial evidence, not as equivalence.
+
 ## 8. Review The Existing C# Unit Tests
 
 After tracing the exporter or importer and comparing it against ONNXScript, inspect the current tests that cover the behavior in:

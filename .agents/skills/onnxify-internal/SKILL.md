@@ -39,7 +39,7 @@ When the task is specifically about TorchSharp operator porting:
 2. Build a shortlist from `Found = yes` and `Coverage = no` rows in `TORCH_OPERATOR_COVERAGE.md`.
 3. Prefer candidates that remove manual ONNX graph work in `src/Onnxify.Examples` or unblock existing model families in the repo.
 4. Then use `references/deep-export-feature.md` to mirror the chosen ONNXScript converters into `Onnxify.TorchSharp`.
-5. Add focused smoke tests in `src/Onnxify.Tests` before moving to the next batch.
+5. Add focused tests in `src/Onnxify.Tests` that cover emitted graph structure, ONNX Runtime session creation, and TorchSharp eager vs ONNX Runtime output parity when executable before moving to the next batch.
 
 When the task is specifically about `Onnxify.ModelGenerator` ONNX-to-TorchModule operator support:
 
@@ -189,5 +189,7 @@ private const long InlineTensorElementThreshold = 20L;
 - If solution or project wiring changed, did you inspect both `src/Onnxify.slnx` and the affected `*.csproj` files?
 - If model I/O changed, did you cover both file and stream surfaces where relevant, including async overloads and `DataLocation` behavior for external data?
 - If deep import/export roundtrip behavior changed, did the tests create an ONNX Runtime `InferenceSession` via `OnnxRuntimeCompatibilityAssert`, not only compare graph structure or generated TorchSharp output?
+- If a deep-export converter changed, did tests compare TorchSharp eager output with ONNX Runtime output on deterministic representative inputs when executable?
+- If a deep-import printer/converter changed, did tests compile generated code, execute generated TorchSharp when executable, deep-export back to ONNX, and compare original-vs-roundtripped ONNX Runtime outputs when possible?
 - If the task changed only playground or sample code, did you avoid implying that production behavior changed too?
 - If the task introduced a new internal workflow, did you document it in the most discoverable place?
