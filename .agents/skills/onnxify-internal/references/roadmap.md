@@ -27,6 +27,39 @@ Examples:
 
 When renaming roadmap files, also update references between roadmap tasks.
 
+## Index File
+
+The `.roadmap` directory must also contain:
+
+```text
+.roadmap/INDEX.md
+```
+
+`INDEX.md` mirrors the metadata from every roadmap task header in the directory.
+
+It must contain a table with these columns:
+
+- `ID`
+- `Title`
+- `Status`
+- `Estimated complexity`
+- `Created`
+- `Last modified`
+
+Template:
+
+```markdown
+# Roadmap Index
+
+| ID | Title | Status | Estimated complexity | Created | Last modified |
+| --- | --- | --- | --- | --- | --- |
+| [OXY-001](OXY-001.md) | Task Title | TODO | 8 human-hours | 2026-06-27 | 2026-06-27 |
+```
+
+The `ID` column must link to the corresponding task file with a relative Markdown link, for example `[OXY-001](OXY-001.md)`.
+
+Update `INDEX.md` whenever a roadmap task is created, renamed, deleted, or when any mirrored header field changes.
+
 ## Required Header
 
 Each roadmap task must start with a level-1 title, followed immediately by a metadata table.
@@ -53,7 +86,7 @@ Allowed status values:
 - `DONE`
 - `REJECTED`
 
-Use ISO dates in `YYYY-MM-DD` format for `Created` and `Last modified`.
+Use strictly formatted dates in `YYYY-MM-DD` format for `Created`, `Last modified`, and worklog entries. Do not use locale-specific formats such as `6/27/2026`, month names, or relative dates such as `today`.
 
 `Estimated complexity` is an approximate implementation cost in conditional human-hours. It is intentionally rough; use it to keep tasks small enough to execute.
 
@@ -99,6 +132,7 @@ Keep entries concise, factual, and useful to the next executor.
 ## Maintenance Rules
 
 - Update `Last modified` whenever the task text changes materially.
+- Update `.roadmap/INDEX.md` whenever mirrored task metadata changes.
 - Keep `Created` stable after the file is created.
 - Move `Status` forward as work progresses.
 - Set `REJECTED` only when the task is intentionally abandoned or superseded.
