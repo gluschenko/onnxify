@@ -2,6 +2,8 @@
 
 - Fixed `nn.Linear` export for rank-3 and higher inputs by explicitly flattening leading dimensions before `MatMul` and restoring them afterwards, avoiding ONNX Runtime extended-optimizer `Gemm` fusion failures on transformer activations such as `[batch, sequence, hidden]`.
 - Fixed deep export of `torch.matmul(...)` calls whose operands include imported TorchSharp `Parameter` fields, materializing those parameters as ONNX initializers so deep-imported `MatMul` graphs can round-trip back through ONNX Runtime.
+- Fixed signed integer `bitwise_right_shift` export so the arithmetic-shift sign mask uses unsigned `BitShift` inputs accepted by ONNX Runtime.
+- Added ONNX Runtime regression coverage for TorchSharp bitwise and bit-shift exporters across integer, boolean, tensor/scalar, and signed arithmetic-shift cases.
 
 ## 0.3.6
 
