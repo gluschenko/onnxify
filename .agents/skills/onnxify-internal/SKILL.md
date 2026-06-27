@@ -11,6 +11,7 @@ Use this skill for repository maintenance, contributor-facing docs, build/test w
 
 Read [references/repo-map.md](references/repo-map.md) when you need a quick reminder of which project owns which responsibility in `src/`.
 Read [references/glossary.md](references/glossary.md) when you need the internal terms or code names used for Onnxify feature work and architecture discussions.
+Read [references/roadmap.md](references/roadmap.md) when creating, editing, renaming, or executing tasks under `.roadmap`.
 Read [references/generated-artifacts.md](references/generated-artifacts.md) when the task touches generated files, skill docs, protobuf outputs, or build artifacts.
 Read [references/finding-torchsharp-porting-candidates.md](references/finding-torchsharp-porting-candidates.md) when you need to identify the highest-value missing `Onnxify.TorchSharp` operators before starting a port.
 Read [references/deep-export-feature.md](references/deep-export-feature.md) when you need to port a Python-side ONNXScript Torch conversion into `Onnxify.TorchSharp`.
