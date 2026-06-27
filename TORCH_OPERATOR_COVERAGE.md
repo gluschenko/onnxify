@@ -18,11 +18,11 @@
 
 | ONNXScript operator | TorchSharp module | Found | Onnxify.TorchSharp coverage | Onnxify.ModelGenerator coverage | Deep export support | Deep import support | Onnxify.Tests tests |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `_operator::__lshift__` | `TorchSharp.torch+Tensor.bitwise_left_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
-| `_operator::__rshift__` | `TorchSharp.torch+Tensor.bitwise_right_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 7 |
+| `_operator::__lshift__` | `TorchSharp.torch+Tensor.bitwise_left_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 8 |
+| `_operator::__rshift__` | `TorchSharp.torch+Tensor.bitwise_right_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 9 |
 | `_operator::abs` | `TorchSharp.torch+Tensor.abs` | ✅ | ✅ | ✅ | ✅ | ✅ | 2 |
 | `_operator::add` | `TorchSharp.torch+Tensor.add` | ✅ | ✅ | ✅ | ✅ | ✅ | 13 |
-| `_operator::and_` | `TorchSharp.torch+Tensor.bitwise_and` | ✅ | ✅ | ✅ | ✅ | ✅ | 85 |
+| `_operator::and_` | `TorchSharp.torch+Tensor.bitwise_and` | ✅ | ✅ | ✅ | ✅ | ✅ | 87 |
 | `_operator::eq` | `TorchSharp.torch+Tensor.eq` | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
 | `_operator::floordiv` | `TorchSharp.torch+Tensor.floor_divide` | ✅ | ✅ | ✅ | ✅ | ✅ | 4 |
 | `_operator::ge` | `TorchSharp.torch+Tensor.ge` | ✅ | ✅ | ✅ | ✅ | ✅ | 7 |
@@ -34,12 +34,12 @@
 | `_operator::mul` | `TorchSharp.torch+Tensor.mul` | ✅ | ✅ | ✅ | ✅ | ✅ | 16 |
 | `_operator::ne` | `TorchSharp.torch+Tensor.ne` | ✅ | ✅ | ✅ | ✅ | ✅ | 32 |
 | `_operator::neg` | `TorchSharp.torch+Tensor.neg` | ✅ | ✅ | ✅ | ✅ | ✅ | 2 |
-| `_operator::or_` | `TorchSharp.torch+Tensor.bitwise_or` | ✅ | ✅ | ✅ | ✅ | ✅ | 8 |
+| `_operator::or_` | `TorchSharp.torch+Tensor.bitwise_or` | ✅ | ✅ | ✅ | ✅ | ✅ | 10 |
 | `_operator::pow` | `TorchSharp.torch+Tensor.pow` | ✅ | ✅ | ✅ | ✅ | ✅ | 4 |
 | `_operator::sub` | `TorchSharp.torch+Tensor.sub` | ✅ | ✅ | ✅ | ✅ | ✅ | 3 |
 | `_operator::truediv` | `TorchSharp.torch+Tensor.true_divide` | ✅ | ✅ | ✅ | ✅ | ✅ | 5 |
-| `aten::__lshift__.Scalar` | `TorchSharp.torch+Tensor.bitwise_left_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
-| `aten::__rshift__.Scalar` | `TorchSharp.torch+Tensor.bitwise_right_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 7 |
+| `aten::__lshift__.Scalar` | `TorchSharp.torch+Tensor.bitwise_left_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 8 |
+| `aten::__rshift__.Scalar` | `TorchSharp.torch+Tensor.bitwise_right_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 9 |
 | `aten::_conj` | `TorchSharp.torch+Tensor.conj` | ✅ | ✅ | ❌ | ✅ | ❌ | 1 |
 | `aten::_embedding_bag` | `TorchSharp.Modules.EmbeddingBag` | ✅ | ❌ | ❌ | ❌ | ❌ | 0 |
 | `aten::_embedding_bag_forward_only` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 6 |
@@ -56,7 +56,7 @@
 | `aten::_prelu_kernel` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 0 |
 | `aten::_scaled_dot_product_efficient_attention` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 2 |
 | `aten::_scaled_dot_product_flash_attention` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 2 |
-| `aten::_scaled_dot_product_flash_attention_for_cpu` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 86 |
+| `aten::_scaled_dot_product_flash_attention_for_cpu` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 88 |
 | `aten::_softmax` | `TorchSharp.Modules.Softmax` | ✅ | ✅ | ✅ | ✅ | ✅ | 0 |
 | `aten::_to_copy` | `TorchSharp.ModuleExtensionMethods.to` | ✅ | ✅ | ✅ | ✅ | ✅ | 62 |
 | `aten::_unique` | `TorchSharp.torch+Tensor.unique` | ✅ | ❌ | ❌ | ❌ | ❌ | 0 |
@@ -112,22 +112,22 @@
 | `aten::bernoulli` | `TorchSharp.torch+Tensor.bernoulli` | ✅ | ✅ | ❌ | ✅ | ❌ | 2 |
 | `aten::bernoulli.p` | `TorchSharp.torch+Tensor.bernoulli` | ✅ | ✅ | ❌ | ✅ | ❌ | 2 |
 | `aten::bilinear` | `TorchSharp.Modules.Bilinear` | ✅ | ❌ | ❌ | ❌ | ❌ | 1 |
-| `aten::bitwise_and.Scalar` | `TorchSharp.torch+Tensor.bitwise_and` | ✅ | ✅ | ✅ | ✅ | ✅ | 84 |
-| `aten::bitwise_and.Scalar_Tensor` | `TorchSharp.torch+Tensor.bitwise_and` | ✅ | ✅ | ✅ | ✅ | ✅ | 84 |
-| `aten::bitwise_and.Tensor` | `TorchSharp.torch+Tensor.bitwise_and` | ✅ | ✅ | ✅ | ✅ | ✅ | 85 |
-| `aten::bitwise_left_shift.Scalar_Tensor` | `TorchSharp.torch+Tensor.bitwise_left_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
-| `aten::bitwise_left_shift.Tensor` | `TorchSharp.torch+Tensor.bitwise_left_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
-| `aten::bitwise_left_shift.Tensor_Scalar` | `TorchSharp.torch+Tensor.bitwise_left_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
-| `aten::bitwise_not` | `TorchSharp.torch+Tensor.bitwise_not` | ✅ | ✅ | ✅ | ✅ | ✅ | 16 |
-| `aten::bitwise_or.Scalar` | `TorchSharp.torch+Tensor.bitwise_or` | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
-| `aten::bitwise_or.Scalar_Tensor` | `TorchSharp.torch+Tensor.bitwise_or` | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
-| `aten::bitwise_or.Tensor` | `TorchSharp.torch+Tensor.bitwise_or` | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
-| `aten::bitwise_right_shift.Scalar_Tensor` | `TorchSharp.torch+Tensor.bitwise_right_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 7 |
-| `aten::bitwise_right_shift.Tensor` | `TorchSharp.torch+Tensor.bitwise_right_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 7 |
-| `aten::bitwise_right_shift.Tensor_Scalar` | `TorchSharp.torch+Tensor.bitwise_right_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 7 |
-| `aten::bitwise_xor.Scalar` | `TorchSharp.torch+Tensor.bitwise_xor` | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
-| `aten::bitwise_xor.Scalar_Tensor` | `TorchSharp.torch+Tensor.bitwise_xor` | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
-| `aten::bitwise_xor.Tensor` | `TorchSharp.torch+Tensor.bitwise_xor` | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
+| `aten::bitwise_and.Scalar` | `TorchSharp.torch+Tensor.bitwise_and` | ✅ | ✅ | ✅ | ✅ | ✅ | 86 |
+| `aten::bitwise_and.Scalar_Tensor` | `TorchSharp.torch+Tensor.bitwise_and` | ✅ | ✅ | ✅ | ✅ | ✅ | 86 |
+| `aten::bitwise_and.Tensor` | `TorchSharp.torch+Tensor.bitwise_and` | ✅ | ✅ | ✅ | ✅ | ✅ | 87 |
+| `aten::bitwise_left_shift.Scalar_Tensor` | `TorchSharp.torch+Tensor.bitwise_left_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 8 |
+| `aten::bitwise_left_shift.Tensor` | `TorchSharp.torch+Tensor.bitwise_left_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 8 |
+| `aten::bitwise_left_shift.Tensor_Scalar` | `TorchSharp.torch+Tensor.bitwise_left_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 8 |
+| `aten::bitwise_not` | `TorchSharp.torch+Tensor.bitwise_not` | ✅ | ✅ | ✅ | ✅ | ✅ | 18 |
+| `aten::bitwise_or.Scalar` | `TorchSharp.torch+Tensor.bitwise_or` | ✅ | ✅ | ✅ | ✅ | ✅ | 8 |
+| `aten::bitwise_or.Scalar_Tensor` | `TorchSharp.torch+Tensor.bitwise_or` | ✅ | ✅ | ✅ | ✅ | ✅ | 8 |
+| `aten::bitwise_or.Tensor` | `TorchSharp.torch+Tensor.bitwise_or` | ✅ | ✅ | ✅ | ✅ | ✅ | 8 |
+| `aten::bitwise_right_shift.Scalar_Tensor` | `TorchSharp.torch+Tensor.bitwise_right_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 9 |
+| `aten::bitwise_right_shift.Tensor` | `TorchSharp.torch+Tensor.bitwise_right_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 9 |
+| `aten::bitwise_right_shift.Tensor_Scalar` | `TorchSharp.torch+Tensor.bitwise_right_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 9 |
+| `aten::bitwise_xor.Scalar` | `TorchSharp.torch+Tensor.bitwise_xor` | ✅ | ✅ | ✅ | ✅ | ✅ | 8 |
+| `aten::bitwise_xor.Scalar_Tensor` | `TorchSharp.torch+Tensor.bitwise_xor` | ✅ | ✅ | ✅ | ✅ | ✅ | 8 |
+| `aten::bitwise_xor.Tensor` | `TorchSharp.torch+Tensor.bitwise_xor` | ✅ | ✅ | ✅ | ✅ | ✅ | 8 |
 | `aten::blackman_window` | `TorchSharp.torch.blackman_window` | ✅ | ✅ | ❌ | ✅ | ❌ | 2 |
 | `aten::bmm` | `TorchSharp.torch+Tensor.bmm` | ✅ | ✅ | ✅ | ✅ | ✅ | 7 |
 | `aten::broadcast_to` | `TorchSharp.torch+Tensor.broadcast_to` | ✅ | ✅ | ✅ | ✅ | ✅ | 15 |
@@ -217,7 +217,7 @@
 | `aten::grid_sampler` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 0 |
 | `aten::grid_sampler_2d` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 0 |
 | `aten::group_norm` | `TorchSharp.Modules.GroupNorm` | ✅ | ✅ | ✅ | ✅ | ✅ | 7 |
-| `aten::gru.input` | `TorchSharp.Modules.GRU` | ✅ | ✅ | ✅ | ✅ | ✅ | 23 |
+| `aten::gru.input` | `TorchSharp.Modules.GRU` | ✅ | ✅ | ✅ | ✅ | ✅ | 25 |
 | `aten::gt.Scalar` | `TorchSharp.torch+Tensor.gt` | ✅ | ✅ | ✅ | ✅ | ✅ | 1 |
 | `aten::gt.Tensor` | `TorchSharp.torch+Tensor.gt` | ✅ | ✅ | ✅ | ✅ | ✅ | 2 |
 | `aten::hamming_window` | `TorchSharp.torch.hamming_window` | ✅ | ✅ | ❌ | ✅ | ❌ | 2 |
@@ -264,13 +264,13 @@
 | `aten::logaddexp2` | `TorchSharp.torch+Tensor.logaddexp2` | ✅ | ✅ | ❌ | ✅ | ❌ | 3 |
 | `aten::logcumsumexp` | `TorchSharp.torch+Tensor.logcumsumexp` | ✅ | ✅ | ❌ | ✅ | ❌ | 2 |
 | `aten::logdet` | `TorchSharp.torch+Tensor.logdet` | ✅ | ✅ | ❌ | ✅ | ❌ | 2 |
-| `aten::logical_and` | `TorchSharp.torch+Tensor.logical_and` | ✅ | ✅ | ✅ | ✅ | ✅ | 80 |
+| `aten::logical_and` | `TorchSharp.torch+Tensor.logical_and` | ✅ | ✅ | ✅ | ✅ | ✅ | 81 |
 | `aten::logical_not` | `TorchSharp.torch+Tensor.logical_not` | ✅ | ✅ | ✅ | ✅ | ✅ | 14 |
 | `aten::logical_or` | `TorchSharp.torch+Tensor.logical_or` | ✅ | ✅ | ✅ | ✅ | ✅ | 5 |
 | `aten::logical_xor` | `TorchSharp.torch+Tensor.logical_xor` | ✅ | ✅ | ✅ | ✅ | ✅ | 4 |
 | `aten::logit` | `TorchSharp.torch+Tensor.logit` | ✅ | ✅ | ❌ | ✅ | ❌ | 4 |
 | `aten::logsumexp` | `TorchSharp.torch+Tensor.logsumexp` | ✅ | ✅ | ❌ | ✅ | ❌ | 3 |
-| `aten::lstm.input` | `TorchSharp.Modules.LSTM` | ✅ | ✅ | ✅ | ✅ | ✅ | 26 |
+| `aten::lstm.input` | `TorchSharp.Modules.LSTM` | ✅ | ✅ | ✅ | ✅ | ✅ | 28 |
 | `aten::lt.Scalar` | `TorchSharp.torch+Tensor.lt` | ✅ | ✅ | ✅ | ✅ | ✅ | 3 |
 | `aten::lt.Tensor` | `TorchSharp.torch+Tensor.lt` | ✅ | ✅ | ✅ | ✅ | ✅ | 4 |
 | `aten::mH` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 0 |
@@ -337,8 +337,8 @@
 | `aten::prod` | `TorchSharp.torch+Tensor.prod` | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
 | `aten::prod.dim_int` | `TorchSharp.torch+Tensor.prod` | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
 | `aten::rad2deg` | `TorchSharp.torch+Tensor.rad2deg` | ✅ | ✅ | ❌ | ✅ | ❌ | 3 |
-| `aten::rand` | `TorchSharp.torch.rand` | ✅ | ✅ | ❌ | ✅ | ❌ | 12 |
-| `aten::rand_like` | `TorchSharp.torch+Tensor.rand_like` | ✅ | ✅ | ❌ | ✅ | ❌ | 14 |
+| `aten::rand` | `TorchSharp.torch.rand` | ✅ | ✅ | ❌ | ✅ | ❌ | 13 |
+| `aten::rand_like` | `TorchSharp.torch+Tensor.rand_like` | ✅ | ✅ | ❌ | ✅ | ❌ | 15 |
 | `aten::randint` | `TorchSharp.torch.randint` | ✅ | ✅ | ❌ | ✅ | ❌ | 3 |
 | `aten::randint.low` | `TorchSharp.torch.randint` | ✅ | ✅ | ❌ | ✅ | ❌ | 3 |
 | `aten::randint_like` | `TorchSharp.torch+Tensor.randint_like` | ✅ | ✅ | ❌ | ✅ | ❌ | 5 |
@@ -377,7 +377,7 @@
 | `aten::select_scatter` | `TorchSharp.torch+Tensor.select_scatter` | ✅ | ❌ | ❌ | ❌ | ❌ | 8 |
 | `aten::selu` | `TorchSharp.Modules.SELU` | ✅ | ✅ | ✅ | ✅ | ✅ | 0 |
 | `aten::sigmoid` | `TorchSharp.Modules.Sigmoid` | ✅ | ✅ | ✅ | ✅ | ✅ | 1 |
-| `aten::sign` | `TorchSharp.torch+Tensor.sign` | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
+| `aten::sign` | `TorchSharp.torch+Tensor.sign` | ✅ | ✅ | ✅ | ✅ | ✅ | 7 |
 | `aten::signbit` | `TorchSharp.torch+Tensor.signbit` | ✅ | ✅ | ❌ | ✅ | ❌ | 3 |
 | `aten::silu` | `TorchSharp.Modules.SiLU` | ✅ | ✅ | ❌ | ✅ | ❌ | 0 |
 | `aten::sin` | `TorchSharp.torch+Tensor.sin` | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
@@ -414,7 +414,7 @@
 | `aten::t` | `TorchSharp.torch+Tensor.t` | ✅ | ✅ | ✅ | ✅ | ✅ | 1 |
 | `aten::tan` | `TorchSharp.torch+Tensor.tan` | ✅ | ✅ | ✅ | ✅ | ✅ | 4 |
 | `aten::tanh` | `TorchSharp.Modules.Tanh` | ✅ | ✅ | ✅ | ✅ | ✅ | 2 |
-| `aten::tensor.bool` | `TorchSharp.torch+TensorIndex.Tensor` | ✅ | ✅ | ❌ | ✅ | ❌ | 54 |
+| `aten::tensor.bool` | `TorchSharp.torch+TensorIndex.Tensor` | ✅ | ✅ | ❌ | ✅ | ❌ | 55 |
 | `aten::tensor.float` | `TorchSharp.torch+TensorIndex.Tensor` | ✅ | ✅ | ❌ | ✅ | ❌ | 55 |
 | `aten::tensor.int` | `TorchSharp.torch+TensorIndex.Tensor` | ✅ | ✅ | ❌ | ✅ | ❌ | 50 |
 | `aten::tile` | `TorchSharp.torch+Tensor.tile` | ✅ | ✅ | ✅ | ✅ | ✅ | 2 |
