@@ -47,11 +47,13 @@ internal static partial class Program
         {
             OperatorNames = ["_operator::__lshift__", "aten::__lshift__.Scalar"],
             TorchSharpAliases = ["bitwise_left_shift", "left_shift"],
+            DeepImportOnnxOps = ["BitShift"],
         },
         new()
         {
             OperatorNames = ["_operator::__rshift__", "aten::__rshift__.Scalar"],
             TorchSharpAliases = ["bitwise_right_shift", "right_shift"],
+            DeepImportOnnxOps = ["BitShift"],
         },
         new()
         {
@@ -133,6 +135,7 @@ internal static partial class Program
         {
             OperatorNames = ["_operator::floordiv"],
             TorchSharpAliases = ["floor_divide"],
+            DeepImportOnnxOps = ["Div", "Floor", "Sign", "Equal", "Not", "Mod", "Cast", "And", "Sub"],
         },
         new()
         {
@@ -144,6 +147,7 @@ internal static partial class Program
         {
             OperatorNames = ["aten::_to_copy"],
             TorchSharpAliases = ["to", "to_type", "type_as"],
+            DeepImportOnnxOps = ["Cast"],
         },
         new()
         {
@@ -199,6 +203,11 @@ internal static partial class Program
         new() { NormalizedNames = ["atanh"], DeepImportOnnxOps = ["Atanh"] },
         new() { NormalizedNames = ["ceil"], DeepImportOnnxOps = ["Ceil"] },
         new() { NormalizedNames = ["cat", "concat", "concatenate"], DeepImportOnnxOps = ["Concat"] },
+        new() { NormalizedNames = ["celu"], DeepImportOnnxOps = ["Celu"] },
+        new() { NormalizedNames = ["clamp"], OperatorNameContains = ["clamp"], DeepImportOnnxOps = ["Clip"] },
+        new() { NormalizedNames = ["clampmax"], OperatorNameContains = ["clamp_max"], DeepImportOnnxOps = ["Min"] },
+        new() { NormalizedNames = ["clampmin"], OperatorNameContains = ["clamp_min"], DeepImportOnnxOps = ["Max"] },
+        new() { NormalizedNames = ["clone", "contiguous", "detach", "alias"], DeepImportOnnxOps = ["Identity"] },
         new() { NormalizedNames = ["cos"], DeepImportOnnxOps = ["Cos"] },
         new() { NormalizedNames = ["cosh"], DeepImportOnnxOps = ["Cosh"] },
         new() { NormalizedNames = ["cumsum"], DeepImportOnnxOps = ["CumSum"] },
@@ -210,7 +219,10 @@ internal static partial class Program
         new() { NormalizedNames = ["erf", "specialerf"], DeepImportOnnxOps = ["Erf"] },
         new() { NormalizedNames = ["exp"], DeepImportOnnxOps = ["Exp"] },
         new() { NormalizedNames = ["expand"], DeepImportOnnxOps = ["Expand"] },
+        new() { NormalizedNames = ["expandas", "broadcastto"], DeepImportOnnxOps = ["Expand"] },
+        new() { NormalizedPrefixes = ["flatten"], DeepImportOnnxOps = ["Flatten"] },
         new() { NormalizedNames = ["floor"], DeepImportOnnxOps = ["Floor"] },
+        new() { NormalizedNames = ["floordiv", "floordivide"], DeepImportOnnxOps = ["Div", "Floor", "Sign", "Equal", "Not", "Mod", "Cast", "And", "Sub"] },
         new() { NormalizedNames = ["gather"], DeepImportOnnxOps = ["Gather"] },
         new() { NormalizedNames = ["gatherelements"], DeepImportOnnxOps = ["GatherElements"] },
         new() { NormalizedNames = ["ge", "greaterequal"], DeepImportOnnxOps = ["GreaterOrEqual"] },
@@ -227,12 +239,19 @@ internal static partial class Program
         new() { NormalizedNames = ["leakyrelu"], DeepImportOnnxOps = ["LeakyRelu"] },
         new() { NormalizedNames = ["log"], DeepImportOnnxOps = ["Log"] },
         new() { NormalizedNames = ["logsoftmax", "speciallogsoftmax"], DeepImportOnnxOps = ["LogSoftmax"] },
+        new() { NormalizedNames = ["logicaland"], DeepImportOnnxOps = ["And"] },
+        new() { NormalizedNames = ["logicalnot"], DeepImportOnnxOps = ["Not"] },
+        new() { NormalizedNames = ["logicalor"], DeepImportOnnxOps = ["Or"] },
+        new() { NormalizedNames = ["logicalxor"], DeepImportOnnxOps = ["Xor"] },
         new() { NormalizedNames = ["lstm"], DeepImportOnnxOps = ["LSTM"] },
         new() { NormalizedNames = ["lt", "less"], DeepImportOnnxOps = ["Less"] },
-        new() { NormalizedNames = ["matmul", "bmm", "mm"], TestAliases = ["mm", "bmm"], DeepImportOnnxOps = ["MatMul"] },
-        new() { NormalizedNames = ["max"], DeepImportOnnxOps = ["Max"] },
+        new() { NormalizedNames = ["matmul", "bmm", "mm", "mv", "dot"], TestAliases = ["mm", "bmm"], DeepImportOnnxOps = ["MatMul"] },
+        new() { NormalizedNames = ["addmm"], DeepImportOnnxOps = ["Gemm"] },
+        new() { NormalizedNames = ["max", "maximum"], DeepImportOnnxOps = ["Max"] },
+        new() { NormalizedNames = ["amax"], DeepImportOnnxOps = ["ReduceMax"] },
         new() { NormalizedNames = ["mean"], DeepImportOnnxOps = ["ReduceMean"] },
-        new() { NormalizedNames = ["min"], DeepImportOnnxOps = ["Min"] },
+        new() { NormalizedNames = ["min", "minimum"], DeepImportOnnxOps = ["Min"] },
+        new() { NormalizedNames = ["amin"], DeepImportOnnxOps = ["ReduceMin"] },
         new() { NormalizedNames = ["mish"], DeepImportOnnxOps = ["Mish"] },
         new() { NormalizedNames = ["mod", "remainder", "fmod"], DeepImportOnnxOps = ["Mod"] },
         new() { NormalizedNames = ["mul", "multiply"], DeepImportOnnxOps = ["Mul"] },
@@ -263,12 +282,22 @@ internal static partial class Program
         new() { NormalizedNames = ["sum"], DeepImportOnnxOps = ["ReduceSum"] },
         new() { NormalizedNames = ["tan"], DeepImportOnnxOps = ["Tan"] },
         new() { NormalizedNames = ["tanh"], DeepImportOnnxOps = ["Tanh"] },
+        new() { NormalizedNames = ["t"], DeepImportOnnxOps = ["Transpose"] },
         new() { NormalizedNames = ["tile"], DeepImportOnnxOps = ["Tile"] },
         new() { NormalizedNames = ["topk"], DeepImportOnnxOps = ["TopK"] },
         new() { NormalizedNames = ["transpose", "permute"], DeepImportOnnxOps = ["Transpose"] },
         new() { NormalizedNames = ["tril", "triu"], DeepImportOnnxOps = ["Trilu"] },
+        new() { NormalizedNames = ["truedivide"], DeepImportOnnxOps = ["Div"] },
+        new() { NormalizedNames = ["typeas"], DeepImportOnnxOps = ["CastLike"] },
         new() { NormalizedNames = ["unsqueeze"], DeepImportOnnxOps = ["Unsqueeze"] },
+        new() { NormalizedNames = ["viewas"], DeepImportOnnxOps = ["Reshape"] },
         new() { NormalizedNames = ["where"], DeepImportOnnxOps = ["Where"] },
+        new() { NormalizedNames = ["bitwisenot"], DeepImportOnnxOps = ["BitwiseNot"] },
+        new() { NormalizedNames = ["bitwiseand"], DeepImportOnnxOps = ["BitwiseAnd"] },
+        new() { NormalizedNames = ["bitwiseor"], DeepImportOnnxOps = ["BitwiseOr"] },
+        new() { NormalizedNames = ["bitwisexor"], DeepImportOnnxOps = ["BitwiseXor"] },
+        new() { NormalizedNames = ["bitwiseleftshift"], DeepImportOnnxOps = ["BitShift"] },
+        new() { NormalizedNames = ["bitwiserightshift"], DeepImportOnnxOps = ["BitShift"] },
         new() { TorchSharpPathContains = ["Conv"], DeepImportOnnxOps = ["Conv"] },
         new() { TorchSharpPathContains = ["BatchNorm"], DeepImportOnnxOps = ["BatchNormalization"] },
         new() { NormalizedNames = ["linear"], TorchSharpPathContains = ["Linear"], DeepImportOnnxOps = ["Gemm"] },
@@ -635,10 +664,13 @@ internal static partial class Program
     {
         string normalizedOperator = NormalizeOperatorName(op.Name, op.SourceModule);
         TorchSharpCandidate? match = FindTorchSharpCandidate(op, normalizedOperator, candidates);
-        var modelGeneratorCovered =
-            modelGeneratorCoveredOperators.Contains(op.Name) ||
-            modelGeneratorCoveredOperators.Contains(normalizedOperator) ||
-            (match is not null && modelGeneratorCoveredOperators.Contains(match.NormalizedName));
+        var deepImportSupported = IsDeepImportSupported(op, normalizedOperator, match, deepImportSupportedOnnxOps);
+        var modelGeneratorCovered = IsModelGeneratorCovered(
+            op,
+            normalizedOperator,
+            match,
+            modelGeneratorCoveredOperators,
+            deepImportSupported);
 
         return new ReportRow(
             op.Name,
@@ -647,8 +679,24 @@ internal static partial class Program
             torchSharpCoveredOperators.Contains(op.Name),
             IsDeepExportSupported(op, torchSharpCoveredOperators),
             modelGeneratorCovered,
-            IsDeepImportSupported(op, normalizedOperator, match, deepImportSupportedOnnxOps),
+            deepImportSupported,
             CountCoveringTests(op, normalizedOperator, match, testMethods));
+    }
+
+    private static bool IsModelGeneratorCovered(
+        OperatorRecord op,
+        string normalizedOperator,
+        TorchSharpCandidate? match,
+        IReadOnlySet<string> modelGeneratorCoveredOperators,
+        bool deepImportSupported
+    )
+    {
+        return deepImportSupported
+            || modelGeneratorCoveredOperators.Contains(op.Name)
+            || modelGeneratorCoveredOperators.Contains(normalizedOperator)
+            || GetTorchSharpAliases(op.Name, normalizedOperator).Any(modelGeneratorCoveredOperators.Contains)
+            || GetExpectedDeepImportOnnxOps(op, normalizedOperator, match).Any(modelGeneratorCoveredOperators.Contains)
+            || (match is not null && modelGeneratorCoveredOperators.Contains(match.NormalizedName));
     }
 
     private static bool IsDeepExportSupported(
@@ -1022,7 +1070,7 @@ internal static partial class Program
         builder.AppendLine();
         builder.AppendLine("* `Found` means the observer found a likely matching public TorchSharp API or module for the ONNXScript Torch operator name. This is a discovery signal, not an Onnxify implementation guarantee.");
         builder.AppendLine("* `Onnxify.TorchSharp coverage` means `Onnxify.TorchSharp` declares exporter support for that Torch operator through `[TorchOp(...)]`, so TorchSharp code can be exported to ONNX through that converter path.");
-        builder.AppendLine("* `Onnxify.ModelGenerator coverage` means `Onnxify.ModelGenerator` declares reverse TorchModule reconstruction support through `[TorchSharpOp(...)]` for the matched TorchSharp API/module name or operator name, so an ONNX graph pattern can be regenerated as a TorchSharp module for that family.");
+        builder.AppendLine("* `Onnxify.ModelGenerator coverage` means `Onnxify.ModelGenerator` declares reverse TorchModule reconstruction support through `[TorchSharpOp(...)]` or the shared canonical ONNX mapping resolves to actual deep-import registry support for that operator family.");
         builder.AppendLine("* `Deep export support` means the exact ONNXScript Torch operator is registered in the actual `Onnxify.TorchSharp` deep-export coverage set through `[TorchOp(...)]`.");
         builder.AppendLine("* `Deep import support` means the observer can map the ONNXScript Torch operator to expected ONNX `OpType` nodes and every mapped `OpType` is registered in the actual `Onnxify.ModelGenerator` TorchModule deep-import registries.");
         builder.AppendLine("* `Onnxify.Tests tests` is the number of `[Fact]` / `[Theory]` test methods in `src/Onnxify.Tests` whose name or body mentions the ONNXScript operator, normalized TorchSharp API name, or a known operator alias.");

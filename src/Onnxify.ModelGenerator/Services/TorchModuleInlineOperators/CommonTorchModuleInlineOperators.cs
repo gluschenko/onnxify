@@ -807,6 +807,21 @@ internal sealed class BitwiseXorTorchModuleInlineOperator : TorchModuleInlineOpe
     internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values) => $"BitwiseXorTensor({Input(node, values, 0)}, {Input(node, values, 1)})";
 }
 
+[TorchSharpOp("BitShift")]
+internal sealed class BitShiftTorchModuleInlineOperator : TorchModuleInlineOperator
+{
+    internal override string OnnxOpType => "BitShift";
+
+    internal override string Emit(TorchNodeSpecification node, IReadOnlyDictionary<string, string> values)
+    {
+        var method = string.Equals(GetStringAttribute(node, "direction", "RIGHT"), "LEFT", StringComparison.OrdinalIgnoreCase)
+            ? "bitwise_left_shift"
+            : "bitwise_right_shift";
+
+        return $"{Input(node, values, 0)}.{method}({Input(node, values, 1)})";
+    }
+}
+
 internal sealed class ConstantTorchModuleInlineOperator : TorchModuleInlineOperator
 {
     internal override string OnnxOpType => "Constant";

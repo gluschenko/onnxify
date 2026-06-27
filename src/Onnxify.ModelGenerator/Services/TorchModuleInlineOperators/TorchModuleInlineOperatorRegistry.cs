@@ -118,6 +118,7 @@ internal static class TorchModuleInlineOperatorRegistry
         Add(new BitwiseAndTorchModuleInlineOperator());
         Add(new BitwiseOrTorchModuleInlineOperator());
         Add(new BitwiseXorTorchModuleInlineOperator());
+        Add(new BitShiftTorchModuleInlineOperator());
         Add(new ConstantTorchModuleInlineOperator());
         Add(new QuantizeLinearTorchModuleInlineOperator());
         Add(new DequantizeLinearTorchModuleInlineOperator());
