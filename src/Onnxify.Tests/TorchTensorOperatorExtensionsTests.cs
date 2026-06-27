@@ -198,6 +198,76 @@ public sealed class TorchTensorOperatorExtensionsTests
     }
 
     [Fact]
+    public void ExportBitwiseOperators_RunOnnxRuntimeForIntegerAndBoolInputs()
+    {
+        var intModel = CreateModel();
+        var left = intModel.Graph.AddInput("left", OnnxTensorType.Create<long>([4L]));
+        var right = intModel.Graph.AddInput("right", OnnxTensorType.Create<long>([4L]));
+
+        AddLongOutput(intModel, "not", intModel.Graph.ExportBitwiseNot(left), 4);
+        AddLongOutput(intModel, "and_tensor", intModel.Graph.ExportBitwiseAnd(left, right), 4);
+        AddLongOutput(intModel, "and_scalar", intModel.Graph.ExportBitwiseAnd(left, 3d), 4);
+        AddLongOutput(intModel, "and_scalar_tensor", intModel.Graph.ExportBitwiseAnd(7d, right), 4);
+        AddLongOutput(intModel, "or_tensor", intModel.Graph.ExportBitwiseOr(left, right), 4);
+        AddLongOutput(intModel, "or_scalar", intModel.Graph.ExportBitwiseOr(left, 3d), 4);
+        AddLongOutput(intModel, "or_scalar_tensor", intModel.Graph.ExportBitwiseOr(7d, right), 4);
+        AddLongOutput(intModel, "xor_tensor", intModel.Graph.ExportBitwiseXor(left, right), 4);
+        AddLongOutput(intModel, "xor_scalar", intModel.Graph.ExportBitwiseXor(left, 3d), 4);
+        AddLongOutput(intModel, "xor_scalar_tensor", intModel.Graph.ExportBitwiseXor(7d, right), 4);
+
+        var intResults = RunModel<long>(
+            intModel,
+            [
+                NamedOnnxValue.CreateFromTensor("left", new DenseTensor<long>(new[] { 6L, 5L, -3L, 0L }, new[] { 4 })),
+                NamedOnnxValue.CreateFromTensor("right", new DenseTensor<long>(new[] { 3L, 12L, 1L, -1L }, new[] { 4 })),
+            ]);
+
+        AssertTensorValues(intResults["not"], [-7L, -6L, 2L, -1L], 4);
+        AssertTensorValues(intResults["and_tensor"], [2L, 4L, 1L, 0L], 4);
+        AssertTensorValues(intResults["and_scalar"], [2L, 1L, 1L, 0L], 4);
+        AssertTensorValues(intResults["and_scalar_tensor"], [3L, 4L, 1L, 7L], 4);
+        AssertTensorValues(intResults["or_tensor"], [7L, 13L, -3L, -1L], 4);
+        AssertTensorValues(intResults["or_scalar"], [7L, 7L, -1L, 3L], 4);
+        AssertTensorValues(intResults["or_scalar_tensor"], [7L, 15L, 7L, -1L], 4);
+        AssertTensorValues(intResults["xor_tensor"], [5L, 9L, -4L, -1L], 4);
+        AssertTensorValues(intResults["xor_scalar"], [5L, 6L, -2L, 3L], 4);
+        AssertTensorValues(intResults["xor_scalar_tensor"], [4L, 11L, 6L, -8L], 4);
+
+        var boolModel = CreateModel();
+        var boolLeft = boolModel.Graph.AddInput("bool_left", OnnxTensorType.Create<bool>([4L]));
+        var boolRight = boolModel.Graph.AddInput("bool_right", OnnxTensorType.Create<bool>([4L]));
+
+        AddBoolOutput(boolModel, "not", boolModel.Graph.ExportBitwiseNot(boolLeft), 4);
+        AddBoolOutput(boolModel, "and_tensor", boolModel.Graph.ExportBitwiseAnd(boolLeft, boolRight), 4);
+        AddBoolOutput(boolModel, "and_scalar", boolModel.Graph.ExportBitwiseAnd(boolLeft, 1d), 4);
+        AddBoolOutput(boolModel, "and_scalar_tensor", boolModel.Graph.ExportBitwiseAnd(0d, boolRight), 4);
+        AddBoolOutput(boolModel, "or_tensor", boolModel.Graph.ExportBitwiseOr(boolLeft, boolRight), 4);
+        AddBoolOutput(boolModel, "or_scalar", boolModel.Graph.ExportBitwiseOr(boolLeft, 1d), 4);
+        AddBoolOutput(boolModel, "or_scalar_tensor", boolModel.Graph.ExportBitwiseOr(0d, boolRight), 4);
+        AddBoolOutput(boolModel, "xor_tensor", boolModel.Graph.ExportBitwiseXor(boolLeft, boolRight), 4);
+        AddBoolOutput(boolModel, "xor_scalar", boolModel.Graph.ExportBitwiseXor(boolLeft, 1d), 4);
+        AddBoolOutput(boolModel, "xor_scalar_tensor", boolModel.Graph.ExportBitwiseXor(0d, boolRight), 4);
+
+        var boolResults = RunModel<bool>(
+            boolModel,
+            [
+                NamedOnnxValue.CreateFromTensor("bool_left", new DenseTensor<bool>(new[] { true, false, true, false }, new[] { 4 })),
+                NamedOnnxValue.CreateFromTensor("bool_right", new DenseTensor<bool>(new[] { true, true, false, false }, new[] { 4 })),
+            ]);
+
+        AssertTensorValues(boolResults["not"], [false, true, false, true], 4);
+        AssertTensorValues(boolResults["and_tensor"], [true, false, false, false], 4);
+        AssertTensorValues(boolResults["and_scalar"], [true, false, true, false], 4);
+        AssertTensorValues(boolResults["and_scalar_tensor"], [false, false, false, false], 4);
+        AssertTensorValues(boolResults["or_tensor"], [true, true, true, false], 4);
+        AssertTensorValues(boolResults["or_scalar"], [true, true, true, true], 4);
+        AssertTensorValues(boolResults["or_scalar_tensor"], [true, true, false, false], 4);
+        AssertTensorValues(boolResults["xor_tensor"], [false, true, true, false], 4);
+        AssertTensorValues(boolResults["xor_scalar"], [false, true, false, true], 4);
+        AssertTensorValues(boolResults["xor_scalar_tensor"], [true, true, false, false], 4);
+    }
+
+    [Fact]
     public void ExportBitShiftOperators_EmitExpectedNodes()
     {
         var graph = CreateGraph();
@@ -212,7 +282,7 @@ public sealed class TorchTensorOperatorExtensionsTests
         graph.ExportBitwiseRightShift(8d, other);
 
         Assert.Equal(9, graph.Nodes.Count(static node => node.OpType == "BitShift"));
-        Assert.Equal(21, graph.Nodes.Count(static node => node.OpType == "Cast"));
+        Assert.Equal(24, graph.Nodes.Count(static node => node.OpType == "Cast"));
         Assert.Equal(3, graph.Nodes.Count(static node => node.OpType == "Less"));
         Assert.Equal(3, graph.Nodes.Count(static node => node.OpType == "BitwiseNot"));
         Assert.Equal(3, graph.Nodes.Count(static node => node.OpType == "BitwiseOr"));
@@ -237,6 +307,35 @@ public sealed class TorchTensorOperatorExtensionsTests
         Assert.Throws<NotSupportedException>(() => graph.ExportBitwiseRightShift(floatInput, 1d));
         Assert.Throws<NotSupportedException>(() => graph.ExportBitwiseLeftShift(boolInput, 1d));
         Assert.Throws<NotSupportedException>(() => graph.ExportBitwiseRightShift(boolInput, 1d));
+    }
+
+    [Fact]
+    public void ExportBitShiftOperators_RunOnnxRuntimeForSignedIntegerInputs()
+    {
+        var model = CreateModel();
+        var input = model.Graph.AddInput("input", OnnxTensorType.Create<int>([4L]));
+        var other = model.Graph.AddInput("other", OnnxTensorType.Create<int>([4L]));
+
+        AddIntOutput(model, "left_tensor", model.Graph.ExportBitwiseLeftShift(input, other), 4);
+        AddIntOutput(model, "left_scalar", model.Graph.ExportBitwiseLeftShift(input, 1d), 4);
+        AddIntOutput(model, "left_scalar_tensor", model.Graph.ExportBitwiseLeftShift(8d, other), 4);
+        AddIntOutput(model, "right_tensor", model.Graph.ExportBitwiseRightShift(input, other), 4);
+        AddIntOutput(model, "right_scalar", model.Graph.ExportBitwiseRightShift(input, 1d), 4);
+        AddIntOutput(model, "right_scalar_tensor", model.Graph.ExportBitwiseRightShift(8d, other), 4);
+
+        var results = RunModel<int>(
+            model,
+            [
+                NamedOnnxValue.CreateFromTensor("input", new DenseTensor<int>(new[] { -8, -7, 16, 1 }, new[] { 4 })),
+                NamedOnnxValue.CreateFromTensor("other", new DenseTensor<int>(new[] { 1, 2, 3, 0 }, new[] { 4 })),
+            ]);
+
+        AssertTensorValues(results["left_tensor"], [-16, -28, 128, 1], 4);
+        AssertTensorValues(results["left_scalar"], [-16, -14, 32, 2], 4);
+        AssertTensorValues(results["left_scalar_tensor"], [16, 32, 64, 8], 4);
+        AssertTensorValues(results["right_tensor"], [-4, -2, 2, 1], 4);
+        AssertTensorValues(results["right_scalar"], [-4, -4, 8, 0], 4);
+        AssertTensorValues(results["right_scalar_tensor"], [4, 2, 1, 8], 4);
     }
 
     [Fact]
@@ -2470,6 +2569,19 @@ public sealed class TorchTensorOperatorExtensionsTests
             attributes: []);
     }
 
+    private static void AddIntOutput(OnnxModel model, string name, IOnnxGraphEdge edge, params long[] shape)
+    {
+        model.Graph.AddOutput(name, OnnxTensorType.Create<int>(shape.Select(static x => (OnnxDimension)x)));
+        model.Graph.AddNode(
+            name: $"{name}_identity",
+            opType: "Identity",
+            domain: string.Empty,
+            docString: string.Empty,
+            inputs: [edge],
+            outputs: [model.Graph.GetValue(name)!],
+            attributes: []);
+    }
+
     private static void AddLongOutput(OnnxModel model, string name, IOnnxGraphEdge edge, params long[] shape)
     {
         model.Graph.AddOutput(name, OnnxTensorType.Create<long>(shape.Select(static x => (OnnxDimension)x)));
@@ -2554,6 +2666,16 @@ public sealed class TorchTensorOperatorExtensionsTests
     }
 
     private static void AssertTensorValues(DenseTensor<bool> actual, IReadOnlyList<bool> expected, params int[] shape)
+    {
+        if (shape.Length > 0)
+        {
+            Assert.Equal(shape, actual.Dimensions.ToArray());
+        }
+
+        Assert.Equal(expected, actual.Buffer.ToArray());
+    }
+
+    private static void AssertTensorValues(DenseTensor<int> actual, IReadOnlyList<int> expected, params int[] shape)
     {
         if (shape.Length > 0)
         {
