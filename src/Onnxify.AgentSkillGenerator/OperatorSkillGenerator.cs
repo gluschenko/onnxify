@@ -51,7 +51,8 @@ internal static class OperatorSkillGenerator
         var onnxOperators = BuildOnnxOperators(schemaByKey);
         var converterCoverage = BuildTorchSharpCoverage(onnxOperators);
         var modelGeneratorCoverage = BuildModelGeneratorCoverage();
-        var generatedFiles = BuildGeneratedFiles(onnxOperators, converterCoverage, modelGeneratorCoverage);
+        var packageInventory = PackageInventory.Load(repoRoot);
+        var generatedFiles = BuildGeneratedFiles(onnxOperators, converterCoverage, modelGeneratorCoverage, packageInventory);
 
         RewriteGeneratedDirectory(outputRoot, generatedFiles);
 
@@ -84,7 +85,8 @@ internal static class OperatorSkillGenerator
         var onnxOperators = BuildOnnxOperators(schemaByKey);
         var converterCoverage = BuildTorchSharpCoverage(onnxOperators);
         var modelGeneratorCoverage = BuildModelGeneratorCoverage();
-        return BuildGeneratedFiles(onnxOperators, converterCoverage, modelGeneratorCoverage);
+        var packageInventory = PackageInventory.Load(repoRoot);
+        return BuildGeneratedFiles(onnxOperators, converterCoverage, modelGeneratorCoverage, packageInventory);
     }
 
     internal static IReadOnlyDictionary<OperatorKey, OperatorSchema> GetLatestSchemaByKey(
@@ -549,7 +551,8 @@ internal static class OperatorSkillGenerator
     private static IReadOnlyDictionary<string, string> BuildGeneratedFiles(
         IReadOnlyList<OnnxOperatorDoc> onnxOperators,
         IReadOnlyDictionary<OperatorKey, IReadOnlyList<TorchSharpConverterDoc>> converterCoverage,
-        IReadOnlyDictionary<OperatorKey, IReadOnlyList<ModelGeneratorTorchModuleDoc>> modelGeneratorCoverage
+        IReadOnlyDictionary<OperatorKey, IReadOnlyList<ModelGeneratorTorchModuleDoc>> modelGeneratorCoverage,
+        PackageInventory packageInventory
     )
     {
         var files = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -560,10 +563,11 @@ internal static class OperatorSkillGenerator
             files[relativePath] = BuildOperatorMarkdown(
                 op,
                 converterCoverage.GetValueOrDefault(op.Key, Array.Empty<TorchSharpConverterDoc>()),
-                modelGeneratorCoverage.GetValueOrDefault(op.Key, Array.Empty<ModelGeneratorTorchModuleDoc>()));
+                modelGeneratorCoverage.GetValueOrDefault(op.Key, Array.Empty<ModelGeneratorTorchModuleDoc>()),
+                packageInventory);
         }
 
-        files["index.md"] = BuildIndexMarkdown(onnxOperators, converterCoverage, modelGeneratorCoverage);
+        files["index.md"] = BuildIndexMarkdown(onnxOperators, converterCoverage, modelGeneratorCoverage, packageInventory);
         files[Path.Combine("common", "Broadcasting.md")] = BuildBroadcastingMarkdown();
         files[Path.Combine("common", "IR.md")] = BuildIrMarkdown();
         return files;
@@ -589,7 +593,8 @@ internal static class OperatorSkillGenerator
     private static string BuildIndexMarkdown(
         IReadOnlyList<OnnxOperatorDoc> onnxOperators,
         IReadOnlyDictionary<OperatorKey, IReadOnlyList<TorchSharpConverterDoc>> converterCoverage,
-        IReadOnlyDictionary<OperatorKey, IReadOnlyList<ModelGeneratorTorchModuleDoc>> modelGeneratorCoverage)
+        IReadOnlyDictionary<OperatorKey, IReadOnlyList<ModelGeneratorTorchModuleDoc>> modelGeneratorCoverage,
+        PackageInventory packageInventory)
     {
         IGrouping<string, OnnxOperatorDoc>[] domainGroups = onnxOperators
             .GroupBy(x => x.Key.Domain)
@@ -606,6 +611,8 @@ internal static class OperatorSkillGenerator
         builder.AppendLine($"- Operators with at least one Onnxify.TorchSharp converter path: `{onnxOperators.Count(x => converterCoverage.ContainsKey(x.Key))}`");
         builder.AppendLine($"- Operators with at least one Onnxify.ModelGenerator TorchModule path: `{onnxOperators.Count(x => modelGeneratorCoverage.ContainsKey(x.Key))}`");
         builder.AppendLine("- Operator schema source: `src/Onnxify/Assets/onnx_operators.json`");
+        builder.AppendLine();
+        builder.AppendLine(packageInventory.BuildOverviewMarkdown());
         builder.AppendLine();
 
         builder.AppendLine("## Table of Contents");
@@ -709,7 +716,8 @@ internal static class OperatorSkillGenerator
     private static string BuildOperatorMarkdown(
         OnnxOperatorDoc op,
         IReadOnlyList<TorchSharpConverterDoc> converters,
-        IReadOnlyList<ModelGeneratorTorchModuleDoc> modelGeneratorOperators
+        IReadOnlyList<ModelGeneratorTorchModuleDoc> modelGeneratorOperators,
+        PackageInventory packageInventory
     )
     {
         var builder = new StringBuilder();
@@ -724,6 +732,8 @@ internal static class OperatorSkillGenerator
         builder.AppendLine($"- Since version: `{op.Schema?.SinceVersion.ToString(CultureInfo.InvariantCulture) ?? "?"}`");
         builder.AppendLine($"- Onnxify.TorchSharp converter coverage: `{(converters.Count > 0 ? "available" : "not detected")}`");
         builder.AppendLine($"- Onnxify.ModelGenerator TorchModule coverage: `{(modelGeneratorOperators.Count > 0 ? "available" : "not detected")}`");
+        builder.AppendLine();
+        builder.AppendLine(PackageInventory.BuildPackageContextMarkdown(packageInventory.Packages));
         builder.AppendLine();
 
         builder.AppendLine("## Description");

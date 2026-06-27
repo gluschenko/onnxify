@@ -2,6 +2,7 @@
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 namespace Onnxify.TorchSharp.Observer;
 
@@ -336,6 +337,7 @@ internal static partial class Program
         var modelGeneratorCoveredOperators = LoadModelGeneratorCoveredOperators();
         var deepImportSupportedOnnxOps = LoadDeepImportSupportedOnnxOps();
         var testMethods = LoadOnnxifyTestMethods(repoRoot);
+        var packageReferences = LoadOnnxifyPackageReferences(repoRoot);
 
         var rows = operators
             .Select(op => CreateRow(
@@ -349,7 +351,7 @@ internal static partial class Program
             .OrderBy(row => row.Operator, StringComparer.Ordinal)
             .ToArray();
 
-        var markdown = BuildMarkdown(rows);
+        var markdown = BuildMarkdown(rows, packageReferences);
 
         Console.WriteLine(markdown);
 
@@ -1047,7 +1049,115 @@ internal static partial class Program
         return false;
     }
 
-    private static string BuildMarkdown(IEnumerable<ReportRow> rows)
+    private static IReadOnlyList<OnnxifyPackageReference> LoadOnnxifyPackageReferences(string repoRoot)
+    {
+        var srcDirectory = Path.Combine(repoRoot, "src");
+        var projectPaths = Directory
+            .EnumerateFiles(srcDirectory, "*.csproj", SearchOption.AllDirectories)
+            .OrderBy(static path => path, StringComparer.Ordinal)
+            .ToArray();
+
+        var projects = projectPaths
+            .Select(LoadProjectMetadata)
+            .ToArray();
+
+        var publishableOnnxifyProjects = projects
+            .Where(static project => project.PackageId.StartsWith("Onnxify.", StringComparison.Ordinal)
+                || string.Equals(project.PackageId, "Onnxify", StringComparison.Ordinal))
+            .Where(static project => project.IsPackable)
+            .Where(static project => !string.IsNullOrWhiteSpace(project.Version))
+            .ToArray();
+
+        var projectPathToPackageId = publishableOnnxifyProjects.ToDictionary(
+            static project => project.Path,
+            static project => project.PackageId,
+            StringComparer.OrdinalIgnoreCase
+        );
+
+        return publishableOnnxifyProjects
+            .Select(project => new OnnxifyPackageReference(
+                project.PackageId,
+                project.Version!,
+                project.ProjectReferences
+                    .Select(reference => Path.GetFullPath(Path.Combine(project.Directory, reference.Include)))
+                    .Where(projectPathToPackageId.ContainsKey)
+                    .Select(path => projectPathToPackageId[path])
+                    .OrderBy(static packageId => packageId, StringComparer.Ordinal)
+                    .ToArray(),
+                project.PackageReferences
+                    .Where(static reference => !reference.Include.StartsWith("Onnxify.", StringComparison.Ordinal)
+                        && !string.Equals(reference.Include, "Onnxify", StringComparison.Ordinal))
+                    .OrderBy(static reference => reference.Include, StringComparer.Ordinal)
+                    .ThenBy(static reference => reference.Condition, StringComparer.Ordinal)
+                    .ToArray()
+            ))
+            .OrderBy(static package => package.PackageId, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static ProjectMetadata LoadProjectMetadata(string projectPath)
+    {
+        var document = XDocument.Load(projectPath, LoadOptions.PreserveWhitespace);
+        var root = document.Root ?? throw new InvalidDataException($"Project file has no root element: {projectPath}");
+        var packageId = GetProperty(root, "PackageId") ?? Path.GetFileNameWithoutExtension(projectPath);
+        var isPackableText = GetProperty(root, "IsPackable");
+        var isPackable = isPackableText is null || !string.Equals(isPackableText, "false", StringComparison.OrdinalIgnoreCase);
+
+        return new ProjectMetadata(
+            Path.GetFullPath(projectPath),
+            Path.GetDirectoryName(Path.GetFullPath(projectPath))!,
+            packageId,
+            GetProperty(root, "Version"),
+            isPackable,
+            root
+                .Descendants("PackageReference")
+                .Select(static element => new PackageReference(
+                    GetRequiredAttribute(element, "Include"),
+                    GetAttribute(element, "Version") ?? GetChildValue(element, "Version") ?? string.Empty,
+                    GetAttribute(element, "Condition") ?? string.Empty
+                ))
+                .Where(static reference => !string.IsNullOrWhiteSpace(reference.Include))
+                .ToArray(),
+            root
+                .Descendants("ProjectReference")
+                .Select(static element => new ProjectReference(
+                    GetRequiredAttribute(element, "Include")
+                ))
+                .Where(static reference => !string.IsNullOrWhiteSpace(reference.Include))
+                .ToArray()
+        );
+    }
+
+    private static string? GetProperty(XElement root, string name)
+    {
+        return root
+            .Descendants(name)
+            .Select(static element => element.Value.Trim())
+            .FirstOrDefault(static value => !string.IsNullOrWhiteSpace(value));
+    }
+
+    private static string? GetChildValue(XElement element, string name)
+    {
+        return element
+            .Elements(name)
+            .Select(static child => child.Value.Trim())
+            .FirstOrDefault(static value => !string.IsNullOrWhiteSpace(value));
+    }
+
+    private static string? GetAttribute(XElement element, string name)
+    {
+        return element.Attribute(name)?.Value.Trim();
+    }
+
+    private static string GetRequiredAttribute(XElement element, string name)
+    {
+        return GetAttribute(element, name) ?? string.Empty;
+    }
+
+    private static string BuildMarkdown(
+        IEnumerable<ReportRow> rows,
+        IReadOnlyList<OnnxifyPackageReference> packageReferences
+    )
     {
         ReportRow[] rowArray = rows.ToArray();
         int total = rowArray.Length;
@@ -1065,6 +1175,24 @@ internal static partial class Program
         builder.AppendLine($"* Onnxify.ModelGenerator coverage: {FormatPercentage(modelGeneratorCoveredCount, total)} ({modelGeneratorCoveredCount}/{total})");
         builder.AppendLine($"* Deep export support: {FormatPercentage(deepExportSupportedCount, total)} ({deepExportSupportedCount}/{total})");
         builder.AppendLine($"* Deep import support: {FormatPercentage(deepImportSupportedCount, total)} ({deepImportSupportedCount}/{total})");
+        builder.AppendLine();
+        builder.AppendLine("## Package Versions");
+        builder.AppendLine();
+        builder.AppendLine("Current versions and direct dependencies are read from the publishable `Onnxify.*` project files under `src/`.");
+        builder.AppendLine();
+
+        foreach (var package in packageReferences)
+        {
+            builder.AppendLine($"### `{EscapeMarkdown(package.PackageId)}`");
+            builder.AppendLine();
+            builder.AppendLine($"* Version: `{EscapeMarkdown(package.Version)}`");
+            builder.AppendLine("* Onnxify project references:");
+            AppendOnnxifyPackageDependencies(builder, package.OnnxifyPackageDependencies);
+            builder.AppendLine("* Third-party NuGet PackageReferences:");
+            AppendThirdPartyPackageReferences(builder, package.ThirdPartyPackageReferences);
+            builder.AppendLine();
+        }
+
         builder.AppendLine();
         builder.AppendLine("## Coverage Columns");
         builder.AppendLine();
@@ -1102,6 +1230,39 @@ internal static partial class Program
         }
 
         return builder.ToString();
+    }
+
+    private static void AppendOnnxifyPackageDependencies(StringBuilder builder, IReadOnlyList<string> packageIds)
+    {
+        if (packageIds.Count == 0)
+        {
+            builder.AppendLine("  * None");
+            return;
+        }
+
+        foreach (var packageId in packageIds)
+        {
+            builder.AppendLine($"  * `{EscapeMarkdown(packageId)}`");
+        }
+    }
+
+    private static void AppendThirdPartyPackageReferences(StringBuilder builder, IReadOnlyList<PackageReference> packageReferences)
+    {
+        if (packageReferences.Count == 0)
+        {
+            builder.AppendLine("  * None");
+            return;
+        }
+
+        foreach (var reference in packageReferences)
+        {
+            var version = string.IsNullOrWhiteSpace(reference.Version) ? "no explicit version" : reference.Version;
+            var condition = string.IsNullOrWhiteSpace(reference.Condition)
+                ? string.Empty
+                : $" ({reference.Condition})";
+
+            builder.AppendLine($"  * `{EscapeMarkdown(reference.Include)}` `{EscapeMarkdown(version)}`{EscapeMarkdown(condition)}");
+        }
     }
 
     private static string FormatPercentage(int count, int total)
@@ -1142,6 +1303,31 @@ internal static partial class Program
     private sealed record OperatorRecord(string Name, string SourceModule);
 
     private sealed record TorchSharpCandidate(string NormalizedName, string Path);
+
+    private sealed record ProjectMetadata(
+        string Path,
+        string Directory,
+        string PackageId,
+        string? Version,
+        bool IsPackable,
+        IReadOnlyList<PackageReference> PackageReferences,
+        IReadOnlyList<ProjectReference> ProjectReferences
+    );
+
+    private sealed record PackageReference(
+        string Include,
+        string Version,
+        string Condition
+    );
+
+    private sealed record ProjectReference(string Include);
+
+    private sealed record OnnxifyPackageReference(
+        string PackageId,
+        string Version,
+        IReadOnlyList<string> OnnxifyPackageDependencies,
+        IReadOnlyList<PackageReference> ThirdPartyPackageReferences
+    );
 
     private sealed record OperatorMapping
     {

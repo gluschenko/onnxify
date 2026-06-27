@@ -23,6 +23,10 @@ public sealed class AgentSkillGeneratorTests
         Assert.Contains("Torch-Op-Backed Converters", indexMarkdown);
         Assert.Contains("aten::conv2d", indexMarkdown);
         Assert.Contains("src/Onnxify.TorchSharp/TorchTensorOperatorExtensions.cs", indexMarkdown);
+        Assert.Contains("## NuGet Package Versions", indexMarkdown);
+        Assert.Contains("| `Onnxify.TorchSharp` | `0.3.6.2` |", indexMarkdown);
+        Assert.Contains("`ICSharpCode.Decompiler` `10.0.1.8346`", indexMarkdown);
+        Assert.Contains("`TorchSharp` `0.107.0`", indexMarkdown);
 
         var moduleMarkdown = files[Path.Combine("composites", "torch.nn.Module_torch.Tensor__torch.Tensor_.md")];
         Assert.Contains("torch.nn.Module<torch.Tensor, torch.Tensor> Converter", moduleMarkdown);
@@ -32,6 +36,9 @@ public sealed class AgentSkillGeneratorTests
         Assert.Contains("Conv2d Converter", conv2dMarkdown);
         Assert.Contains("TorchModuleExtensions.Export(this Conv2d module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge", conv2dMarkdown);
         Assert.Contains("aten::conv2d", conv2dMarkdown);
+        Assert.Contains("## Package Context", conv2dMarkdown);
+        Assert.Contains("| `Onnxify.TorchSharp` | `0.3.6.2` |", conv2dMarkdown);
+        Assert.Contains("`TorchSharp` `0.107.0`", conv2dMarkdown);
 
         var matmulMarkdown = files[Path.Combine("torch-ops", "OnnxGraph__aten__bmm.md")];
         Assert.Contains("OnnxGraph Converter", matmulMarkdown);
@@ -78,12 +85,18 @@ public sealed class AgentSkillGeneratorTests
         Assert.Contains("- `ai.onnx` - ", indexMarkdown);
         Assert.Contains("ModelGenerator TorchModule", indexMarkdown);
         Assert.Contains("- Operators with at least one Onnxify.ModelGenerator TorchModule path: `", indexMarkdown);
+        Assert.Contains("## NuGet Package Versions", indexMarkdown);
+        Assert.Contains("| `Onnxify` | `0.3.6.2` |", indexMarkdown);
+        Assert.Contains("`Google.Protobuf` `3.34.0`", indexMarkdown);
 
         var addMarkdown = files[Path.Combine("ai.onnx", "Add.md")];
         Assert.Contains("- Onnxify.ModelGenerator TorchModule coverage: `available`", addMarkdown);
         Assert.Contains("AddTorchModuleInlineOperator", addMarkdown);
         Assert.Contains("(../common/Broadcasting.md)", addMarkdown);
         Assert.DoesNotContain("(Broadcasting.md)", addMarkdown);
+        Assert.Contains("## Package Context", addMarkdown);
+        Assert.Contains("| `Onnxify.ModelGenerator` | `0.3.6.2` |", addMarkdown);
+        Assert.Contains("`Microsoft.CodeAnalysis.CSharp` `4.11.0`", addMarkdown);
 
         var convMarkdown = files[Path.Combine("ai.onnx", "Conv.md")];
         Assert.Contains("- Onnxify.ModelGenerator TorchModule coverage: `available`", convMarkdown);

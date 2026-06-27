@@ -24,7 +24,8 @@ internal static class TorchSharpConverterSkillGenerator
 
         string skillRoot = ResolveSkillRoot(repoRoot);
         string outputRoot = Path.Combine(skillRoot, "references", "torchsharp-converters");
-        var generatedFiles = BuildGeneratedFiles(GetExistingGeneratedRelativePaths(outputRoot));
+        var packageInventory = PackageInventory.Load(repoRoot);
+        var generatedFiles = BuildGeneratedFiles(GetExistingGeneratedRelativePaths(outputRoot), packageInventory);
 
         RewriteGeneratedDirectory(outputRoot, generatedFiles);
 
@@ -43,9 +44,16 @@ internal static class TorchSharpConverterSkillGenerator
     }
 
     internal static IReadOnlyDictionary<string, string> BuildGeneratedFiles(
-        IReadOnlySet<string>? existingRelativePaths = null
+        IReadOnlySet<string>? existingRelativePaths = null,
+        PackageInventory? packageInventory = null
     )
     {
+        packageInventory ??= PackageInventory.Load(
+            FindRepositoryRoot(Directory.GetCurrentDirectory())
+            ?? FindRepositoryRoot(AppContext.BaseDirectory)
+            ?? throw new DirectoryNotFoundException("Repository root was not found.")
+        );
+
         var converterMethods = _sourceFilePaths
             .SelectMany(static entry => entry.Key
                 .GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly)
@@ -66,12 +74,12 @@ internal static class TorchSharpConverterSkillGenerator
 
         var files = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["index.md"] = BuildIndexMarkdown(converters),
+            ["index.md"] = BuildIndexMarkdown(converters, packageInventory),
         };
 
         foreach (ConverterDoc converter in converters)
         {
-            files[converter.RelativePath] = BuildConverterMarkdown(converter);
+            files[converter.RelativePath] = BuildConverterMarkdown(converter, packageInventory);
         }
 
         return files;
@@ -189,7 +197,10 @@ internal static class TorchSharpConverterSkillGenerator
             : members;
     }
 
-    private static string BuildIndexMarkdown(IReadOnlyList<ConverterDoc> converters)
+    private static string BuildIndexMarkdown(
+        IReadOnlyList<ConverterDoc> converters,
+        PackageInventory packageInventory
+    )
     {
         var builder = new StringBuilder();
         builder.AppendLine("# Onnxify TorchSharp Converter Instructions");
@@ -202,6 +213,8 @@ internal static class TorchSharpConverterSkillGenerator
         builder.AppendLine($"- Distinct Torch ops declared through [TorchOp]: {converters.SelectMany(x => x.TorchOps).Distinct(StringComparer.Ordinal).Count()}");
         builder.AppendLine(
             $"- Source files: {string.Join(", ", _sourceFilePaths.Values.OrderBy(static x => x, StringComparer.Ordinal))}");
+        builder.AppendLine();
+        builder.AppendLine(packageInventory.BuildOverviewMarkdown());
         builder.AppendLine();
 
         foreach (ConverterKind kind in Enum.GetValues<ConverterKind>())
@@ -245,7 +258,10 @@ internal static class TorchSharpConverterSkillGenerator
         return builder.ToString().TrimEnd();
     }
 
-    private static string BuildConverterMarkdown(ConverterDoc converter)
+    private static string BuildConverterMarkdown(
+        ConverterDoc converter,
+        PackageInventory packageInventory
+    )
     {
         var builder = new StringBuilder();
         builder.Append("# ").Append(converter.ReceiverTypeName).AppendLine(" Converter");
@@ -269,6 +285,9 @@ internal static class TorchSharpConverterSkillGenerator
         }
 
         builder.AppendLine();
+        builder.AppendLine(PackageInventory.BuildPackageContextMarkdown(packageInventory.Packages));
+        builder.AppendLine();
+
         builder.AppendLine("## Parameters");
         builder.AppendLine();
         builder.AppendLine("| Position | Name | Type | Role |");
