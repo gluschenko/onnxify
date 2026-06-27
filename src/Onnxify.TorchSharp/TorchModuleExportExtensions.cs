@@ -1760,7 +1760,10 @@ public static class TorchModuleExportExtensions
         InvocationExpression invocation
     )
     {
-        var output = context.Graph.ExportTril(input, ResolveLongArgument(context, invocation.Arguments.ElementAtOrDefault(0), defaultValue: 0));
+        var diagonal = GetNamedArgument(invocation, "diagonal") is { } namedDiagonal
+            ? ResolveLongArgument(context, namedDiagonal)
+            : ResolveLongArgument(context, invocation.Arguments.ElementAtOrDefault(0), defaultValue: 0);
+        var output = ExportTriangular(context, input, diagonal, upper: false, invocation);
         if (TryGetRank(context, input) is int rank)
         {
             TrackRank(context, output, rank);
@@ -1780,7 +1783,10 @@ public static class TorchModuleExportExtensions
         InvocationExpression invocation
     )
     {
-        var output = context.Graph.ExportTriu(input, ResolveLongArgument(context, invocation.Arguments.ElementAtOrDefault(0), defaultValue: 0));
+        var diagonal = GetNamedArgument(invocation, "diagonal") is { } namedDiagonal
+            ? ResolveLongArgument(context, namedDiagonal)
+            : ResolveLongArgument(context, invocation.Arguments.ElementAtOrDefault(0), defaultValue: 0);
+        var output = ExportTriangular(context, input, diagonal, upper: true, invocation);
         if (TryGetRank(context, input) is int rank)
         {
             TrackRank(context, output, rank);
@@ -1792,6 +1798,209 @@ public static class TorchModuleExportExtensions
         }
 
         return output;
+    }
+
+    private static IOnnxGraphEdge ExportTriangular(
+        ForwardExportContext context,
+        IOnnxGraphEdge input,
+        long diagonal,
+        bool upper,
+        InvocationExpression invocation
+    )
+    {
+        if (input is OnnxTensor tensor)
+        {
+            return ExportConstantTriangular(context, tensor, diagonal, upper);
+        }
+
+        if (TryGetRank(context, input) is not 2)
+        {
+            throw new NotSupportedException(
+                $"{(upper ? "triu" : "tril")} deep export currently requires rank-2 tensor metadata: {invocation}"
+            );
+        }
+
+        var graph = context.Graph;
+        var shape = graph.Shape(
+            name: graph.NextName($"{(upper ? "triu" : "tril")}_shape"),
+            options: new ShapeInputOptions
+            {
+                Data = input,
+            }
+        );
+        var rows = ExportGatherScalar(graph, $"{(upper ? "triu" : "tril")}_rows", shape, 0);
+        var columns = ExportGatherScalar(graph, $"{(upper ? "triu" : "tril")}_columns", shape, 1);
+        var rowRange = ExportRange(graph, $"{(upper ? "triu" : "tril")}_row_range", rows);
+        var columnRange = ExportRange(graph, $"{(upper ? "triu" : "tril")}_column_range", columns);
+        var rowIndices = ExportUnsqueezeAxis(graph, $"{(upper ? "triu" : "tril")}_rows_2d", rowRange, 1);
+        var columnIndices = ExportUnsqueezeAxis(graph, $"{(upper ? "triu" : "tril")}_columns_2d", columnRange, 0);
+        var threshold = diagonal == 0
+            ? rowIndices
+            : graph.ExportAdd(
+                rowIndices,
+                graph.AddTensor<long>(
+                    name: graph.NextName($"{(upper ? "triu" : "tril")}_diagonal"),
+                    shape: [],
+                    value: [diagonal]
+                )
+            );
+        var condition = upper
+            ? graph.ExportGreaterOrEqual(columnIndices, threshold)
+            : graph.ExportLessOrEqual(columnIndices, threshold);
+        var elementType = TryGetTensorElementType(context, input, out var type)
+            ? type
+            : typeof(float);
+        var zero = AddScalar(graph, upper ? "triu_zero" : "tril_zero", 0d, elementType);
+        var output = graph.ExportWhere(condition, input, zero);
+
+        context.EdgeElementTypes[condition.Name] = typeof(bool);
+        context.EdgeElementTypes[output.Name] = elementType;
+
+        return output;
+    }
+
+    private static IOnnxGraphEdge ExportConstantTriangular(
+        ForwardExportContext context,
+        OnnxTensor tensor,
+        long diagonal,
+        bool upper
+    )
+    {
+        if (tensor.Shape.Length != 2)
+        {
+            throw new NotSupportedException(
+                $"{(upper ? "triu" : "tril")} initializer export currently requires a rank-2 tensor."
+            );
+        }
+
+        var rows = checked((int)tensor.Shape[0]);
+        var columns = checked((int)tensor.Shape[1]);
+        var name = context.Graph.NextName(upper ? "triu" : "tril");
+        if (tensor is OnnxTensor<float> floats)
+        {
+            return context.Graph.AddTensor(
+                name: name,
+                shape: tensor.Shape,
+                value: ApplyTriangularMask<float>(floats.Value, rows, columns, diagonal, upper).ToArray()
+            );
+        }
+
+        if (tensor is OnnxTensor<int> ints)
+        {
+            return context.Graph.AddTensor(
+                name: name,
+                shape: tensor.Shape,
+                value: ApplyTriangularMask<int>(ints.Value, rows, columns, diagonal, upper).ToArray()
+            );
+        }
+
+        if (tensor is OnnxTensor<long> longs)
+        {
+            return context.Graph.AddTensor(
+                name: name,
+                shape: tensor.Shape,
+                value: ApplyTriangularMask<long>(longs.Value, rows, columns, diagonal, upper).ToArray()
+            );
+        }
+
+        if (tensor is OnnxTensor<double> doubles)
+        {
+            return context.Graph.AddTensor(
+                name: name,
+                shape: tensor.Shape,
+                value: ApplyTriangularMask<double>(doubles.Value, rows, columns, diagonal, upper).ToArray()
+            );
+        }
+
+        return upper
+            ? context.Graph.ExportTriu(tensor, diagonal)
+            : context.Graph.ExportTril(tensor, diagonal);
+    }
+
+    private static IEnumerable<T> ApplyTriangularMask<T>(
+        IEnumerable<T> values,
+        int rows,
+        int columns,
+        long diagonal,
+        bool upper
+    )
+    {
+        var valueArray = values.ToArray();
+        for (var row = 0; row < rows; row++)
+        {
+            for (var column = 0; column < columns; column++)
+            {
+                var keep = upper
+                    ? column - row >= diagonal
+                    : column - row <= diagonal;
+                yield return keep
+                    ? valueArray[(row * columns) + column]
+                    : default!;
+            }
+        }
+    }
+
+    private static IOnnxGraphEdge ExportGatherScalar(
+        OnnxGraph graph,
+        string prefix,
+        IOnnxGraphEdge input,
+        long index
+    )
+    {
+        var name = graph.NextName(prefix);
+        return graph.Gather(
+            name: name,
+            options: new GatherInputOptions
+            {
+                Data = input,
+                Indices = graph.AddTensor<long>($"{name}_index", [], [index]),
+                Axis = 0,
+            }
+        );
+    }
+
+    private static IOnnxGraphEdge ExportRange(
+        OnnxGraph graph,
+        string prefix,
+        IOnnxGraphEdge limit
+    )
+    {
+        var name = graph.NextName(prefix);
+        var output = graph.AddEdge($"{name}_output");
+        graph.AddNode(
+            name: name,
+            opType: "Range",
+            domain: string.Empty,
+            docString: string.Empty,
+            inputs:
+            [
+                graph.AddTensor<long>($"{name}_start", [], [0L]),
+                limit,
+                graph.AddTensor<long>($"{name}_delta", [], [1L]),
+            ],
+            outputs: [output],
+            attributes: []
+        );
+
+        return output;
+    }
+
+    private static IOnnxGraphEdge ExportUnsqueezeAxis(
+        OnnxGraph graph,
+        string prefix,
+        IOnnxGraphEdge input,
+        long axis
+    )
+    {
+        var name = graph.NextName(prefix);
+        return graph.Unsqueeze(
+            name: name,
+            options: new UnsqueezeInputOptions
+            {
+                Data = input,
+                Axes = graph.AddTensor<long>($"{name}_axes", [1], [axis]),
+            }
+        );
     }
 
     private static IOnnxGraphEdge ExportSlice(
@@ -2131,10 +2340,11 @@ public static class TorchModuleExportExtensions
         // Handles batched and plain matrix multiplies with the same ONNX MatMul:
         //   matmul(query, key.transpose(2, 3))
         //   matmul(hiddenStates, tiedWeight)
+        //   matmul(input, _importedWeightInitializer)
         return new ExportValue(
             context.Graph.ExportMatMul(
-                ExportExpression(context, invocation.Arguments.ElementAt(0)).GetRequiredEdge(invocation),
-                ExportExpression(context, invocation.Arguments.ElementAt(1)).GetRequiredEdge(invocation)
+                ExportAsGraphEdge(context, invocation.Arguments.ElementAt(0)),
+                ExportAsGraphEdge(context, invocation.Arguments.ElementAt(1))
             )
         );
     }

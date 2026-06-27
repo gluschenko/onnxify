@@ -1,3 +1,11 @@
+## 0.3.6
+
+- Aligned the package version with the 0.3.6 Onnxify package family release.
+
+## 0.3.5
+
+- Aligned the package version with the 0.3.5 Onnxify package family release.
+
 ## 0.3.3
 
 - Added project-generation rendering for ONNX tensor dimensions whose protobuf value case is `None`, displaying them as `[none]`.

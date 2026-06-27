@@ -1,3 +1,12 @@
+## 0.3.6
+
+- Updated the `netstandard2.0` compatibility dependency on `System.Text.Json` to `10.0.9`.
+- Aligned the package version with the 0.3.6 Onnxify package family release.
+
+## 0.3.5
+
+- Aligned the package version with the 0.3.5 Onnxify package family release.
+
 ## 0.3.4
 
 - Fixed ONNX attribute type detection for `OnnxTensor` subclasses so tensor-valued attributes, including `ConstantOfShape.value`, serialize correctly.

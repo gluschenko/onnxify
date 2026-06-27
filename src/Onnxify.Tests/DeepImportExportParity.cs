@@ -46,7 +46,11 @@ internal static class DeepImportExportParity
 
             var roundTrippedPath = Path.Combine(tempRoot, "round-tripped.onnx");
             roundTrippedModel.Save(roundTrippedPath, overwrite: true);
-            using var session = new InferenceSession(roundTrippedPath);
+            using var session = OnnxRuntimeCompatibilityAssert.CreateSession(
+                roundTrippedPath,
+                roundTrippedModel,
+                "deep import/export round-trip"
+            );
             return OnnxModel.FromFile(
                 roundTrippedPath,
                 new OnnxModelBaseOptions
@@ -69,7 +73,8 @@ internal static class DeepImportExportParity
         IReadOnlyList<NamedOnnxValue> inputs,
         string outputName,
         float threshold,
-        string modelFileName = "round-trip.onnx"
+        string modelFileName = "round-trip.onnx",
+        GraphOptimizationLevel? graphOptimizationLevel = null
     )
     {
         ArgumentNullException.ThrowIfNull(model);
@@ -94,7 +99,12 @@ internal static class DeepImportExportParity
         {
             model.Save(modelPath, overwrite: true);
 
-            var originalOutput = RunSingleFloatOutput(modelPath, inputs, outputName);
+            var originalOutput = RunSingleFloatOutput(
+                modelPath,
+                inputs,
+                outputName,
+                graphOptimizationLevel
+            );
             using var imported = CompileAndLoadTorchModule(tempRoot, modelPath, model);
             using var eagerOutput = RunTorchModule(imported.Module, inputTensor);
             var eagerTensor = new DenseTensor<float>(
@@ -120,7 +130,12 @@ internal static class DeepImportExportParity
 
             var roundTrippedPath = Path.Combine(tempRoot, "round-tripped.onnx");
             roundTrippedModel.Save(roundTrippedPath, overwrite: true);
-            var roundTrippedOutput = RunSingleFloatOutput(roundTrippedPath, inputs, outputName);
+            var roundTrippedOutput = RunSingleFloatOutput(
+                roundTrippedPath,
+                inputs,
+                outputName,
+                graphOptimizationLevel
+            );
             var mse = MeanSquaredError(originalOutput, roundTrippedOutput);
 
             Assert.True(
@@ -252,10 +267,28 @@ internal static class DeepImportExportParity
     private static DenseTensor<float> RunSingleFloatOutput(
         string modelPath,
         IReadOnlyCollection<NamedOnnxValue> inputs,
-        string outputName
+        string outputName,
+        GraphOptimizationLevel? graphOptimizationLevel
     )
     {
-        using var session = new InferenceSession(modelPath);
+        using var sessionOptions = graphOptimizationLevel is null
+            ? null
+            : new SessionOptions
+            {
+                GraphOptimizationLevel = graphOptimizationLevel.Value,
+            };
+        using var session = OnnxRuntimeCompatibilityAssert.CreateSession(
+            modelPath,
+            OnnxModel.FromFile(
+                modelPath,
+                new OnnxModelBaseOptions
+                {
+                    NodeTypeResolutionStrategy = NodeTypeResolutionStrategy.IgnoreIncompatible,
+                }
+            ),
+            $"deep import/export runtime output '{outputName}'",
+            sessionOptions
+        );
         using var results = session.Run(inputs);
         var output = results.Single(x => string.Equals(x.Name, outputName, StringComparison.Ordinal));
         var tensor = output.AsTensor<float>();

@@ -10,6 +10,15 @@ Do not hand-edit this file; rerun the generator instead.
 - Return type: IOnnxGraphEdge
 - Torch ops: aten::all
 
+## Package Versions
+
+[Full package versions and dependencies](../../packages.md).
+
+| Package | Version |
+| --- | --- |
+| `Onnxify` | `0.3.7` |
+| `Onnxify.TorchSharp` | `0.3.7` |
+
 ## Parameters
 
 | Position | Name | Type | Role |

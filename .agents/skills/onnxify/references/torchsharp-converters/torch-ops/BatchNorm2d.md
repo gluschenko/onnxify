@@ -10,6 +10,15 @@ Do not hand-edit this file; rerun the generator instead.
 - Return type: IOnnxGraphEdge
 - Torch ops: aten::_native_batch_norm_legit, aten::_native_batch_norm_legit.no_stats, aten::_native_batch_norm_legit_functional, aten::_native_batch_norm_legit_no_training, aten::native_batch_norm
 
+## Package Versions
+
+[Full package versions and dependencies](../../packages.md).
+
+| Package | Version |
+| --- | --- |
+| `Onnxify` | `0.3.7` |
+| `Onnxify.TorchSharp` | `0.3.7` |
+
 ## Parameters
 
 | Position | Name | Type | Role |

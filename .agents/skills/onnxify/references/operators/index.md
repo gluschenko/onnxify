@@ -5,8 +5,12 @@ Do not hand-edit files in this directory; rerun the generator instead.
 
 - Total reflected Onnxify operators: `473`
 - Operators with at least one Onnxify.TorchSharp converter path: `109`
-- Operators with at least one Onnxify.ModelGenerator TorchModule path: `111`
+- Operators with at least one Onnxify.ModelGenerator TorchModule path: `112`
 - Operator schema source: `src/Onnxify/Assets/onnx_operators.json`
+
+## Package Versions
+
+[Full package versions and dependencies](../packages.md).
 
 ## Table of Contents
 
@@ -38,7 +42,7 @@ Do not hand-edit files in this directory; rerun the generator instead.
 | AveragePoolGrad | 9 | no | no | [AveragePoolGrad](ai.onnx/AveragePoolGrad.md) |
 | BatchNormalization | 15 | yes | yes | [BatchNormalization](ai.onnx/BatchNormalization.md) |
 | Bernoulli | 22 | no | no | [Bernoulli](ai.onnx/Bernoulli.md) |
-| BitShift | 11 | no | no | [BitShift](ai.onnx/BitShift.md) |
+| BitShift | 11 | no | yes | [BitShift](ai.onnx/BitShift.md) |
 | BitwiseAnd | 18 | yes | yes | [BitwiseAnd](ai.onnx/BitwiseAnd.md) |
 | BitwiseNot | 18 | yes | yes | [BitwiseNot](ai.onnx/BitwiseNot.md) |
 | BitwiseOr | 18 | yes | yes | [BitwiseOr](ai.onnx/BitwiseOr.md) |

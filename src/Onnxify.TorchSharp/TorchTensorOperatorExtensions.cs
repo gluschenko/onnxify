@@ -5770,7 +5770,8 @@ public static class TorchTensorOperatorExtensions
             var zero = AddScalarLike(graph, input, prefix, 0d);
             var negative = graph.ExportLess(input, zero);
             var unsignedMax = AddUnsignedMaxScalar(graph, prefix, resultType);
-            var rightMask = ExportBitShiftNode(graph, $"{prefix}_mask", unsignedMax, unsignedOther, "RIGHT");
+            var unsignedMaxMask = ExportCastTo(graph, $"{prefix}_unsigned_max", unsignedMax, unsignedType);
+            var rightMask = ExportBitShiftNode(graph, $"{prefix}_mask", unsignedMaxMask, unsignedOther, "RIGHT");
             var signMask = graph.ExportBitwiseNot(rightMask);
             var negativeShifted = graph.ExportBitwiseOr(shifted, signMask);
             return graph.ExportWhere(

@@ -10,6 +10,15 @@ Do not hand-edit this file; rerun the generator instead.
 - Return type: IOnnxGraphEdge
 - Torch ops: aten::upsample_bicubic2d, aten::upsample_bicubic2d.vec, aten::upsample_bilinear2d, aten::upsample_bilinear2d.vec, aten::upsample_linear1d, aten::upsample_nearest1d, aten::upsample_nearest1d.vec, aten::upsample_nearest2d, aten::upsample_nearest2d.vec, aten::upsample_nearest3d, aten::upsample_nearest3d.vec, aten::upsample_trilinear3d, aten::upsample_trilinear3d.vec
 
+## Package Versions
+
+[Full package versions and dependencies](../../packages.md).
+
+| Package | Version |
+| --- | --- |
+| `Onnxify` | `0.3.7` |
+| `Onnxify.TorchSharp` | `0.3.7` |
+
 ## Parameters
 
 | Position | Name | Type | Role |

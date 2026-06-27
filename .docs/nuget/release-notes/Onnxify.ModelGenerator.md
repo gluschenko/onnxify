@@ -1,3 +1,13 @@
+## 0.3.6
+
+- Added `System.Collections.Immutable` to the analyzer runtime dependency payload so generated model wrappers can initialize the source generator reliably in consumer builds.
+- Aligned the package version with the 0.3.6 Onnxify package family release.
+
+## 0.3.5
+
+- Aligned Roslyn references to `Microsoft.CodeAnalysis.CSharp` `4.11.0` for source-generator compatibility with the solution analyzer/runtime setup.
+- Aligned the package version with the 0.3.5 Onnxify package family release.
+
 ## 0.3.3
 
 - Changed the default `OnnxRuntimeInference` generator path to read ONNX metadata through generated protobuf classes instead of loading models through the public Onnxify object model, improving wrapper generation stability when core graph APIs have unrelated import bugs.

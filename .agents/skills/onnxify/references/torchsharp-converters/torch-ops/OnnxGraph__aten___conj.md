@@ -10,6 +10,15 @@ Do not hand-edit this file; rerun the generator instead.
 - Return type: IOnnxGraphEdge
 - Torch ops: aten::_conj, aten::alias, aten::clone, aten::conj, aten::contiguous, aten::detach, aten::resolve_conj, aten::resolve_neg
 
+## Package Versions
+
+[Full package versions and dependencies](../../packages.md).
+
+| Package | Version |
+| --- | --- |
+| `Onnxify` | `0.3.7` |
+| `Onnxify.TorchSharp` | `0.3.7` |
+
 ## Parameters
 
 | Position | Name | Type | Role |

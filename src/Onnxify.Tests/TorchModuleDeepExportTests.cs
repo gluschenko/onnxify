@@ -1,5 +1,7 @@
 ﻿using Onnxify.TorchSharp;
+using Microsoft.ML.OnnxRuntime;
 using static TorchSharp.torch;
+using DenseFloatTensor = Microsoft.ML.OnnxRuntime.Tensors.DenseTensor<float>;
 using TorchModule = TorchSharp.torch.nn.Module<TorchSharp.torch.Tensor, TorchSharp.torch.Tensor>;
 
 using static TorchSharp.torch.nn.functional;
@@ -72,6 +74,51 @@ public sealed class TorchModuleDeepExportTests
         Assert.Contains(model.Graph.Nodes, node => node.OpType == "Softmax");
         Assert.Contains(model.Graph.Nodes, node => node.OpType == "Add");
         Assert.Equal("Identity", model.Graph.Nodes.Last().OpType);
+    }
+
+    [Fact]
+    public void DeepExport_ForRank3Linear_PreservesTorchSharpOutputWithExtendedOptimization()
+    {
+        using var module = new DeepExportRank3LinearModule();
+        module.eval();
+
+        var inputValues = Enumerable.Range(0, 12)
+            .Select(static x => ((x % 7) - 3) / 5f)
+            .ToArray();
+        using var inputTensor = tensor(
+            inputValues,
+            [1L, 4L, 3L],
+            dtype: ScalarType.Float32
+        );
+        using var expectedTensor = module.forward(inputTensor).detach().cpu();
+        var expected = new DenseFloatTensor(
+            expectedTensor.data<float>().ToArray(),
+            expectedTensor.shape.Select(static x => checked((int)x)).ToArray()
+        );
+
+        var model = module.ExportOnnxModel(
+            input: OnnxTensorType.Create<float>([1L, 4L, 3L]),
+            output: OnnxTensorType.Create<float>([1L, 4L, 5L]),
+            options: new OnnxModelCreationOptions
+            {
+                Opset = 22,
+            }
+        );
+
+        Assert.Contains(model.Graph.Nodes, node => node.Name == "linear_flatten" && node.OpType == "Reshape");
+        Assert.Contains(model.Graph.Nodes, node => node.Name == "linear_restore_shape" && node.OpType == "Reshape");
+
+        var actual = RunSingleFloatOutput(
+            model,
+            NamedOnnxValue.CreateFromTensor(
+                "input",
+                new DenseFloatTensor(inputValues, [1, 4, 3])
+            ),
+            "output",
+            GraphOptimizationLevel.ORT_ENABLE_EXTENDED
+        );
+
+        AssertClose(expected, actual, tolerance: 1e-5f);
     }
 
     [Fact]
@@ -227,8 +274,11 @@ public sealed class TorchModuleDeepExportTests
         );
 
         Assert.Contains(model.Graph.Nodes, node => node.OpType == "ConstantOfShape");
-        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Trilu");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Range");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "LessOrEqual");
+        Assert.Contains(model.Graph.Nodes, node => node.OpType == "Where");
         Assert.Contains(model.Graph.Nodes, node => node.OpType == "Equal");
+        Assert.DoesNotContain(model.Graph.Nodes, node => node.OpType == "Trilu");
         Assert.Contains(
             model.Graph.Initializers.OfType<OnnxTensor<int>>(),
             initializer => initializer.Name.StartsWith("eq_", StringComparison.Ordinal)
@@ -238,6 +288,10 @@ public sealed class TorchModuleDeepExportTests
         Assert.DoesNotContain(
             model.Graph.Initializers.OfType<OnnxTensor<long>>(),
             initializer => initializer.Name.StartsWith("eq_", StringComparison.Ordinal)
+        );
+        OnnxRuntimeCompatibilityAssert.CanCreateSession(
+            model,
+            "deep-export runtime int32 tril mask"
         );
     }
 
@@ -879,6 +933,80 @@ public sealed class TorchModuleDeepExportTests
                 Opset = 22,
             }
         );
+    }
+
+    private static DenseFloatTensor RunSingleFloatOutput(
+        OnnxModel model,
+        NamedOnnxValue input,
+        string outputName,
+        GraphOptimizationLevel graphOptimizationLevel
+    )
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.onnx");
+
+        try
+        {
+            model.Save(path, overwrite: true);
+            using var sessionOptions = new SessionOptions
+            {
+                GraphOptimizationLevel = graphOptimizationLevel,
+            };
+            using var session = OnnxRuntimeCompatibilityAssert.CreateSession(
+                path,
+                model,
+                $"deep export runtime output '{outputName}'",
+                sessionOptions
+            );
+            using var results = session.Run([input]);
+            var output = results.Single(x => string.Equals(x.Name, outputName, StringComparison.Ordinal));
+            var tensor = output.AsTensor<float>();
+            return new DenseFloatTensor(tensor.ToArray(), tensor.Dimensions.ToArray());
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    private static void AssertClose(
+        DenseFloatTensor expected,
+        DenseFloatTensor actual,
+        float tolerance
+    )
+    {
+        Assert.Equal(expected.Dimensions.ToArray(), actual.Dimensions.ToArray());
+        Assert.Equal(expected.Length, actual.Length);
+
+        var expectedValues = expected.Buffer.Span;
+        var actualValues = actual.Buffer.Span;
+        for (var index = 0; index < expectedValues.Length; index++)
+        {
+            Assert.True(
+                MathF.Abs(expectedValues[index] - actualValues[index]) <= tolerance,
+                $"Expected {expectedValues[index]} but got {actualValues[index]} at flat index {index}."
+            );
+        }
+    }
+
+    private sealed class DeepExportRank3LinearModule : TorchModule
+    {
+        private readonly global::TorchSharp.Modules.Linear _linear;
+
+        public DeepExportRank3LinearModule()
+            : base(nameof(DeepExportRank3LinearModule))
+        {
+            _linear = nn.Linear(3, 5);
+
+            RegisterComponents();
+        }
+
+        public override Tensor forward(Tensor input)
+        {
+            return _linear.forward(input);
+        }
     }
 
     private sealed class DeepExportHelperProjectionModule : TorchModule

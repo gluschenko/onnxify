@@ -8,6 +8,10 @@ Do not hand-edit files in this directory; rerun the generator instead.
 - Distinct Torch ops declared through [TorchOp]: 417
 - Source files: src/Onnxify.TorchSharp/TorchModuleExtensions.cs, src/Onnxify.TorchSharp/TorchTensorOperatorExtensions.cs
 
+## Package Versions
+
+[Full package versions and dependencies](../packages.md).
+
 ## Composite Converters
 
 | Receiver | Return | Torch ops | File |

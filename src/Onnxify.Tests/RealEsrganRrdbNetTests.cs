@@ -133,7 +133,11 @@ public sealed class RealEsrganRrdbNetTests
         {
             model.Save(path);
 
-            using var session = new InferenceSession(path);
+            using var session = OnnxRuntimeCompatibilityAssert.CreateSession(
+                path,
+                model,
+                "RealESRGAN export"
+            );
             using var results = session.Run([CreateNamedInput(input)]);
             var output = Assert.Single(results);
             var tensor = output.AsTensor<float>();

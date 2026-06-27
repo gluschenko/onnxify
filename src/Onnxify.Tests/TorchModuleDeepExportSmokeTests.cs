@@ -210,7 +210,11 @@ public sealed class TorchModuleDeepExportSmokeTests
         {
             model.Save(path);
 
-            using var session = new InferenceSession(path);
+            using var session = OnnxRuntimeCompatibilityAssert.CreateSession(
+                path,
+                model,
+                "TorchModule deep-export smoke"
+            );
             using var results = session.Run([CreateNamedInput(input)]);
             var output = Assert.Single(results);
             var tensor = output.AsTensor<float>();
