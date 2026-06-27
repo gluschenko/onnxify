@@ -82,6 +82,7 @@ Output: [3]
 
 | Converter | Torch ops |
 | --- | --- |
+| `Onnxify.TorchSharp.TorchModuleExtensions.Export(this Linear module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge` | `aten::linear` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportBernoulli(this OnnxGraph graph, IOnnxGraphEdge input, double p, TorchTensorDataType dtype) -> IOnnxGraphEdge` | `aten::bernoulli.p` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportEmptyLike(this OnnxGraph graph, IOnnxGraphEdge input, TorchTensorDataType dtype, string layout, string device, bool pinMemory, string memoryFormat) -> IOnnxGraphEdge` | `aten::empty_like` |
 | `Onnxify.TorchSharp.TorchTensorOperatorExtensions.ExportExpandAs(this OnnxGraph graph, IOnnxGraphEdge input, IOnnxGraphEdge other) -> IOnnxGraphEdge` | `aten::expand_as` |
