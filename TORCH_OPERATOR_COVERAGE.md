@@ -6,6 +6,22 @@
 * Deep export support: 83.53% (416/498)
 * Deep import support: 56.02% (279/498)
 
+## Package Versions
+
+Current versions and direct dependencies are read from the publishable `Onnxify.*` project files under `src/`.
+
+| Package | Version | Onnxify project references | Third-party NuGet PackageReferences |
+| --- | --- | --- | --- |
+| `Onnxify` | `0.3.6.2` | None | `Google.Protobuf` `3.34.0`, `Grpc.Tools` `2.78.0`, `System.Collections.Immutable` `9.0.0` ('$(TargetFramework)'=='netstandard2.0'), `System.Text.Json` `10.0.9` ('$(TargetFramework)'=='netstandard2.0') |
+| `Onnxify.CLI` | `0.3.6.2` | `Onnxify`, `Onnxify.HuggingFace`, `Onnxify.ML`, `Onnxify.ML.TorchSharp`, `Onnxify.ProjectGenerator`, `Onnxify.Safetensors`, `Onnxify.TorchSharp` | None |
+| `Onnxify.HuggingFace` | `0.3.6.2` | None | None |
+| `Onnxify.ML` | `0.3.6.2` | None | None |
+| `Onnxify.ML.TorchSharp` | `0.3.6.2` | `Onnxify.ML` | `TorchSharp` `0.107.0` |
+| `Onnxify.ModelGenerator` | `0.3.6.2` | `Onnxify` | `Google.Protobuf` `3.34.0`, `Grpc.Tools` `2.78.0`, `Microsoft.CodeAnalysis.Analyzers` `3.11.0`, `Microsoft.CodeAnalysis.CSharp` `4.11.0`, `System.Collections.Immutable` `9.0.0` |
+| `Onnxify.ProjectGenerator` | `0.3.6.2` | `Onnxify` | None |
+| `Onnxify.Safetensors` | `0.3.6.2` | None | None |
+| `Onnxify.TorchSharp` | `0.3.6.2` | `Onnxify`, `Onnxify.Safetensors` | `ICSharpCode.Decompiler` `10.0.1.8346`, `TorchSharp` `0.107.0` |
+
 ## Coverage Columns
 
 * `Found` means the observer found a likely matching public TorchSharp API or module for the ONNXScript Torch operator name. This is a discovery signal, not an Onnxify implementation guarantee.
