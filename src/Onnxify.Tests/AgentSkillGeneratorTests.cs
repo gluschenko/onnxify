@@ -23,10 +23,9 @@ public sealed class AgentSkillGeneratorTests
         Assert.Contains("Torch-Op-Backed Converters", indexMarkdown);
         Assert.Contains("aten::conv2d", indexMarkdown);
         Assert.Contains("src/Onnxify.TorchSharp/TorchTensorOperatorExtensions.cs", indexMarkdown);
-        Assert.Contains("## NuGet Package Versions", indexMarkdown);
-        Assert.Contains("| `Onnxify.TorchSharp` | `0.3.6.2` |", indexMarkdown);
-        Assert.Contains("`ICSharpCode.Decompiler` `10.0.1.8346`", indexMarkdown);
-        Assert.Contains("`TorchSharp` `0.107.0`", indexMarkdown);
+        Assert.Contains("## Package Versions", indexMarkdown);
+        Assert.Contains("[Full package versions and dependencies](../packages.md)", indexMarkdown);
+        Assert.DoesNotContain("`ICSharpCode.Decompiler` `10.0.1.8346`", indexMarkdown);
 
         var moduleMarkdown = files[Path.Combine("composites", "torch.nn.Module_torch.Tensor__torch.Tensor_.md")];
         Assert.Contains("torch.nn.Module<torch.Tensor, torch.Tensor> Converter", moduleMarkdown);
@@ -36,9 +35,11 @@ public sealed class AgentSkillGeneratorTests
         Assert.Contains("Conv2d Converter", conv2dMarkdown);
         Assert.Contains("TorchModuleExtensions.Export(this Conv2d module, OnnxGraph graph, IOnnxGraphEdge input) -> IOnnxGraphEdge", conv2dMarkdown);
         Assert.Contains("aten::conv2d", conv2dMarkdown);
-        Assert.Contains("## Package Context", conv2dMarkdown);
+        Assert.Contains("## Package Versions", conv2dMarkdown);
+        Assert.Contains("[Full package versions and dependencies](../../packages.md)", conv2dMarkdown);
+        Assert.Contains("| `Onnxify` | `0.3.6.2` |", conv2dMarkdown);
         Assert.Contains("| `Onnxify.TorchSharp` | `0.3.6.2` |", conv2dMarkdown);
-        Assert.Contains("`TorchSharp` `0.107.0`", conv2dMarkdown);
+        Assert.DoesNotContain("`TorchSharp` `0.107.0`", conv2dMarkdown);
 
         var matmulMarkdown = files[Path.Combine("torch-ops", "OnnxGraph__aten__bmm.md")];
         Assert.Contains("OnnxGraph Converter", matmulMarkdown);
@@ -85,22 +86,29 @@ public sealed class AgentSkillGeneratorTests
         Assert.Contains("- `ai.onnx` - ", indexMarkdown);
         Assert.Contains("ModelGenerator TorchModule", indexMarkdown);
         Assert.Contains("- Operators with at least one Onnxify.ModelGenerator TorchModule path: `", indexMarkdown);
-        Assert.Contains("## NuGet Package Versions", indexMarkdown);
-        Assert.Contains("| `Onnxify` | `0.3.6.2` |", indexMarkdown);
-        Assert.Contains("`Google.Protobuf` `3.34.0`", indexMarkdown);
+        Assert.Contains("## Package Versions", indexMarkdown);
+        Assert.Contains("[Full package versions and dependencies](../packages.md)", indexMarkdown);
+        Assert.DoesNotContain("`Google.Protobuf` `3.34.0`", indexMarkdown);
 
         var addMarkdown = files[Path.Combine("ai.onnx", "Add.md")];
         Assert.Contains("- Onnxify.ModelGenerator TorchModule coverage: `available`", addMarkdown);
         Assert.Contains("AddTorchModuleInlineOperator", addMarkdown);
         Assert.Contains("(../common/Broadcasting.md)", addMarkdown);
         Assert.DoesNotContain("(Broadcasting.md)", addMarkdown);
-        Assert.Contains("## Package Context", addMarkdown);
-        Assert.Contains("| `Onnxify.ModelGenerator` | `0.3.6.2` |", addMarkdown);
-        Assert.Contains("`Microsoft.CodeAnalysis.CSharp` `4.11.0`", addMarkdown);
+        Assert.Contains("## Package Versions", addMarkdown);
+        Assert.Contains("[Full package versions and dependencies](../../packages.md)", addMarkdown);
+        Assert.Contains("| `Onnxify` | `0.3.6.2` |", addMarkdown);
+        Assert.Contains("| `Onnxify.TorchSharp` | `0.3.6.2` |", addMarkdown);
+        Assert.DoesNotContain("| `Onnxify.ModelGenerator` | `0.3.6.2` |", addMarkdown);
+        Assert.DoesNotContain("`Microsoft.CodeAnalysis.CSharp` `4.11.0`", addMarkdown);
 
         var convMarkdown = files[Path.Combine("ai.onnx", "Conv.md")];
         Assert.Contains("- Onnxify.ModelGenerator TorchModule coverage: `available`", convMarkdown);
         Assert.Contains("Conv2dTorchModuleOperator", convMarkdown);
+
+        var mlOperatorMarkdown = files[Path.Combine("ai.onnx.ml", "ArrayFeatureExtractor.md")];
+        Assert.Contains("| `Onnxify` | `0.3.6.2` |", mlOperatorMarkdown);
+        Assert.DoesNotContain("| `Onnxify.TorchSharp` | `0.3.6.2` |", mlOperatorMarkdown);
 
         var batchNormalizationMarkdown = files[Path.Combine("ai.onnx", "BatchNormalization.md")];
         Assert.Contains("(../common/IR.md)", batchNormalizationMarkdown);
@@ -111,10 +119,17 @@ public sealed class AgentSkillGeneratorTests
     public void BuildGeneratedFiles_ForOperators_DoesNotContainBrokenRelativeMarkdownLinks()
     {
         var files = OperatorSkillGenerator.BuildGeneratedFiles();
-        string tempRoot = Path.Combine(AppContext.BaseDirectory, "AgentSkillGeneratorTestOutput", Guid.NewGuid().ToString("N"));
+        string repoRoot = FindRepositoryRoot();
+        var packageInventory = PackageInventory.Load(repoRoot);
+        string tempParent = Path.Combine(AppContext.BaseDirectory, "AgentSkillGeneratorTestOutput", Guid.NewGuid().ToString("N"));
+        string tempRoot = Path.Combine(tempParent, "operators");
 
         try
         {
+            string packagePath = Path.Combine(tempParent, "packages.md");
+            Directory.CreateDirectory(Path.GetDirectoryName(packagePath)!);
+            File.WriteAllText(packagePath, packageInventory.BuildFullMarkdown());
+
             foreach ((string relativePath, string content) in files)
             {
                 string fullPath = Path.Combine(tempRoot, relativePath);
@@ -139,11 +154,27 @@ public sealed class AgentSkillGeneratorTests
         }
         finally
         {
-            if (Directory.Exists(tempRoot))
+            if (Directory.Exists(tempParent))
             {
-                Directory.Delete(tempRoot, recursive: true);
+                Directory.Delete(tempParent, recursive: true);
             }
         }
+    }
+
+    [Fact]
+    public void PackageInventory_BuildFullMarkdown_IncludesVersionsAndThirdPartyDependencies()
+    {
+        string repoRoot = FindRepositoryRoot();
+        var packageInventory = PackageInventory.Load(repoRoot);
+
+        string markdown = packageInventory.BuildFullMarkdown();
+
+        Assert.Contains("# Onnxify Package Versions And Dependencies", markdown);
+        Assert.Contains("| `Onnxify` | `0.3.6.2` |", markdown);
+        Assert.Contains("| `Onnxify.TorchSharp` | `0.3.6.2` |", markdown);
+        Assert.Contains("`Google.Protobuf` `3.34.0`", markdown);
+        Assert.Contains("`ICSharpCode.Decompiler` `10.0.1.8346`", markdown);
+        Assert.Contains("`TorchSharp` `0.107.0`", markdown);
     }
 
     private static IReadOnlyList<string> ExtractMarkdownTargets(string markdown)
@@ -176,5 +207,12 @@ public sealed class AgentSkillGeneratorTests
         }
 
         return targets;
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        return SkillGeneratorPaths.FindRepositoryRoot(Directory.GetCurrentDirectory())
+            ?? SkillGeneratorPaths.FindRepositoryRoot(AppContext.BaseDirectory)
+            ?? throw new DirectoryNotFoundException("Repository root was not found.");
     }
 }

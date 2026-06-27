@@ -16,15 +16,15 @@ internal static class TorchSharpConverterSkillGenerator
             [typeof(TorchTensorOperatorExtensions)] = "src/Onnxify.TorchSharp/TorchTensorOperatorExtensions.cs",
         };
 
-    public static int Run(string[] args)
+    public static int Run(string[] args, PackageInventory? packageInventory = null)
     {
-        string repoRoot = FindRepositoryRoot(Directory.GetCurrentDirectory())
-            ?? FindRepositoryRoot(AppContext.BaseDirectory)
+        string repoRoot = SkillGeneratorPaths.FindRepositoryRoot(Directory.GetCurrentDirectory())
+            ?? SkillGeneratorPaths.FindRepositoryRoot(AppContext.BaseDirectory)
             ?? throw new DirectoryNotFoundException("Repository root was not found.");
 
-        string skillRoot = ResolveSkillRoot(repoRoot);
+        string skillRoot = SkillGeneratorPaths.ResolveSkillRoot(repoRoot);
         string outputRoot = Path.Combine(skillRoot, "references", "torchsharp-converters");
-        var packageInventory = PackageInventory.Load(repoRoot);
+        packageInventory ??= PackageInventory.Load(repoRoot);
         var generatedFiles = BuildGeneratedFiles(GetExistingGeneratedRelativePaths(outputRoot), packageInventory);
 
         RewriteGeneratedDirectory(outputRoot, generatedFiles);
@@ -49,8 +49,8 @@ internal static class TorchSharpConverterSkillGenerator
     )
     {
         packageInventory ??= PackageInventory.Load(
-            FindRepositoryRoot(Directory.GetCurrentDirectory())
-            ?? FindRepositoryRoot(AppContext.BaseDirectory)
+            SkillGeneratorPaths.FindRepositoryRoot(Directory.GetCurrentDirectory())
+            ?? SkillGeneratorPaths.FindRepositoryRoot(AppContext.BaseDirectory)
             ?? throw new DirectoryNotFoundException("Repository root was not found.")
         );
 
@@ -214,7 +214,7 @@ internal static class TorchSharpConverterSkillGenerator
         builder.AppendLine(
             $"- Source files: {string.Join(", ", _sourceFilePaths.Values.OrderBy(static x => x, StringComparer.Ordinal))}");
         builder.AppendLine();
-        builder.AppendLine(packageInventory.BuildOverviewMarkdown());
+        builder.AppendLine(packageInventory.BuildReferenceLinkMarkdown("../packages.md"));
         builder.AppendLine();
 
         foreach (ConverterKind kind in Enum.GetValues<ConverterKind>())
@@ -285,7 +285,10 @@ internal static class TorchSharpConverterSkillGenerator
         }
 
         builder.AppendLine();
-        builder.AppendLine(PackageInventory.BuildPackageContextMarkdown(packageInventory.Packages));
+        builder.AppendLine(packageInventory.BuildPackageVersionMarkdown(
+            ["Onnxify", "Onnxify.TorchSharp"],
+            "../../packages.md"
+        ));
         builder.AppendLine();
 
         builder.AppendLine("## Parameters");

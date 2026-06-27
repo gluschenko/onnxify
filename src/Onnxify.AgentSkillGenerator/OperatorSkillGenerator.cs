@@ -33,15 +33,16 @@ internal static class OperatorSkillGenerator
         ["IR.md"] = "../common/IR.md",
     }.ToFrozenDictionary(StringComparer.Ordinal);
 
-    public static int Run(string[] args)
+    public static int Run(string[] args, PackageInventory? packageInventory = null)
     {
-        string repoRoot = FindRepositoryRoot(Directory.GetCurrentDirectory())
-            ?? FindRepositoryRoot(AppContext.BaseDirectory)
+        string repoRoot = SkillGeneratorPaths.FindRepositoryRoot(Directory.GetCurrentDirectory())
+            ?? SkillGeneratorPaths.FindRepositoryRoot(AppContext.BaseDirectory)
             ?? throw new DirectoryNotFoundException("Repository root was not found.");
 
         string schemaPath = ResolveSchemaPath(repoRoot);
-        string skillRoot = ResolveSkillRoot(repoRoot);
+        string skillRoot = SkillGeneratorPaths.ResolveSkillRoot(repoRoot);
         string outputRoot = Path.Combine(skillRoot, "references", "operators");
+        packageInventory ??= PackageInventory.Load(repoRoot);
 
         var schemaRoot = JsonSerializer.Deserialize<OperatorSchemaRoot>(File.ReadAllText(schemaPath), _jsonOptions)
             ?? throw new InvalidOperationException($"Failed to parse operator schema file '{schemaPath}'.");
@@ -51,7 +52,6 @@ internal static class OperatorSkillGenerator
         var onnxOperators = BuildOnnxOperators(schemaByKey);
         var converterCoverage = BuildTorchSharpCoverage(onnxOperators);
         var modelGeneratorCoverage = BuildModelGeneratorCoverage();
-        var packageInventory = PackageInventory.Load(repoRoot);
         var generatedFiles = BuildGeneratedFiles(onnxOperators, converterCoverage, modelGeneratorCoverage, packageInventory);
 
         RewriteGeneratedDirectory(outputRoot, generatedFiles);
@@ -72,8 +72,8 @@ internal static class OperatorSkillGenerator
 
     internal static IReadOnlyDictionary<string, string> BuildGeneratedFiles()
     {
-        string repoRoot = FindRepositoryRoot(Directory.GetCurrentDirectory())
-            ?? FindRepositoryRoot(AppContext.BaseDirectory)
+        string repoRoot = SkillGeneratorPaths.FindRepositoryRoot(Directory.GetCurrentDirectory())
+            ?? SkillGeneratorPaths.FindRepositoryRoot(AppContext.BaseDirectory)
             ?? throw new DirectoryNotFoundException("Repository root was not found.");
 
         string schemaPath = ResolveSchemaPath(repoRoot);
@@ -612,7 +612,7 @@ internal static class OperatorSkillGenerator
         builder.AppendLine($"- Operators with at least one Onnxify.ModelGenerator TorchModule path: `{onnxOperators.Count(x => modelGeneratorCoverage.ContainsKey(x.Key))}`");
         builder.AppendLine("- Operator schema source: `src/Onnxify/Assets/onnx_operators.json`");
         builder.AppendLine();
-        builder.AppendLine(packageInventory.BuildOverviewMarkdown());
+        builder.AppendLine(packageInventory.BuildReferenceLinkMarkdown("../packages.md"));
         builder.AppendLine();
 
         builder.AppendLine("## Table of Contents");
@@ -661,6 +661,13 @@ internal static class OperatorSkillGenerator
         }
 
         return builder.ToString().TrimEnd();
+    }
+
+    private static IReadOnlyList<string> GetOperatorPackageNames(IReadOnlyList<TorchSharpConverterDoc> converters)
+    {
+        return converters.Count == 0
+            ? ["Onnxify"]
+            : ["Onnxify", "Onnxify.TorchSharp"];
     }
 
     private static string BuildBroadcastingMarkdown()
@@ -733,7 +740,10 @@ internal static class OperatorSkillGenerator
         builder.AppendLine($"- Onnxify.TorchSharp converter coverage: `{(converters.Count > 0 ? "available" : "not detected")}`");
         builder.AppendLine($"- Onnxify.ModelGenerator TorchModule coverage: `{(modelGeneratorOperators.Count > 0 ? "available" : "not detected")}`");
         builder.AppendLine();
-        builder.AppendLine(PackageInventory.BuildPackageContextMarkdown(packageInventory.Packages));
+        builder.AppendLine(packageInventory.BuildPackageVersionMarkdown(
+            GetOperatorPackageNames(converters),
+            "../../packages.md"
+        ));
         builder.AppendLine();
 
         builder.AppendLine("## Description");
