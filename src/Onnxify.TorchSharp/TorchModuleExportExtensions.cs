@@ -898,12 +898,23 @@ public static class TorchModuleExportExtensions
             return localResult;
         }
 
+        if (TryGetInvocationMethodName(invocation.Target, out invocationMethodName)
+            && TryExportGeneratedGraphHelper(
+                context: context,
+                methodName: invocationMethodName,
+                arguments: GetLocalInvocationArguments(invocation).ToArray(),
+                result: out localResult
+            ))
+        {
+            return localResult;
+        }
+
         if (TryGetLeadingInvocationMethodName(invocation, out var leadingInvocationMethodName)
             && TryExportGeneratedGraphHelper(
-                context,
-                leadingInvocationMethodName,
-                GetLocalInvocationArguments(invocation).ToArray(),
-                out localResult
+                context: context,
+                methodName: leadingInvocationMethodName,
+                arguments: GetLocalInvocationArguments(invocation).ToArray(),
+                result: out localResult
             ))
         {
             return localResult;
