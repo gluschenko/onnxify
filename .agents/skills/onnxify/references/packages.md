@@ -5,12 +5,12 @@ Do not hand-edit this file; rerun the generator instead.
 
 | Package | Version | Onnxify dependencies | Third-party NuGet dependencies |
 | --- | --- | --- | --- |
-| `Onnxify` | `0.3.7` | [none] | `Google.Protobuf` `3.34.0`<br>`Grpc.Tools` `2.78.0` (PrivateAssets=all)<br>`System.Collections.Immutable` `9.0.0` (Condition='$(TargetFramework)'=='netstandard2.0')<br>`System.Text.Json` `10.0.9` (Condition='$(TargetFramework)'=='netstandard2.0') |
-| `Onnxify.CLI` | `0.3.7` | `Onnxify`<br>`Onnxify.HuggingFace`<br>`Onnxify.ML`<br>`Onnxify.ML.TorchSharp`<br>`Onnxify.ProjectGenerator`<br>`Onnxify.Safetensors`<br>`Onnxify.TorchSharp` | [none] |
-| `Onnxify.HuggingFace` | `0.3.7` | [none] | [none] |
-| `Onnxify.ML` | `0.3.7` | [none] | [none] |
-| `Onnxify.ML.TorchSharp` | `0.3.7` | `Onnxify.ML` | `TorchSharp` `0.107.0` |
-| `Onnxify.ModelGenerator` | `0.3.7` | `Onnxify` | `Google.Protobuf` `3.34.0` (PrivateAssets=all)<br>`Grpc.Tools` `2.78.0` (PrivateAssets=all)<br>`Microsoft.CodeAnalysis.Analyzers` `3.11.0` (PrivateAssets=all)<br>`Microsoft.CodeAnalysis.CSharp` `4.11.0` (PrivateAssets=all)<br>`System.Collections.Immutable` `9.0.0` (PrivateAssets=all) |
-| `Onnxify.ProjectGenerator` | `0.3.7` | `Onnxify` | [none] |
-| `Onnxify.Safetensors` | `0.3.7` | [none] | [none] |
-| `Onnxify.TorchSharp` | `0.3.7` | `Onnxify`<br>`Onnxify.Safetensors` | `ICSharpCode.Decompiler` `10.0.1.8346`<br>`TorchSharp` `0.107.0` |
+| `Onnxify` | `0.3.8` | [none] | `Google.Protobuf` `3.34.0`<br>`Grpc.Tools` `2.78.0` (PrivateAssets=all)<br>`System.Collections.Immutable` `9.0.0` (Condition='$(TargetFramework)'=='netstandard2.0')<br>`System.Text.Json` `10.0.9` (Condition='$(TargetFramework)'=='netstandard2.0') |
+| `Onnxify.CLI` | `0.3.8` | `Onnxify`<br>`Onnxify.HuggingFace`<br>`Onnxify.ML`<br>`Onnxify.ML.TorchSharp`<br>`Onnxify.ProjectGenerator`<br>`Onnxify.Safetensors`<br>`Onnxify.TorchSharp` | [none] |
+| `Onnxify.HuggingFace` | `0.3.8` | [none] | [none] |
+| `Onnxify.ML` | `0.3.8` | [none] | [none] |
+| `Onnxify.ML.TorchSharp` | `0.3.8` | `Onnxify.ML` | `TorchSharp` `0.107.0` |
+| `Onnxify.ModelGenerator` | `0.3.8` | `Onnxify` | `Google.Protobuf` `3.34.0` (PrivateAssets=all)<br>`Grpc.Tools` `2.78.0` (PrivateAssets=all)<br>`Microsoft.CodeAnalysis.Analyzers` `3.11.0` (PrivateAssets=all)<br>`Microsoft.CodeAnalysis.CSharp` `4.11.0` (PrivateAssets=all)<br>`System.Collections.Immutable` `9.0.0` (PrivateAssets=all) |
+| `Onnxify.ProjectGenerator` | `0.3.8` | `Onnxify` | [none] |
+| `Onnxify.Safetensors` | `0.3.8` | [none] | [none] |
+| `Onnxify.TorchSharp` | `0.3.8` | `Onnxify`<br>`Onnxify.Safetensors` | `ICSharpCode.Decompiler` `10.0.1.8346`<br>`TorchSharp` `0.107.0` |
