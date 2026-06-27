@@ -306,13 +306,28 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             }
         }
 
-        foreach (var specification in successfulSpecifications)
-        {
-            if (duplicates.ContainsKey(specification.FullyQualifiedClassName))
-            {
-                continue;
-            }
+        var emittedSpecifications = successfulSpecifications
+            .Where(specification => !duplicates.ContainsKey(specification.FullyQualifiedClassName))
+            .ToArray();
 
+        if (emittedSpecifications.Any(static x => x.ImportTypes.HasFlag(ModelImportType.OnnxRuntimeInference)))
+        {
+            context.AddSource(
+                hintName: "Onnxify.ModelGenerator.OnnxInferenceSessionModelBase.g.cs",
+                sourceText: GeneratedSupportSourceLoader.Load(fileName: "OnnxInferenceSessionModelBase.cs")
+            );
+        }
+
+        if (emittedSpecifications.Any(static x => x.ImportTypes.HasFlag(ModelImportType.TorchModule)))
+        {
+            context.AddSource(
+                hintName: "Onnxify.ModelGenerator.TorchModuleModelBase.g.cs",
+                sourceText: GeneratedSupportSourceLoader.Load(fileName: "TorchModuleModelBase.cs")
+            );
+        }
+
+        foreach (var specification in emittedSpecifications)
+        {
             if (specification.ImportTypes.HasFlag(ModelImportType.OnnxRuntimeInference))
             {
                 context.AddSource($"{specification.ClassName}.g.cs", new OnnxRuntimeInferencePrinter().GenerateSource(specification));

@@ -153,6 +153,148 @@ public sealed class OnnxModelGeneratorTests
     }
 
     [Fact]
+    public void Generate_OnnxRuntimeModels_EmitOneSharedInferenceBase()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelAPath = Path.Combine(tempRoot, "first.onnx");
+        var modelBPath = Path.Combine(tempRoot, "second.onnx");
+
+        try
+        {
+            CreateTensorModel(
+                modelPath: modelAPath,
+                inputName: "input",
+                inputType: OnnxTensorType.Create<float>(new OnnxDimension[] { 1L, 4L }),
+                outputName: "output",
+                outputType: OnnxTensorType.Create<float>(new OnnxDimension[] { 1L, 4L }));
+            CreateTensorModel(
+                modelPath: modelBPath,
+                inputName: "input",
+                inputType: OnnxTensorType.Create<float>(new OnnxDimension[] { 1L, 2L }),
+                outputName: "output",
+                outputType: OnnxTensorType.Create<float>(new OnnxDimension[] { 1L, 2L }));
+
+            var driver = CreateDriver(
+                additionalFiles: [new BinaryAdditionalText(modelAPath), new BinaryAdditionalText(modelBPath)],
+                globalOptions: new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["build_property.ProjectDir"] = tempRoot + Path.DirectorySeparatorChar,
+                    ["build_property.RootNamespace"] = "Demo.App",
+                });
+
+            driver = driver.RunGeneratorsAndUpdateCompilation(
+                compilation: CreateCompilation(),
+                outputCompilation: out var updatedCompilation,
+                diagnostics: out var generatorDiagnostics);
+
+            Assert.DoesNotContain(generatorDiagnostics, static x => x.Severity == DiagnosticSeverity.Error);
+            Assert.DoesNotContain(updatedCompilation.GetDiagnostics(), static x => x.Severity == DiagnosticSeverity.Error);
+            Assert.Equal(
+                expected: 1,
+                actual: CountGeneratedHint(
+                    driver: driver,
+                    hintName: "Onnxify.ModelGenerator.OnnxInferenceSessionModelBase.g.cs"
+                )
+            );
+            Assert.Equal(
+                expected: 0,
+                actual: CountGeneratedHint(
+                    driver: driver,
+                    hintName: "Onnxify.ModelGenerator.TorchModuleModelBase.g.cs"
+                )
+            );
+
+            var generatedSource = GetAllGeneratedSource(driver);
+            Assert.Contains(": Onnxify.ModelGenerator.Generated.OnnxInferenceSessionModelBase", generatedSource);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Generate_TorchModuleModels_EmitOneSharedTorchModuleBaseAndNoInferenceBase()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelAPath = Path.Combine(tempRoot, "first-torch.onnx");
+        var modelBPath = Path.Combine(tempRoot, "second-torch.onnx");
+
+        try
+        {
+            CreateIdentityProtoModel(
+                modelPath: modelAPath,
+                inputName: "input",
+                outputName: "output"
+            );
+            CreateIdentityProtoModel(
+                modelPath: modelBPath,
+                inputName: "input",
+                outputName: "output"
+            );
+
+            var driver = CreateDriver(
+                additionalFiles: [new BinaryAdditionalText(modelAPath), new BinaryAdditionalText(modelBPath)],
+                globalOptions: new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["build_property.ProjectDir"] = tempRoot + Path.DirectorySeparatorChar,
+                    ["build_property.RootNamespace"] = "Demo.App",
+                },
+                fileOptions: new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal)
+                {
+                    [modelAPath] = new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["build_metadata.additionalfiles.OnnxifyModelImportType"] = "TorchModule",
+                    },
+                    [modelBPath] = new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["build_metadata.additionalfiles.OnnxifyModelImportType"] = "TorchModule",
+                    },
+                });
+
+            driver = driver.RunGeneratorsAndUpdateCompilation(
+                compilation: CreateCompilation(),
+                outputCompilation: out var updatedCompilation,
+                diagnostics: out var generatorDiagnostics);
+
+            Assert.DoesNotContain(generatorDiagnostics, static x => x.Severity == DiagnosticSeverity.Error);
+            Assert.DoesNotContain(updatedCompilation.GetDiagnostics(), static x => x.Severity == DiagnosticSeverity.Error);
+            Assert.Equal(
+                expected: 0,
+                actual: CountGeneratedHint(
+                    driver: driver,
+                    hintName: "Onnxify.ModelGenerator.OnnxInferenceSessionModelBase.g.cs"
+                )
+            );
+            Assert.Equal(
+                expected: 1,
+                actual: CountGeneratedHint(
+                    driver: driver,
+                    hintName: "Onnxify.ModelGenerator.TorchModuleModelBase.g.cs"
+                )
+            );
+
+            var generatedSource = GetGeneratedSource(driver);
+            Assert.Contains(": Onnxify.ModelGenerator.Generated.TorchModuleModelBase<Tensor, Tensor>", generatedSource);
+            Assert.DoesNotContain("protected internal static Tensor CreateShapeTensor", generatedSource, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void Generate_WithTorchModuleImportType_ProducesGraphShapedTorchModule()
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
@@ -212,8 +354,8 @@ public sealed class OnnxModelGeneratorTests
                 .Select(static x => x.SourceText.ToString())
                 .ToArray();
 
-            var generatedSource = Assert.Single(generatedSources);
-            Assert.Contains("public sealed class AddBiasModelTorchModule : torch.nn.Module<Tensor, Tensor>", generatedSource);
+            var generatedSource = GetGeneratedSource(driver);
+            Assert.Contains("public sealed class AddBiasModelTorchModule : Onnxify.ModelGenerator.Generated.TorchModuleModelBase<Tensor, Tensor>", generatedSource);
             Assert.Contains("var biasParameter = new global::TorchSharp.Modules.Parameter(torch.empty(new long[] { 1L, 2L }, dtype: ScalarType.Float32));", generatedSource);
             Assert.Contains("register_parameter(\"bias\", biasParameter);", generatedSource);
             Assert.Contains("public void LoadWeightsFromOnnx(string modelPath)", generatedSource);
@@ -1036,10 +1178,7 @@ public sealed class OnnxModelGeneratorTests
             Assert.DoesNotContain(generatorDiagnostics, static x => x.Severity == DiagnosticSeverity.Error);
             Assert.DoesNotContain(updatedCompilation.GetDiagnostics(), static x => x.Severity == DiagnosticSeverity.Error);
 
-            var generatedSource = Assert.Single(driver.GetRunResult()
-                .Results
-                .SelectMany(static x => x.GeneratedSources)
-                .Select(static x => x.SourceText.ToString()));
+            var generatedSource = GetGeneratedSource(driver);
 
             Assert.Contains("private readonly TorchModules.Conv2d _conv1;", generatedSource);
             Assert.Contains("private readonly TorchModules.ReLU _relu1;", generatedSource);
@@ -1183,10 +1322,7 @@ public sealed class OnnxModelGeneratorTests
             Assert.DoesNotContain(generatorDiagnostics, static x => x.Severity == DiagnosticSeverity.Error);
             Assert.DoesNotContain(updatedCompilation.GetDiagnostics(), static x => x.Severity == DiagnosticSeverity.Error);
 
-            var generatedSource = Assert.Single(driver.GetRunResult()
-                .Results
-                .SelectMany(static x => x.GeneratedSources)
-                .Select(static x => x.SourceText.ToString()));
+            var generatedSource = GetGeneratedSource(driver);
 
             Assert.Contains("private readonly TorchModules.BatchNorm2d _bn1;", generatedSource);
             Assert.Contains("_bn1 = BatchNorm2d(2);", generatedSource);
@@ -1595,7 +1731,7 @@ public sealed class OnnxModelGeneratorTests
             Assert.DoesNotContain(updatedCompilation.GetDiagnostics(), static x => x.Severity == DiagnosticSeverity.Error);
 
             var generatedSource = GetGeneratedSource(driver);
-            Assert.Contains("public sealed class MultiInputOutputModelTorchModule : torch.nn.Module<Tensor, Tensor, (Tensor, Tensor)>", generatedSource);
+            Assert.Contains("public sealed class MultiInputOutputModelTorchModule : Onnxify.ModelGenerator.Generated.TorchModuleModelBase<Tensor, Tensor, (Tensor, Tensor)>", generatedSource);
             Assert.Contains("public override (Tensor, Tensor) forward(Tensor mix, Tensor convCache)", generatedSource);
             Assert.Contains("var enhanced = mix;", generatedSource);
             Assert.Contains("var convCacheOut = convCache;", generatedSource);
@@ -1883,6 +2019,29 @@ public sealed class OnnxModelGeneratorTests
         graph.Initializer.Add(tensor);
     }
 
+    private static void CreateIdentityProtoModel(
+        string modelPath,
+        string inputName,
+        string outputName
+    )
+    {
+        var model = new ModelProto
+        {
+            Graph = new GraphProto()
+        };
+        model.Graph.Input.Add(CreateTensorValueInfo(inputName, TensorProto.Types.DataType.Float, 1L, 4L));
+        model.Graph.Output.Add(CreateTensorValueInfo(outputName, TensorProto.Types.DataType.Float, 1L, 4L));
+        model.Graph.Node.Add(new NodeProto
+        {
+            Name = "identity",
+            OpType = "Identity",
+            Input = { inputName },
+            Output = { outputName },
+        });
+
+        File.WriteAllBytes(modelPath, model.ToByteArray());
+    }
+
     private static byte[] CreateFloat16RawData(params Half[] values)
     {
         var bytes = new byte[values.Length * sizeof(ushort)];
@@ -1932,7 +2091,7 @@ public sealed class OnnxModelGeneratorTests
         Assert.DoesNotContain(generatorDiagnostics, static x => x.Severity == DiagnosticSeverity.Error);
         Assert.DoesNotContain(updatedCompilation.GetDiagnostics(), static x => x.Severity == DiagnosticSeverity.Error);
 
-        return GetGeneratedSource(driver);
+        return GetAllGeneratedSource(driver);
     }
 
     private static CSharpCompilation CreateCompilation()
@@ -1990,6 +2149,30 @@ public sealed class OnnxModelGeneratorTests
             .First(static x => x.Contains("MODEL_PROJECT_RELATIVE_PATH", StringComparison.Ordinal));
 
         return modelSource;
+    }
+
+    private static string GetAllGeneratedSource(GeneratorDriver driver)
+    {
+        var generatedSources = driver.GetRunResult()
+            .Results
+            .SelectMany(static x => x.GeneratedSources)
+            .Select(static x => x.SourceText.ToString())
+            .ToArray();
+
+        Assert.NotEmpty(generatedSources);
+
+        return string.Join("\n", generatedSources);
+    }
+
+    private static int CountGeneratedHint(
+        GeneratorDriver driver,
+        string hintName
+    )
+    {
+        return driver.GetRunResult()
+            .Results
+            .SelectMany(static x => x.GeneratedSources)
+            .Count(x => string.Equals(x.HintName, hintName, StringComparison.Ordinal));
     }
 
     private sealed class BinaryAdditionalText(string path) : AdditionalText

@@ -11,4 +11,4 @@
 | [OXY-007](OXY-007.md) | Migrate Torch Operation Families | TODO | 56 human-hours | 2026-06-27 | 2026-06-27 |
 | [OXY-008](OXY-008.md) | Public Extensibility API And Deep Export Cleanup | TODO | 32 human-hours | 2026-06-27 | 2026-06-27 |
 | [OXY-009](OXY-009.md) | TorchSharp Export Runtime Audit | TODO | 32 human-hours | 2026-06-27 | 2026-06-27 |
-| [OXY-010](OXY-010.md) | ModelGenerator Shared Generated Base Classes | TODO | 40 human-hours | 2026-06-27 | 2026-06-27 |
+| [OXY-010](OXY-010.md) | ModelGenerator Shared Generated Base Classes | DONE | 40 human-hours | 2026-06-27 | 2026-06-27 |

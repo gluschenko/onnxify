@@ -19,7 +19,6 @@ internal sealed class OnnxRuntimeInferencePrinter
             
         using System;
         using System.Collections.Generic;
-        using System.IO;
         using Microsoft.ML.OnnxRuntime;
         using Microsoft.ML.OnnxRuntime.Tensors;
 
@@ -180,15 +179,8 @@ internal sealed class OnnxRuntimeInferencePrinter
         {{XmlParam("modelPath", "Path to the ONNX model file to load.")}}
         {{XmlParam("sessionOptions", "Optional ONNX Runtime session options used when constructing the inference session.")}}
         public {{specification.ClassName}}(string modelPath, SessionOptions? sessionOptions)
+            : base(modelPath, sessionOptions)
         {
-            if (string.IsNullOrWhiteSpace(modelPath))
-            {
-                throw new ArgumentException("Model path must be provided.", nameof(modelPath));
-            }
-
-            Session = sessionOptions is null
-                ? new InferenceSession(modelPath)
-                : new InferenceSession(modelPath, sessionOptions);
         }
 
         {{XmlSummary($"Creates a {specification.ClassName} from the raw bytes of an ONNX model.")}}
@@ -202,15 +194,8 @@ internal sealed class OnnxRuntimeInferencePrinter
         {{XmlParam("modelBytes", "The raw ONNX model bytes to load into the inference session.")}}
         {{XmlParam("sessionOptions", "Optional ONNX Runtime session options used when constructing the inference session.")}}
         public {{specification.ClassName}}(byte[] modelBytes, SessionOptions? sessionOptions)
+            : base(modelBytes, sessionOptions)
         {
-            if (modelBytes is null)
-            {
-                throw new ArgumentNullException(nameof(modelBytes));
-            }
-
-            Session = sessionOptions is null
-                ? new InferenceSession(modelBytes)
-                : new InferenceSession(modelBytes, sessionOptions);
         }
         """;
 
@@ -220,13 +205,13 @@ internal sealed class OnnxRuntimeInferencePrinter
 
         return $$"""
         {{XmlSummary($"Provides a typed ONNX Runtime wrapper for the model file '{specification.FileName}'.")}}
-        public sealed class {{specification.ClassName}} : IDisposable
+        public sealed class {{specification.ClassName}} : Onnxify.ModelGenerator.Generated.OnnxInferenceSessionModelBase
         {
             {{Indent(XmlSummary("Gets the model path relative to the consuming project directory."), 1)}}
             public const string MODEL_PROJECT_RELATIVE_PATH = {{ToVerbatimStringLiteral(specification.ProjectRelativePath)}};
 
             {{Indent(XmlSummary("Gets the default runtime path used to locate the ONNX model beside the application output."), 1)}}
-            public static string DefaultModelPath => GetDefaultModelPath();
+            public static string DefaultModelPath => GetDefaultModelPath(MODEL_PROJECT_RELATIVE_PATH);
 
             {{Indent(_documentationPrinter.MetadataCollection("input", specification.Inputs), 1)}}
             public static IReadOnlyList<Onnxify.OnnxValue> Inputs { get; } = CreateInputs();
@@ -240,9 +225,6 @@ internal sealed class OnnxRuntimeInferencePrinter
                 {{Indent(outputNames, 2)}}
             };
 
-            {{Indent(XmlSummary("Gets the underlying ONNX Runtime inference session used by this wrapper."), 1)}}
-            public InferenceSession Session { get; }
-
             private static IReadOnlyList<Onnxify.OnnxValue> CreateInputs()
             {
                 {{Indent(BuildOnnxValueMetadata(specification.Inputs), 2)}}
@@ -253,25 +235,9 @@ internal sealed class OnnxRuntimeInferencePrinter
                 {{Indent(BuildOnnxValueMetadata(specification.Outputs), 2)}}
             }
 
-            private static string GetDefaultModelPath()
-            {
-                return Path.Combine(
-                    AppContext.BaseDirectory,
-                    MODEL_PROJECT_RELATIVE_PATH
-                        .Replace('\\', Path.DirectorySeparatorChar)
-                        .Replace('/', Path.DirectorySeparatorChar)
-                );
-            }
-
             {{Indent(constructors, 1)}}
 
             {{Indent(runMethods, 1)}}
-
-            {{Indent(XmlSummary("Releases the underlying ONNX Runtime inference session."), 1)}}
-            public void Dispose()
-            {
-                Session.Dispose();
-            }
         }
         """;
     }

@@ -1,3 +1,8 @@
+## 0.3.8
+
+- Hoisted repeated generated ONNX Runtime and TorchModule runtime plumbing into shared generated base classes emitted once per consuming compilation and only for the import modes in use.
+- Added editable generator template sources for the shared generated support classes so common generated helpers can be maintained as normal C#.
+
 ## 0.3.6
 
 - Added `System.Collections.Immutable` to the analyzer runtime dependency payload so generated model wrappers can initialize the source generator reliably in consumer builds.
