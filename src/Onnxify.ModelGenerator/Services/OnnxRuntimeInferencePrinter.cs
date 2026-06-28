@@ -19,6 +19,9 @@ internal sealed class OnnxRuntimeInferencePrinter
             
         using System;
         using System.Collections.Generic;
+        using System.Linq;
+        using System.Threading;
+        using System.Threading.Tasks;
         using Microsoft.ML.OnnxRuntime;
         using Microsoft.ML.OnnxRuntime.Tensors;
 
@@ -90,8 +93,10 @@ internal sealed class OnnxRuntimeInferencePrinter
         )}}
         public sealed class {{outputTypeName}} : IDisposable
         {
-            private readonly IDisposableReadOnlyCollection<DisposableNamedOnnxValue> _results;
-            private readonly Dictionary<string, DisposableNamedOnnxValue> _values;
+            private readonly IDisposableReadOnlyCollection<DisposableNamedOnnxValue>? _results;
+            private readonly IReadOnlyCollection<OrtValue>? _ortResults;
+            private readonly Dictionary<string, DisposableNamedOnnxValue>? _values;
+            private readonly Dictionary<string, OrtValue>? _ortValues;
 
             internal {{outputTypeName}}(IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results)
             {
@@ -102,43 +107,110 @@ internal sealed class OnnxRuntimeInferencePrinter
 
                 _results = results;
                 _values = new Dictionary<string, DisposableNamedOnnxValue>(StringComparer.Ordinal);
+                _ortResults = null;
+                _ortValues = null;
                 foreach (var value in results)
                 {
                     _values[value.Name] = value;
                 }
             }
 
+            internal {{outputTypeName}}(
+                IReadOnlyCollection<OrtValue> results,
+                IReadOnlyList<string> outputNames
+            )
+            {
+                if (results is null)
+                {
+                    throw new ArgumentNullException(nameof(results));
+                }
+
+                if (outputNames is null)
+                {
+                    throw new ArgumentNullException(nameof(outputNames));
+                }
+
+                if (results.Count != outputNames.Count)
+                {
+                    throw new InvalidOperationException($"ONNX Runtime returned {results.Count} output values for {outputNames.Count} requested output names.");
+                }
+
+                _results = null;
+                _values = null;
+                _ortResults = results;
+                _ortValues = new Dictionary<string, OrtValue>(StringComparer.Ordinal);
+
+                var index = 0;
+                foreach (var value in results)
+                {
+                    _ortValues[outputNames[index]] = value;
+                    index++;
+                }
+            }
+
             {{Indent(XmlSummary("Gets the raw ONNX Runtime outputs returned by the inference session."), 1)}}
-            public IDisposableReadOnlyCollection<DisposableNamedOnnxValue> Raw => _results;
+            public IDisposableReadOnlyCollection<DisposableNamedOnnxValue> Raw => _results ?? throw new NotSupportedException("Raw DisposableNamedOnnxValue outputs are not available for asynchronous OrtValue-backed inference results. Use the typed output properties or GetTensor<T>(string) instead.");
                 
             {{Indent(code, 1)}}
 
             {{Indent(_documentationPrinter.GetTensor(), 1)}}
             public Tensor<T> GetTensor<T>(string name)
+                where T : unmanaged
             {
                 if (string.IsNullOrWhiteSpace(name))
                 {
                     throw new ArgumentException("Output name must be provided.", nameof(name));
                 }
 
-                if (!_values.TryGetValue(name, out var value))
+                if (_values is not null)
+                {
+                    if (!_values.TryGetValue(name, out var value))
+                    {
+                        throw new KeyNotFoundException($"The output '{name}' was not returned by the model.");
+                    }
+
+                    var tensor = value.AsTensor<T>();
+                    if (tensor is null)
+                    {
+                        throw new InvalidOperationException($"The output '{name}' is not a tensor of the requested type {typeof(T).FullName}.");
+                    }
+
+                    return tensor;
+                }
+
+                if (_ortValues is null || !_ortValues.TryGetValue(name, out var ortValue))
                 {
                     throw new KeyNotFoundException($"The output '{name}' was not returned by the model.");
                 }
 
-                var tensor = value.AsTensor<T>();
-                if (tensor is null)
-                {
-                    throw new InvalidOperationException($"The output '{name}' is not a tensor of the requested type {typeof(T).FullName}.");
-                }
-
-                return tensor;
+                return CreateDenseTensor<T>(ortValue);
             }
 
             {{Indent(XmlSummary("Releases the native ONNX Runtime output values for this inference result."), 1)}}
             public void Dispose()
             {
-                _results.Dispose();
+                _results?.Dispose();
+
+                if (_ortResults is not null)
+                {
+                    foreach (var result in _ortResults)
+                    {
+                        result.Dispose();
+                    }
+                }
+            }
+
+            private static Tensor<T> CreateDenseTensor<T>(OrtValue value)
+                where T : unmanaged
+            {
+                var shape = value.GetTensorTypeAndShape().Shape;
+                var dimensions = new int[shape.Length];
+                for (var index = 0; index < shape.Length; index++)
+                {
+                    dimensions[index] = checked((int)shape[index]);
+                }
+
+                return new DenseTensor<T>(value.GetTensorDataAsSpan<T>().ToArray(), dimensions);
             }
         }
         """;
@@ -200,7 +272,7 @@ internal sealed class OnnxRuntimeInferencePrinter
         """;
 
         var runMethods = specification.Inputs.Length == 0
-            ? BuildParameterlessRunMethods(outputTypeName)
+            ? BuildParameterlessRunMethods(specification, outputTypeName)
             : BuildInputRunMethods(specification, inputTypeName, outputTypeName);
 
         return $$"""
@@ -235,6 +307,10 @@ internal sealed class OnnxRuntimeInferencePrinter
                 {{Indent(BuildOnnxValueMetadata(specification.Outputs), 2)}}
             }
 
+            {{Indent(BuildCreateInputOrtValueMethod(), 1)}}
+
+            {{Indent(BuildCreateOutputOrtValuesMethod(specification), 1)}}
+
             {{Indent(constructors, 1)}}
 
             {{Indent(runMethods, 1)}}
@@ -242,7 +318,10 @@ internal sealed class OnnxRuntimeInferencePrinter
         """;
     }
 
-    private static string BuildParameterlessRunMethods(string outputTypeName)
+    private static string BuildParameterlessRunMethods(
+        ModelGenerationSpecification specification,
+        string outputTypeName
+    )
     {
         return $$"""
         {{XmlSummary("Runs inference for a model with no required inputs.")}}
@@ -259,6 +338,31 @@ internal sealed class OnnxRuntimeInferencePrinter
         {
             var namedInputs = new List<NamedOnnxValue>(0);
             {{Indent(BuildRunInvocation(outputTypeName), 1)}}
+        }
+
+        {{XmlSummary("Runs inference asynchronously for a model with no required inputs.")}}
+        {{XmlParam("cancellationToken", "Token used to request cancellation for this inference invocation.")}}
+        {{XmlReturns($"A task that produces the typed {outputTypeName} wrapper over the ONNX Runtime outputs.")}}
+        public Task<{{outputTypeName}}> RunAsync(CancellationToken cancellationToken = default)
+        {
+            return RunAsync(
+                runOptions: null,
+                cancellationToken: cancellationToken
+            );
+        }
+
+        {{XmlSummary("Runs inference asynchronously for a model with no required inputs.")}}
+        {{XmlParam("runOptions", "Optional ONNX Runtime run options applied to this inference invocation.")}}
+        {{XmlParam("cancellationToken", "Token used to request cancellation for this inference invocation.")}}
+        {{XmlReturns($"A task that produces the typed {outputTypeName} wrapper over the ONNX Runtime outputs.")}}
+        public async Task<{{outputTypeName}}> RunAsync(
+            RunOptions? runOptions,
+            CancellationToken cancellationToken = default
+        )
+        {
+            var inputNames = Array.Empty<string>();
+            var inputValues = Array.Empty<OrtValue>();
+            {{Indent(BuildAsyncRunInvocation(outputTypeName, hasInputValues: false), 1)}}
         }
         """;
     }
@@ -287,9 +391,26 @@ internal sealed class OnnxRuntimeInferencePrinter
 
         var signature = string.Join(", ", orderedInputs.Select(BuildTensorMethodParameterSignature));
         var signatureWithRunOptions = BuildRunMethodSignatureWithRunOptions(orderedInputs);
+        var asyncSignature = BuildAsyncRunMethodSignature(orderedInputs);
+        var asyncSignatureWithRunOptions = BuildAsyncRunMethodSignatureWithRunOptions(orderedInputs);
         var assignments = string.Join(
             "\n",
             orderedInputs.Select(static x => $"{x.PropertyName} = {x.MethodParameterName},"));
+        var fixedInputs = string.Join(
+            "\n",
+            specification.Inputs.Select(static input =>
+                input.IsRequired
+                    ? $$"""
+                    inputNames.Add("{{Escape(input.OnnxName)}}");
+                    inputValues.Add(CreateInputOrtValue(inputs.{{input.PropertyName}} ?? throw new InvalidOperationException("Model input '{{Escape(input.OnnxName)}}' must be provided.")));
+                    """
+                    : $$"""
+                    if (inputs.{{input.PropertyName}} is not null)
+                    {
+                        inputNames.Add("{{Escape(input.OnnxName)}}");
+                        inputValues.Add(CreateInputOrtValue(inputs.{{input.PropertyName}}));
+                    }
+                    """));
 
         return $$"""
         {{XmlSummary("Runs inference using the supplied input object.")}}
@@ -345,6 +466,78 @@ internal sealed class OnnxRuntimeInferencePrinter
                 runOptions: runOptions
             );
         }
+
+        {{XmlSummary("Runs inference asynchronously using the supplied input object.")}}
+        {{XmlParam("inputs", $"The {inputTypeName} instance containing tensors for each required model input.")}}
+        {{XmlParam("cancellationToken", "Token used to request cancellation for this inference invocation.")}}
+        {{XmlReturns($"A task that produces the typed {outputTypeName} wrapper over the ONNX Runtime outputs.")}}
+        public Task<{{outputTypeName}}> RunAsync(
+            {{inputTypeName}} inputs,
+            CancellationToken cancellationToken = default
+        )
+        {
+            return RunAsync(
+                inputs: inputs,
+                runOptions: null,
+                cancellationToken: cancellationToken
+            );
+        }
+
+        {{XmlSummary("Runs inference asynchronously using the supplied input object.")}}
+        {{XmlParam("inputs", $"The {inputTypeName} instance containing tensors for each required model input.")}}
+        {{XmlParam("runOptions", "Optional ONNX Runtime run options applied to this inference invocation.")}}
+        {{XmlParam("cancellationToken", "Token used to request cancellation for this inference invocation.")}}
+        {{XmlReturns($"A task that produces the typed {outputTypeName} wrapper over the ONNX Runtime outputs.")}}
+        public async Task<{{outputTypeName}}> RunAsync(
+            {{inputTypeName}} inputs,
+            RunOptions? runOptions,
+            CancellationToken cancellationToken = default
+        )
+        {
+            if (inputs is null)
+            {
+                throw new ArgumentNullException(nameof(inputs));
+            }
+
+            var inputNames = new List<string>({{specification.Inputs.Length}});
+            var inputValues = new List<OrtValue>({{specification.Inputs.Length}});
+            {{Indent(fixedInputs, 1)}}
+
+            {{Indent(BuildAsyncRunInvocation(outputTypeName, hasInputValues: true), 1)}}
+        }
+
+        {{XmlSummary("Runs inference asynchronously using individual tensor arguments for each model input.")}}
+        {{_documentationPrinter.TensorParameters(orderedInputs)}}
+        {{XmlParam("cancellationToken", "Token used to request cancellation for this inference invocation.")}}
+        {{XmlReturns($"A task that produces the typed {outputTypeName} wrapper over the ONNX Runtime outputs.")}}
+        public Task<{{outputTypeName}}> RunAsync({{asyncSignature}})
+        {
+            return RunAsync(
+                inputs: new {{inputTypeName}}
+                {
+                    {{Indent(assignments, 3)}}
+                },
+                runOptions: null,
+                cancellationToken: cancellationToken
+            );
+        }
+
+        {{XmlSummary("Runs inference asynchronously using individual tensor arguments for each model input.")}}
+        {{_documentationPrinter.TensorParameters(orderedInputs)}}
+        {{XmlParam("runOptions", "Optional ONNX Runtime run options applied to this inference invocation.")}}
+        {{XmlParam("cancellationToken", "Token used to request cancellation for this inference invocation.")}}
+        {{XmlReturns($"A task that produces the typed {outputTypeName} wrapper over the ONNX Runtime outputs.")}}
+        public Task<{{outputTypeName}}> RunAsync({{asyncSignatureWithRunOptions}})
+        {
+            return RunAsync(
+                inputs: new {{inputTypeName}}
+                {
+                    {{Indent(assignments, 3)}}
+                },
+                runOptions: runOptions,
+                cancellationToken: cancellationToken
+            );
+        }
         """;
     }
 
@@ -364,6 +557,82 @@ internal sealed class OnnxRuntimeInferencePrinter
         }
 
         return new {{outputTypeName}}(results);
+        """;
+    }
+
+    private static string BuildAsyncRunInvocation(
+        string outputTypeName,
+        bool hasInputValues
+    )
+    {
+        var disposeInputValues = hasInputValues
+            ? """
+            foreach (var inputValue in inputValues)
+            {
+                inputValue.Dispose();
+            }
+            """
+            : string.Empty;
+
+        return $$"""
+        RunOptions? generatedRunOptions = null;
+        RunOptions effectiveRunOptions;
+        if (runOptions is null)
+        {
+            generatedRunOptions = new RunOptions();
+            effectiveRunOptions = generatedRunOptions;
+        }
+        else
+        {
+            effectiveRunOptions = runOptions;
+        }
+
+        var originalTerminate = effectiveRunOptions.Terminate;
+        var cancellationRegistration = cancellationToken.CanBeCanceled
+            ? cancellationToken.Register(
+                static state =>
+                {
+                    if (state is RunOptions options)
+                    {
+                        options.Terminate = true;
+                    }
+                },
+                effectiveRunOptions
+            )
+            : default;
+
+        var outputValues = CreateOutputOrtValues();
+        var outputValuesTransferred = false;
+
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var results = await Session.RunAsync(
+                effectiveRunOptions,
+                inputNames,
+                inputValues,
+                OutputNames,
+                outputValues
+            );
+
+            outputValuesTransferred = true;
+            return new {{outputTypeName}}(results, OutputNames);
+        }
+        finally
+        {
+            cancellationRegistration.Dispose();
+            effectiveRunOptions.Terminate = originalTerminate;
+            if (!outputValuesTransferred)
+            {
+                foreach (var outputValue in outputValues)
+                {
+                    outputValue.Dispose();
+                }
+            }
+            {{Indent(disposeInputValues, 1)}}
+            generatedRunOptions?.Dispose();
+        }
         """;
     }
 
@@ -454,6 +723,113 @@ internal sealed class OnnxRuntimeInferencePrinter
             : $"Tensor<{tensor.ElementClrTypeName}>? {tensor.MethodParameterName} = null";
     }
 
+    private static string BuildCreateInputOrtValueMethod()
+    {
+        return """
+        private static OrtValue CreateInputOrtValue<T>(Tensor<T> tensor)
+            where T : unmanaged
+        {
+            if (tensor is null)
+            {
+                throw new ArgumentNullException(nameof(tensor));
+            }
+
+            var shape = new long[tensor.Dimensions.Length];
+            for (var index = 0; index < tensor.Dimensions.Length; index++)
+            {
+                shape[index] = tensor.Dimensions[index];
+            }
+
+            return OrtValue.CreateTensorValueFromMemory<T>(tensor.ToArray(), shape);
+        }
+        """;
+    }
+
+    private static string BuildCreateOutputOrtValuesMethod(ModelGenerationSpecification specification)
+    {
+        if (specification.Outputs.Length == 0)
+        {
+            return """
+            private static OrtValue[] CreateOutputOrtValues()
+            {
+                return Array.Empty<OrtValue>();
+            }
+            """;
+        }
+
+        var outputValues = string.Join(
+            "\n",
+            specification.Outputs.Select(BuildCreateOutputOrtValueExpression));
+
+        return $$"""
+        private static OrtValue[] CreateOutputOrtValues()
+        {
+            return new OrtValue[]
+            {
+                {{Indent(outputValues, 2)}}
+            };
+        }
+
+        private static OrtValue CreateOutputOrtValue(
+            string outputName,
+            TensorElementType elementType,
+            long[] shape
+        )
+        {
+            if (shape.Any(static dimension => dimension < 0))
+            {
+                throw new NotSupportedException($"Asynchronous ONNX Runtime inference requires statically known output dimensions for output '{outputName}'. Use Run(...) for models with dynamic output shapes.");
+            }
+
+            return OrtValue.CreateAllocatedTensorValue(
+                OrtAllocator.DefaultInstance,
+                elementType,
+                shape
+            );
+        }
+        """;
+    }
+
+    private static string BuildCreateOutputOrtValueExpression(ModelTensorContract output)
+    {
+        var elementTypeName = output.ElementClrTypeName switch
+        {
+            "float" => "Float",
+            "double" => "Double",
+            "long" => "Int64",
+            "ulong" => "UInt64",
+            "int" => "Int32",
+            "uint" => "UInt32",
+            "short" => "Int16",
+            "ushort" => "UInt16",
+            "sbyte" => "Int8",
+            "byte" => "UInt8",
+            "bool" => "Bool",
+            "string" => "String",
+            "Float16" => "Float16",
+            "BFloat16" => "BFloat16",
+            _ => null,
+        };
+
+        if (elementTypeName is null)
+        {
+            return $"throw new NotSupportedException(\"Asynchronous ONNX Runtime inference does not support preallocating output '{Escape(output.OnnxName)}' with element type '{Escape(output.ElementClrTypeName)}'. Use Run(...) for this model.\"),";
+        }
+
+        var shape = output.Shape.Length == 0
+            ? "Array.Empty<long>()"
+            : $"new long[] {{ {string.Join(", ", output.Shape.Select(BuildOutputDimensionLiteral))} }}";
+
+        return $"CreateOutputOrtValue(\"{Escape(output.OnnxName)}\", TensorElementType.{elementTypeName}, {shape}),";
+    }
+
+    private static string BuildOutputDimensionLiteral(ModelDimensionContract dimension)
+    {
+        return dimension.NumericValueLiteral is null
+            ? "-1L"
+            : dimension.NumericValueLiteral;
+    }
+
     private static string BuildRunMethodSignatureWithRunOptions(
         IReadOnlyList<ModelTensorContract> orderedInputs
     )
@@ -470,6 +846,38 @@ internal sealed class OnnxRuntimeInferencePrinter
             requiredInputs
                 .Concat(["RunOptions? runOptions"])
                 .Concat(optionalInputs)
+        );
+    }
+
+    private static string BuildAsyncRunMethodSignature(
+        IReadOnlyList<ModelTensorContract> orderedInputs
+    )
+    {
+        return string.Join(
+            ", ",
+            orderedInputs
+                .Select(BuildTensorMethodParameterSignature)
+                .Concat(["CancellationToken cancellationToken = default"])
+        );
+    }
+
+    private static string BuildAsyncRunMethodSignatureWithRunOptions(
+        IReadOnlyList<ModelTensorContract> orderedInputs
+    )
+    {
+        var requiredInputs = orderedInputs
+            .Where(static x => x.IsRequired)
+            .Select(BuildTensorMethodParameterSignature);
+        var optionalInputs = orderedInputs
+            .Where(static x => !x.IsRequired)
+            .Select(BuildTensorMethodParameterSignature);
+
+        return string.Join(
+            ", ",
+            requiredInputs
+                .Concat(["RunOptions? runOptions"])
+                .Concat(optionalInputs)
+                .Concat(["CancellationToken cancellationToken = default"])
         );
     }
 

@@ -28,6 +28,8 @@ The repository currently implements the following NuGet packages. Package-specif
 | [`Onnxify.HuggingFace`](.docs/nuget/Onnxify.HuggingFace.md)           | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.HuggingFace)](https://www.nuget.org/packages/Onnxify.HuggingFace/)           |
 | [`Onnxify.CLI`](.docs/nuget/Onnxify.CLI.md)                           | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.CLI)](https://www.nuget.org/packages/Onnxify.CLI/)                           |                  
 
+`Onnxify.ModelGenerator` can generate typed `Microsoft.ML.OnnxRuntime` inference wrappers for `.onnx` files included in a consuming project. Generated `OnnxRuntimeInference` wrappers now include both synchronous `Run(...)` overloads and async `RunAsync(...)` overloads with `CancellationToken` support. The async path uses ONNX Runtime's real `InferenceSession.RunAsync(...)` `OrtValue` buffer API rather than wrapping synchronous inference in `Task.Run(...)`.
+
 See [`TORCH_OPERATOR_COVERAGE.md`](TORCH_OPERATOR_COVERAGE.md) for the current TorchSharp operator support matrix across ONNX import and export features.
 
 ## Requirements
