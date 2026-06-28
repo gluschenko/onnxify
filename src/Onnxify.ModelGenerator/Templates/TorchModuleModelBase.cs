@@ -9,7 +9,7 @@ using static TorchSharp.torch;
 using static TorchSharp.torch.nn;
 using TorchModules = TorchSharp.Modules;
 
-namespace Onnxify.ModelGenerator.Generated
+namespace Onnxify.Abstractions
 {
     public abstract class TorchModuleModelBase
     {

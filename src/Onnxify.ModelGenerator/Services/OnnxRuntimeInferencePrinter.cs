@@ -277,7 +277,7 @@ internal sealed class OnnxRuntimeInferencePrinter
 
         return $$"""
         {{XmlSummary($"Provides a typed ONNX Runtime wrapper for the model file '{specification.FileName}'.")}}
-        public sealed class {{specification.ClassName}} : Onnxify.ModelGenerator.Generated.OnnxInferenceSessionModelBase
+        public sealed class {{specification.ClassName}} : Onnxify.Abstractions.OnnxInferenceSessionModelBase
         {
             {{Indent(XmlSummary("Gets the model path relative to the consuming project directory."), 1)}}
             public const string MODEL_PROJECT_RELATIVE_PATH = {{ToVerbatimStringLiteral(specification.ProjectRelativePath)}};

@@ -1,4 +1,4 @@
-extern alias ModelGen;
+﻿extern alias ModelGen;
 
 using System.Reflection;
 using System.Runtime.Loader;
@@ -221,7 +221,7 @@ public sealed class OnnxModelGeneratorTests
             );
 
             var generatedSource = GetAllGeneratedSource(driver);
-            Assert.Contains(": Onnxify.ModelGenerator.Generated.OnnxInferenceSessionModelBase", generatedSource);
+            Assert.Contains(": Onnxify.Abstractions.OnnxInferenceSessionModelBase", generatedSource);
         }
         finally
         {
@@ -427,7 +427,7 @@ public sealed class OnnxModelGeneratorTests
             );
 
             var generatedSource = GetGeneratedSource(driver);
-            Assert.Contains(": Onnxify.ModelGenerator.Generated.TorchModuleModelBase<Tensor, Tensor>", generatedSource);
+            Assert.Contains(": Onnxify.Abstractions.TorchModuleModelBase<Tensor, Tensor>", generatedSource);
             Assert.DoesNotContain("protected internal static Tensor CreateShapeTensor", generatedSource, StringComparison.Ordinal);
         }
         finally
@@ -500,7 +500,7 @@ public sealed class OnnxModelGeneratorTests
                 .ToArray();
 
             var generatedSource = GetGeneratedSource(driver);
-            Assert.Contains("public sealed class AddBiasModelTorchModule : Onnxify.ModelGenerator.Generated.TorchModuleModelBase<Tensor, Tensor>", generatedSource);
+            Assert.Contains("public sealed class AddBiasModelTorchModule : Onnxify.Abstractions.TorchModuleModelBase<Tensor, Tensor>", generatedSource);
             Assert.Contains("var biasParameter = new global::TorchSharp.Modules.Parameter(torch.empty(new long[] { 1L, 2L }, dtype: ScalarType.Float32));", generatedSource);
             Assert.Contains("register_parameter(\"bias\", biasParameter);", generatedSource);
             Assert.Contains("public void LoadWeightsFromOnnx(string modelPath)", generatedSource);
@@ -1879,7 +1879,7 @@ public sealed class OnnxModelGeneratorTests
             Assert.DoesNotContain(updatedCompilation.GetDiagnostics(), static x => x.Severity == DiagnosticSeverity.Error);
 
             var generatedSource = GetGeneratedSource(driver);
-            Assert.Contains("public sealed class MultiInputOutputModelTorchModule : Onnxify.ModelGenerator.Generated.TorchModuleModelBase<Tensor, Tensor, (Tensor, Tensor)>", generatedSource);
+            Assert.Contains("public sealed class MultiInputOutputModelTorchModule : Onnxify.Abstractions.TorchModuleModelBase<Tensor, Tensor, (Tensor, Tensor)>", generatedSource);
             Assert.Contains("public override (Tensor, Tensor) forward(Tensor mix, Tensor convCache)", generatedSource);
             Assert.Contains("var enhanced = mix;", generatedSource);
             Assert.Contains("var convCacheOut = convCache;", generatedSource);
