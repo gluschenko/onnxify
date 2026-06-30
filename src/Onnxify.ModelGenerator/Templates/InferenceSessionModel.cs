@@ -7,9 +7,9 @@ using Microsoft.ML.OnnxRuntime;
 
 namespace Onnxify.Abstractions
 {
-    public abstract class OnnxInferenceSessionModelBase : IDisposable
+    public abstract class InferenceSessionModel : IDisposable
     {
-        protected OnnxInferenceSessionModelBase(
+        protected InferenceSessionModel(
             string modelPath,
             SessionOptions? sessionOptions
         )
@@ -24,7 +24,7 @@ namespace Onnxify.Abstractions
                 : new InferenceSession(modelPath: modelPath, options: sessionOptions);
         }
 
-        protected OnnxInferenceSessionModelBase(
+        protected InferenceSessionModel(
             byte[] modelBytes,
             SessionOptions? sessionOptions
         )

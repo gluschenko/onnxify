@@ -11,7 +11,7 @@ using TorchModules = TorchSharp.Modules;
 
 namespace Onnxify.Abstractions
 {
-    public abstract class TorchModuleModelBase
+    public abstract class TorchSharpModel
     {
         protected internal static Tensor CreateShapeTensor(Tensor value)
         {
@@ -1123,44 +1123,44 @@ namespace Onnxify.Abstractions
         }
     }
 
-    public abstract class TorchModuleModelBase<TInput, TOutput> : torch.nn.Module<TInput, TOutput>
+    public abstract class TorchSharpModel<TInput, TOutput> : torch.nn.Module<TInput, TOutput>
     {
-        protected TorchModuleModelBase(string name) : base(name)
+        protected TorchSharpModel(string name) : base(name)
         {
         }
     }
 
-    public abstract class TorchModuleModelBase<TInput1, TInput2, TOutput> : torch.nn.Module<TInput1, TInput2, TOutput>
+    public abstract class TorchSharpModel<TInput1, TInput2, TOutput> : torch.nn.Module<TInput1, TInput2, TOutput>
     {
-        protected TorchModuleModelBase(string name) : base(name)
+        protected TorchSharpModel(string name) : base(name)
         {
         }
     }
 
-    public abstract class TorchModuleModelBase<TInput1, TInput2, TInput3, TOutput> : torch.nn.Module<TInput1, TInput2, TInput3, TOutput>
+    public abstract class TorchSharpModel<TInput1, TInput2, TInput3, TOutput> : torch.nn.Module<TInput1, TInput2, TInput3, TOutput>
     {
-        protected TorchModuleModelBase(string name) : base(name)
+        protected TorchSharpModel(string name) : base(name)
         {
         }
     }
 
-    public abstract class TorchModuleModelBase<TInput1, TInput2, TInput3, TInput4, TOutput> : torch.nn.Module<TInput1, TInput2, TInput3, TInput4, TOutput>
+    public abstract class TorchSharpModel<TInput1, TInput2, TInput3, TInput4, TOutput> : torch.nn.Module<TInput1, TInput2, TInput3, TInput4, TOutput>
     {
-        protected TorchModuleModelBase(string name) : base(name)
+        protected TorchSharpModel(string name) : base(name)
         {
         }
     }
 
-    public abstract class TorchModuleModelBase<TInput1, TInput2, TInput3, TInput4, TInput5, TOutput> : torch.nn.Module<TInput1, TInput2, TInput3, TInput4, TInput5, TOutput>
+    public abstract class TorchSharpModel<TInput1, TInput2, TInput3, TInput4, TInput5, TOutput> : torch.nn.Module<TInput1, TInput2, TInput3, TInput4, TInput5, TOutput>
     {
-        protected TorchModuleModelBase(string name) : base(name)
+        protected TorchSharpModel(string name) : base(name)
         {
         }
     }
 
-    public abstract class TorchModuleModelBase<TInput1, TInput2, TInput3, TInput4, TInput5, TInput6, TOutput> : torch.nn.Module<TInput1, TInput2, TInput3, TInput4, TInput5, TInput6, TOutput>
+    public abstract class TorchSharpModel<TInput1, TInput2, TInput3, TInput4, TInput5, TInput6, TOutput> : torch.nn.Module<TInput1, TInput2, TInput3, TInput4, TInput5, TInput6, TOutput>
     {
-        protected TorchModuleModelBase(string name) : base(name)
+        protected TorchSharpModel(string name) : base(name)
         {
         }
     }

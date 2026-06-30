@@ -56,8 +56,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" PrivateAssets="all" />
-    <PackageReference Include="Google.Protobuf" Version="3.34.0" PrivateAssets="all" GeneratePathProperty="true" />
     <PackageReference Include="Grpc.Tools" Version="2.78.0" PrivateAssets="all" />
+    <PackageReference Include="Google.Protobuf" Version="3.34.0" PrivateAssets="all" GeneratePathProperty="true" />
     <PackageReference Include="System.Collections.Immutable" Version="9.0.0" PrivateAssets="all" GeneratePathProperty="true" />
   </ItemGroup>
 

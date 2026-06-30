@@ -1,4 +1,4 @@
-using System.Collections.Immutable;
+﻿using System.Collections.Immutable;
 using System.Text;
 using Google.Protobuf;
 using Microsoft.CodeAnalysis;
@@ -313,16 +313,16 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         if (emittedSpecifications.Any(static x => x.ImportTypes.HasFlag(ModelImportType.OnnxRuntimeInference)))
         {
             context.AddSource(
-                hintName: "Onnxify.ModelGenerator.OnnxInferenceSessionModelBase.g.cs",
-                sourceText: GeneratedSupportSourceLoader.Load(fileName: "OnnxInferenceSessionModelBase.cs")
+                hintName: "Onnxify.ModelGenerator.InferenceSessionModel.g.cs",
+                sourceText: GeneratedSupportSourceLoader.Load(fileName: "InferenceSessionModel.cs")
             );
         }
 
         if (emittedSpecifications.Any(static x => x.ImportTypes.HasFlag(ModelImportType.TorchModule)))
         {
             context.AddSource(
-                hintName: "Onnxify.ModelGenerator.TorchModuleModelBase.g.cs",
-                sourceText: GeneratedSupportSourceLoader.Load(fileName: "TorchModuleModelBase.cs")
+                hintName: "Onnxify.ModelGenerator.TorchSharpModel.g.cs",
+                sourceText: GeneratedSupportSourceLoader.Load(fileName: "TorchSharpModel.cs")
             );
         }
 
