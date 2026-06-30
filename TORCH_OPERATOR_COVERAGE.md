@@ -10,17 +10,94 @@
 
 Current versions and direct dependencies are read from the publishable `Onnxify.*` project files under `src/`.
 
-| Package | Version | Onnxify project references | Third-party NuGet PackageReferences |
-| --- | --- | --- | --- |
-| `Onnxify` | `0.3.6.2` | None | `Google.Protobuf` `3.34.0`, `Grpc.Tools` `2.78.0`, `System.Collections.Immutable` `9.0.0` ('$(TargetFramework)'=='netstandard2.0'), `System.Text.Json` `10.0.9` ('$(TargetFramework)'=='netstandard2.0') |
-| `Onnxify.CLI` | `0.3.6.2` | `Onnxify`, `Onnxify.HuggingFace`, `Onnxify.ML`, `Onnxify.ML.TorchSharp`, `Onnxify.ProjectGenerator`, `Onnxify.Safetensors`, `Onnxify.TorchSharp` | None |
-| `Onnxify.HuggingFace` | `0.3.6.2` | None | None |
-| `Onnxify.ML` | `0.3.6.2` | None | None |
-| `Onnxify.ML.TorchSharp` | `0.3.6.2` | `Onnxify.ML` | `TorchSharp` `0.107.0` |
-| `Onnxify.ModelGenerator` | `0.3.6.2` | `Onnxify` | `Google.Protobuf` `3.34.0`, `Grpc.Tools` `2.78.0`, `Microsoft.CodeAnalysis.Analyzers` `3.11.0`, `Microsoft.CodeAnalysis.CSharp` `4.11.0`, `System.Collections.Immutable` `9.0.0` |
-| `Onnxify.ProjectGenerator` | `0.3.6.2` | `Onnxify` | None |
-| `Onnxify.Safetensors` | `0.3.6.2` | None | None |
-| `Onnxify.TorchSharp` | `0.3.6.2` | `Onnxify`, `Onnxify.Safetensors` | `ICSharpCode.Decompiler` `10.0.1.8346`, `TorchSharp` `0.107.0` |
+### `Onnxify`
+
+* Version: `0.3.8`
+* Onnxify project references:
+  * None
+* Third-party NuGet PackageReferences:
+  * `Google.Protobuf` `3.34.0`
+  * `Grpc.Tools` `2.78.0`
+  * `System.Collections.Immutable` `9.0.0` ('$(TargetFramework)'=='netstandard2.0')
+  * `System.Text.Json` `10.0.9` ('$(TargetFramework)'=='netstandard2.0')
+
+### `Onnxify.CLI`
+
+* Version: `0.3.8`
+* Onnxify project references:
+  * `Onnxify`
+  * `Onnxify.HuggingFace`
+  * `Onnxify.ML`
+  * `Onnxify.ML.TorchSharp`
+  * `Onnxify.ProjectGenerator`
+  * `Onnxify.Safetensors`
+  * `Onnxify.TorchSharp`
+* Third-party NuGet PackageReferences:
+  * None
+
+### `Onnxify.HuggingFace`
+
+* Version: `0.3.8`
+* Onnxify project references:
+  * None
+* Third-party NuGet PackageReferences:
+  * None
+
+### `Onnxify.ML`
+
+* Version: `0.3.8`
+* Onnxify project references:
+  * None
+* Third-party NuGet PackageReferences:
+  * None
+
+### `Onnxify.ML.TorchSharp`
+
+* Version: `0.3.8`
+* Onnxify project references:
+  * `Onnxify.ML`
+* Third-party NuGet PackageReferences:
+  * `TorchSharp` `0.107.0`
+
+### `Onnxify.ModelGenerator`
+
+* Version: `0.3.8`
+* Onnxify project references:
+  * `Onnxify`
+* Third-party NuGet PackageReferences:
+  * `Google.Protobuf` `3.34.0`
+  * `Grpc.Tools` `2.78.0`
+  * `Microsoft.CodeAnalysis.Analyzers` `3.11.0`
+  * `Microsoft.CodeAnalysis.CSharp` `4.11.0`
+  * `System.Collections.Immutable` `9.0.0`
+
+### `Onnxify.ProjectGenerator`
+
+* Version: `0.3.8`
+* Onnxify project references:
+  * `Onnxify`
+* Third-party NuGet PackageReferences:
+  * None
+
+### `Onnxify.Safetensors`
+
+* Version: `0.3.8`
+* Onnxify project references:
+  * None
+* Third-party NuGet PackageReferences:
+  * None
+
+### `Onnxify.TorchSharp`
+
+* Version: `0.3.8`
+* Onnxify project references:
+  * `Onnxify`
+  * `Onnxify.Safetensors`
+* Third-party NuGet PackageReferences:
+  * `ICSharpCode.Decompiler` `10.0.1.8346`
+  * `Microsoft.ML.OnnxRuntime.Managed` `1.27.0`
+  * `TorchSharp` `0.107.0`
+
 
 ## Coverage Columns
 
@@ -38,7 +115,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `_operator::__rshift__` | `TorchSharp.torch+Tensor.bitwise_right_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 9 |
 | `_operator::abs` | `TorchSharp.torch+Tensor.abs` | ✅ | ✅ | ✅ | ✅ | ✅ | 2 |
 | `_operator::add` | `TorchSharp.torch+Tensor.add` | ✅ | ✅ | ✅ | ✅ | ✅ | 13 |
-| `_operator::and_` | `TorchSharp.torch+Tensor.bitwise_and` | ✅ | ✅ | ✅ | ✅ | ✅ | 87 |
+| `_operator::and_` | `TorchSharp.torch+Tensor.bitwise_and` | ✅ | ✅ | ✅ | ✅ | ✅ | 89 |
 | `_operator::eq` | `TorchSharp.torch+Tensor.eq` | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
 | `_operator::floordiv` | `TorchSharp.torch+Tensor.floor_divide` | ✅ | ✅ | ✅ | ✅ | ✅ | 4 |
 | `_operator::ge` | `TorchSharp.torch+Tensor.ge` | ✅ | ✅ | ✅ | ✅ | ✅ | 7 |
@@ -66,15 +143,15 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::_local_scalar_dense` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 7 |
 | `aten::_log_softmax` | `TorchSharp.Modules.LogSoftmax` | ✅ | ✅ | ✅ | ✅ | ✅ | 8 |
 | `aten::_native_batch_norm_legit` | `TorchSharp.Modules.BatchNorm` | ✅ | ✅ | ✅ | ✅ | ✅ | 8 |
-| `aten::_native_batch_norm_legit.no_stats` | `TorchSharp.Modules.BatchNorm` | ✅ | ✅ | ✅ | ✅ | ✅ | 12 |
+| `aten::_native_batch_norm_legit.no_stats` | `TorchSharp.Modules.BatchNorm` | ✅ | ✅ | ✅ | ✅ | ✅ | 13 |
 | `aten::_native_batch_norm_legit_functional` | `TorchSharp.Modules.BatchNorm` | ✅ | ✅ | ✅ | ✅ | ✅ | 10 |
-| `aten::_native_batch_norm_legit_no_training` | `TorchSharp.Modules.BatchNorm` | ✅ | ✅ | ✅ | ✅ | ✅ | 13 |
+| `aten::_native_batch_norm_legit_no_training` | `TorchSharp.Modules.BatchNorm` | ✅ | ✅ | ✅ | ✅ | ✅ | 14 |
 | `aten::_prelu_kernel` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 0 |
 | `aten::_scaled_dot_product_efficient_attention` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 2 |
 | `aten::_scaled_dot_product_flash_attention` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 2 |
-| `aten::_scaled_dot_product_flash_attention_for_cpu` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 88 |
+| `aten::_scaled_dot_product_flash_attention_for_cpu` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 96 |
 | `aten::_softmax` | `TorchSharp.Modules.Softmax` | ✅ | ✅ | ✅ | ✅ | ✅ | 0 |
-| `aten::_to_copy` | `TorchSharp.ModuleExtensionMethods.to` | ✅ | ✅ | ✅ | ✅ | ✅ | 62 |
+| `aten::_to_copy` | `TorchSharp.ModuleExtensionMethods.to` | ✅ | ✅ | ✅ | ✅ | ✅ | 63 |
 | `aten::_unique` | `TorchSharp.torch+Tensor.unique` | ✅ | ❌ | ❌ | ❌ | ❌ | 0 |
 | `aten::_unique2` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 0 |
 | `aten::_unsafe_index.Tensor` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 6 |
@@ -128,9 +205,9 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::bernoulli` | `TorchSharp.torch+Tensor.bernoulli` | ✅ | ✅ | ❌ | ✅ | ❌ | 2 |
 | `aten::bernoulli.p` | `TorchSharp.torch+Tensor.bernoulli` | ✅ | ✅ | ❌ | ✅ | ❌ | 2 |
 | `aten::bilinear` | `TorchSharp.Modules.Bilinear` | ✅ | ❌ | ❌ | ❌ | ❌ | 1 |
-| `aten::bitwise_and.Scalar` | `TorchSharp.torch+Tensor.bitwise_and` | ✅ | ✅ | ✅ | ✅ | ✅ | 86 |
-| `aten::bitwise_and.Scalar_Tensor` | `TorchSharp.torch+Tensor.bitwise_and` | ✅ | ✅ | ✅ | ✅ | ✅ | 86 |
-| `aten::bitwise_and.Tensor` | `TorchSharp.torch+Tensor.bitwise_and` | ✅ | ✅ | ✅ | ✅ | ✅ | 87 |
+| `aten::bitwise_and.Scalar` | `TorchSharp.torch+Tensor.bitwise_and` | ✅ | ✅ | ✅ | ✅ | ✅ | 88 |
+| `aten::bitwise_and.Scalar_Tensor` | `TorchSharp.torch+Tensor.bitwise_and` | ✅ | ✅ | ✅ | ✅ | ✅ | 88 |
+| `aten::bitwise_and.Tensor` | `TorchSharp.torch+Tensor.bitwise_and` | ✅ | ✅ | ✅ | ✅ | ✅ | 89 |
 | `aten::bitwise_left_shift.Scalar_Tensor` | `TorchSharp.torch+Tensor.bitwise_left_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 8 |
 | `aten::bitwise_left_shift.Tensor` | `TorchSharp.torch+Tensor.bitwise_left_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 8 |
 | `aten::bitwise_left_shift.Tensor_Scalar` | `TorchSharp.torch+Tensor.bitwise_left_shift` | ✅ | ✅ | ✅ | ✅ | ✅ | 8 |
@@ -173,7 +250,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::cos` | `TorchSharp.torch+Tensor.cos` | ✅ | ✅ | ✅ | ✅ | ✅ | 4 |
 | `aten::cosh` | `TorchSharp.torch+Tensor.cosh` | ✅ | ✅ | ✅ | ✅ | ✅ | 3 |
 | `aten::cross` | `TorchSharp.torch+Tensor.cross` | ✅ | ✅ | ❌ | ✅ | ❌ | 2 |
-| `aten::cross_entropy_loss` | `TorchSharp.Modules.CrossEntropyLoss` | ✅ | ✅ | ❌ | ✅ | ❌ | 2 |
+| `aten::cross_entropy_loss` | `TorchSharp.Modules.CrossEntropyLoss` | ✅ | ✅ | ❌ | ✅ | ❌ | 3 |
 | `aten::cumsum` | `TorchSharp.torch+Tensor.cumsum` | ✅ | ✅ | ✅ | ✅ | ✅ | 4 |
 | `aten::deg2rad` | `TorchSharp.torch+Tensor.deg2rad` | ✅ | ✅ | ❌ | ✅ | ❌ | 3 |
 | `aten::det` | `TorchSharp.torch+Tensor.det` | ✅ | ✅ | ✅ | ✅ | ✅ | 2 |
@@ -181,9 +258,9 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::diagonal` | `TorchSharp.torch+Tensor.diagonal` | ✅ | ✅ | ❌ | ✅ | ❌ | 2 |
 | `aten::diagonal_copy` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 3 |
 | `aten::div.Scalar` | `TorchSharp.torch+Tensor.div` | ✅ | ✅ | ✅ | ✅ | ✅ | 5 |
-| `aten::div.Scalar_mode` | `TorchSharp.torch+Tensor.div` | ✅ | ✅ | ✅ | ✅ | ✅ | 23 |
+| `aten::div.Scalar_mode` | `TorchSharp.torch+Tensor.div` | ✅ | ✅ | ✅ | ✅ | ✅ | 27 |
 | `aten::div.Tensor` | `TorchSharp.torch+Tensor.div` | ✅ | ✅ | ✅ | ✅ | ✅ | 5 |
-| `aten::div.Tensor_mode` | `TorchSharp.torch+Tensor.div` | ✅ | ✅ | ✅ | ✅ | ✅ | 23 |
+| `aten::div.Tensor_mode` | `TorchSharp.torch+Tensor.div` | ✅ | ✅ | ✅ | ✅ | ✅ | 27 |
 | `aten::divide.Scalar` | `TorchSharp.torch+Tensor.divide` | ✅ | ✅ | ✅ | ✅ | ✅ | 0 |
 | `aten::divide.Tensor` | `TorchSharp.torch+Tensor.divide` | ✅ | ✅ | ✅ | ✅ | ✅ | 0 |
 | `aten::dot` | `TorchSharp.torch+Tensor.dot` | ✅ | ✅ | ✅ | ✅ | ✅ | 9 |
@@ -194,7 +271,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::embedding_bag` | `TorchSharp.Modules.EmbeddingBag` | ✅ | ❌ | ❌ | ❌ | ❌ | 0 |
 | `aten::embedding_bag.padding_idx` | `TorchSharp.Modules.EmbeddingBag` | ✅ | ❌ | ❌ | ❌ | ❌ | 2 |
 | `aten::embedding_renorm` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 0 |
-| `aten::empty.memory_format` | `TorchSharp.torch+Tensor.empty` | ✅ | ✅ | ❌ | ✅ | ❌ | 20 |
+| `aten::empty.memory_format` | `TorchSharp.torch+Tensor.empty` | ✅ | ✅ | ❌ | ✅ | ❌ | 21 |
 | `aten::empty_like` | `TorchSharp.torch+Tensor.empty_like` | ✅ | ✅ | ❌ | ✅ | ❌ | 11 |
 | `aten::empty_strided` | `TorchSharp.torch.empty_strided` | ✅ | ✅ | ❌ | ✅ | ❌ | 9 |
 | `aten::eq` | `TorchSharp.torch+Tensor.eq` | ✅ | ✅ | ✅ | ✅ | ✅ | 4 |
@@ -220,8 +297,8 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::fmod.Scalar` | `TorchSharp.torch+Tensor.fmod` | ✅ | ✅ | ✅ | ✅ | ✅ | 3 |
 | `aten::fmod.Tensor` | `TorchSharp.torch+Tensor.fmod` | ✅ | ✅ | ✅ | ✅ | ✅ | 3 |
 | `aten::frac` | `TorchSharp.torch+Tensor.frac` | ✅ | ✅ | ❌ | ✅ | ❌ | 3 |
-| `aten::full` | `TorchSharp.torch+Tensor.full` | ✅ | ✅ | ❌ | ✅ | ❌ | 4 |
-| `aten::full_like` | `TorchSharp.torch+Tensor.full_like` | ✅ | ✅ | ❌ | ✅ | ❌ | 6 |
+| `aten::full` | `TorchSharp.torch+Tensor.full` | ✅ | ✅ | ❌ | ✅ | ❌ | 5 |
+| `aten::full_like` | `TorchSharp.torch+Tensor.full_like` | ✅ | ✅ | ❌ | ✅ | ❌ | 7 |
 | `aten::gather` | `TorchSharp.torch+Tensor.gather` | ✅ | ✅ | ✅ | ✅ | ✅ | 4 |
 | `aten::ge.Scalar` | `TorchSharp.torch+Tensor.ge` | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
 | `aten::ge.Tensor` | `TorchSharp.torch+Tensor.ge` | ✅ | ✅ | ✅ | ✅ | ✅ | 7 |
@@ -233,7 +310,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::grid_sampler` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 0 |
 | `aten::grid_sampler_2d` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 0 |
 | `aten::group_norm` | `TorchSharp.Modules.GroupNorm` | ✅ | ✅ | ✅ | ✅ | ✅ | 7 |
-| `aten::gru.input` | `TorchSharp.Modules.GRU` | ✅ | ✅ | ✅ | ✅ | ✅ | 25 |
+| `aten::gru.input` | `TorchSharp.Modules.GRU` | ✅ | ✅ | ✅ | ✅ | ✅ | 27 |
 | `aten::gt.Scalar` | `TorchSharp.torch+Tensor.gt` | ✅ | ✅ | ✅ | ✅ | ✅ | 1 |
 | `aten::gt.Tensor` | `TorchSharp.torch+Tensor.gt` | ✅ | ✅ | ✅ | ✅ | ✅ | 2 |
 | `aten::hamming_window` | `TorchSharp.torch.hamming_window` | ✅ | ✅ | ❌ | ✅ | ❌ | 2 |
@@ -280,13 +357,13 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::logaddexp2` | `TorchSharp.torch+Tensor.logaddexp2` | ✅ | ✅ | ❌ | ✅ | ❌ | 3 |
 | `aten::logcumsumexp` | `TorchSharp.torch+Tensor.logcumsumexp` | ✅ | ✅ | ❌ | ✅ | ❌ | 2 |
 | `aten::logdet` | `TorchSharp.torch+Tensor.logdet` | ✅ | ✅ | ❌ | ✅ | ❌ | 2 |
-| `aten::logical_and` | `TorchSharp.torch+Tensor.logical_and` | ✅ | ✅ | ✅ | ✅ | ✅ | 81 |
+| `aten::logical_and` | `TorchSharp.torch+Tensor.logical_and` | ✅ | ✅ | ✅ | ✅ | ✅ | 83 |
 | `aten::logical_not` | `TorchSharp.torch+Tensor.logical_not` | ✅ | ✅ | ✅ | ✅ | ✅ | 14 |
 | `aten::logical_or` | `TorchSharp.torch+Tensor.logical_or` | ✅ | ✅ | ✅ | ✅ | ✅ | 5 |
 | `aten::logical_xor` | `TorchSharp.torch+Tensor.logical_xor` | ✅ | ✅ | ✅ | ✅ | ✅ | 4 |
 | `aten::logit` | `TorchSharp.torch+Tensor.logit` | ✅ | ✅ | ❌ | ✅ | ❌ | 4 |
 | `aten::logsumexp` | `TorchSharp.torch+Tensor.logsumexp` | ✅ | ✅ | ❌ | ✅ | ❌ | 3 |
-| `aten::lstm.input` | `TorchSharp.Modules.LSTM` | ✅ | ✅ | ✅ | ✅ | ✅ | 28 |
+| `aten::lstm.input` | `TorchSharp.Modules.LSTM` | ✅ | ✅ | ✅ | ✅ | ✅ | 30 |
 | `aten::lt.Scalar` | `TorchSharp.torch+Tensor.lt` | ✅ | ✅ | ✅ | ✅ | ✅ | 3 |
 | `aten::lt.Tensor` | `TorchSharp.torch+Tensor.lt` | ✅ | ✅ | ✅ | ✅ | ✅ | 4 |
 | `aten::mH` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 0 |
@@ -298,11 +375,11 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::max` | `TorchSharp.torch+Tensor.max` | ✅ | ✅ | ✅ | ✅ | ✅ | 8 |
 | `aten::max.dim` | `TorchSharp.torch+Tensor.max` | ✅ | ✅ | ✅ | ✅ | ✅ | 8 |
 | `aten::max_pool1d` | `TorchSharp.Modules.MaxPool1d` | ✅ | ✅ | ✅ | ✅ | ✅ | 7 |
-| `aten::max_pool1d_with_indices` | `TorchSharp.torch+nn+functional.max_pool1d_with_indices` | ✅ | ❌ | ❌ | ❌ | ❌ | 66 |
+| `aten::max_pool1d_with_indices` | `TorchSharp.torch+nn+functional.max_pool1d_with_indices` | ✅ | ❌ | ❌ | ❌ | ❌ | 67 |
 | `aten::max_pool2d` | `TorchSharp.Modules.MaxPool2d` | ✅ | ✅ | ✅ | ✅ | ✅ | 8 |
-| `aten::max_pool2d_with_indices` | `TorchSharp.torch+nn+functional.max_pool2d_with_indices` | ✅ | ✅ | ❌ | ✅ | ❌ | 67 |
+| `aten::max_pool2d_with_indices` | `TorchSharp.torch+nn+functional.max_pool2d_with_indices` | ✅ | ✅ | ❌ | ✅ | ❌ | 68 |
 | `aten::max_pool3d` | `TorchSharp.Modules.MaxPool3d` | ✅ | ✅ | ✅ | ✅ | ✅ | 7 |
-| `aten::max_pool3d_with_indices` | `TorchSharp.torch+nn+functional.max_pool3d_with_indices` | ✅ | ❌ | ❌ | ❌ | ❌ | 66 |
+| `aten::max_pool3d_with_indices` | `TorchSharp.torch+nn+functional.max_pool3d_with_indices` | ✅ | ❌ | ❌ | ❌ | ❌ | 67 |
 | `aten::maximum` | `TorchSharp.torch+Tensor.maximum` | ✅ | ✅ | ✅ | ✅ | ✅ | 2 |
 | `aten::mean` | `TorchSharp.torch+Tensor.mean` | ✅ | ✅ | ✅ | ✅ | ✅ | 7 |
 | `aten::mean.dim` | `TorchSharp.torch+Tensor.mean` | ✅ | ✅ | ✅ | ✅ | ✅ | 7 |
@@ -311,7 +388,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::minimum` | `TorchSharp.torch+Tensor.minimum` | ✅ | ✅ | ✅ | ✅ | ✅ | 2 |
 | `aten::mish` | `TorchSharp.Modules.Mish` | ✅ | ✅ | ✅ | ✅ | ✅ | 0 |
 | `aten::mm` | `TorchSharp.torch+Tensor.mm` | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
-| `aten::mse_loss` | `TorchSharp.Modules.MSELoss` | ✅ | ✅ | ❌ | ✅ | ❌ | 2 |
+| `aten::mse_loss` | `TorchSharp.Modules.MSELoss` | ✅ | ✅ | ❌ | ✅ | ❌ | 3 |
 | `aten::mul` | `TorchSharp.torch+Tensor.mul` | ✅ | ✅ | ✅ | ✅ | ✅ | 16 |
 | `aten::mul.Tensor` | `TorchSharp.torch+Tensor.mul` | ✅ | ✅ | ✅ | ✅ | ✅ | 15 |
 | `aten::multinomial` | `TorchSharp.torch+Tensor.multinomial` | ✅ | ✅ | ❌ | ✅ | ❌ | 2 |
@@ -328,19 +405,19 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::neg` | `TorchSharp.torch+Tensor.neg` | ✅ | ✅ | ✅ | ✅ | ✅ | 2 |
 | `aten::new_empty` | `TorchSharp.torch+Tensor.new_empty` | ✅ | ✅ | ❌ | ✅ | ❌ | 18 |
 | `aten::new_empty_strided` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 18 |
-| `aten::new_full` | `TorchSharp.torch+Tensor.new_full` | ✅ | ✅ | ❌ | ✅ | ❌ | 12 |
-| `aten::new_ones` | `TorchSharp.torch+Tensor.new_ones` | ✅ | ✅ | ❌ | ✅ | ❌ | 13 |
+| `aten::new_full` | `TorchSharp.torch+Tensor.new_full` | ✅ | ✅ | ❌ | ✅ | ❌ | 13 |
+| `aten::new_ones` | `TorchSharp.torch+Tensor.new_ones` | ✅ | ✅ | ❌ | ✅ | ❌ | 15 |
 | `aten::new_zeros` | `TorchSharp.torch+Tensor.new_zeros` | ✅ | ✅ | ❌ | ✅ | ❌ | 13 |
-| `aten::nll_loss` | `TorchSharp.Modules.NLLLoss` | ✅ | ✅ | ❌ | ✅ | ❌ | 2 |
-| `aten::nll_loss_forward` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 5 |
+| `aten::nll_loss` | `TorchSharp.Modules.NLLLoss` | ✅ | ✅ | ❌ | ✅ | ❌ | 3 |
+| `aten::nll_loss_forward` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 6 |
 | `aten::nonzero` | `TorchSharp.torch+Tensor.nonzero` | ✅ | ✅ | ✅ | ✅ | ✅ | 3 |
 | `aten::normal.Tensor_Tensor` | `TorchSharp.torch+Tensor.normal_` | ✅ | ✅ | ❌ | ✅ | ❌ | 5 |
 | `aten::normal.Tensor_float` | `TorchSharp.torch+Tensor.normal_` | ✅ | ✅ | ❌ | ✅ | ❌ | 13 |
 | `aten::normal.float_Tensor` | `TorchSharp.torch+Tensor.normal_` | ✅ | ✅ | ❌ | ✅ | ❌ | 13 |
 | `aten::normal.float_float` | `TorchSharp.torch+Tensor.normal_` | ✅ | ✅ | ❌ | ✅ | ❌ | 13 |
 | `aten::normal_functional` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 6 |
-| `aten::ones` | `TorchSharp.torch+Tensor.ones` | ✅ | ✅ | ❌ | ✅ | ❌ | 5 |
-| `aten::ones_like` | `TorchSharp.torch+Tensor.ones_like` | ✅ | ✅ | ❌ | ✅ | ❌ | 7 |
+| `aten::ones` | `TorchSharp.torch+Tensor.ones` | ✅ | ✅ | ❌ | ✅ | ❌ | 7 |
+| `aten::ones_like` | `TorchSharp.torch+Tensor.ones_like` | ✅ | ✅ | ❌ | ✅ | ❌ | 9 |
 | `aten::pad` | `TorchSharp.torch+nn+functional.pad` | ✅ | ✅ | ✅ | ✅ | ✅ | 4 |
 | `aten::permute` | `TorchSharp.torch+Tensor.permute` | ✅ | ✅ | ✅ | ✅ | ✅ | 4 |
 | `aten::pixel_shuffle` | `TorchSharp.Modules.PixelShuffle` | ✅ | ✅ | ❌ | ✅ | ❌ | 0 |
@@ -356,9 +433,9 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::rand` | `TorchSharp.torch.rand` | ✅ | ✅ | ❌ | ✅ | ❌ | 13 |
 | `aten::rand_like` | `TorchSharp.torch+Tensor.rand_like` | ✅ | ✅ | ❌ | ✅ | ❌ | 15 |
 | `aten::randint` | `TorchSharp.torch.randint` | ✅ | ✅ | ❌ | ✅ | ❌ | 3 |
-| `aten::randint.low` | `TorchSharp.torch.randint` | ✅ | ✅ | ❌ | ✅ | ❌ | 3 |
+| `aten::randint.low` | `TorchSharp.torch.randint` | ✅ | ✅ | ❌ | ✅ | ❌ | 4 |
 | `aten::randint_like` | `TorchSharp.torch+Tensor.randint_like` | ✅ | ✅ | ❌ | ✅ | ❌ | 5 |
-| `aten::randint_like.low_dtype` | `TorchSharp.torch+Tensor.randint_like` | ✅ | ✅ | ❌ | ✅ | ❌ | 9 |
+| `aten::randint_like.low_dtype` | `TorchSharp.torch+Tensor.randint_like` | ✅ | ✅ | ❌ | ✅ | ❌ | 11 |
 | `aten::randn` | `TorchSharp.torch.randn` | ✅ | ✅ | ❌ | ✅ | ❌ | 2 |
 | `aten::randn_like` | `TorchSharp.torch+Tensor.randn_like` | ✅ | ✅ | ❌ | ✅ | ❌ | 4 |
 | `aten::reciprocal` | `TorchSharp.torch+Tensor.reciprocal` | ✅ | ✅ | ✅ | ✅ | ✅ | 2 |
@@ -386,7 +463,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::scalar_tensor` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 0 |
 | `aten::scaled_dot_product_attention` | `TorchSharp.torch+nn+functional.scaled_dot_product_attention` | ✅ | ❌ | ❌ | ❌ | ❌ | 2 |
 | `aten::scatter.src` | `TorchSharp.torch+Tensor.scatter` | ✅ | ❌ | ❌ | ❌ | ❌ | 0 |
-| `aten::scatter.value` | `TorchSharp.torch+Tensor.scatter` | ✅ | ❌ | ❌ | ❌ | ❌ | 18 |
+| `aten::scatter.value` | `TorchSharp.torch+Tensor.scatter` | ✅ | ❌ | ❌ | ❌ | ❌ | 19 |
 | `aten::scatter_add` | `TorchSharp.torch+Tensor.scatter_add` | ✅ | ❌ | ❌ | ❌ | ❌ | 10 |
 | `aten::scatter_reduce.two` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 1 |
 | `aten::select.int` | `TorchSharp.torch+Tensor.select` | ✅ | ✅ | ❌ | ✅ | ❌ | 9 |
@@ -403,7 +480,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::slice_scatter` | `TorchSharp.torch+Tensor.slice_scatter` | ✅ | ❌ | ❌ | ❌ | ❌ | 12 |
 | `aten::softmax.int` | `TorchSharp.Modules.Softmax` | ✅ | ✅ | ✅ | ✅ | ✅ | 0 |
 | `aten::softplus` | `TorchSharp.Modules.Softplus` | ✅ | ✅ | ✅ | ✅ | ✅ | 0 |
-| `aten::sort` | `TorchSharp.torch+Tensor.sort` | ✅ | ✅ | ❌ | ✅ | ❌ | 25 |
+| `aten::sort` | `TorchSharp.torch+Tensor.sort` | ✅ | ✅ | ❌ | ✅ | ❌ | 26 |
 | `aten::special_erf` | `TorchSharp.torch+Tensor.erf` | ✅ | ✅ | ✅ | ✅ | ✅ | 5 |
 | `aten::special_erfc` | `TorchSharp.torch+Tensor.erfc` | ✅ | ✅ | ❌ | ✅ | ❌ | 5 |
 | `aten::special_erfcx` | `TorchSharp.torch+special.erfcx` | ✅ | ✅ | ❌ | ✅ | ❌ | 3 |
@@ -413,7 +490,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::special_softmax` | `TorchSharp.Modules.Softmax` | ✅ | ✅ | ✅ | ✅ | ✅ | 2 |
 | `aten::split` | `TorchSharp.torch+Tensor.split` | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
 | `aten::split.Tensor` | `TorchSharp.torch+Tensor.split` | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
-| `aten::split_with_sizes` | `TorchSharp.torch+Tensor.split` | ✅ | ✅ | ✅ | ✅ | ✅ | 65 |
+| `aten::split_with_sizes` | `TorchSharp.torch+Tensor.split` | ✅ | ✅ | ✅ | ✅ | ✅ | 66 |
 | `aten::sqrt` | `TorchSharp.torch+Tensor.sqrt` | ✅ | ✅ | ✅ | ✅ | ✅ | 1 |
 | `aten::squeeze` | `TorchSharp.torch+Tensor.squeeze` | ✅ | ✅ | ✅ | ✅ | ✅ | 4 |
 | `aten::squeeze.dim` | `TorchSharp.torch+Tensor.squeeze` | ✅ | ✅ | ✅ | ✅ | ✅ | 4 |
@@ -441,7 +518,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::true_divide.Scalar` | `TorchSharp.torch+Tensor.true_divide` | ✅ | ✅ | ✅ | ✅ | ✅ | 0 |
 | `aten::true_divide.Tensor` | `TorchSharp.torch+Tensor.true_divide` | ✅ | ✅ | ✅ | ✅ | ✅ | 0 |
 | `aten::trunc` | `TorchSharp.torch+Tensor.trunc` | ✅ | ✅ | ❌ | ✅ | ❌ | 1 |
-| `aten::type_as` | `TorchSharp.torch+Tensor.type_as` | ✅ | ✅ | ✅ | ✅ | ✅ | 48 |
+| `aten::type_as` | `TorchSharp.torch+Tensor.type_as` | ✅ | ✅ | ✅ | ✅ | ✅ | 49 |
 | `aten::unbind.int` | `TorchSharp.torch+Tensor.unbind` | ✅ | ✅ | ❌ | ✅ | ❌ | 2 |
 | `aten::unflatten.int` | `TorchSharp.Modules.Unflatten` | ✅ | ✅ | ❌ | ✅ | ❌ | 1 |
 | `aten::unfold` | `TorchSharp.Modules.Unfold` | ✅ | ❌ | ❌ | ❌ | ❌ | 0 |
@@ -491,7 +568,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `prims::atanh` | `TorchSharp.torch+Tensor.atanh` | ✅ | ✅ | ✅ | ✅ | ✅ | 3 |
 | `prims::broadcast_in_dim` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 8 |
 | `prims::ceil` | `TorchSharp.torch+Tensor.ceil` | ✅ | ✅ | ✅ | ✅ | ✅ | 2 |
-| `prims::convert_element_type` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 41 |
+| `prims::convert_element_type` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 43 |
 | `prims::cos` | `TorchSharp.torch+Tensor.cos` | ✅ | ✅ | ✅ | ✅ | ✅ | 4 |
 | `prims::cosh` | `TorchSharp.torch+Tensor.cosh` | ✅ | ✅ | ✅ | ✅ | ✅ | 3 |
 | `prims::device_put` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 0 |

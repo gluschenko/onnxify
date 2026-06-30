@@ -17,6 +17,7 @@ Using ONNX Runtime directly is powerful, but repetitive:
 - an input contract such as `SampleClassifierModelInputs`
 - an output contract such as `SampleClassifierModelOutputs`
 - typed `Run(...)` overloads with optional `RunOptions`
+- typed `RunAsync(...)` overloads with optional `RunOptions` and `CancellationToken`
 
 Use the main `Onnxify` package instead when your goal is to inspect, build, or edit ONNX graphs themselves.
 
@@ -80,6 +81,7 @@ This mode is the right choice for production inference paths that should stay cl
 - a disposable model wrapper such as `SampleClassifierModel`
 - input and output contract types
 - typed `Run(...)` overloads
+- typed `RunAsync(...)` overloads that call the real ONNX Runtime async API
 - model signature metadata through `Inputs`, `Outputs`, and `OutputNames`
 - constructors for loading the model from the default project-relative path, a custom file path, or raw model bytes
 
@@ -174,6 +176,46 @@ This example shows the most important runtime lifetimes:
 - `RunOptions` is disposable
 - the generated outputs wrapper is disposable because it owns ONNX Runtime output values
 
+Generated `OnnxRuntimeInference` wrappers also expose `RunAsync(...)` overloads. These use the real ONNX Runtime `InferenceSession.RunAsync(...)` API through `OrtValue` input/output buffers; the generator does not wrap synchronous inference in `Task.Run(...)`. The async overloads accept `CancellationToken cancellationToken = default` and connect cancellation to ONNX Runtime through `RunOptions.Terminate`.
+
+## Example: Run Inference Asynchronously With Cancellation
+
+Use `RunAsync(...)` when the surrounding application is already asynchronous or needs to cancel long-running inference. The generated overload matrix mirrors the synchronous `Run(...)` API: you can pass individual tensor arguments, the generated input object, and optionally `RunOptions`.
+
+```csharp
+using Microsoft.ML.OnnxRuntime;
+using Microsoft.ML.OnnxRuntime.Tensors;
+using MyApp.Models;
+
+using var model = new SampleClassifierModel();
+using var runOptions = new RunOptions
+{
+    LogId = "async-image-classification"
+};
+
+using var cancellation = new CancellationTokenSource(
+    TimeSpan.FromSeconds(5)
+);
+
+var image = new DenseTensor<float>(
+    new float[1 * 3 * 16 * 16],
+    new[] { 1, 3, 16, 16 }
+);
+
+using var outputs = await model.RunAsync(
+    input: image,
+    runOptions: runOptions,
+    cancellationToken: cancellation.Token
+);
+
+Tensor<float> prediction = outputs.Output;
+Console.WriteLine($"Output tensor length: {prediction.Length}");
+```
+
+Cancellation is best-effort at the ONNX Runtime execution layer. The generator requests cancellation by setting `RunOptions.Terminate`; depending on where ONNX Runtime observes the request, callers may see `OperationCanceledException`, `TaskCanceledException`, or an `OnnxRuntimeException` reporting that execution was terminated.
+
+Async output wrappers own native `OrtValue` results. Typed output properties and `GetTensor<T>(string)` are supported, but `Raw` is only available for synchronous `Run(...)` results because ONNX Runtime's async API returns `OrtValue` buffers instead of `DisposableNamedOnnxValue` instances.
+
 ## Example: Use The Generated Input Contract
 
 If you prefer an object that mirrors the model signature, use the generated input class:
@@ -217,14 +259,16 @@ Treat these objects as scoped resources:
 
 Prefer `using var` for all of them.
 
-Also note that `outputs.Output` and `outputs.Raw` are tied to the lifetime of the output wrapper. Read or copy the data you need before leaving the `using` scope.
+Also note that `outputs.Output` is tied to the lifetime of the output wrapper. For synchronous `Run(...)` results, `outputs.Raw` is tied to the same lifetime. For asynchronous `RunAsync(...)` results, use typed output properties or `GetTensor<T>(string)` instead of `Raw`.
 
 ## Generated API Notes
 
 - The default constructor loads the model from `DefaultModelPath`, resolved relative to the application output folder.
 - You can also construct the wrapper from a custom file path or raw model bytes.
 - The generated wrapper exposes both `Run(<generated inputs>)` and `Run(..., RunOptions? runOptions)` overloads.
+- The generated wrapper exposes matching `RunAsync(...)` overloads with `CancellationToken cancellationToken = default`.
 - Optional ONNX inputs become nullable properties on the generated input type and nullable parameters on the generated `Run(...)` overloads.
+- Async `OnnxRuntimeInference` wrappers preallocate ONNX Runtime output `OrtValue` buffers from the model's static output metadata. Models with dynamic output dimensions should use synchronous `Run(...)` until async dynamic-output allocation is supported.
 - The generated wrapper also exposes `Inputs`, `Outputs`, and `OutputNames` metadata for runtime inspection.
 - Models that use external tensor data still require their sibling external-data files at deployment time.
 

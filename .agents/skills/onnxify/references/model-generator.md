@@ -10,6 +10,7 @@ This package is a Roslyn source generator. It inspects ONNX files during build a
 - preserve real ONNX input and output names
 - surface model metadata through `Onnxify.OnnxValue` descriptors
 - provide `Run(...)` overloads over `InferenceSession`
+- provide `RunAsync(...)` overloads over ONNX Runtime's real async `OrtValue` buffer API
 
 ## When To Use It
 
@@ -36,6 +37,7 @@ Compared with hand-written `OnnxRuntime` glue, `Onnxify.ModelGenerator` gives yo
 - generated output wrappers with typed accessors
 - fewer repeated string literals for model input and output names
 - a default model path strategy that keeps the `.onnx` file beside the application output
+- async-friendly inference through generated `RunAsync(...)` overloads
 - discoverable metadata through static `Inputs`, `Outputs`, and `OutputNames`
 
 It is especially useful for app code that wants a small, ergonomic runtime surface while still respecting the real ONNX contract.
@@ -104,6 +106,38 @@ using var outputs = model.Run(inputIds);
 Tensor<float> logits = outputs.Logits;
 ```
 
+For asynchronous application code, the generated wrapper also exposes `RunAsync(...)` overloads. These call ONNX Runtime's real `InferenceSession.RunAsync(...)` API; they are not `Task.Run(...)` wrappers around synchronous inference.
+
+```csharp
+using Microsoft.ML.OnnxRuntime;
+using Microsoft.ML.OnnxRuntime.Tensors;
+using MyApp.Models;
+
+using var model = new SampleClassifierModel();
+using var runOptions = new RunOptions
+{
+    LogId = "sample-classifier"
+};
+using var cancellation = new CancellationTokenSource(
+    TimeSpan.FromSeconds(5)
+);
+
+var inputIds = new DenseTensor<long>(
+    values: new long[] { 101, 2023, 2003, 1037, 3231, 102 },
+    dimensions: new[] { 1, 6 }
+);
+
+using var outputs = await model.RunAsync(
+    inputIds,
+    runOptions,
+    cancellationToken: cancellation.Token
+);
+
+Tensor<float> logits = outputs.Logits;
+```
+
+Cancellation is wired through `RunOptions.Terminate`. Depending on where ONNX Runtime observes cancellation, a canceled invocation may surface as `OperationCanceledException`, `TaskCanceledException`, or an `OnnxRuntimeException` that reports terminated/canceled execution.
+
 If the user prefers the object-style input contract instead of positional overloads:
 
 ```csharp
@@ -129,6 +163,9 @@ Tensor<float> logits = outputs.Logits;
 - The default wrapper constructor loads the model from `DefaultModelPath`, which resolves relative to the application output directory.
 - If the ONNX model uses external tensor data, the generated wrapper can still be emitted, but deployment must include the sibling external-data files too.
 - Optional ONNX inputs become nullable tensor properties and nullable tensor parameters in generated `Run(...)` overloads.
+- Generated `RunAsync(...)` overloads mirror the synchronous overloads and accept `CancellationToken cancellationToken = default`.
+- Async output wrappers expose typed output properties and `GetTensor<T>(string)`. `Raw` is only available for synchronous `Run(...)` results because ONNX Runtime async inference returns `OrtValue` buffers rather than `DisposableNamedOnnxValue` instances.
+- Async `OnnxRuntimeInference` generation preallocates ONNX Runtime output buffers from static output metadata. If a model has dynamic output dimensions, use synchronous `Run(...)` for now.
 - The generator only supports tensor inputs and outputs backed by `Microsoft.ML.OnnxRuntime`-compatible CLR element types.
 
 ## Related Repo Entry Points

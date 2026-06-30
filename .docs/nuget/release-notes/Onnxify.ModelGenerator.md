@@ -1,3 +1,12 @@
+## 0.3.8
+
+- Hoisted repeated generated ONNX Runtime and TorchModule runtime plumbing into shared generated base classes emitted once per consuming compilation and only for the import modes in use.
+- Added editable generator template sources for the shared generated support classes so common generated helpers can be maintained as normal C#.
+- Added generated `RunAsync(...)` overloads for `OnnxRuntimeInference` wrappers, using the real ONNX Runtime `InferenceSession.RunAsync(...)` `OrtValue` buffer API with `CancellationToken` support wired through `RunOptions.Terminate`.
+- Added async support for the same wrapper shapes as synchronous inference: generated input objects, individual tensor parameters, optional tensor inputs, `RunOptions`, and parameterless models.
+- Generated async output wrappers now own ONNX Runtime `OrtValue` results and expose them through typed output properties and `GetTensor<T>(string)`. Synchronous `Run(...)` results still expose `Raw` `DisposableNamedOnnxValue` outputs.
+- Added runtime coverage that verifies generated async inference cancellation against a long-running ONNX Runtime model. The cancellation path accepts normal ONNX Runtime termination behavior in addition to `OperationCanceledException`/`TaskCanceledException`.
+
 ## 0.3.6
 
 - Added `System.Collections.Immutable` to the analyzer runtime dependency payload so generated model wrappers can initialize the source generator reliably in consumer builds.
