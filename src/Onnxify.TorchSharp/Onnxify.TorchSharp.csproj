@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <PackageReference Include="ICSharpCode.Decompiler" Version="10.0.1.8346" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.Managed" Version="1.27.0" />
     <PackageReference Include="TorchSharp" Version="0.107.0" />
   </ItemGroup>
 

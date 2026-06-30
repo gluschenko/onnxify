@@ -143,6 +143,83 @@ onnxModel.Save("model.onnx", overwrite: true);
 
 This example uses a regular model-owned `Export()` method that manually constructs the ONNX graph. It keeps the export path attached to the same class that defines the TorchSharp architecture, which makes the code easier to discover and reuse. The experimental `ExportOnnxModel(...)` API is shown separately below.
 
+## Example: Evaluating an Exported Model
+
+After export, use `Evaluate(...)` to run the original TorchSharp module and the exported ONNX model on the same representative samples. The API accepts a collection, so pass a one-element array when you only need one sample.
+
+```csharp
+using var sample = torch.randn([1, 3, 16, 16]);
+
+var result = model.Evaluate(
+    onnxModel,
+    new[] { sample },
+    new TorchExportEvaluationOptions
+    {
+        AbsoluteTolerance = 1e-5,
+        RelativeTolerance = 1e-5,
+    }
+);
+
+if (!result.Passed)
+{
+    foreach (var diagnostic in result.Diagnostics)
+    {
+        Console.WriteLine($"{diagnostic.Code}: {diagnostic.Message}");
+    }
+}
+```
+
+`EvaluationResult<TTorchModule, OnnxModel>` includes aggregate loss, per-sample results, per-output mean squared error, maximum absolute error, mean absolute error, compared element counts, shapes, diagnostics, and a `Passed` flag.
+
+For multiple samples, pass the whole representative set:
+
+```csharp
+var result = model.Evaluate(
+    onnxModel,
+    validationSamples,
+    new TorchExportEvaluationOptions
+    {
+        AbsoluteTolerance = 1e-4,
+        RelativeTolerance = 1e-4,
+    }
+);
+```
+
+When sample keys differ from ONNX graph input names, configure name mappings:
+
+```csharp
+var result = model.Evaluate(
+    onnxModel,
+    samples,
+    new TorchExportEvaluationOptions
+    {
+        InputNameMapping = new Dictionary<string, string>
+        {
+            ["image"] = "input",
+        },
+        OutputNameMapping = new Dictionary<string, string>
+        {
+            ["scores"] = "output",
+        },
+    }
+);
+```
+
+For nonstandard comparison semantics, plug in a custom comparer:
+
+```csharp
+var result = model.Evaluate(
+    onnxModel,
+    samples,
+    new TorchExportEvaluationOptions
+    {
+        Comparer = context => MyDomainSpecificComparison(context),
+    }
+);
+```
+
+The default comparer is intended for deterministic numeric tensor outputs. It reports dtype, shape, missing-output, runtime, NaN/Infinity, and tolerance mismatches as diagnostics. Dynamic shapes are supported when the exported ONNX model and the supplied samples agree at runtime, but unsupported TorchSharp input/output containers or unsupported dtypes fail explicitly instead of being silently skipped.
+
 ## Experimental: Deep Export from forward(Tensor)
 
 > Spoiler: `ExportOnnxModel(...)` is experimental, but it is already useful for trying real TorchSharp architectures without writing a manual `Export()` method, including transformer-style and convolution-style `forward(Tensor)` bodies. It is not a complete C# or TorchSharp compiler.

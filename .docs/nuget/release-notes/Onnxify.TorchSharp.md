@@ -1,3 +1,10 @@
+## 0.3.8
+
+- Added `Evaluate(...)` for comparing a TorchSharp module against an exported `OnnxModel` with ONNX Runtime on caller-provided representative samples.
+- Added evaluation result types with aggregate loss, per-sample/per-output details, pass/fail status, and diagnostics for runtime or comparison failures.
+- Added configurable tolerances, input/output name mapping, temporary model serialization, ONNX Runtime session options, and custom output comparison callbacks.
+- Added `Microsoft.ML.OnnxRuntime.Managed` `1.27.0` as an `Onnxify.TorchSharp` dependency so export evaluation stays out of the core `Onnxify` package.
+
 ## 0.3.7
 
 - Fixed `nn.Linear` export for rank-3 and higher inputs by explicitly flattening leading dimensions before `MatMul` and restoring them afterwards, avoiding ONNX Runtime extended-optimizer `Gemm` fusion failures on transformer activations such as `[batch, sequence, hidden]`.
