@@ -154,27 +154,6 @@ If you already cloned this repository and want to install both bundled skills fr
 
 Restart Codex after installation so it picks up the new or refreshed skill files.
 
-## TODO
-
-- [x] OnnxGraph rework
-- [x] SourceGenerator: operator type annotations
-- [ ] SourceGenerator: fully-typed operator Input/Output fields (OneOf?)
-- [x] Async I/O ops
-- [ ] Graph edges in a single collection (or in two for placeholders)
-- [x] Graph manipulations: add nodes, remove nodes, replace nodes
-- [ ] Graph cyclicity validation
-- [x] CLI for agents and humans (to explore ONNX files)
-- [x] Project generator generates operator nodes
-- [x] Parse pytorch\torch\onnx\_internal\torchscript_exporter (create MD with support status)
-- [x] Generate agent skills from operator-schema.json
-- [x] ToString for OnnxModel, OnnxNode, OnnxxTensor, etc (recursive?)
-- [x] OnnxDataProvider, SafetensorsDataProvider, BaseDataProvider...
-- [x] Agent skills for Export implementation on Torch modules
-- [x] Allow to add or remove OnnxModel meta (training info, imports, producer, version)
-- [ ] CLI redesign: command patterns, more features, better output formatting, etc
-- [ ] NuGet integration tests
-- [ ] Safetensors: more user-friendly API
-
 ## License
 
 This repository is licensed under the terms of the [LICENSE](LICENSE) file.
