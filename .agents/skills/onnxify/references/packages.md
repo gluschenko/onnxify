@@ -13,4 +13,4 @@ Do not hand-edit this file; rerun the generator instead.
 | `Onnxify.ModelGenerator` | `0.3.8` | `Onnxify` | `Google.Protobuf` `3.34.0` (PrivateAssets=all)<br>`Grpc.Tools` `2.78.0` (PrivateAssets=all)<br>`Microsoft.CodeAnalysis.Analyzers` `3.11.0` (PrivateAssets=all)<br>`Microsoft.CodeAnalysis.CSharp` `4.11.0` (PrivateAssets=all)<br>`System.Collections.Immutable` `9.0.0` (PrivateAssets=all) |
 | `Onnxify.ProjectGenerator` | `0.3.8` | `Onnxify` | [none] |
 | `Onnxify.Safetensors` | `0.3.8` | [none] | [none] |
-| `Onnxify.TorchSharp` | `0.3.8` | `Onnxify`<br>`Onnxify.Safetensors` | `ICSharpCode.Decompiler` `10.0.1.8346`<br>`TorchSharp` `0.107.0` |
+| `Onnxify.TorchSharp` | `0.3.8` | `Onnxify`<br>`Onnxify.Safetensors` | `ICSharpCode.Decompiler` `10.0.1.8346`<br>`Microsoft.ML.OnnxRuntime.Managed` `1.27.0`<br>`TorchSharp` `0.107.0` |
