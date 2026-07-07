@@ -17,3 +17,5 @@
 | [OXY-013](OXY-013.md) | NuGet Integration Tests Before Publishing | TODO | 24 human-hours | 2026-06-30 | 2026-06-30 |
 | [OXY-014](OXY-014.md) | SourceGenerator Fully Typed Operator Input And Output Fields | TODO | 32 human-hours | 2026-06-30 | 2026-06-30 |
 | [OXY-015](OXY-015.md) | Safetensors More User Friendly API | TODO | 24 human-hours | 2026-06-30 | 2026-06-30 |
+| [OXY-016](OXY-016.md) | ModelGenerator Jinja Chat Template Serializer | TODO | 96 human-hours | 2026-07-07 | 2026-07-07 |
+| [OXY-017](OXY-017.md) | ModelGenerator Hugging Face Artifact Zoo | TODO | 40 human-hours | 2026-07-07 | 2026-07-07 |
