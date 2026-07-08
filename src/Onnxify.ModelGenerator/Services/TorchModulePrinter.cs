@@ -27,7 +27,7 @@ internal sealed class TorchModulePrinter
         using TorchSharp;
         using static TorchSharp.torch;
         using static TorchSharp.torch.nn;
-        using static Onnxify.Abstractions.TorchSharpModel;
+        using static {{specification.NamespaceName}}.TorchSharpModel;
         using TorchModules = TorchSharp.Modules;
 
         namespace {{specification.NamespaceName}}
@@ -238,7 +238,7 @@ internal sealed class TorchModulePrinter
 
     private static string BuildTorchModuleBaseTypeName(TorchModuleGenerationSpecification torchModule)
     {
-        return $"Onnxify.Abstractions.TorchSharpModel<{string.Join(", ", Enumerable.Repeat("Tensor", torchModule.Inputs.Length).Concat([BuildTorchModuleForwardReturnTypeName(torchModule)]))}>";
+        return $"TorchSharpModel<{string.Join(", ", Enumerable.Repeat("Tensor", torchModule.Inputs.Length).Concat([BuildTorchModuleForwardReturnTypeName(torchModule)]))}>";
     }
 
     private static string BuildTorchModuleForwardReturnTypeName(TorchModuleGenerationSpecification torchModule)

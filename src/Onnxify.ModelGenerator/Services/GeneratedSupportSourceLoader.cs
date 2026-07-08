@@ -9,7 +9,10 @@ internal static class GeneratedSupportSourceLoader
 {
     private const string RESOURCE_PREFIX = "Onnxify.ModelGenerator.Templates.";
 
-    internal static SourceText Load(string fileName)
+    internal static SourceText Load(
+        string fileName,
+        string namespaceName
+    )
     {
         var assembly = typeof(GeneratedSupportSourceLoader).Assembly;
         var resourceName = RESOURCE_PREFIX + fileName;
@@ -17,7 +20,7 @@ internal static class GeneratedSupportSourceLoader
             ?? throw new InvalidOperationException($"Generated support source resource '{resourceName}' was not found.");
         using var reader = new StreamReader(stream);
         return SourceText.From(
-            text: reader.ReadToEnd(),
+            text: reader.ReadToEnd().Replace("{{OnnxifyModelNamespace}}", namespaceName),
             encoding: System.Text.Encoding.UTF8
         );
     }

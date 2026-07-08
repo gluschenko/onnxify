@@ -310,19 +310,37 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             .Where(specification => !duplicates.ContainsKey(specification.FullyQualifiedClassName))
             .ToArray();
 
-        if (emittedSpecifications.Any(static x => x.ImportTypes.HasFlag(ModelImportType.OnnxRuntimeInference)))
+        var onnxRuntimeNamespaces = emittedSpecifications
+            .Where(static x => x.ImportTypes.HasFlag(ModelImportType.OnnxRuntimeInference))
+            .Select(static x => x.NamespaceName)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        foreach (var namespaceName in onnxRuntimeNamespaces)
         {
             context.AddSource(
-                hintName: "Onnxify.ModelGenerator.InferenceSessionModel.g.cs",
-                sourceText: GeneratedSupportSourceLoader.Load(fileName: "InferenceSessionModel.cs")
+                hintName: $"Onnxify.ModelGenerator.{CreateSupportHintNamePart(namespaceName)}.InferenceSessionModel.g.cs",
+                sourceText: GeneratedSupportSourceLoader.Load(
+                    fileName: "InferenceSessionModel.cs",
+                    namespaceName
+                )
             );
         }
 
-        if (emittedSpecifications.Any(static x => x.ImportTypes.HasFlag(ModelImportType.TorchModule)))
+        var torchModuleNamespaces = emittedSpecifications
+            .Where(static x => x.ImportTypes.HasFlag(ModelImportType.TorchModule))
+            .Select(static x => x.NamespaceName)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        foreach (var namespaceName in torchModuleNamespaces)
         {
             context.AddSource(
-                hintName: "Onnxify.ModelGenerator.TorchSharpModel.g.cs",
-                sourceText: GeneratedSupportSourceLoader.Load(fileName: "TorchSharpModel.cs")
+                hintName: $"Onnxify.ModelGenerator.{CreateSupportHintNamePart(namespaceName)}.TorchSharpModel.g.cs",
+                sourceText: GeneratedSupportSourceLoader.Load(
+                    fileName: "TorchSharpModel.cs",
+                    namespaceName
+                )
             );
         }
 
@@ -339,6 +357,12 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             }
         }
     }
+
+    private static string CreateSupportHintNamePart(string namespaceName)
+    {
+        return namespaceName.Replace('.', '_');
+    }
+
     private static bool TryCreateTensorContract(
         string ownerFileName,
         ValueInfoProto valueInfo,

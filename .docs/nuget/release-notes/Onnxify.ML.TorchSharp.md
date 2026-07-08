@@ -1,3 +1,7 @@
+## 0.3.9
+
+- Aligned the package version with the 0.3.9 Onnxify package family release.
+
 ## 0.3.6
 
 - Picked up the TorchSharp package-family deep export scalar comparison typing fix for runtime tensor masks.

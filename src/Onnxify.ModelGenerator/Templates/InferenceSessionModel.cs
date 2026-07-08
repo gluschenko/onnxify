@@ -5,7 +5,7 @@ using System;
 using System.IO;
 using Microsoft.ML.OnnxRuntime;
 
-namespace Onnxify.Abstractions
+namespace {{OnnxifyModelNamespace}}
 {
     public abstract class InferenceSessionModel : IDisposable
     {
