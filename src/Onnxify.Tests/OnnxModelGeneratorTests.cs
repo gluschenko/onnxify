@@ -515,6 +515,91 @@ public sealed class OnnxModelGeneratorTests
     }
 
     [Fact]
+    public void Generate_TorchModuleModelsInDifferentNamespaces_EmitTorchSharpBaseBesideEachWrapper()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var modelAPath = Path.Combine(tempRoot, "first-torch.onnx");
+        var modelBPath = Path.Combine(tempRoot, "second-torch.onnx");
+
+        try
+        {
+            CreateIdentityProtoModel(
+                modelPath: modelAPath,
+                inputName: "input",
+                outputName: "output"
+            );
+            CreateIdentityProtoModel(
+                modelPath: modelBPath,
+                inputName: "input",
+                outputName: "output"
+            );
+
+            var driver = CreateDriver(
+                additionalFiles: [new BinaryAdditionalText(modelAPath), new BinaryAdditionalText(modelBPath)],
+                globalOptions: new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["build_property.ProjectDir"] = tempRoot + Path.DirectorySeparatorChar,
+                    ["build_property.RootNamespace"] = "Demo.App",
+                },
+                fileOptions: new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal)
+                {
+                    [modelAPath] = new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["build_metadata.additionalfiles.OnnxifyModelImportType"] = "TorchModule",
+                    },
+                    [modelBPath] = new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["build_metadata.additionalfiles.OnnxifyModelImportType"] = "TorchModule",
+                        ["build_metadata.additionalfiles.OnnxifyModelNamespace"] = "Demo.Custom.Models",
+                    },
+                });
+
+            driver = driver.RunGeneratorsAndUpdateCompilation(
+                compilation: CreateCompilation(),
+                outputCompilation: out var updatedCompilation,
+                diagnostics: out var generatorDiagnostics);
+
+            Assert.DoesNotContain(generatorDiagnostics, static x => x.Severity == DiagnosticSeverity.Error);
+            Assert.DoesNotContain(updatedCompilation.GetDiagnostics(), static x => x.Severity == DiagnosticSeverity.Error);
+            Assert.Equal(
+                expected: 0,
+                actual: CountGeneratedHint(
+                    driver: driver,
+                    hintName: "Onnxify.ModelGenerator.Demo_App.InferenceSessionModel.g.cs"
+                )
+            );
+            Assert.Equal(
+                expected: 1,
+                actual: CountGeneratedHint(
+                    driver: driver,
+                    hintName: "Onnxify.ModelGenerator.Demo_App.TorchSharpModel.g.cs"
+                )
+            );
+            Assert.Equal(
+                expected: 1,
+                actual: CountGeneratedHint(
+                    driver: driver,
+                    hintName: "Onnxify.ModelGenerator.Demo_Custom_Models.TorchSharpModel.g.cs"
+                )
+            );
+
+            var generatedSource = GetAllGeneratedSource(driver);
+            Assert.Contains("namespace Demo.App", generatedSource);
+            Assert.Contains("namespace Demo.Custom.Models", generatedSource);
+            Assert.Contains("using static Demo.App.TorchSharpModel;", generatedSource);
+            Assert.Contains("using static Demo.Custom.Models.TorchSharpModel;", generatedSource);
+            Assert.Contains("public sealed class FirstTorchModelTorchModule : TorchSharpModel<Tensor, Tensor>", generatedSource);
+            Assert.Contains("public sealed class SecondTorchModelTorchModule : TorchSharpModel<Tensor, Tensor>", generatedSource);
+        }
+        finally
+        {
+            DeleteDirectoryWithRetries(tempRoot);
+        }
+    }
+
+    [Fact]
     public void Generate_WithTorchModuleImportType_ProducesGraphShapedTorchModule()
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
