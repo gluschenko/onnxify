@@ -1,3 +1,9 @@
+## 0.3.9
+
+- Generated ONNX Runtime and TorchModule support base classes are now emitted into the consuming model namespace instead of the shared `Onnxify.Abstractions` namespace.
+- Emitted namespace-specific support sources for projects that generate wrappers into multiple namespaces, avoiding duplicate type conflicts while keeping each generated wrapper self-contained.
+- Updated generated ONNX Runtime and TorchModule wrappers to inherit from the local generated base types, including custom `OnnxifyModelNamespace` metadata scenarios.
+
 ## 0.3.8
 
 - Hoisted repeated generated ONNX Runtime and TorchModule runtime plumbing into shared generated base classes emitted once per consuming compilation and only for the import modes in use.

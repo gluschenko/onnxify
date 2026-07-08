@@ -1,3 +1,7 @@
+## 0.3.9
+
+- Aligned the package version with the 0.3.9 Onnxify package family release.
+
 ## 0.3.8
 
 - Added `Evaluate(...)` for comparing a TorchSharp module against an exported `OnnxModel` with ONNX Runtime on caller-provided representative samples.

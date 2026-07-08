@@ -1,3 +1,7 @@
+## 0.3.9
+
+- Aligned the package version with the 0.3.9 Onnxify package family release.
+
 ## 0.3.6
 
 - Updated the `netstandard2.0` compatibility dependency on `System.Text.Json` to `10.0.9`.
