@@ -11,24 +11,39 @@ using TorchModules = TorchSharp.Modules;
 
 namespace {{OnnxifyModelNamespace}}
 {
+    /// <summary>
+    /// Provides shared helper methods used by generated TorchSharp modules.
+    /// </summary>
     public abstract class TorchSharpModel
     {
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor CreateShapeTensor(Tensor value)
         {
             return torch.tensor(value.shape, dtype: ScalarType.Int64, device: value.device);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor GatherTensor(Tensor input, Tensor indices, long axis)
         {
             using var flatIndices = indices.reshape(-1);
             return input.index_select(axis, flatIndices).squeeze();
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor UnsqueezeTensor(Tensor input, Tensor axes)
         {
             return UnsqueezeTensor(input, axes.data<long>().ToArray());
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor UnsqueezeTensor(Tensor input, long[] axes)
         {
             var result = input;
@@ -40,11 +55,17 @@ namespace {{OnnxifyModelNamespace}}
             return result;
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor SqueezeTensor(Tensor input, Tensor axes)
         {
             return SqueezeTensor(input, axes.data<long>().ToArray());
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor SqueezeTensor(Tensor input, long[] axes)
         {
             if (axes.Length == 0)
@@ -61,6 +82,9 @@ namespace {{OnnxifyModelNamespace}}
             return result;
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor ConcatTensors(Tensor[] tensors, long axis)
         {
             if (tensors.Length == 0)
@@ -73,6 +97,9 @@ namespace {{OnnxifyModelNamespace}}
             return torch.cat(aligned, axis);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor ScatterNdTensor(Tensor data, Tensor indices, Tensor updates, string reduction)
         {
             if (!string.Equals(reduction, "none", StringComparison.OrdinalIgnoreCase))
@@ -130,6 +157,9 @@ namespace {{OnnxifyModelNamespace}}
             return result;
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static long[] ComputeContiguousStrides(long[] shape)
         {
             var strides = new long[shape.Length];
@@ -143,6 +173,9 @@ namespace {{OnnxifyModelNamespace}}
             return strides;
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor MaxTensors(Tensor[] tensors)
         {
             if (tensors.Length == 0)
@@ -159,6 +192,9 @@ namespace {{OnnxifyModelNamespace}}
             return result;
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor MinTensors(Tensor[] tensors)
         {
             if (tensors.Length == 0)
@@ -175,11 +211,17 @@ namespace {{OnnxifyModelNamespace}}
             return result;
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor ModTensor(Tensor input, Tensor other, bool fmod)
         {
             return fmod ? input.fmod(other) : input.remainder(other);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor IsInfTensor(Tensor input, long detectNegative, long detectPositive)
         {
             var isInf = input.isinf();
@@ -202,11 +244,17 @@ namespace {{OnnxifyModelNamespace}}
             return torch.zeros_like(isInf);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor BitwiseNotTensor(Tensor input)
         {
             return input.dtype == ScalarType.Bool ? input.logical_not() : input.bitwise_not();
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor BitwiseAndTensor(Tensor input, Tensor other)
         {
             return input.dtype == ScalarType.Bool && other.dtype == ScalarType.Bool
@@ -214,6 +262,9 @@ namespace {{OnnxifyModelNamespace}}
                 : input.bitwise_and(other);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor BitwiseOrTensor(Tensor input, Tensor other)
         {
             return input.dtype == ScalarType.Bool && other.dtype == ScalarType.Bool
@@ -221,6 +272,9 @@ namespace {{OnnxifyModelNamespace}}
                 : input.bitwise_or(other);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor BitwiseXorTensor(Tensor input, Tensor other)
         {
             return input.dtype == ScalarType.Bool && other.dtype == ScalarType.Bool
@@ -228,31 +282,49 @@ namespace {{OnnxifyModelNamespace}}
                 : input.bitwise_xor(other);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor ReduceMeanTensor(Tensor input, Tensor? axes, bool keepDims)
         {
             return ReduceMeanTensor(input, axes?.data<long>().ToArray(), keepDims);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor ReduceMeanTensor(Tensor input, long[]? axes, bool keepDims)
         {
             return input.mean(ResolveReductionAxes(axes, input.shape.Length), keepDims);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor ReduceSumTensor(Tensor input, Tensor? axes, bool keepDims)
         {
             return ReduceSumTensor(input, axes?.data<long>().ToArray(), keepDims);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor ReduceSumTensor(Tensor input, long[]? axes, bool keepDims)
         {
             return input.sum(ResolveReductionAxes(axes, input.shape.Length), keepDims);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor ReduceMaxTensor(Tensor input, Tensor? axes, bool keepDims)
         {
             return ReduceMaxTensor(input, axes?.data<long>().ToArray(), keepDims);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor ReduceMaxTensor(Tensor input, long[]? axes, bool keepDims)
         {
             var resolvedAxes = ResolveReductionAxes(axes, input.shape.Length);
@@ -265,11 +337,17 @@ namespace {{OnnxifyModelNamespace}}
             return result;
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor ReduceMinTensor(Tensor input, Tensor? axes, bool keepDims)
         {
             return ReduceMinTensor(input, axes?.data<long>().ToArray(), keepDims);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor ReduceMinTensor(Tensor input, long[]? axes, bool keepDims)
         {
             var resolvedAxes = ResolveReductionAxes(axes, input.shape.Length);
@@ -282,11 +360,17 @@ namespace {{OnnxifyModelNamespace}}
             return result;
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor ReduceProdTensor(Tensor input, Tensor? axes, bool keepDims)
         {
             return ReduceProdTensor(input, axes?.data<long>().ToArray(), keepDims);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor ReduceProdTensor(Tensor input, long[]? axes, bool keepDims)
         {
             var resolvedAxes = ResolveReductionAxes(axes, input.shape.Length);
@@ -299,36 +383,57 @@ namespace {{OnnxifyModelNamespace}}
             return result;
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor ReduceL1Tensor(Tensor input, Tensor? axes, bool keepDims)
         {
             return ReduceL1Tensor(input, axes?.data<long>().ToArray(), keepDims);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor ReduceL1Tensor(Tensor input, long[]? axes, bool keepDims)
         {
             return input.abs().sum(ResolveReductionAxes(axes, input.shape.Length), keepDims);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor ReduceL2Tensor(Tensor input, Tensor? axes, bool keepDims)
         {
             return ReduceL2Tensor(input, axes?.data<long>().ToArray(), keepDims);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor ReduceL2Tensor(Tensor input, long[]? axes, bool keepDims)
         {
             return input.pow(2).sum(ResolveReductionAxes(axes, input.shape.Length), keepDims).sqrt();
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor ReduceLogSumExpTensor(Tensor input, Tensor? axes, bool keepDims)
         {
             return ReduceLogSumExpTensor(input, axes?.data<long>().ToArray(), keepDims);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor ReduceLogSumExpTensor(Tensor input, long[]? axes, bool keepDims)
         {
             return input.exp().sum(ResolveReductionAxes(axes, input.shape.Length), keepDims).log();
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static long[] ResolveReductionAxes(long[]? axes, int rank)
         {
             return axes is null || axes.Length == 0
@@ -336,6 +441,9 @@ namespace {{OnnxifyModelNamespace}}
                 : NormalizeAxes(axes, rank);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static long[] NormalizeAxes(long[] axes, int rank)
         {
             return axes
@@ -343,6 +451,9 @@ namespace {{OnnxifyModelNamespace}}
                 .ToArray();
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor CumSumTensor(Tensor input, Tensor axis, bool reverse, bool exclusive)
         {
             var dim = axis.data<long>().ToArray()[0];
@@ -356,6 +467,9 @@ namespace {{OnnxifyModelNamespace}}
             return reverse ? result.flip(new long[] { dim }) : result;
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor DepthToSpaceTensor(Tensor input, long blockSize, string mode)
         {
             var shape = input.shape;
@@ -373,6 +487,9 @@ namespace {{OnnxifyModelNamespace}}
                 : input.reshape(new long[] { n, blockSize, blockSize, c, h, w }).permute(0, 3, 4, 1, 5, 2).reshape(new long[] { n, c, h * blockSize, w * blockSize });
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor SpaceToDepthTensor(Tensor input, long blockSize)
         {
             var shape = input.shape;
@@ -388,6 +505,9 @@ namespace {{OnnxifyModelNamespace}}
             return input.reshape(new long[] { n, c, h, blockSize, w, blockSize }).permute(0, 3, 5, 1, 2, 4).reshape(new long[] { n, c * blockSize * blockSize, h, w });
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor LayerNormTensor(Tensor input, Tensor scale, Tensor? bias, long axis, float epsilon)
         {
             var rank = input.shape.Length;
@@ -396,6 +516,9 @@ namespace {{OnnxifyModelNamespace}}
             return torch.nn.functional.layer_norm(input, normalizedShape, scale, bias, eps: epsilon);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor SimplifiedLayerNormTensor(Tensor input, Tensor scale, Tensor? bias, long axis, float epsilon)
         {
             var rank = input.shape.Length;
@@ -409,6 +532,9 @@ namespace {{OnnxifyModelNamespace}}
             return bias is null ? result : result + bias;
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor PadTensor(Tensor input, Tensor pads, Tensor? constantValue, string mode)
         {
             var rawPads = pads.data<long>().ToArray();
@@ -424,6 +550,9 @@ namespace {{OnnxifyModelNamespace}}
             return torch.nn.functional.pad(input, torchPads.ToArray(), mode: ParsePaddingMode(mode), value: value);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static PaddingModes ParsePaddingMode(string mode)
         {
             return mode switch
@@ -437,6 +566,9 @@ namespace {{OnnxifyModelNamespace}}
             };
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor SliceTensor(Tensor input, Tensor starts, Tensor ends, Tensor? axes, Tensor? steps)
         {
             var result = input;
@@ -465,6 +597,9 @@ namespace {{OnnxifyModelNamespace}}
             return result;
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor[] SplitTensor(Tensor input, Tensor? split, long axis, long outputCount)
         {
             var axisIndex = (int)axis;
@@ -486,6 +621,9 @@ namespace {{OnnxifyModelNamespace}}
             return result;
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor[] TopKTensor(Tensor input, Tensor k, long axis, bool largest, bool sorted)
         {
             var kValue = k.data<long>().ToArray()[0];
@@ -493,12 +631,18 @@ namespace {{OnnxifyModelNamespace}}
             return new Tensor[] { result.values, result.indexes };
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor TriluTensor(Tensor input, Tensor? k, bool upper)
         {
             var diagonal = k is null ? 0L : k.data<long>().ToArray()[0];
             return upper ? input.triu((int)diagonal) : input.tril((int)diagonal);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor ResizeTensor(Tensor input, Tensor? scales, Tensor? sizes, string mode, string coordinateTransformationMode)
         {
             if (coordinateTransformationMode is not ("asymmetric" or "half_pixel" or "pytorch_half_pixel"))
@@ -555,6 +699,9 @@ namespace {{OnnxifyModelNamespace}}
             );
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor ToOnnxLstmY(Tensor torchY, long numDirections, long hiddenSize)
         {
             var shape = torchY.shape;
@@ -568,12 +715,18 @@ namespace {{OnnxifyModelNamespace}}
                 .permute(0, 2, 1, 3);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor[] ToOnnxGruOutputs((Tensor, Tensor) torchOutput, long numDirections, long hiddenSize)
         {
             var y = ToOnnxGruY(torchOutput.Item1, numDirections, hiddenSize);
             return new Tensor[] { y, torchOutput.Item2 };
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor ToOnnxGruY(Tensor torchY, long numDirections, long hiddenSize)
         {
             var shape = torchY.shape;
@@ -587,6 +740,9 @@ namespace {{OnnxifyModelNamespace}}
                 .permute(0, 2, 1, 3);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor QuantizeLinearTensor(Tensor input, Tensor scale, Tensor? zeroPoint, long axis)
         {
             var alignedScale = AlignQuantizationParameter(scale, input, axis);
@@ -604,6 +760,9 @@ namespace {{OnnxifyModelNamespace}}
             };
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor DequantizeLinearTensor(Tensor input, Tensor scale, Tensor? zeroPoint, long axis)
         {
             var alignedScale = AlignQuantizationParameter(scale, input, axis);
@@ -613,6 +772,9 @@ namespace {{OnnxifyModelNamespace}}
             return shifted * alignedScale;
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor AlignQuantizationParameter(Tensor parameter, Tensor input, long axis)
         {
             var parameterShape = parameter.shape;
@@ -633,22 +795,34 @@ namespace {{OnnxifyModelNamespace}}
             return parameter.reshape(shape);
         }
 
+        /// <summary>
+        /// Provides name and canonical-index lookup for ONNX initializer tensors.
+        /// </summary>
         protected internal sealed class OnnxInitializerLookup
         {
             private readonly IReadOnlyList<Onnxify.OnnxTensor> _byIndex;
             private readonly IReadOnlyDictionary<string, Onnxify.OnnxTensor> _byName;
 
+            /// <summary>
+            /// Initializes a lookup for generated TorchSharp initializer loading.
+            /// </summary>
             public OnnxInitializerLookup(IReadOnlyList<Onnxify.OnnxTensor> initializers)
             {
                 _byIndex = initializers;
                 _byName = initializers.ToDictionary(static x => x.Name, StringComparer.Ordinal);
             }
 
+            /// <summary>
+            /// Attempts to get an initializer tensor by ONNX name.
+            /// </summary>
             public bool TryGetByName(string name, out Onnxify.OnnxTensor tensor)
             {
                 return _byName.TryGetValue(name, out tensor!);
             }
 
+            /// <summary>
+            /// Attempts to get an initializer tensor by canonical index.
+            /// </summary>
             public bool TryGetByIndex(int index, out Onnxify.OnnxTensor tensor)
             {
                 if (index >= 0 && index < _byIndex.Count)
@@ -662,6 +836,9 @@ namespace {{OnnxifyModelNamespace}}
             }
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static void LoadFloatTensor(
             OnnxInitializerLookup tensors,
             string name,
@@ -676,6 +853,9 @@ namespace {{OnnxifyModelNamespace}}
             target.detach().copy_(source);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static void LoadLongTensor(
             OnnxInitializerLookup tensors,
             string name,
@@ -690,6 +870,9 @@ namespace {{OnnxifyModelNamespace}}
             target.detach().copy_(source);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static void LoadTensor<T>(
             OnnxInitializerLookup tensors,
             string name,
@@ -724,6 +907,9 @@ namespace {{OnnxifyModelNamespace}}
             target.detach().copy_(source);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static void LoadBFloat16Tensor(
             OnnxInitializerLookup tensors,
             string name,
@@ -758,6 +944,9 @@ namespace {{OnnxifyModelNamespace}}
             target.detach().copy_(source);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static void LoadFloatTensorTransposed2D(
             OnnxInitializerLookup tensors,
             string name,
@@ -776,6 +965,9 @@ namespace {{OnnxifyModelNamespace}}
             target.detach().copy_(source);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static void LoadOnnxLstmWeights(
             OnnxInitializerLookup tensors,
             string wName,
@@ -836,6 +1028,9 @@ namespace {{OnnxifyModelNamespace}}
             }
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static void LoadOnnxGruWeights(
             OnnxInitializerLookup tensors,
             string wName,
@@ -896,6 +1091,9 @@ namespace {{OnnxifyModelNamespace}}
             }
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Onnxify.OnnxTensor<T> GetTensor<T>(
             OnnxInitializerLookup tensors,
             string name,
@@ -917,6 +1115,9 @@ namespace {{OnnxifyModelNamespace}}
             throw new KeyNotFoundException($"The ONNX model does not contain initializer '{name}' and has no initializer at canonical index {canonicalIndex}.");
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Onnxify.OnnxTensor<T> RequireTensor<T>(
             Onnxify.OnnxTensor tensor,
             string label,
@@ -937,6 +1138,9 @@ namespace {{OnnxifyModelNamespace}}
             return typedTensor;
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Onnxify.OnnxTensor GetTensor(
             OnnxInitializerLookup tensors,
             string name,
@@ -958,6 +1162,9 @@ namespace {{OnnxifyModelNamespace}}
             throw new KeyNotFoundException($"The ONNX model does not contain initializer '{name}' and has no initializer at canonical index {canonicalIndex}.");
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Onnxify.OnnxTensor RequireTensor(
             Onnxify.OnnxTensor tensor,
             string label,
@@ -981,6 +1188,9 @@ namespace {{OnnxifyModelNamespace}}
             return tensor;
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static Tensor GetRequiredStateTensor(
             IReadOnlyDictionary<string, Tensor> state,
             string name
@@ -994,6 +1204,9 @@ namespace {{OnnxifyModelNamespace}}
             return tensor;
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static void CopyOnnxLstmGateMatrix(
             Onnxify.OnnxTensor<float> source,
             long direction,
@@ -1015,6 +1228,9 @@ namespace {{OnnxifyModelNamespace}}
             target.detach().copy_(tensor);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static void CopyOnnxLstmGateVector(
             Onnxify.OnnxTensor<float> source,
             long direction,
@@ -1035,6 +1251,9 @@ namespace {{OnnxifyModelNamespace}}
             target.detach().copy_(tensor);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static void CopyOnnxGruGateMatrix(
             Onnxify.OnnxTensor<float> source,
             long direction,
@@ -1056,6 +1275,9 @@ namespace {{OnnxifyModelNamespace}}
             target.detach().copy_(tensor);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static void CopyOnnxGruGateVector(
             Onnxify.OnnxTensor<float> source,
             long direction,
@@ -1076,6 +1298,9 @@ namespace {{OnnxifyModelNamespace}}
             target.detach().copy_(tensor);
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static float[] ReorderOnnxLstmGateData(
             float[] source,
             long direction,
@@ -1094,6 +1319,9 @@ namespace {{OnnxifyModelNamespace}}
             return result;
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static float[] ReorderOnnxGruGateData(
             float[] source,
             long direction,
@@ -1111,6 +1339,9 @@ namespace {{OnnxifyModelNamespace}}
             return result;
         }
 
+        /// <summary>
+        /// Supports generated TorchSharp module execution.
+        /// </summary>
         protected internal static void CopyGateBlock(
             float[] source,
             float[] target,
@@ -1123,43 +1354,79 @@ namespace {{OnnxifyModelNamespace}}
         }
     }
 
+    /// <summary>
+    /// Provides the generated TorchSharp module base type for a strongly typed forward signature.
+    /// </summary>
     public abstract class TorchSharpModel<TInput, TOutput> : torch.nn.Module<TInput, TOutput>
     {
+        /// <summary>
+        /// Initializes the generated TorchSharp module base type.
+        /// </summary>
         protected TorchSharpModel(string name) : base(name)
         {
         }
     }
 
+    /// <summary>
+    /// Provides the generated TorchSharp module base type for a strongly typed forward signature.
+    /// </summary>
     public abstract class TorchSharpModel<TInput1, TInput2, TOutput> : torch.nn.Module<TInput1, TInput2, TOutput>
     {
+        /// <summary>
+        /// Initializes the generated TorchSharp module base type.
+        /// </summary>
         protected TorchSharpModel(string name) : base(name)
         {
         }
     }
 
+    /// <summary>
+    /// Provides the generated TorchSharp module base type for a strongly typed forward signature.
+    /// </summary>
     public abstract class TorchSharpModel<TInput1, TInput2, TInput3, TOutput> : torch.nn.Module<TInput1, TInput2, TInput3, TOutput>
     {
+        /// <summary>
+        /// Initializes the generated TorchSharp module base type.
+        /// </summary>
         protected TorchSharpModel(string name) : base(name)
         {
         }
     }
 
+    /// <summary>
+    /// Provides the generated TorchSharp module base type for a strongly typed forward signature.
+    /// </summary>
     public abstract class TorchSharpModel<TInput1, TInput2, TInput3, TInput4, TOutput> : torch.nn.Module<TInput1, TInput2, TInput3, TInput4, TOutput>
     {
+        /// <summary>
+        /// Initializes the generated TorchSharp module base type.
+        /// </summary>
         protected TorchSharpModel(string name) : base(name)
         {
         }
     }
 
+    /// <summary>
+    /// Provides the generated TorchSharp module base type for a strongly typed forward signature.
+    /// </summary>
     public abstract class TorchSharpModel<TInput1, TInput2, TInput3, TInput4, TInput5, TOutput> : torch.nn.Module<TInput1, TInput2, TInput3, TInput4, TInput5, TOutput>
     {
+        /// <summary>
+        /// Initializes the generated TorchSharp module base type.
+        /// </summary>
         protected TorchSharpModel(string name) : base(name)
         {
         }
     }
 
+    /// <summary>
+    /// Provides the generated TorchSharp module base type for a strongly typed forward signature.
+    /// </summary>
     public abstract class TorchSharpModel<TInput1, TInput2, TInput3, TInput4, TInput5, TInput6, TOutput> : torch.nn.Module<TInput1, TInput2, TInput3, TInput4, TInput5, TInput6, TOutput>
     {
+        /// <summary>
+        /// Initializes the generated TorchSharp module base type.
+        /// </summary>
         protected TorchSharpModel(string name) : base(name)
         {
         }
