@@ -20,3 +20,4 @@
 | [OXY-016](OXY-016.md) | ModelGenerator Jinja Chat Template Serializer | TODO | 96 human-hours | 2026-07-07 | 2026-07-07 |
 | [OXY-017](OXY-017.md) | ModelGenerator Hugging Face Artifact Zoo | TODO | 40 human-hours | 2026-07-07 | 2026-07-07 |
 | [OXY-018](OXY-018.md) | CUDA Version Matrix For Generated ONNX Model Validation | TODO | 40 human-hours | 2026-07-10 | 2026-07-10 |
+| [OXY-019](OXY-019.md) | Unified Bidirectional C# ONNX Compiler | TODO | 48 human-hours | 2026-07-21 | 2026-07-21 |
