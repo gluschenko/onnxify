@@ -12,7 +12,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 
 ### `Onnxify`
 
-* Version: `0.3.8`
+* Version: `0.3.10`
 * Onnxify project references:
   * None
 * Third-party NuGet PackageReferences:
@@ -23,7 +23,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 
 ### `Onnxify.CLI`
 
-* Version: `0.3.8`
+* Version: `0.3.10`
 * Onnxify project references:
   * `Onnxify`
   * `Onnxify.HuggingFace`
@@ -37,7 +37,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 
 ### `Onnxify.HuggingFace`
 
-* Version: `0.3.8`
+* Version: `0.3.10`
 * Onnxify project references:
   * None
 * Third-party NuGet PackageReferences:
@@ -45,7 +45,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 
 ### `Onnxify.ML`
 
-* Version: `0.3.8`
+* Version: `0.3.10`
 * Onnxify project references:
   * None
 * Third-party NuGet PackageReferences:
@@ -53,7 +53,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 
 ### `Onnxify.ML.TorchSharp`
 
-* Version: `0.3.8`
+* Version: `0.3.10`
 * Onnxify project references:
   * `Onnxify.ML`
 * Third-party NuGet PackageReferences:
@@ -61,7 +61,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 
 ### `Onnxify.ModelGenerator`
 
-* Version: `0.3.8`
+* Version: `0.3.10`
 * Onnxify project references:
   * `Onnxify`
 * Third-party NuGet PackageReferences:
@@ -73,7 +73,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 
 ### `Onnxify.ProjectGenerator`
 
-* Version: `0.3.8`
+* Version: `0.3.10`
 * Onnxify project references:
   * `Onnxify`
 * Third-party NuGet PackageReferences:
@@ -81,7 +81,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 
 ### `Onnxify.Safetensors`
 
-* Version: `0.3.8`
+* Version: `0.3.10`
 * Onnxify project references:
   * None
 * Third-party NuGet PackageReferences:
@@ -89,13 +89,13 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 
 ### `Onnxify.TorchSharp`
 
-* Version: `0.3.8`
+* Version: `0.3.10`
 * Onnxify project references:
   * `Onnxify`
   * `Onnxify.Safetensors`
 * Third-party NuGet PackageReferences:
   * `ICSharpCode.Decompiler` `10.0.1.8346`
-  * `Microsoft.ML.OnnxRuntime.Managed` `1.27.0`
+  * `Microsoft.ML.OnnxRuntime.Managed` `1.20.2`
   * `TorchSharp` `0.107.0`
 
 
@@ -258,9 +258,9 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::diagonal` | `TorchSharp.torch+Tensor.diagonal` | ✅ | ✅ | ❌ | ✅ | ❌ | 2 |
 | `aten::diagonal_copy` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 3 |
 | `aten::div.Scalar` | `TorchSharp.torch+Tensor.div` | ✅ | ✅ | ✅ | ✅ | ✅ | 5 |
-| `aten::div.Scalar_mode` | `TorchSharp.torch+Tensor.div` | ✅ | ✅ | ✅ | ✅ | ✅ | 27 |
+| `aten::div.Scalar_mode` | `TorchSharp.torch+Tensor.div` | ✅ | ✅ | ✅ | ✅ | ✅ | 29 |
 | `aten::div.Tensor` | `TorchSharp.torch+Tensor.div` | ✅ | ✅ | ✅ | ✅ | ✅ | 5 |
-| `aten::div.Tensor_mode` | `TorchSharp.torch+Tensor.div` | ✅ | ✅ | ✅ | ✅ | ✅ | 27 |
+| `aten::div.Tensor_mode` | `TorchSharp.torch+Tensor.div` | ✅ | ✅ | ✅ | ✅ | ✅ | 29 |
 | `aten::divide.Scalar` | `TorchSharp.torch+Tensor.divide` | ✅ | ✅ | ✅ | ✅ | ✅ | 0 |
 | `aten::divide.Tensor` | `TorchSharp.torch+Tensor.divide` | ✅ | ✅ | ✅ | ✅ | ✅ | 0 |
 | `aten::dot` | `TorchSharp.torch+Tensor.dot` | ✅ | ✅ | ✅ | ✅ | ✅ | 9 |
@@ -566,7 +566,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `prims::asinh` | `TorchSharp.torch+Tensor.asinh` | ✅ | ✅ | ✅ | ✅ | ✅ | 2 |
 | `prims::atan` | `TorchSharp.torch+Tensor.atan` | ✅ | ✅ | ✅ | ✅ | ✅ | 12 |
 | `prims::atanh` | `TorchSharp.torch+Tensor.atanh` | ✅ | ✅ | ✅ | ✅ | ✅ | 3 |
-| `prims::broadcast_in_dim` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 8 |
+| `prims::broadcast_in_dim` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 10 |
 | `prims::ceil` | `TorchSharp.torch+Tensor.ceil` | ✅ | ✅ | ✅ | ✅ | ✅ | 2 |
 | `prims::convert_element_type` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 43 |
 | `prims::cos` | `TorchSharp.torch+Tensor.cos` | ✅ | ✅ | ✅ | ✅ | ✅ | 4 |

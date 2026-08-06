@@ -222,6 +222,10 @@ public sealed class OnnxModelGeneratorTests
 
             var generatedSource = GetAllGeneratedSource(driver);
             Assert.Contains("namespace Demo.App", generatedSource);
+            Assert.Contains("/// Provides shared ONNX Runtime session management for generated model wrappers.", generatedSource);
+            Assert.Contains("/// Initializes a new generated model wrapper from an ONNX model file.", generatedSource);
+            Assert.Contains("/// Gets the ONNX Runtime inference session used by the generated wrapper.", generatedSource);
+            Assert.Contains("/// Releases the ONNX Runtime inference session.", generatedSource);
             Assert.Contains("public abstract class InferenceSessionModel", generatedSource);
             Assert.Contains(": InferenceSessionModel", generatedSource);
         }
@@ -502,6 +506,10 @@ public sealed class OnnxModelGeneratorTests
             );
 
             var generatedSource = GetGeneratedSource(driver);
+            var allGeneratedSource = GetAllGeneratedSource(driver);
+            Assert.Contains("/// Provides shared helper methods used by generated TorchSharp modules.", allGeneratedSource);
+            Assert.Contains("/// Supports generated TorchSharp module execution.", allGeneratedSource);
+            Assert.Contains("/// Provides the generated TorchSharp module base type for a strongly typed forward signature.", allGeneratedSource);
             Assert.Contains(": TorchSharpModel<Tensor, Tensor>", generatedSource);
             Assert.DoesNotContain("protected internal static Tensor CreateShapeTensor", generatedSource, StringComparison.Ordinal);
         }

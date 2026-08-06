@@ -7,8 +7,14 @@ using Microsoft.ML.OnnxRuntime;
 
 namespace {{OnnxifyModelNamespace}}
 {
+    /// <summary>
+    /// Provides shared ONNX Runtime session management for generated model wrappers.
+    /// </summary>
     public abstract class InferenceSessionModel : IDisposable
     {
+        /// <summary>
+        /// Initializes a new generated model wrapper from an ONNX model file.
+        /// </summary>
         protected InferenceSessionModel(
             string modelPath,
             SessionOptions? sessionOptions
@@ -24,6 +30,9 @@ namespace {{OnnxifyModelNamespace}}
                 : new InferenceSession(modelPath: modelPath, options: sessionOptions);
         }
 
+        /// <summary>
+        /// Initializes a new generated model wrapper from ONNX model bytes.
+        /// </summary>
         protected InferenceSessionModel(
             byte[] modelBytes,
             SessionOptions? sessionOptions
@@ -39,8 +48,14 @@ namespace {{OnnxifyModelNamespace}}
                 : new InferenceSession(model: modelBytes, options: sessionOptions);
         }
 
+        /// <summary>
+        /// Gets the ONNX Runtime inference session used by the generated wrapper.
+        /// </summary>
         public InferenceSession Session { get; }
 
+        /// <summary>
+        /// Resolves a generated model file path relative to the application base directory.
+        /// </summary>
         protected static string GetDefaultModelPath(string projectRelativePath)
         {
             return Path.Combine(
@@ -51,6 +66,9 @@ namespace {{OnnxifyModelNamespace}}
             );
         }
 
+        /// <summary>
+        /// Releases the ONNX Runtime inference session.
+        /// </summary>
         public void Dispose()
         {
             Session.Dispose();
