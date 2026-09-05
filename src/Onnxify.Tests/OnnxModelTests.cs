@@ -228,6 +228,7 @@ public sealed class OnnxModelTests
         Assert.Equal((byte)16, (byte)OnnxGraphCleanupFlags.Outputs);
         Assert.Equal((byte)32, (byte)OnnxGraphCleanupFlags.Subgraphs);
         Assert.Equal((byte)64, (byte)OnnxGraphCleanupFlags.Annotations);
+        Assert.Equal((byte)255, (byte)OnnxGraphCleanupFlags.All);
 
         var model = OnnxModel.Create();
         var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([1]));

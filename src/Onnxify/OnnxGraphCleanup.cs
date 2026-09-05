@@ -15,7 +15,7 @@ public enum OnnxGraphCleanupFlags : byte
     Constants = Initializers,
     NestedGraphs = Subgraphs,
     QuantizationAnnotations = Annotations,
-    All = 0x7F
+    All = 0xFF
 }
 
 /// <summary>Identifies the graph-member category represented by a cleanup item.</summary>
