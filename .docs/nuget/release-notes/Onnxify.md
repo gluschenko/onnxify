@@ -1,3 +1,9 @@
+## 0.3.11
+
+- Added `OnnxGraph.Clean(...)` with byte-backed `OnnxGraphCleanupFlags` and `OnnxGraphCleanupReport` for deterministic, idempotent liveness cleanup.
+- Cleanup reports the names and categories of removed nodes, values, initializers, inputs, outputs, and annotations.
+- Added sparse initializer round-tripping and nested graph cleanup support.
+
 ## 0.3.9
 
 - Aligned the package version with the 0.3.9 Onnxify package family release.

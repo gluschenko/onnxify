@@ -88,6 +88,36 @@ Use this section for the packages and tools that the repo itself exports outward
 - When no helper exists yet, implement behavior in the most local, consistent layer instead of introducing a parallel abstraction.
 - Keep edge, tensor, and placeholder wiring explicit. In this repo, graph construction is not hidden behind an optimizer or execution tracer.
 
+### Graph Liveness Cleanup
+
+Use `OnnxGraph.Clean(...)` when an edited or generated graph contains dead nodes, stale intermediate value-info entries, or unused dense and sparse initializers. The operation performs a deterministic backwards liveness walk from graph outputs and returns an `OnnxGraphCleanupReport`.
+
+```csharp
+var report = model.Graph.Clean();
+
+Console.WriteLine($"Removed {report.TotalRemoved} graph items");
+foreach (var item in report.RemovedItems)
+{
+    Console.WriteLine($"Removed {item.Type}: {item.Name}");
+}
+```
+
+The default is `OnnxGraphCleanupFlags.All`. Use an individual flag for a focused pass, or combine flags with the bitwise OR operator:
+
+```csharp
+var flags = OnnxGraphCleanupFlags.Nodes
+    | OnnxGraphCleanupFlags.Values
+    | OnnxGraphCleanupFlags.Initializers
+    | OnnxGraphCleanupFlags.Subgraphs
+    | OnnxGraphCleanupFlags.Annotations;
+
+var report = model.Graph.Clean(flags);
+```
+
+`Inputs` and `Outputs` are part of the graph's public contract and are preserved unless `OnnxGraphCleanupFlags.Inputs` or `OnnxGraphCleanupFlags.Outputs` is explicitly included. Use those flags only when changing the model contract is intentional. Cleanup is idempotent: a second call should produce an empty `RemovedItems` list.
+
+The cleanup preserves control-flow nodes based on their generated node types (`If`, `Loop`, and `Scan`), not string comparisons against `OpType`. Nested graph attributes are cleaned recursively with their own local name scopes when `Subgraphs` is enabled. `OnnxGraphCleanupReport.RemovedItems` identifies each removed item by name and `OnnxGraphCleanupItemType`.
+
 ## 2A. Onnxify Principles
 
 - Keep `OnnxModel` responsible for file I/O, top-level metadata, and protobuf conversion.

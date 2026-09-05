@@ -36,6 +36,9 @@ public class OnnxGraph
     /// </summary>
     public IReadOnlyList<OnnxTensor> Initializers => _initializers;
 
+    /// <summary>Gets sparse constant tensors stored with the graph.</summary>
+    public IReadOnlyList<OnnxSparseTensor> SparseInitializers => _sparseInitializers;
+
     /// <summary>
     /// Gets ONNX value-info entries that describe intermediate tensors without making them model inputs or outputs.
     /// </summary>
@@ -69,6 +72,7 @@ public class OnnxGraph
     // private readonly LazyDictionary<string, OnnxValue> _inputs = new(x => x.Name, StringComparer.Ordinal);
     // private readonly LazyDictionary<string, OnnxValue> _outputs = new(x => x.Name, StringComparer.Ordinal);
     private readonly LazyDictionary<string, OnnxTensor> _initializers = new(x => x.Name, StringComparer.Ordinal);
+    private readonly LazyDictionary<string, OnnxSparseTensor> _sparseInitializers = new(x => x.Name, StringComparer.Ordinal);
     private readonly LazyDictionary<string, OnnxValue> _values = new(x => x.Name, StringComparer.Ordinal);
     private readonly LazyDictionary<string, OnnxNode> _nodes = new(x => x.Name, StringComparer.Ordinal);
     private readonly LazyDictionary<string, OnnxEdge> _edges = new(x => x.Name, StringComparer.Ordinal);
@@ -81,6 +85,11 @@ public class OnnxGraph
         foreach (var tensor in graph.Initializer)
         {
             _initializers.Add(OnnxHelper.FromProto(tensor, options));
+        }
+
+        foreach (var tensor in graph.SparseInitializer)
+        {
+            _sparseInitializers.Add(OnnxHelper.FromProto(tensor, options));
         }
 
         foreach (var value in graph.ValueInfo)
@@ -180,6 +189,11 @@ public class OnnxGraph
         if (_initializers.TryGetValue(name, out var tensor))
         {
             return tensor;
+        }
+
+        if (_sparseInitializers.TryGetValue(name, out var sparseTensor))
+        {
+            return sparseTensor;
         }
 
         if (_edges.TryGetValue(name, out var edge))
@@ -682,6 +696,239 @@ public class OnnxGraph
             .Select(x => x.Value));
     }
 
+    /// <summary>
+    /// Removes graph members that cannot contribute to the declared outputs.
+    /// Inputs and outputs are preserved unless their corresponding flags are explicitly supplied.
+    /// </summary>
+    public OnnxGraphCleanupReport Clean(
+        OnnxGraphCleanupFlags flags = OnnxGraphCleanupFlags.All
+    )
+    {
+        var removedItems = new List<OnnxGraphCleanupItem>();
+        var producerByValue = new Dictionary<string, OnnxNode>(StringComparer.Ordinal);
+        foreach (var node in _nodes)
+        {
+            foreach (var output in node.Outputs)
+            {
+                if (!string.IsNullOrEmpty(output.Name))
+                {
+                    producerByValue.TryAdd(output.Name, node);
+                }
+            }
+        }
+
+        var liveValues = new HashSet<string>(_outputs, StringComparer.Ordinal);
+        var liveNodes = new HashSet<OnnxNode>();
+        var pending = new Queue<string>(liveValues);
+        while (pending.Count > 0)
+        {
+            var valueName = pending.Dequeue();
+            if (!producerByValue.TryGetValue(valueName, out var producer) || !liveNodes.Add(producer))
+            {
+                continue;
+            }
+
+            foreach (var input in producer.Inputs)
+            {
+                if (!string.IsNullOrEmpty(input.Name) && liveValues.Add(input.Name))
+                {
+                    pending.Enqueue(input.Name);
+                }
+            }
+        }
+
+        var nodesRemoved = 0;
+        if (flags.HasFlag(OnnxGraphCleanupFlags.Nodes))
+        {
+            foreach (var node in _nodes.ToArray())
+            {
+                if (!liveNodes.Contains(node) && !IsRequiredSideEffectNode(node))
+                {
+                    _nodes.Remove(node);
+                    nodesRemoved++;
+                    removedItems.Add(new OnnxGraphCleanupItem { Name = node.Name, Type = OnnxGraphCleanupItemType.Node });
+                }
+            }
+        }
+
+        var valuesRemoved = 0;
+        if (flags.HasFlag(OnnxGraphCleanupFlags.Values))
+        {
+            var referencedValues = _nodes
+                .SelectMany(x => x.Inputs.Concat(x.Outputs))
+                .Select(x => x.Name)
+                .Where(x => !string.IsNullOrEmpty(x))
+                .ToHashSet(StringComparer.Ordinal);
+
+            foreach (var value in _values.ToArray())
+            {
+                if (!_inputs.Contains(value.Name) && !_outputs.Contains(value.Name) && !referencedValues.Contains(value.Name))
+                {
+                    _values.Remove(value);
+                    valuesRemoved++;
+                    removedItems.Add(new OnnxGraphCleanupItem { Name = value.Name, Type = OnnxGraphCleanupItemType.Value });
+                }
+            }
+        }
+
+        var referencedNames = _nodes
+            .SelectMany(x => x.Inputs.Concat(x.Outputs))
+            .Select(x => x.Name)
+            .Where(x => !string.IsNullOrEmpty(x))
+            .ToHashSet(StringComparer.Ordinal);
+        referencedNames.UnionWith(_inputs);
+        referencedNames.UnionWith(_outputs);
+        AddNestedReferences(referencedNames);
+
+        var initializersRemoved = 0;
+        var sparseInitializersRemoved = 0;
+        if (flags.HasFlag(OnnxGraphCleanupFlags.Initializers))
+        {
+            foreach (var initializer in _initializers.ToArray())
+            {
+                if (!referencedNames.Contains(initializer.Name))
+                {
+                    _initializers.Remove(initializer);
+                    initializersRemoved++;
+                    removedItems.Add(new OnnxGraphCleanupItem { Name = initializer.Name, Type = OnnxGraphCleanupItemType.Initializer });
+                }
+            }
+
+            foreach (var initializer in _sparseInitializers.ToArray())
+            {
+                if (!referencedNames.Contains(initializer.Name))
+                {
+                    _sparseInitializers.Remove(initializer);
+                    sparseInitializersRemoved++;
+                    removedItems.Add(new OnnxGraphCleanupItem { Name = initializer.Name, Type = OnnxGraphCleanupItemType.SparseInitializer });
+                }
+            }
+        }
+
+        var inputsRemoved = 0;
+        if (flags.HasFlag(OnnxGraphCleanupFlags.Inputs))
+        {
+            var usedByNodes = _nodes
+                .SelectMany(x => x.Inputs.Concat(x.Outputs))
+                .Select(x => x.Name)
+                .ToHashSet(StringComparer.Ordinal);
+
+            foreach (var name in _inputs.ToArray())
+            {
+                if (!usedByNodes.Contains(name) && !_outputs.Contains(name))
+                {
+                    _inputs.Remove(name);
+                    inputsRemoved++;
+                    removedItems.Add(new OnnxGraphCleanupItem { Name = name, Type = OnnxGraphCleanupItemType.Input });
+                }
+            }
+        }
+
+        var outputsRemoved = 0;
+        if (flags.HasFlag(OnnxGraphCleanupFlags.Outputs))
+        {
+            foreach (var name in _outputs.ToArray())
+            {
+                if (!producerByValue.ContainsKey(name) && !_initializers.Contains(name) && !_sparseInitializers.Contains(name))
+                {
+                    _outputs.Remove(name);
+                    outputsRemoved++;
+                    removedItems.Add(new OnnxGraphCleanupItem { Name = name, Type = OnnxGraphCleanupItemType.Output });
+                }
+            }
+        }
+
+        var subgraphsCleaned = 0;
+        if (flags.HasFlag(OnnxGraphCleanupFlags.Subgraphs))
+        {
+            foreach (var node in _nodes)
+            {
+                foreach (var attribute in node.Attributes)
+                {
+                    foreach (var nested in GetNestedGraphs(attribute.GetValue()))
+                    {
+                        nested.Clean(flags & ~OnnxGraphCleanupFlags.Inputs & ~OnnxGraphCleanupFlags.Outputs);
+                        subgraphsCleaned++;
+                    }
+                }
+            }
+        }
+
+        var annotationsRemoved = 0;
+        if (flags.HasFlag(OnnxGraphCleanupFlags.Annotations))
+        {
+            for (var index = _graph.QuantizationAnnotation.Count - 1; index >= 0; index--)
+            {
+                var annotation = _graph.QuantizationAnnotation[index];
+                var names = annotation.QuantParameterTensorNames.Select(x => x.Value);
+                if (!referencedNames.Contains(annotation.TensorName) && !names.Any(referencedNames.Contains))
+                {
+                    _graph.QuantizationAnnotation.RemoveAt(index);
+                    annotationsRemoved++;
+                    removedItems.Add(new OnnxGraphCleanupItem { Name = annotation.TensorName, Type = OnnxGraphCleanupItemType.Annotation });
+                }
+            }
+        }
+
+        PruneUnusedLooseEdges();
+        return new OnnxGraphCleanupReport
+        {
+            NodesRemoved = nodesRemoved,
+            ValuesRemoved = valuesRemoved,
+            InitializersRemoved = initializersRemoved,
+            SparseInitializersRemoved = sparseInitializersRemoved,
+            InputsRemoved = inputsRemoved,
+            OutputsRemoved = outputsRemoved,
+            AttributesRemoved = 0,
+            SubgraphsCleaned = subgraphsCleaned,
+            AnnotationsRemoved = annotationsRemoved,
+            RemovedItems = removedItems,
+        };
+
+        void AddNestedReferences(HashSet<string> names)
+        {
+            foreach (var node in _nodes)
+            {
+                foreach (var attribute in node.Attributes)
+                {
+                    foreach (var nested in GetNestedGraphs(attribute.GetValue()))
+                    {
+                        foreach (var nestedNode in nested.Nodes)
+                        {
+                            foreach (var input in nestedNode.Inputs)
+                            {
+                                if (nested.GetValue(input.Name) is null && !nested.Inputs.Any(x => x.Name == input.Name))
+                                {
+                                    names.Add(input.Name);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        static IEnumerable<OnnxGraph> GetNestedGraphs(object value)
+        {
+            if (value is OnnxGraph graph)
+            {
+                yield return graph;
+            }
+            else if (value is IEnumerable<OnnxGraph> graphs)
+            {
+                foreach (var nestedGraph in graphs)
+                {
+                    yield return nestedGraph;
+                }
+            }
+        }
+
+        static bool IsRequiredSideEffectNode(OnnxNode node)
+        {
+            return node is { Outputs.Count: 0 } or If or Loop or Scan;
+        }
+    }
+
     private OnnxValue GetRegisteredValue(string name)
     {
         if (_values.TryGetValue(name, out var registeredValue))
@@ -922,6 +1169,7 @@ public class OnnxGraph
         newGraph.Name = Name;
 
         newGraph.Initializer.Set(_initializers.Select(x => x.ToProto()));
+        newGraph.SparseInitializer.Set(_sparseInitializers.Select(x => x.ToProto()));
         newGraph.ValueInfo.Set(IntermediateValues.Select(x => x.ToProto()));
         newGraph.Input.Set(Inputs.Select(x => x.ToProto()));
         newGraph.Output.Set(Outputs.Select(x => x.ToProto()));
