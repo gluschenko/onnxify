@@ -8,12 +8,13 @@ public sealed class OnnxQuantizationAnnotation
 {
     private readonly LazyDictionary<string, KeyValuePair<string, string>> _parameters = new(x => x.Key, StringComparer.Ordinal);
 
-    public string TensorName { get; set; }
+    public string TensorName { get; }
 
     public IReadOnlyList<KeyValuePair<string, string>> QuantParameterTensorNames => _parameters.ToList();
 
     public OnnxQuantizationAnnotation(string tensorName)
     {
+        ArgumentNullException.ThrowIfNull(tensorName);
         TensorName = tensorName;
     }
 
@@ -28,6 +29,8 @@ public sealed class OnnxQuantizationAnnotation
 
     public void SetQuantParameterTensorName(string parameterName, string tensorName)
     {
+        ArgumentNullException.ThrowIfNull(parameterName);
+        ArgumentNullException.ThrowIfNull(tensorName);
         _parameters[parameterName] = new KeyValuePair<string, string>(parameterName, tensorName);
     }
 

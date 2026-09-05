@@ -810,6 +810,7 @@ public class OnnxGraph
                 .Select(x => x.Name)
                 .Where(x => !string.IsNullOrEmpty(x))
                 .ToHashSet(StringComparer.Ordinal);
+            AddQuantizationReferences(referencedValues);
 
             foreach (var value in _values.ToArray())
             {
@@ -830,6 +831,7 @@ public class OnnxGraph
         referencedNames.UnionWith(_inputs);
         referencedNames.UnionWith(_outputs);
         AddNestedReferences(referencedNames);
+        AddQuantizationReferences(referencedNames);
 
         var initializersRemoved = 0;
         var sparseInitializersRemoved = 0;
@@ -908,10 +910,21 @@ public class OnnxGraph
         var annotationsRemoved = 0;
         if (flags.HasFlag(OnnxGraphCleanupFlags.Annotations))
         {
+            var activeNames = _nodes
+                .SelectMany(x => x.Inputs.Concat(x.Outputs))
+                .Select(x => x.Name)
+                .Where(x => !string.IsNullOrEmpty(x))
+                .ToHashSet(StringComparer.Ordinal);
+            activeNames.UnionWith(_inputs);
+            activeNames.UnionWith(_outputs);
+            activeNames.UnionWith(_values.Select(x => x.Name));
+            activeNames.UnionWith(_initializers.Select(x => x.Name));
+            activeNames.UnionWith(_sparseInitializers.Select(x => x.Name));
+
             foreach (var annotation in _quantizationAnnotations.ToArray())
             {
                 var names = annotation.QuantParameterTensorNames.Select(x => x.Value);
-                if (!referencedNames.Contains(annotation.TensorName) && !names.Any(referencedNames.Contains))
+                if (!activeNames.Contains(annotation.TensorName) || names.Any(x => !activeNames.Contains(x)))
                 {
                     _quantizationAnnotations.Remove(annotation);
                     annotationsRemoved++;
@@ -929,7 +942,6 @@ public class OnnxGraph
             SparseInitializersRemoved = sparseInitializersRemoved,
             InputsRemoved = inputsRemoved,
             OutputsRemoved = outputsRemoved,
-            AttributesRemoved = 0,
             SubgraphsCleaned = subgraphsCleaned,
             AnnotationsRemoved = annotationsRemoved,
             RemovedItems = removedItems,
@@ -958,6 +970,18 @@ public class OnnxGraph
             }
         }
 
+        void AddQuantizationReferences(HashSet<string> names)
+        {
+            foreach (var annotation in _quantizationAnnotations)
+            {
+                names.Add(annotation.TensorName);
+                foreach (var parameter in annotation.QuantParameterTensorNames)
+                {
+                    names.Add(parameter.Value);
+                }
+            }
+        }
+
         static IEnumerable<OnnxGraph> GetNestedGraphs(object value)
         {
             if (value is OnnxGraph graph)
@@ -975,7 +999,7 @@ public class OnnxGraph
 
         static bool IsRequiredSideEffectNode(OnnxNode node)
         {
-            return node is { Outputs.Count: 0 } or If or Loop or Scan;
+            return node.Outputs.Count == 0;
         }
     }
 

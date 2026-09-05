@@ -7,16 +7,15 @@ public enum OnnxGraphCleanupFlags : byte
     Nodes = 1 << 0,
     Values = 1 << 1,
     Initializers = 1 << 2,
-    Attributes = 1 << 3,
-    Inputs = 1 << 4,
-    Outputs = 1 << 5,
-    Subgraphs = 1 << 6,
-    Annotations = 1 << 7,
+    Inputs = 1 << 3,
+    Outputs = 1 << 4,
+    Subgraphs = 1 << 5,
+    Annotations = 1 << 6,
     ValueInfo = Values,
     Constants = Initializers,
     NestedGraphs = Subgraphs,
     QuantizationAnnotations = Annotations,
-    All = 0xFF
+    All = 0x7F
 }
 
 /// <summary>Identifies the graph-member category represented by a cleanup item.</summary>
@@ -28,7 +27,6 @@ public enum OnnxGraphCleanupItemType : byte
     SparseInitializer,
     Input,
     Output,
-    Attribute,
     Annotation,
 }
 
@@ -48,7 +46,6 @@ public sealed class OnnxGraphCleanupReport
     public required int SparseInitializersRemoved { get; init; }
     public required int InputsRemoved { get; init; }
     public required int OutputsRemoved { get; init; }
-    public required int AttributesRemoved { get; init; }
     public required int SubgraphsCleaned { get; init; }
     public required int AnnotationsRemoved { get; init; }
     public required IReadOnlyList<OnnxGraphCleanupItem> RemovedItems { get; init; }

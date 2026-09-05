@@ -72,6 +72,39 @@ public sealed class OnnxModelTests
     }
 
     [Fact]
+    public void Clean_PreservesQuantizationParameterInitializers()
+    {
+        var model = OnnxModel.Create();
+        model.Graph.AddInput("tensor", OnnxTensorType.Create<float>([1]));
+        model.Graph.AddTensor("scale", [1], [0.5f]);
+
+        var annotation = model.Graph.AddQuantizationAnnotation(
+            new OnnxQuantizationAnnotation("tensor"));
+        annotation.SetQuantParameterTensorName("SCALE_TENSOR", "scale");
+
+        var report = model.Graph.Clean();
+
+        Assert.Equal(0, report.InitializersRemoved);
+        Assert.Single(model.Graph.Initializers);
+        Assert.Single(model.Graph.QuantizationAnnotations);
+    }
+
+    [Fact]
+    public void CleanAnnotations_RemovesAnnotationsWithMissingParameterTensors()
+    {
+        var model = OnnxModel.Create();
+        model.Graph.AddInput("tensor", OnnxTensorType.Create<float>([1]));
+        var annotation = model.Graph.AddQuantizationAnnotation(
+            new OnnxQuantizationAnnotation("tensor"));
+        annotation.SetQuantParameterTensorName("SCALE_TENSOR", "missing_scale");
+
+        var report = model.Graph.Clean(OnnxGraphCleanupFlags.Annotations);
+
+        Assert.Equal(1, report.AnnotationsRemoved);
+        Assert.Empty(model.Graph.QuantizationAnnotations);
+    }
+
+    [Fact]
     public void SparseInitializers_RoundTripAndCleanUnusedEntries()
     {
         var modelProto = new ModelProto
@@ -191,11 +224,10 @@ public sealed class OnnxModelTests
         Assert.Equal((byte)1, (byte)OnnxGraphCleanupFlags.Nodes);
         Assert.Equal((byte)2, (byte)OnnxGraphCleanupFlags.Values);
         Assert.Equal((byte)4, (byte)OnnxGraphCleanupFlags.Initializers);
-        Assert.Equal((byte)8, (byte)OnnxGraphCleanupFlags.Attributes);
-        Assert.Equal((byte)16, (byte)OnnxGraphCleanupFlags.Inputs);
-        Assert.Equal((byte)32, (byte)OnnxGraphCleanupFlags.Outputs);
-        Assert.Equal((byte)64, (byte)OnnxGraphCleanupFlags.Subgraphs);
-        Assert.Equal((byte)128, (byte)OnnxGraphCleanupFlags.Annotations);
+        Assert.Equal((byte)8, (byte)OnnxGraphCleanupFlags.Inputs);
+        Assert.Equal((byte)16, (byte)OnnxGraphCleanupFlags.Outputs);
+        Assert.Equal((byte)32, (byte)OnnxGraphCleanupFlags.Subgraphs);
+        Assert.Equal((byte)64, (byte)OnnxGraphCleanupFlags.Annotations);
 
         var model = OnnxModel.Create();
         var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([1]));
