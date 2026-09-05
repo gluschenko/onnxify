@@ -64,6 +64,13 @@ Use it only when the user explicitly asks to validate, compare, audit, or check 
 5. Then use `references/deep-import-export-validation-feature.md` to compare that behavior against the Python exporter in `third_party/onnxscript`.
 6. If the task is about continuing or reviewing the existing documented validation batches, open `references/torchsharp-operator-verification-log.md` before starting the next wave and keep extending its combined operator table.
 
+## Compiler Skill References
+
+For OXY-019 and subtasks OXY-020—OXY-027, read the relevant dedicated pages before implementation:
+
+- [Compiler architecture and implementation](references/compiler-architecture.md): project ownership, dependency direction, compiler phases, contracts, and migration boundaries.
+- [Compiler roundtrip test methodology](references/compiler-roundtrip-testing.md): `Onnxify.Compiler.Tests`, upstream test sources, required source comments, paired directional verification, and complete operator-family solutions.
+
 ## Core Principles
 
 - Treat repository maintenance as a separate concern from library feature work. Use `$onnxify` for API semantics and `$onnxify-internal` for repo structure, docs, skills, and generators.
@@ -194,3 +201,4 @@ private const long InlineTensorElementThreshold = 20L;
 - If a deep-import printer/converter changed, did tests compile generated code, execute generated TorchSharp when executable, deep-export back to ONNX, and compare original-vs-roundtripped ONNX Runtime outputs when possible?
 - If the task changed only playground or sample code, did you avoid implying that production behavior changed too?
 - If the task introduced a new internal workflow, did you document it in the most discoverable place?
+- If compiler work was performed, apply the checks in [compiler architecture](references/compiler-architecture.md) and [compiler roundtrip testing](references/compiler-roundtrip-testing.md).
