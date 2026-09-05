@@ -6,6 +6,255 @@ using Google.Protobuf;
 public sealed class OnnxModelTests
 {
     [Fact]
+    public void GraphMetadataAndQuantizationAnnotations_RoundTrip()
+    {
+        var model = OnnxModel.Create();
+        model.Graph.Document = "Graph documentation";
+        model.Graph.AddMetadataProps("source", "test");
+
+        var annotation = model.Graph.AddQuantizationAnnotation(
+            new OnnxQuantizationAnnotation("input"));
+        annotation.SetQuantParameterTensorName("SCALE_TENSOR", "input_scale");
+
+        using var stream = new MemoryStream();
+        model.Save(stream);
+        stream.Position = 0;
+        var loaded = OnnxModel.FromStream(stream);
+
+        Assert.Equal("Graph documentation", loaded.Graph.Document);
+        Assert.Contains(loaded.Graph.MetadataProps, x => x.Key == "source" && x.Value == "test");
+        var loadedAnnotation = Assert.Single(loaded.Graph.QuantizationAnnotations);
+        Assert.Equal("input", loadedAnnotation.TensorName);
+        Assert.Contains(
+            loadedAnnotation.QuantParameterTensorNames,
+            x => x.Key == "SCALE_TENSOR" && x.Value == "input_scale");
+    }
+
+    [Fact]
+    public void GraphMetadataAndQuantizationAnnotations_CanBeEdited()
+    {
+        var model = OnnxModel.Create();
+        model.Graph.AddMetadataProps("source", "first");
+        model.Graph.AddMetadataProps("source", "second");
+
+        var annotation = model.Graph.AddQuantizationAnnotation(
+            new OnnxQuantizationAnnotation("tensor"));
+        annotation.SetQuantParameterTensorName("SCALE_TENSOR", "scale");
+        annotation.SetQuantParameterTensorName("ZERO_POINT_TENSOR", "zero_point");
+
+        Assert.Equal("second", Assert.Single(model.Graph.MetadataProps).Value);
+        Assert.Equal(2, annotation.QuantParameterTensorNames.Count);
+        Assert.True(annotation.RemoveQuantParameterTensorName("SCALE_TENSOR"));
+        Assert.False(annotation.RemoveQuantParameterTensorName("missing"));
+        Assert.True(model.Graph.RemoveQuantizationAnnotation("tensor"));
+        Assert.False(model.Graph.RemoveQuantizationAnnotation("missing"));
+        Assert.True(model.Graph.RemoveMetadataProps("source"));
+        Assert.False(model.Graph.RemoveMetadataProps("missing"));
+        Assert.Empty(model.Graph.MetadataProps);
+        Assert.Empty(model.Graph.QuantizationAnnotations);
+    }
+
+    [Fact]
+    public void CleanAnnotations_RemovesStaleAnnotationsAndPreservesLiveOnes()
+    {
+        var model = OnnxModel.Create();
+        model.Graph.AddInput("live_tensor", OnnxTensorType.Create<float>([1]));
+        model.Graph.AddQuantizationAnnotation(new OnnxQuantizationAnnotation("live_tensor"));
+        model.Graph.AddQuantizationAnnotation(new OnnxQuantizationAnnotation("stale_tensor"));
+
+        var report = model.Graph.Clean(OnnxGraphCleanupFlags.Annotations);
+
+        Assert.Equal(1, report.AnnotationsRemoved);
+        var removed = Assert.Single(report.RemovedItems);
+        Assert.Equal("stale_tensor", removed.Name);
+        Assert.Equal(OnnxGraphCleanupItemType.Annotation, removed.Type);
+        Assert.Equal(["live_tensor"], model.Graph.QuantizationAnnotations.Select(x => x.TensorName).ToArray());
+    }
+
+    [Fact]
+    public void Clean_PreservesQuantizationParameterInitializers()
+    {
+        var model = OnnxModel.Create();
+        model.Graph.AddInput("tensor", OnnxTensorType.Create<float>([1]));
+        model.Graph.AddTensor("scale", [1], [0.5f]);
+
+        var annotation = model.Graph.AddQuantizationAnnotation(
+            new OnnxQuantizationAnnotation("tensor"));
+        annotation.SetQuantParameterTensorName("SCALE_TENSOR", "scale");
+
+        var report = model.Graph.Clean();
+
+        Assert.Equal(0, report.InitializersRemoved);
+        Assert.Single(model.Graph.Initializers);
+        Assert.Single(model.Graph.QuantizationAnnotations);
+    }
+
+    [Fact]
+    public void CleanAnnotations_RemovesAnnotationsWithMissingParameterTensors()
+    {
+        var model = OnnxModel.Create();
+        model.Graph.AddInput("tensor", OnnxTensorType.Create<float>([1]));
+        var annotation = model.Graph.AddQuantizationAnnotation(
+            new OnnxQuantizationAnnotation("tensor"));
+        annotation.SetQuantParameterTensorName("SCALE_TENSOR", "missing_scale");
+
+        var report = model.Graph.Clean(OnnxGraphCleanupFlags.Annotations);
+
+        Assert.Equal(1, report.AnnotationsRemoved);
+        Assert.Empty(model.Graph.QuantizationAnnotations);
+    }
+
+    [Fact]
+    public void SparseInitializers_RoundTripAndCleanUnusedEntries()
+    {
+        var modelProto = new ModelProto
+        {
+            IrVersion = 11,
+            Graph = new GraphProto
+            {
+                Output =
+                {
+                    new ValueInfoProto
+                    {
+                        Name = "live_sparse",
+                        Type = new TypeProto
+                        {
+                            SparseTensorType = new TypeProto.Types.SparseTensor
+                            {
+                                ElemType = (int)TensorProto.Types.DataType.Float,
+                                Shape = new TensorShapeProto { Dim = { new TensorShapeProto.Types.Dimension { DimValue = 3 } } },
+                            },
+                        },
+                    },
+                },
+                SparseInitializer =
+                {
+                    CreateSparseInitializer("live_sparse", 1.5f),
+                    CreateSparseInitializer("unused_sparse", 2.5f),
+                },
+            },
+        };
+        modelProto.OpsetImport.Add(new OperatorSetIdProto { Domain = string.Empty, Version = 25 });
+
+        using var input = new MemoryStream(modelProto.ToByteArray());
+        var model = OnnxModel.FromStream(input);
+
+        Assert.Equal(["live_sparse", "unused_sparse"], model.Graph.SparseInitializers.Select(x => x.Name).ToArray());
+        var live = Assert.IsType<OnnxSparseTensor<float>>(model.Graph.SparseInitializers[0]);
+        Assert.Equal([1.5f], live.Value.Value.ToArray());
+
+        var report = model.Graph.Clean(OnnxGraphCleanupFlags.Initializers);
+
+        Assert.Equal(1, report.SparseInitializersRemoved);
+        Assert.Contains(
+            report.RemovedItems,
+            x => x.Name == "unused_sparse" && x.Type == OnnxGraphCleanupItemType.SparseInitializer);
+        Assert.Equal(["live_sparse"], model.Graph.SparseInitializers.Select(x => x.Name).ToArray());
+
+        using var output = new MemoryStream();
+        model.Save(output);
+        output.Position = 0;
+        var roundTripped = OnnxModel.FromStream(output);
+
+        Assert.Equal(["live_sparse"], roundTripped.Graph.SparseInitializers.Select(x => x.Name).ToArray());
+
+        static SparseTensorProto CreateSparseInitializer(string name, float value)
+        {
+            return new SparseTensorProto
+            {
+                Values = new TensorProto
+                {
+                    Name = name,
+                    DataType = (int)TensorProto.Types.DataType.Float,
+                    Dims = { 1 },
+                    FloatData = { value },
+                },
+                Indices = new TensorProto
+                {
+                    DataType = (int)TensorProto.Types.DataType.Int64,
+                    Dims = { 1 },
+                    Int64Data = { 0 },
+                },
+                Dims = { 3 },
+            };
+        }
+    }
+
+    [Fact]
+    public void Clean_RemovesDeadNodesValuesAndInitializers_AndIsIdempotent()
+    {
+        var model = OnnxModel.Create();
+        var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([1]));
+        var output = model.Graph.AddOutput("output", OnnxTensorType.Create<float>([1]));
+        var live = model.Graph.AddValue("live", OnnxTensorType.Create<float>([1]));
+        var dead = model.Graph.AddValue("dead", OnnxTensorType.Create<float>([1]));
+        var liveWeights = model.Graph.AddTensor("live_weights", [1], [2.0f]);
+        model.Graph.AddTensor("unused_weights", [1], [3.0f]);
+
+        model.Graph.AddNode("live_node", "Add", "", "", [input, liveWeights], [live], []);
+        model.Graph.AddNode("output_node", "Identity", "", "", [live], [output], []);
+        model.Graph.AddNode("dead_node", "Identity", "", "", [input], [dead], []);
+
+        var first = model.Graph.Clean();
+
+        Assert.Equal(1, first.NodesRemoved);
+        Assert.Equal(1, first.ValuesRemoved);
+        Assert.Equal(1, first.InitializersRemoved);
+        Assert.Equal(
+            [
+                ("dead_node", OnnxGraphCleanupItemType.Node),
+                ("dead", OnnxGraphCleanupItemType.Value),
+                ("unused_weights", OnnxGraphCleanupItemType.Initializer),
+            ],
+            first.RemovedItems.Select(x => (x.Name, x.Type)).ToArray());
+        Assert.Equal(["live_node", "output_node"], model.Graph.Nodes.Select(x => x.Name).ToArray());
+        Assert.Equal(["live_weights"], model.Graph.Initializers.Select(x => x.Name).ToArray());
+        Assert.Equal("input", Assert.Single(model.Graph.Inputs).Name);
+        Assert.Equal("output", Assert.Single(model.Graph.Outputs).Name);
+
+        var second = model.Graph.Clean();
+
+        Assert.Equal(0, second.TotalRemoved);
+        Assert.Equal(2, model.Graph.Nodes.Count);
+    }
+
+    [Fact]
+    public void CleanupFlags_AreDistinctAndInputsOutputsAreOptIn()
+    {
+        Assert.Equal((byte)1, (byte)OnnxGraphCleanupFlags.Nodes);
+        Assert.Equal((byte)2, (byte)OnnxGraphCleanupFlags.Values);
+        Assert.Equal((byte)4, (byte)OnnxGraphCleanupFlags.Initializers);
+        Assert.Equal((byte)8, (byte)OnnxGraphCleanupFlags.Inputs);
+        Assert.Equal((byte)16, (byte)OnnxGraphCleanupFlags.Outputs);
+        Assert.Equal((byte)32, (byte)OnnxGraphCleanupFlags.Subgraphs);
+        Assert.Equal((byte)64, (byte)OnnxGraphCleanupFlags.Annotations);
+        Assert.Equal((byte)255, (byte)OnnxGraphCleanupFlags.All);
+
+        var model = OnnxModel.Create();
+        var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([1]));
+        model.Graph.AddOutput("output", OnnxTensorType.Create<float>([1]));
+        var report = model.Graph.Clean(OnnxGraphCleanupFlags.Initializers);
+
+        Assert.Equal(0, report.InputsRemoved);
+        Assert.Equal(0, report.OutputsRemoved);
+        Assert.Single(model.Graph.Inputs);
+        Assert.Single(model.Graph.Outputs);
+        _ = input;
+    }
+
+    [Fact]
+    public void CleanInputs_RemovesOnlyUnreferencedInputsWhenExplicitlyRequested()
+    {
+        var model = OnnxModel.Create();
+        model.Graph.AddInput("unused_input", OnnxTensorType.Create<float>([1]));
+
+        var report = model.Graph.Clean(OnnxGraphCleanupFlags.Inputs);
+
+        Assert.Equal(1, report.InputsRemoved);
+        Assert.Empty(model.Graph.Inputs);
+    }
+
+    [Fact]
     public void Create_UsesModernDefaultVersions()
     {
         var model = OnnxModel.Create();

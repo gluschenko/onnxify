@@ -37,7 +37,66 @@ In short, `Onnxify` is for teams that need control, transparency, and editabilit
 - `OnnxModel.FromFile(...)`, `FromFileAsync(...)`, `FromStream(...)`, `FromStreamAsync(...)`, `Save(...)`, and `SaveAsync(...)` for reading and writing `.onnx` models from files or streams.
 - `OnnxModel.Create(...)` for creating a new model from scratch. By default it writes standard ONNX opset 25 and IR version 11.
 - `OnnxGraph` for working with inputs, outputs, intermediate values, initializers, loose edges, and nodes.
+- `OnnxGraph.Clean(...)` for deterministic, idempotent liveness cleanup of dead nodes, stale value-info entries, and unused dense or sparse initializers. Cleanup preserves graph inputs and outputs unless explicitly requested through `OnnxGraphCleanupFlags`.
+- Graph-level `Document`, `MetadataProps`, and `QuantizationAnnotations` accessors for the corresponding ONNX `GraphProto` fields.
 - Typed value and tensor descriptions through `OnnxValue`, `OnnxTensor<T>`, and `OnnxTensorType`.
+
+## Cleaning Unused Graph Data
+
+Call `OnnxGraph.Clean()` after graph construction or graph editing when you want to remove data that cannot contribute to the declared outputs. The default is `OnnxGraphCleanupFlags.All`:
+
+```csharp
+var report = model.Graph.Clean();
+
+Console.WriteLine($"Removed {report.TotalRemoved} graph items");
+Console.WriteLine($"Nodes: {report.NodesRemoved}");
+Console.WriteLine($"Initializers: {report.InitializersRemoved}");
+Console.WriteLine($"Sparse initializers: {report.SparseInitializersRemoved}");
+```
+
+Inputs and outputs are part of the public graph contract. They are preserved by ordinary cleanup. To run only one cleanup category, pass an individual flag:
+
+```csharp
+var report = model.Graph.Clean(OnnxGraphCleanupFlags.Initializers);
+
+// Unused dense and sparse constants are removed; nodes, values,
+// inputs, and outputs are otherwise left unchanged.
+```
+
+Combine categories with the bitwise OR operator (`|`):
+
+```csharp
+var flags = OnnxGraphCleanupFlags.Nodes
+    | OnnxGraphCleanupFlags.Values
+    | OnnxGraphCleanupFlags.Initializers
+    | OnnxGraphCleanupFlags.Subgraphs
+    | OnnxGraphCleanupFlags.Annotations;
+
+var report = model.Graph.Clean(flags);
+```
+
+The report contains the name and category of every removed item:
+
+```csharp
+foreach (var item in report.RemovedItems)
+{
+    Console.WriteLine($"Removed {item.Type}: {item.Name}");
+}
+```
+
+Removing an unused graph input or orphan output requires explicit opt-in. Combine those flags with the other categories only when changing the graph contract is intentional:
+
+```csharp
+var report = model.Graph.Clean(
+    OnnxGraphCleanupFlags.Nodes
+    | OnnxGraphCleanupFlags.Values
+    | OnnxGraphCleanupFlags.Initializers
+    | OnnxGraphCleanupFlags.Inputs
+    | OnnxGraphCleanupFlags.Outputs
+);
+```
+
+Cleanup is deterministic and idempotent, so a second call on the same graph should report no further removals.
 - Explicit operator construction through `AddNode(...)` and typed operator wrappers when they are available.
 - Direct graph editing through `AddInput(OnnxValue)`, `AddOutput(OnnxValue)`, `RemoveInput(...)`, `RemoveOutput(...)`, `RemoveNode(...)`, `ReplaceNode(...)`, `RemoveValue(...)`, `ReplaceValue(...)`, `RemoveTensor(...)`, and `RemoveEdge(...)`.
 - `ValidateCompatibility(...)` for structural compatibility checks.

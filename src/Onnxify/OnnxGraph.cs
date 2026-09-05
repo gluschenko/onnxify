@@ -21,6 +21,19 @@ public class OnnxGraph
         set => _name = value ?? string.Empty;
     }
 
+    /// <summary>Gets or sets the graph-level documentation string.</summary>
+    public string Document
+    {
+        get => _graph.DocString;
+        set => _graph.DocString = value ?? string.Empty;
+    }
+
+    /// <summary>Gets graph-level metadata properties.</summary>
+    public IReadOnlyList<KeyValuePair<string, string>> MetadataProps => _metadataProps;
+
+    /// <summary>Gets quantization annotations associated with graph tensors.</summary>
+    public IReadOnlyList<OnnxQuantizationAnnotation> QuantizationAnnotations => _quantizationAnnotations;
+
     /// <summary>
     /// Gets graph inputs that callers are expected to feed at inference time.
     /// </summary>
@@ -35,6 +48,9 @@ public class OnnxGraph
     /// Gets constant tensors stored in the model graph, commonly used for weights, biases, and literal constants.
     /// </summary>
     public IReadOnlyList<OnnxTensor> Initializers => _initializers;
+
+    /// <summary>Gets sparse constant tensors stored with the graph.</summary>
+    public IReadOnlyList<OnnxSparseTensor> SparseInitializers => _sparseInitializers;
 
     /// <summary>
     /// Gets ONNX value-info entries that describe intermediate tensors without making them model inputs or outputs.
@@ -63,12 +79,15 @@ public class OnnxGraph
     private readonly GraphProto _graph;
     private readonly OnnxModelBaseOptions _options;
     private string _name = string.Empty;
+    private readonly LazyDictionary<string, KeyValuePair<string, string>> _metadataProps = new(x => x.Key, StringComparer.Ordinal);
+    private readonly LazyDictionary<string, OnnxQuantizationAnnotation> _quantizationAnnotations = new(x => x.TensorName, StringComparer.Ordinal);
 
     private readonly HashSet<string> _inputs = new(StringComparer.Ordinal);
     private readonly HashSet<string> _outputs = new(StringComparer.Ordinal);
     // private readonly LazyDictionary<string, OnnxValue> _inputs = new(x => x.Name, StringComparer.Ordinal);
     // private readonly LazyDictionary<string, OnnxValue> _outputs = new(x => x.Name, StringComparer.Ordinal);
     private readonly LazyDictionary<string, OnnxTensor> _initializers = new(x => x.Name, StringComparer.Ordinal);
+    private readonly LazyDictionary<string, OnnxSparseTensor> _sparseInitializers = new(x => x.Name, StringComparer.Ordinal);
     private readonly LazyDictionary<string, OnnxValue> _values = new(x => x.Name, StringComparer.Ordinal);
     private readonly LazyDictionary<string, OnnxNode> _nodes = new(x => x.Name, StringComparer.Ordinal);
     private readonly LazyDictionary<string, OnnxEdge> _edges = new(x => x.Name, StringComparer.Ordinal);
@@ -78,9 +97,24 @@ public class OnnxGraph
         _graph = graph;
         _options = options;
 
+        foreach (var metadata in graph.MetadataProps)
+        {
+            _metadataProps.Add(new KeyValuePair<string, string>(metadata.Key, metadata.Value));
+        }
+
+        foreach (var annotation in graph.QuantizationAnnotation)
+        {
+            _quantizationAnnotations.Add(new OnnxQuantizationAnnotation(annotation));
+        }
+
         foreach (var tensor in graph.Initializer)
         {
             _initializers.Add(OnnxHelper.FromProto(tensor, options));
+        }
+
+        foreach (var tensor in graph.SparseInitializer)
+        {
+            _sparseInitializers.Add(OnnxHelper.FromProto(tensor, options));
         }
 
         foreach (var value in graph.ValueInfo)
@@ -124,6 +158,32 @@ public class OnnxGraph
     internal OnnxModelBaseOptions GetOptions()
     {
         return _options;
+    }
+
+    /// <summary>Adds or replaces graph-level metadata.</summary>
+    public void AddMetadataProps(string key, string value)
+    {
+        _metadataProps[key] = new KeyValuePair<string, string>(key, value);
+    }
+
+    /// <summary>Removes graph-level metadata by key.</summary>
+    public bool RemoveMetadataProps(string key)
+    {
+        return _metadataProps.Remove(key);
+    }
+
+    /// <summary>Adds or replaces a graph quantization annotation.</summary>
+    public OnnxQuantizationAnnotation AddQuantizationAnnotation(OnnxQuantizationAnnotation annotation)
+    {
+        ArgumentNullException.ThrowIfNull(annotation);
+        _quantizationAnnotations[annotation.TensorName] = annotation;
+        return annotation;
+    }
+
+    /// <summary>Removes a graph quantization annotation by tensor name.</summary>
+    public bool RemoveQuantizationAnnotation(string tensorName)
+    {
+        return _quantizationAnnotations.Remove(tensorName);
     }
 
     internal bool TryGetImportedOpset(string domain, out long version)
@@ -180,6 +240,11 @@ public class OnnxGraph
         if (_initializers.TryGetValue(name, out var tensor))
         {
             return tensor;
+        }
+
+        if (_sparseInitializers.TryGetValue(name, out var sparseTensor))
+        {
+            return sparseTensor;
         }
 
         if (_edges.TryGetValue(name, out var edge))
@@ -682,6 +747,262 @@ public class OnnxGraph
             .Select(x => x.Value));
     }
 
+    /// <summary>
+    /// Removes graph members that cannot contribute to the declared outputs.
+    /// Inputs and outputs are preserved unless their corresponding flags are explicitly supplied.
+    /// </summary>
+    public OnnxGraphCleanupReport Clean(
+        OnnxGraphCleanupFlags flags = OnnxGraphCleanupFlags.All
+    )
+    {
+        var removedItems = new List<OnnxGraphCleanupItem>();
+        var producerByValue = new Dictionary<string, OnnxNode>(StringComparer.Ordinal);
+        foreach (var node in _nodes)
+        {
+            foreach (var output in node.Outputs)
+            {
+                if (!string.IsNullOrEmpty(output.Name))
+                {
+                    producerByValue.TryAdd(output.Name, node);
+                }
+            }
+        }
+
+        var liveValues = new HashSet<string>(_outputs, StringComparer.Ordinal);
+        var liveNodes = new HashSet<OnnxNode>();
+        var pending = new Queue<string>(liveValues);
+        while (pending.Count > 0)
+        {
+            var valueName = pending.Dequeue();
+            if (!producerByValue.TryGetValue(valueName, out var producer) || !liveNodes.Add(producer))
+            {
+                continue;
+            }
+
+            foreach (var input in producer.Inputs)
+            {
+                if (!string.IsNullOrEmpty(input.Name) && liveValues.Add(input.Name))
+                {
+                    pending.Enqueue(input.Name);
+                }
+            }
+        }
+
+        var nodesRemoved = 0;
+        if (flags.HasFlag(OnnxGraphCleanupFlags.Nodes))
+        {
+            foreach (var node in _nodes.ToArray())
+            {
+                if (!liveNodes.Contains(node) && !IsRequiredSideEffectNode(node))
+                {
+                    _nodes.Remove(node);
+                    nodesRemoved++;
+                    removedItems.Add(new OnnxGraphCleanupItem { Name = node.Name, Type = OnnxGraphCleanupItemType.Node });
+                }
+            }
+        }
+
+        var valuesRemoved = 0;
+        if (flags.HasFlag(OnnxGraphCleanupFlags.Values))
+        {
+            var referencedValues = _nodes
+                .SelectMany(x => x.Inputs.Concat(x.Outputs))
+                .Select(x => x.Name)
+                .Where(x => !string.IsNullOrEmpty(x))
+                .ToHashSet(StringComparer.Ordinal);
+            AddQuantizationReferences(referencedValues);
+
+            foreach (var value in _values.ToArray())
+            {
+                if (!_inputs.Contains(value.Name) && !_outputs.Contains(value.Name) && !referencedValues.Contains(value.Name))
+                {
+                    _values.Remove(value);
+                    valuesRemoved++;
+                    removedItems.Add(new OnnxGraphCleanupItem { Name = value.Name, Type = OnnxGraphCleanupItemType.Value });
+                }
+            }
+        }
+
+        var referencedNames = _nodes
+            .SelectMany(x => x.Inputs.Concat(x.Outputs))
+            .Select(x => x.Name)
+            .Where(x => !string.IsNullOrEmpty(x))
+            .ToHashSet(StringComparer.Ordinal);
+        referencedNames.UnionWith(_inputs);
+        referencedNames.UnionWith(_outputs);
+        AddNestedReferences(referencedNames);
+        AddQuantizationReferences(referencedNames);
+
+        var initializersRemoved = 0;
+        var sparseInitializersRemoved = 0;
+        if (flags.HasFlag(OnnxGraphCleanupFlags.Initializers))
+        {
+            foreach (var initializer in _initializers.ToArray())
+            {
+                if (!referencedNames.Contains(initializer.Name))
+                {
+                    _initializers.Remove(initializer);
+                    initializersRemoved++;
+                    removedItems.Add(new OnnxGraphCleanupItem { Name = initializer.Name, Type = OnnxGraphCleanupItemType.Initializer });
+                }
+            }
+
+            foreach (var initializer in _sparseInitializers.ToArray())
+            {
+                if (!referencedNames.Contains(initializer.Name))
+                {
+                    _sparseInitializers.Remove(initializer);
+                    sparseInitializersRemoved++;
+                    removedItems.Add(new OnnxGraphCleanupItem { Name = initializer.Name, Type = OnnxGraphCleanupItemType.SparseInitializer });
+                }
+            }
+        }
+
+        var inputsRemoved = 0;
+        if (flags.HasFlag(OnnxGraphCleanupFlags.Inputs))
+        {
+            var usedByNodes = _nodes
+                .SelectMany(x => x.Inputs.Concat(x.Outputs))
+                .Select(x => x.Name)
+                .ToHashSet(StringComparer.Ordinal);
+
+            foreach (var name in _inputs.ToArray())
+            {
+                if (!usedByNodes.Contains(name) && !_outputs.Contains(name))
+                {
+                    _inputs.Remove(name);
+                    inputsRemoved++;
+                    removedItems.Add(new OnnxGraphCleanupItem { Name = name, Type = OnnxGraphCleanupItemType.Input });
+                }
+            }
+        }
+
+        var outputsRemoved = 0;
+        if (flags.HasFlag(OnnxGraphCleanupFlags.Outputs))
+        {
+            foreach (var name in _outputs.ToArray())
+            {
+                if (!producerByValue.ContainsKey(name) && !_initializers.Contains(name) && !_sparseInitializers.Contains(name))
+                {
+                    _outputs.Remove(name);
+                    outputsRemoved++;
+                    removedItems.Add(new OnnxGraphCleanupItem { Name = name, Type = OnnxGraphCleanupItemType.Output });
+                }
+            }
+        }
+
+        var subgraphsCleaned = 0;
+        if (flags.HasFlag(OnnxGraphCleanupFlags.Subgraphs))
+        {
+            foreach (var node in _nodes)
+            {
+                foreach (var attribute in node.Attributes)
+                {
+                    foreach (var nested in GetNestedGraphs(attribute.GetValue()))
+                    {
+                        nested.Clean(flags & ~OnnxGraphCleanupFlags.Inputs & ~OnnxGraphCleanupFlags.Outputs);
+                        subgraphsCleaned++;
+                    }
+                }
+            }
+        }
+
+        var annotationsRemoved = 0;
+        if (flags.HasFlag(OnnxGraphCleanupFlags.Annotations))
+        {
+            var activeNames = _nodes
+                .SelectMany(x => x.Inputs.Concat(x.Outputs))
+                .Select(x => x.Name)
+                .Where(x => !string.IsNullOrEmpty(x))
+                .ToHashSet(StringComparer.Ordinal);
+            activeNames.UnionWith(_inputs);
+            activeNames.UnionWith(_outputs);
+            activeNames.UnionWith(_values.Select(x => x.Name));
+            activeNames.UnionWith(_initializers.Select(x => x.Name));
+            activeNames.UnionWith(_sparseInitializers.Select(x => x.Name));
+
+            foreach (var annotation in _quantizationAnnotations.ToArray())
+            {
+                var names = annotation.QuantParameterTensorNames.Select(x => x.Value);
+                if (!activeNames.Contains(annotation.TensorName) || names.Any(x => !activeNames.Contains(x)))
+                {
+                    _quantizationAnnotations.Remove(annotation);
+                    annotationsRemoved++;
+                    removedItems.Add(new OnnxGraphCleanupItem { Name = annotation.TensorName, Type = OnnxGraphCleanupItemType.Annotation });
+                }
+            }
+        }
+
+        PruneUnusedLooseEdges();
+        return new OnnxGraphCleanupReport
+        {
+            NodesRemoved = nodesRemoved,
+            ValuesRemoved = valuesRemoved,
+            InitializersRemoved = initializersRemoved,
+            SparseInitializersRemoved = sparseInitializersRemoved,
+            InputsRemoved = inputsRemoved,
+            OutputsRemoved = outputsRemoved,
+            SubgraphsCleaned = subgraphsCleaned,
+            AnnotationsRemoved = annotationsRemoved,
+            RemovedItems = removedItems,
+        };
+
+        void AddNestedReferences(HashSet<string> names)
+        {
+            foreach (var node in _nodes)
+            {
+                foreach (var attribute in node.Attributes)
+                {
+                    foreach (var nested in GetNestedGraphs(attribute.GetValue()))
+                    {
+                        foreach (var nestedNode in nested.Nodes)
+                        {
+                            foreach (var input in nestedNode.Inputs)
+                            {
+                                if (nested.GetValue(input.Name) is null && !nested.Inputs.Any(x => x.Name == input.Name))
+                                {
+                                    names.Add(input.Name);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        void AddQuantizationReferences(HashSet<string> names)
+        {
+            foreach (var annotation in _quantizationAnnotations)
+            {
+                names.Add(annotation.TensorName);
+                foreach (var parameter in annotation.QuantParameterTensorNames)
+                {
+                    names.Add(parameter.Value);
+                }
+            }
+        }
+
+        static IEnumerable<OnnxGraph> GetNestedGraphs(object value)
+        {
+            if (value is OnnxGraph graph)
+            {
+                yield return graph;
+            }
+            else if (value is IEnumerable<OnnxGraph> graphs)
+            {
+                foreach (var nestedGraph in graphs)
+                {
+                    yield return nestedGraph;
+                }
+            }
+        }
+
+        static bool IsRequiredSideEffectNode(OnnxNode node)
+        {
+            return node.Outputs.Count == 0;
+        }
+    }
+
     private OnnxValue GetRegisteredValue(string name)
     {
         if (_values.TryGetValue(name, out var registeredValue))
@@ -922,10 +1243,13 @@ public class OnnxGraph
         newGraph.Name = Name;
 
         newGraph.Initializer.Set(_initializers.Select(x => x.ToProto()));
+        newGraph.SparseInitializer.Set(_sparseInitializers.Select(x => x.ToProto()));
         newGraph.ValueInfo.Set(IntermediateValues.Select(x => x.ToProto()));
         newGraph.Input.Set(Inputs.Select(x => x.ToProto()));
         newGraph.Output.Set(Outputs.Select(x => x.ToProto()));
         newGraph.Node.Set(_nodes.Select(x => x.ToProto()));
+        newGraph.MetadataProps.Set(_metadataProps.Select(x => new StringStringEntryProto { Key = x.Key, Value = x.Value }));
+        newGraph.QuantizationAnnotation.Set(_quantizationAnnotations.Select(x => x.ToProto()));
 
         return newGraph;
     }

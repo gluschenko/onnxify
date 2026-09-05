@@ -29,4 +29,4 @@
 | [OXY-025](OXY-025.md) | Migrate Helpers, Modules, And Static Control Flow | TODO | 24 human-hours | 2026-09-05 | 2026-09-05 |
 | [OXY-026](OXY-026.md) | Add Compatibility Facades And Extensibility | TODO | 16 human-hours | 2026-09-05 | 2026-09-05 |
 | [OXY-027](OXY-027.md) | Complete Roundtrip Validation, Documentation, And Cleanup | TODO | 16 human-hours | 2026-09-05 | 2026-09-05 |
-| [OXY-028](OXY-028.md) | OnnxGraph Stale Value And Dead Node Cleanup | TODO | 24 human-hours | 2026-09-05 | 2026-09-05 |
+| [OXY-028](OXY-028.md) | OnnxGraph Stale Value And Dead Node Cleanup | DONE | 24 human-hours | 2026-09-05 | 2026-09-05 |

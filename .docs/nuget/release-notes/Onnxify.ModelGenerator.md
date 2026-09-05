@@ -1,3 +1,7 @@
+## 0.3.11
+
+- Updated the package version for the coordinated Onnxify 0.3.11 release.
+
 ## 0.3.9
 
 - Generated ONNX Runtime and TorchModule support base classes are now emitted into the consuming model namespace instead of the shared `Onnxify.Abstractions` namespace.
