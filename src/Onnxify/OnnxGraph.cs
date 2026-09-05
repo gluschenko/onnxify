@@ -21,6 +21,19 @@ public class OnnxGraph
         set => _name = value ?? string.Empty;
     }
 
+    /// <summary>Gets or sets the graph-level documentation string.</summary>
+    public string Document
+    {
+        get => _graph.DocString;
+        set => _graph.DocString = value ?? string.Empty;
+    }
+
+    /// <summary>Gets graph-level metadata properties.</summary>
+    public IReadOnlyList<KeyValuePair<string, string>> MetadataProps => _metadataProps;
+
+    /// <summary>Gets quantization annotations associated with graph tensors.</summary>
+    public IReadOnlyList<OnnxQuantizationAnnotation> QuantizationAnnotations => _quantizationAnnotations;
+
     /// <summary>
     /// Gets graph inputs that callers are expected to feed at inference time.
     /// </summary>
@@ -66,6 +79,8 @@ public class OnnxGraph
     private readonly GraphProto _graph;
     private readonly OnnxModelBaseOptions _options;
     private string _name = string.Empty;
+    private readonly LazyDictionary<string, KeyValuePair<string, string>> _metadataProps = new(x => x.Key, StringComparer.Ordinal);
+    private readonly LazyDictionary<string, OnnxQuantizationAnnotation> _quantizationAnnotations = new(x => x.TensorName, StringComparer.Ordinal);
 
     private readonly HashSet<string> _inputs = new(StringComparer.Ordinal);
     private readonly HashSet<string> _outputs = new(StringComparer.Ordinal);
@@ -81,6 +96,16 @@ public class OnnxGraph
     {
         _graph = graph;
         _options = options;
+
+        foreach (var metadata in graph.MetadataProps)
+        {
+            _metadataProps.Add(new KeyValuePair<string, string>(metadata.Key, metadata.Value));
+        }
+
+        foreach (var annotation in graph.QuantizationAnnotation)
+        {
+            _quantizationAnnotations.Add(new OnnxQuantizationAnnotation(annotation));
+        }
 
         foreach (var tensor in graph.Initializer)
         {
@@ -133,6 +158,32 @@ public class OnnxGraph
     internal OnnxModelBaseOptions GetOptions()
     {
         return _options;
+    }
+
+    /// <summary>Adds or replaces graph-level metadata.</summary>
+    public void AddMetadataProps(string key, string value)
+    {
+        _metadataProps[key] = new KeyValuePair<string, string>(key, value);
+    }
+
+    /// <summary>Removes graph-level metadata by key.</summary>
+    public bool RemoveMetadataProps(string key)
+    {
+        return _metadataProps.Remove(key);
+    }
+
+    /// <summary>Adds or replaces a graph quantization annotation.</summary>
+    public OnnxQuantizationAnnotation AddQuantizationAnnotation(OnnxQuantizationAnnotation annotation)
+    {
+        ArgumentNullException.ThrowIfNull(annotation);
+        _quantizationAnnotations[annotation.TensorName] = annotation;
+        return annotation;
+    }
+
+    /// <summary>Removes a graph quantization annotation by tensor name.</summary>
+    public bool RemoveQuantizationAnnotation(string tensorName)
+    {
+        return _quantizationAnnotations.Remove(tensorName);
     }
 
     internal bool TryGetImportedOpset(string domain, out long version)
@@ -857,13 +908,12 @@ public class OnnxGraph
         var annotationsRemoved = 0;
         if (flags.HasFlag(OnnxGraphCleanupFlags.Annotations))
         {
-            for (var index = _graph.QuantizationAnnotation.Count - 1; index >= 0; index--)
+            foreach (var annotation in _quantizationAnnotations.ToArray())
             {
-                var annotation = _graph.QuantizationAnnotation[index];
                 var names = annotation.QuantParameterTensorNames.Select(x => x.Value);
                 if (!referencedNames.Contains(annotation.TensorName) && !names.Any(referencedNames.Contains))
                 {
-                    _graph.QuantizationAnnotation.RemoveAt(index);
+                    _quantizationAnnotations.Remove(annotation);
                     annotationsRemoved++;
                     removedItems.Add(new OnnxGraphCleanupItem { Name = annotation.TensorName, Type = OnnxGraphCleanupItemType.Annotation });
                 }
@@ -1174,6 +1224,8 @@ public class OnnxGraph
         newGraph.Input.Set(Inputs.Select(x => x.ToProto()));
         newGraph.Output.Set(Outputs.Select(x => x.ToProto()));
         newGraph.Node.Set(_nodes.Select(x => x.ToProto()));
+        newGraph.MetadataProps.Set(_metadataProps.Select(x => new StringStringEntryProto { Key = x.Key, Value = x.Value }));
+        newGraph.QuantizationAnnotation.Set(_quantizationAnnotations.Select(x => x.ToProto()));
 
         return newGraph;
     }

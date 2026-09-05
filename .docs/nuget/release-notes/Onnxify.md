@@ -3,6 +3,9 @@
 - Added `OnnxGraph.Clean(...)` with byte-backed `OnnxGraphCleanupFlags` and `OnnxGraphCleanupReport` for deterministic, idempotent liveness cleanup.
 - Cleanup reports the names and categories of removed nodes, values, initializers, inputs, outputs, and annotations.
 - Added sparse initializer round-tripping and nested graph cleanup support.
+- Added `OnnxGraph.Document` for `GraphProto.doc_string`, graph metadata properties for `GraphProto.metadata_props`, and typed quantization annotation editing for `GraphProto.quantization_annotation`.
+- Added `AddMetadataProps(...)`, `RemoveMetadataProps(...)`, `AddQuantizationAnnotation(...)`, and `RemoveQuantizationAnnotation(...)` graph editing helpers.
+- Added round-trip coverage for graph documentation, metadata, quantization parameter mappings, sparse initializers, and cleanup reports.
 
 ## 0.3.9
 

@@ -121,7 +121,7 @@ The cleanup preserves control-flow nodes based on their generated node types (`I
 ## 2A. Onnxify Principles
 
 - Keep `OnnxModel` responsible for file I/O, top-level metadata, and protobuf conversion.
-- Keep `OnnxGraph` responsible for owned collections and graph mutation: inputs, outputs, values, initializers, edges, and nodes.
+- Keep `OnnxGraph` responsible for owned collections and graph mutation: inputs, outputs, values, initializers, sparse initializers, edges, nodes, graph documentation, graph metadata, and quantization annotations.
 - Prefer preserving names and metadata when editing an existing model. Avoid accidental renames that break downstream graph references.
 - When changing tensor or attribute conversion behavior, inspect helpers under `src/Onnxify/Helpers` and data types under `src/Onnxify/Data` before patching call sites.
 - When adding new operator wrappers, match the repo's style of strongly named option objects and explicit input/output edges.

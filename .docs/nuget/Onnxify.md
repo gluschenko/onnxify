@@ -38,6 +38,7 @@ In short, `Onnxify` is for teams that need control, transparency, and editabilit
 - `OnnxModel.Create(...)` for creating a new model from scratch. By default it writes standard ONNX opset 25 and IR version 11.
 - `OnnxGraph` for working with inputs, outputs, intermediate values, initializers, loose edges, and nodes.
 - `OnnxGraph.Clean(...)` for deterministic, idempotent liveness cleanup of dead nodes, stale value-info entries, and unused dense or sparse initializers. Cleanup preserves graph inputs and outputs unless explicitly requested through `OnnxGraphCleanupFlags`.
+- Graph-level `Document`, `MetadataProps`, and `QuantizationAnnotations` accessors for the corresponding ONNX `GraphProto` fields.
 - Typed value and tensor descriptions through `OnnxValue`, `OnnxTensor<T>`, and `OnnxTensorType`.
 
 ## Cleaning Unused Graph Data
