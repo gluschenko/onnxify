@@ -932,6 +932,16 @@ public static class TorchModuleExportExtensions
             return ExportTorchConcat(context, invocation);
         }
 
+        // C# static imports can decompile Torch calls without the "torch." receiver:
+        //   using static TorchSharp.torch;
+        //   var positions = arange(...);
+        // Treat supported unqualified Torch factories exactly like their qualified form.
+        if (invocation.Target is IdentifierExpression unqualifiedTorchIdentifier
+            && string.Equals(unqualifiedTorchIdentifier.Identifier, "arange", StringComparison.Ordinal))
+        {
+            return ExportTorchArange(context, invocation);
+        }
+
         if (invocation.Target is IdentifierExpression functionalIdentifier
             && TryExportTorchFunctionalInvocation(context, functionalIdentifier.Identifier, invocation, out var functionalResult))
         {
@@ -1310,7 +1320,7 @@ public static class TorchModuleExportExtensions
                 )
             ),
             "expand" => new ExportValue(
-                context.Graph.ExportExpand(input, ResolveLongArguments(context, invocation.Arguments).ToArray())
+                ExportTensorExpand(context, input, invocation)
             ),
             "repeat" => new ExportValue(
                 context.Graph.Tile(
@@ -1349,6 +1359,30 @@ public static class TorchModuleExportExtensions
             ),
             _ => throw new NotSupportedException($"Unsupported tensor method invocation: {invocation}"),
         };
+    }
+
+    private static IOnnxGraphEdge ExportTensorExpand(
+        ForwardExportContext context,
+        IOnnxGraphEdge input,
+        InvocationExpression invocation
+    )
+    {
+        if (TryResolveDynamicShapeEdge(context, invocation.Arguments, out var dynamicShape, out _))
+        {
+            return context.Graph.Expand(
+                name: context.Graph.NextName("expand"),
+                options: new ExpandInputOptions
+                {
+                    Input = input,
+                    Shape = dynamicShape,
+                }
+            );
+        }
+
+        return context.Graph.ExportExpand(
+            input,
+            ResolveLongArguments(context, invocation.Arguments).ToArray()
+        );
     }
 
     private static IOnnxGraphEdge ExportTensorFlatten(
