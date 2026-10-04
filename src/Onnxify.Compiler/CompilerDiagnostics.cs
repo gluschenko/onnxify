@@ -30,6 +30,7 @@ public enum CompilerSourceSpanKind
 /// <summary>Stable diagnostic codes used by compiler phases.</summary>
 public static class CompilerDiagnosticCodes
 {
+    public const string InvalidSource = "COMPILER_INVALID_SOURCE";
     public const string Unsupported = "COMPILER_UNSUPPORTED";
     public const string Ambiguous = "COMPILER_AMBIGUOUS";
     public const string Lossy = "COMPILER_LOSSY";

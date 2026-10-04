@@ -12,9 +12,25 @@ The compiler package is also brought in transitively by the Onnxify consumer pac
 
 ## Current Scope
 
-The package provides the compiler-owned source, sink, and session contracts plus the immutable computation-tree IR used by both directions. The IR includes typed tensor/value metadata, dimensions, literals, state members, normalized operator attributes, module calls, reusable blocks, ordered C# syntax, capability classifications, and stage-aware diagnostics.
+The package provides the compiler-owned source, sink, and session contracts plus the immutable computation-tree IR used by both directions. The IR includes typed tensor/value metadata, dimensions, literals, state members, normalized operator attributes, nested ONNX graphs, model metadata, quantization annotations, module calls, reusable blocks, ordered C# syntax, capability classifications, and stage-aware diagnostics.
 
-ONNX and C# frontends/backends, shared operator mappings, and executable roundtrip validation are implemented by later compiler phases on top of this model.
+The ONNX frontend and backend are available through `Compiler.CreateTreeFromOnnx(...)`, `Compiler.GenerateOnnx(...)`, and `Compiler.GenerateOnnxGraph(...)`. File, stream, asynchronous, in-memory, sparse initializer, typed attribute, and nested graph round-trips are represented through compiler-owned IR and return `CompilerResult<T>` diagnostics.
+
+```csharp
+var imported = Compiler.CreateTreeFromOnnx("model.onnx");
+if (!imported.IsSuccess)
+{
+    foreach (var diagnostic in imported.Diagnostics)
+    {
+        Console.WriteLine($"{diagnostic.Code}: {diagnostic.Message}");
+    }
+}
+
+var emitted = Compiler.GenerateOnnx(imported.Value!);
+emitted.Value!.Save("roundtripped.onnx", overwrite: true);
+```
+
+Unknown operators can be preserved as generic ONNX operations with an `Unsupported` warning. Semantic operator mappings and the C# TorchSharp frontend remain later compiler phases.
 
 The dependency direction is intentionally one-way:
 

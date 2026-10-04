@@ -179,6 +179,44 @@ public sealed class CompilerStringLiteral : CompilerScalarLiteral
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, ElementType, Value);
 }
 
+/// <summary>
+/// Preserves the encoded payload of compact ONNX numeric element types.
+/// </summary>
+public sealed class CompilerPackedScalarLiteral : CompilerScalarLiteral
+{
+    public CompilerPackedScalarLiteral(CompilerElementType elementType, ulong encodedValue)
+        : base(elementType)
+    {
+        if (elementType is not (
+            CompilerElementType.BFloat16
+            or CompilerElementType.Float8E4M3FN
+            or CompilerElementType.Float8E4M3FNUZ
+            or CompilerElementType.Float8E5M2
+            or CompilerElementType.Float8E5M2FNUZ
+            or CompilerElementType.Float4E2M1
+            or CompilerElementType.Float8E8M0
+            or CompilerElementType.UInt4
+            or CompilerElementType.Int4
+            or CompilerElementType.UInt2
+            or CompilerElementType.Int2))
+        {
+            throw new ArgumentException("The element type must be a compact ONNX numeric type.", nameof(elementType));
+        }
+
+        EncodedValue = encodedValue;
+    }
+
+    public ulong EncodedValue { get; }
+
+    protected override bool EqualsCore(CompilerLiteral other)
+    {
+        var packed = (CompilerPackedScalarLiteral)other;
+        return ElementType == packed.ElementType && EncodedValue == packed.EncodedValue;
+    }
+
+    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, ElementType, EncodedValue);
+}
+
 /// <summary>Describes an external tensor payload without depending on ONNX protobuf types.</summary>
 public sealed class CompilerExternalTensorData : IEquatable<CompilerExternalTensorData>
 {
@@ -286,19 +324,31 @@ public sealed class CompilerTensorLiteral : CompilerLiteral
 
 public sealed class CompilerArrayLiteral : CompilerLiteral
 {
-    public CompilerArrayLiteral(IEnumerable<CompilerLiteral> items)
+    public CompilerArrayLiteral(
+        IEnumerable<CompilerLiteral> items,
+        string? itemType = null
+    )
     {
         Items = CompilerStructural.Copy(items, nameof(items));
+        ItemType = itemType;
     }
 
     public IReadOnlyList<CompilerLiteral> Items { get; }
 
+    /// <summary>Gets the source element type marker, including for an empty ONNX array.</summary>
+    public string? ItemType { get; }
+
     protected override bool EqualsCore(CompilerLiteral other)
     {
-        return CompilerStructural.SequenceEqual(Items, ((CompilerArrayLiteral)other).Items);
+        var array = (CompilerArrayLiteral)other;
+        return CompilerStructural.SequenceEqual(Items, array.Items)
+            && string.Equals(ItemType, array.ItemType, StringComparison.Ordinal);
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.GetHashCode(Items);
+    protected override int GetHashCodeCore() => CompilerStructural.Combine(
+        17,
+        CompilerStructural.GetHashCode(Items),
+        ItemType);
 }
 
 public sealed class CompilerTupleLiteral : CompilerLiteral
@@ -316,6 +366,83 @@ public sealed class CompilerTupleLiteral : CompilerLiteral
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.GetHashCode(Items);
+}
+
+/// <summary>Compiler-owned graph-valued ONNX attribute.</summary>
+public sealed class CompilerGraphLiteral : CompilerLiteral
+{
+    public CompilerGraphLiteral(CompilerComputationTree graph)
+    {
+        CompilerStructural.RequireNotNull(graph, nameof(graph));
+        Graph = graph;
+    }
+
+    public CompilerComputationTree Graph { get; }
+
+    protected override bool EqualsCore(CompilerLiteral other)
+    {
+        return EqualityComparer<CompilerComputationTree>.Default.Equals(
+            Graph,
+            ((CompilerGraphLiteral)other).Graph);
+    }
+
+    protected override int GetHashCodeCore() => Graph.GetHashCode();
+}
+
+/// <summary>Compiler-owned sparse tensor attribute or initializer payload.</summary>
+public sealed class CompilerSparseTensorLiteral : CompilerLiteral
+{
+    public CompilerSparseTensorLiteral(
+        IEnumerable<CompilerDimension> dimensions,
+        CompilerTensorLiteral values,
+        CompilerTensorLiteral indices
+    )
+    {
+        Dimensions = CompilerStructural.Copy(dimensions, nameof(dimensions));
+        CompilerStructural.RequireNotNull(values, nameof(values));
+        CompilerStructural.RequireNotNull(indices, nameof(indices));
+        Values = values;
+        Indices = indices;
+    }
+
+    public IReadOnlyList<CompilerDimension> Dimensions { get; }
+
+    public CompilerTensorLiteral Values { get; }
+
+    public CompilerTensorLiteral Indices { get; }
+
+    protected override bool EqualsCore(CompilerLiteral other)
+    {
+        var sparse = (CompilerSparseTensorLiteral)other;
+        return CompilerStructural.SequenceEqual(Dimensions, sparse.Dimensions)
+            && EqualityComparer<CompilerTensorLiteral>.Default.Equals(Values, sparse.Values)
+            && EqualityComparer<CompilerTensorLiteral>.Default.Equals(Indices, sparse.Indices);
+    }
+
+    protected override int GetHashCodeCore() => CompilerStructural.Combine(
+        17,
+        CompilerStructural.GetHashCode(Dimensions),
+        Values,
+        Indices);
+}
+
+/// <summary>Compiler-owned ONNX TypeProto attribute payload.</summary>
+public sealed class CompilerTypeLiteral : CompilerLiteral
+{
+    public CompilerTypeLiteral(CompilerType value)
+    {
+        CompilerStructural.RequireNotNull(value, nameof(value));
+        Value = value;
+    }
+
+    public CompilerType Value { get; }
+
+    protected override bool EqualsCore(CompilerLiteral other)
+    {
+        return EqualityComparer<CompilerType>.Default.Equals(Value, ((CompilerTypeLiteral)other).Value);
+    }
+
+    protected override int GetHashCodeCore() => Value.GetHashCode();
 }
 
 /// <summary>Normalized operator attribute owned by the compiler IR.</summary>

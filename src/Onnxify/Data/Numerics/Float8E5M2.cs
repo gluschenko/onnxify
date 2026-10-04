@@ -24,6 +24,14 @@ public readonly struct Float8E5M2
         Value = Encode(value);
     }
 
+    /// <summary>Creates a value from its encoded ONNX payload.</summary>
+    public static Float8E5M2 FromEncoded(byte value) => new(value, encoded: true);
+
+    private Float8E5M2(byte value, bool encoded)
+    {
+        Value = value;
+    }
+
     /// <summary>
     /// Expands the encoded e5m2 value to a single-precision approximation.
     /// </summary>

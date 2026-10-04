@@ -399,7 +399,11 @@ public sealed class CompilerComputationTree : ICompilerTree, IEquatable<Compiler
         IEnumerable<CompilerComputationStep> operations,
         IEnumerable<CompilerComputationBlock>? blocks = null,
         CompilerBlockStatement? syntaxBody = null,
-        IEnumerable<KeyValuePair<string, string>>? metadata = null
+        IEnumerable<KeyValuePair<string, string>>? metadata = null,
+        IEnumerable<CompilerValue>? captures = null,
+        CompilerModelEnvelope? modelEnvelope = null,
+        IEnumerable<CompilerQuantizationAnnotation>? quantizationAnnotations = null,
+        string? document = null
     )
     {
         Name = name ?? string.Empty;
@@ -413,6 +417,12 @@ public sealed class CompilerComputationTree : ICompilerTree, IEquatable<Compiler
         Blocks = CompilerStructural.Copy(blocks ?? Array.Empty<CompilerComputationBlock>(), nameof(blocks));
         SyntaxBody = syntaxBody;
         Metadata = CompilerStructural.Copy(metadata ?? Array.Empty<KeyValuePair<string, string>>(), nameof(metadata));
+        Captures = CompilerStructural.Copy(captures ?? Array.Empty<CompilerValue>(), nameof(captures));
+        ModelEnvelope = modelEnvelope;
+        QuantizationAnnotations = CompilerStructural.Copy(
+            quantizationAnnotations ?? Array.Empty<CompilerQuantizationAnnotation>(),
+            nameof(quantizationAnnotations));
+        Document = document ?? string.Empty;
 
         ValidateDefinitions();
     }
@@ -439,6 +449,18 @@ public sealed class CompilerComputationTree : ICompilerTree, IEquatable<Compiler
 
     public IReadOnlyList<KeyValuePair<string, string>> Metadata { get; }
 
+    /// <summary>Gets values captured from an enclosing graph scope.</summary>
+    public IReadOnlyList<CompilerValue> Captures { get; }
+
+    /// <summary>Gets optional model-level ONNX metadata.</summary>
+    public CompilerModelEnvelope? ModelEnvelope { get; }
+
+    /// <summary>Gets graph quantization annotations in source order.</summary>
+    public IReadOnlyList<CompilerQuantizationAnnotation> QuantizationAnnotations { get; }
+
+    /// <summary>Gets graph-level documentation independent from model-level documentation.</summary>
+    public string Document { get; }
+
     public bool Equals(CompilerComputationTree? other)
     {
         return other is not null
@@ -452,7 +474,11 @@ public sealed class CompilerComputationTree : ICompilerTree, IEquatable<Compiler
             && CompilerStructural.SequenceEqual(Operations, other.Operations)
             && CompilerStructural.SequenceEqual(Blocks, other.Blocks)
             && EqualityComparer<CompilerBlockStatement?>.Default.Equals(SyntaxBody, other.SyntaxBody)
-            && CompilerStructural.SequenceEqual(Metadata, other.Metadata);
+            && CompilerStructural.SequenceEqual(Metadata, other.Metadata)
+            && CompilerStructural.SequenceEqual(Captures, other.Captures)
+            && EqualityComparer<CompilerModelEnvelope?>.Default.Equals(ModelEnvelope, other.ModelEnvelope)
+            && CompilerStructural.SequenceEqual(QuantizationAnnotations, other.QuantizationAnnotations)
+            && string.Equals(Document, other.Document, StringComparison.Ordinal);
     }
 
     public override bool Equals(object? obj) => Equals(obj as CompilerComputationTree);
@@ -471,13 +497,17 @@ public sealed class CompilerComputationTree : ICompilerTree, IEquatable<Compiler
             CompilerStructural.GetHashCode(Operations),
             CompilerStructural.GetHashCode(Blocks),
             SyntaxBody,
-            CompilerStructural.GetHashCode(Metadata));
+            CompilerStructural.GetHashCode(Metadata),
+            CompilerStructural.GetHashCode(Captures),
+            ModelEnvelope,
+            CompilerStructural.GetHashCode(QuantizationAnnotations),
+            Document);
     }
 
     private void ValidateDefinitions()
     {
         var values = new Dictionary<string, CompilerValue>(StringComparer.Ordinal);
-        foreach (var value in Inputs.Concat(Outputs).Concat(IntermediateValues))
+        foreach (var value in Inputs.Concat(Outputs).Concat(IntermediateValues).Concat(Captures))
         {
             if (values.TryGetValue(value.Name, out var existing))
             {
@@ -501,6 +531,14 @@ public sealed class CompilerComputationTree : ICompilerTree, IEquatable<Compiler
             }
 
             stateMembers.Add(member.Name, member);
+        }
+
+        foreach (var capture in Captures)
+        {
+            if (stateMembers.ContainsKey(capture.Name))
+            {
+                throw new ArgumentException($"Capture '{capture.Name}' conflicts with a state member.");
+            }
         }
 
         EnsureUniqueNames(Operations.Select(x => x.Name), "operation");

@@ -20,6 +20,16 @@ public enum CompilerElementType
     Complex64 = 14,
     Complex128 = 15,
     String = 16,
+    Float8E4M3FN = 17,
+    Float8E4M3FNUZ = 18,
+    Float8E5M2 = 19,
+    Float8E5M2FNUZ = 20,
+    Float4E2M1 = 21,
+    Float8E8M0 = 22,
+    UInt4 = 23,
+    Int4 = 24,
+    UInt2 = 25,
+    Int2 = 26,
 }
 
 /// <summary>Kind of tensor dimension represented by the IR.</summary>

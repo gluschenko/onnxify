@@ -31,10 +31,13 @@ public sealed class CompilerBoundaryTests
     public void Compiler_sinks_report_typed_target_kinds()
     {
         ICompilerSink<OnnxGraph> onnxSink = new OnnxCompilerSink();
+        ICompilerSink<OnnxModel> modelSink = new OnnxModelCompilerSink();
         ICompilerSink<string> csharpSink = new CSharpCompilerSink();
 
         Assert.Equal(CompilerTargetKind.OnnxGraph, onnxSink.Kind);
+        Assert.Equal(CompilerTargetKind.OnnxModel, modelSink.Kind);
         Assert.Equal(CompilerTargetKind.CSharp, csharpSink.Kind);
+        Assert.Equal(2, (int)CompilerTargetKind.OnnxModel);
     }
 
     [Fact]

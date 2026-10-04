@@ -29,9 +29,14 @@ public enum CompilerTargetKind
     OnnxGraph = 1,
 
     /// <summary>
+    /// A complete ONNX model including its model-level envelope.
+    /// </summary>
+    OnnxModel = 2,
+
+    /// <summary>
     /// Generated C# source.
     /// </summary>
-    CSharp = 2,
+    CSharp = 3,
 }
 
 /// <summary>
@@ -54,7 +59,7 @@ public sealed class OnnxCompilerSource : ICompilerSource
     /// Initializes a source from an existing core Onnxify model.
     /// </summary>
     /// <param name="model">The model to expose to a compiler frontend.</param>
-    public OnnxCompilerSource(OnnxModel model)
+    public OnnxCompilerSource(OnnxModel model, string? document = null)
     {
         if (model is null)
         {
@@ -62,12 +67,18 @@ public sealed class OnnxCompilerSource : ICompilerSource
         }
 
         Model = model;
+        Document = document;
     }
 
     /// <summary>
     /// Gets the supplied core model.
     /// </summary>
     public OnnxModel Model { get; }
+
+    /// <summary>
+    /// Gets the logical source document used when creating diagnostics.
+    /// </summary>
+    public string? Document { get; }
 
     /// <inheritdoc />
     public CompilerSourceKind Kind => CompilerSourceKind.Onnx;
@@ -132,6 +143,15 @@ public sealed class OnnxCompilerSink : ICompilerSink<OnnxGraph>
 {
     /// <inheritdoc />
     public CompilerTargetKind Kind => CompilerTargetKind.OnnxGraph;
+}
+
+/// <summary>
+/// Describes a complete ONNX model output target.
+/// </summary>
+public sealed class OnnxModelCompilerSink : ICompilerSink<OnnxModel>
+{
+    /// <inheritdoc />
+    public CompilerTargetKind Kind => CompilerTargetKind.OnnxModel;
 }
 
 /// <summary>

@@ -24,6 +24,14 @@ public readonly struct Float8E4M3FN
         Value = Encode(value);
     }
 
+    /// <summary>Creates a value from its encoded ONNX payload.</summary>
+    public static Float8E4M3FN FromEncoded(byte value) => new(value, encoded: true);
+
+    private Float8E4M3FN(byte value, bool encoded)
+    {
+        Value = value;
+    }
+
     /// <summary>
     /// Expands the encoded e4m3fn value to a single-precision approximation.
     /// </summary>
