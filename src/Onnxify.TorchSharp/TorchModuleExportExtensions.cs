@@ -1367,7 +1367,8 @@ public static class TorchModuleExportExtensions
         InvocationExpression invocation
     )
     {
-        if (TryResolveDynamicShapeEdge(context, invocation.Arguments, out var dynamicShape, out _))
+        var arguments = GetPositionalArguments(invocation).ToArray();
+        if (TryResolveDynamicShapeEdge(context, arguments, out var dynamicShape, out _))
         {
             return context.Graph.Expand(
                 name: context.Graph.NextName("expand"),

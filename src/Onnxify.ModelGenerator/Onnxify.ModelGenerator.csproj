@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.3.11</Version>
+    <Version>0.4.0</Version>
     <RepositoryUrl>https://github.com/gluschenko/onnxify</RepositoryUrl>
     <Authors>Alexander Gluschenko</Authors>
     <Copyright>© 2026 Alexander Gluschenko</Copyright>
@@ -50,6 +50,7 @@
   </Target>
 
   <ItemGroup>
+    <ProjectReference Include="..\Onnxify.Compiler\Onnxify.Compiler.csproj" />
     <ProjectReference Include="..\Onnxify\Onnxify.csproj" PrivateAssets="all" />
   </ItemGroup>
 

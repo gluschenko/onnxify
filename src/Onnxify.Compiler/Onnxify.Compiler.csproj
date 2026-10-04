@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;net8.0;net10.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <Version>0.4.0</Version>
+    <RepositoryUrl>https://github.com/gluschenko/onnxify</RepositoryUrl>
+    <Authors>Alexander Gluschenko</Authors>
+    <Copyright>© 2026 Alexander Gluschenko</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>onnx;dotnet;machine-learning;ai;compiler;torchsharp;onnx-graph;model-conversion</PackageTags>
+    <Description>Shared compiler contracts and orchestration boundary for bidirectional C# TorchSharp and ONNX transformations.</Description>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591,1573</NoWarn>
+    <DocumentationFile>..\Onnxify.Compiler.xml</DocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Onnxify\Onnxify.csproj" />
+  </ItemGroup>
+
+</Project>
