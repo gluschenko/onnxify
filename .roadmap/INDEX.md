@@ -22,7 +22,7 @@
 | [OXY-018](OXY-018.md) | CUDA Version Matrix For Generated ONNX Model Validation | TODO | 40 human-hours | 2026-07-10 | 2026-07-10 |
 | [OXY-019](OXY-019.md) | Onnxify.Compiler — Unified Bidirectional C# ONNX Compiler | TODO | 164 human-hours | 2026-07-21 | 2026-09-05 |
 | [OXY-020](OXY-020.md) | Establish Compiler Project Boundary And Contracts | DONE | 12 human-hours | 2026-09-05 | 2026-10-04 |
-| [OXY-021](OXY-021.md) | Define Compiler IR And Diagnostics | TODO | 20 human-hours | 2026-09-05 | 2026-09-05 |
+| [OXY-021](OXY-021.md) | Define Compiler IR And Diagnostics | DONE | 20 human-hours | 2026-09-05 | 2026-10-04 |
 | [OXY-022](OXY-022.md) | Implement ONNX Tree Frontend And Backend | TODO | 20 human-hours | 2026-09-05 | 2026-09-05 |
 | [OXY-023](OXY-023.md) | Implement C# TorchSharp Frontend And Backend | TODO | 24 human-hours | 2026-09-05 | 2026-09-05 |
 | [OXY-024](OXY-024.md) | Migrate Shared Operator Mappings And Verification | TODO | 32 human-hours | 2026-09-05 | 2026-09-05 |

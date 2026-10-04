@@ -10,12 +10,12 @@ public enum CompilerSourceKind
     /// <summary>
     /// An ONNX model supplied by the core Onnxify library.
     /// </summary>
-    Onnx,
+    Onnx = 1,
 
     /// <summary>
     /// C# source representing TorchSharp computation.
     /// </summary>
-    CSharpTorchSharp,
+    CSharpTorchSharp = 2,
 }
 
 /// <summary>
@@ -26,12 +26,12 @@ public enum CompilerTargetKind
     /// <summary>
     /// An ONNX graph supplied by or emitted through the core Onnxify library.
     /// </summary>
-    OnnxGraph,
+    OnnxGraph = 1,
 
     /// <summary>
     /// Generated C# source.
     /// </summary>
-    CSharp,
+    CSharp = 2,
 }
 
 /// <summary>
@@ -153,7 +153,7 @@ public interface ICompilerSession
     /// </summary>
     /// <param name="source">The source to pass to a future frontend.</param>
     /// <returns>An opaque compiler tree.</returns>
-    ICompilerTree CreateTree(ICompilerSource source);
+    CompilerResult<ICompilerTree> CreateTree(ICompilerSource source);
 
     /// <summary>
     /// Generates a typed output through a target sink.
@@ -162,5 +162,5 @@ public interface ICompilerSession
     /// <param name="tree">The compiler tree to pass to a future backend.</param>
     /// <param name="sink">The target sink that defines the output type.</param>
     /// <returns>The generated output.</returns>
-    TOutput Generate<TOutput>(ICompilerTree tree, ICompilerSink<TOutput> sink);
+    CompilerResult<TOutput> Generate<TOutput>(ICompilerTree tree, ICompilerSink<TOutput> sink);
 }
