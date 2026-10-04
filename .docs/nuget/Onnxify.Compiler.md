@@ -30,7 +30,30 @@ var emitted = Compiler.GenerateOnnx(imported.Value!);
 emitted.Value!.Save("roundtripped.onnx", overwrite: true);
 ```
 
-Unknown operators can be preserved as generic ONNX operations with an `Unsupported` warning. Semantic operator mappings and the C# TorchSharp frontend remain later compiler phases.
+Unknown operators can be preserved as generic ONNX operations with an `Unsupported` warning. Full bidirectional operator mappings remain the scope of OXY-024.
+
+The C# TorchSharp frontend accepts either source text or a compiler-neutral descriptor created by
+`Onnxify.TorchSharp`. The compiler decompiles only the requested method, scans the supported syntax
+subset into immutable IR, and reports unsupported dynamic syntax as diagnostics:
+
+```csharp
+using Onnxify.Compiler;
+using Onnxify.TorchSharp;
+
+CSharpTorchSharpSource source = module.CreateCompilerSource();
+CompilerResult<CompilerComputationTree> tree =
+    Compiler.CreateTreeFromTorchSharp(source);
+
+if (tree.IsSuccess)
+{
+    CompilerResult<string> generated = Compiler.GenerateCSharp(tree.Value!);
+    File.WriteAllText("GeneratedTorchModule.cs", generated.Value!);
+}
+```
+
+The OXY-023 backend emits regular TorchSharp module code, including ordered declarations,
+assignments, returns, arrays, tuples, indexers, static `if`/`foreach`, helper blocks, and reusable
+module calls. Full bidirectional operator mappings are intentionally handled by OXY-024.
 
 The dependency direction is intentionally one-way:
 

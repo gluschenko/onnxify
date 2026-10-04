@@ -8,3 +8,7 @@
 - Added the ONNX frontend/backend with in-memory, file, stream, and asynchronous entry points.
 - Added model envelopes, graph metadata, quantization annotations, sparse tensors, typed attributes, nested graph literals, outer-scope captures, and generic unsupported-operator preservation.
 - Added ONNX Runtime-backed compiler round-trip tests for `net8.0` and `net10.0`.
+- Added the compiler-owned C# TorchSharp frontend with source-text scanning, method-token decompilation, immutable syntax IR, source spans, and diagnostics for unsupported dynamic syntax.
+- Added `CompilerTorchSharpModuleDescriptor` and the thin `Onnxify.TorchSharp` adapter for runtime module metadata, state members, child modules, and helper methods.
+- Added `Compiler.GenerateCSharp(...)` with deterministic TorchSharp source generation for declarations, assignments, returns, arrays, tuples, indexers, static control flow, helper blocks, and module calls.
+- Added Roslyn compilation and minimal executable TorchSharp generated-module tests for `net8.0` and `net10.0`.

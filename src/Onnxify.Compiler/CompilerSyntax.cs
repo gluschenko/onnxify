@@ -160,6 +160,111 @@ public sealed class CompilerInvocationExpression : CompilerExpression
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Target, CompilerStructural.GetHashCode(Arguments));
 }
 
+/// <summary>Represents member access such as <c>module.forward</c> or <c>torch.Tensor</c>.</summary>
+public sealed class CompilerMemberAccessExpression : CompilerExpression
+{
+    public CompilerMemberAccessExpression(
+        CompilerExpression target,
+        string memberName,
+        CompilerSourceSpan? span = null
+    ) : base(span)
+    {
+        CompilerStructural.RequireNotNull(target, nameof(target));
+        if (string.IsNullOrWhiteSpace(memberName))
+        {
+            throw new ArgumentException("Member name cannot be empty.", nameof(memberName));
+        }
+
+        Target = target;
+        MemberName = memberName;
+    }
+
+    public CompilerExpression Target { get; }
+
+    public string MemberName { get; }
+
+    protected override bool EqualsCore(CompilerExpression other)
+    {
+        var member = (CompilerMemberAccessExpression)other;
+        return EqualityComparer<CompilerExpression>.Default.Equals(Target, member.Target)
+            && string.Equals(MemberName, member.MemberName, StringComparison.Ordinal);
+    }
+
+    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Target, MemberName);
+}
+
+/// <summary>Represents a C# binary operator while retaining its source spelling.</summary>
+public sealed class CompilerBinaryExpression : CompilerExpression
+{
+    public CompilerBinaryExpression(
+        CompilerExpression left,
+        string @operator,
+        CompilerExpression right,
+        CompilerSourceSpan? span = null
+    ) : base(span)
+    {
+        CompilerStructural.RequireNotNull(left, nameof(left));
+        CompilerStructural.RequireNotNull(right, nameof(right));
+        if (string.IsNullOrWhiteSpace(@operator))
+        {
+            throw new ArgumentException("Binary operator cannot be empty.", nameof(@operator));
+        }
+
+        Left = left;
+        Operator = @operator;
+        Right = right;
+    }
+
+    public CompilerExpression Left { get; }
+
+    public string Operator { get; }
+
+    public CompilerExpression Right { get; }
+
+    protected override bool EqualsCore(CompilerExpression other)
+    {
+        var binary = (CompilerBinaryExpression)other;
+        return EqualityComparer<CompilerExpression>.Default.Equals(Left, binary.Left)
+            && string.Equals(Operator, binary.Operator, StringComparison.Ordinal)
+            && EqualityComparer<CompilerExpression>.Default.Equals(Right, binary.Right);
+    }
+
+    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Left, Operator, Right);
+}
+
+/// <summary>Represents a C# unary operator while retaining its source spelling.</summary>
+public sealed class CompilerUnaryExpression : CompilerExpression
+{
+    public CompilerUnaryExpression(
+        string @operator,
+        CompilerExpression expression,
+        CompilerSourceSpan? span = null
+    ) : base(span)
+    {
+        CompilerStructural.RequireNotNull(expression, nameof(expression));
+        if (string.IsNullOrWhiteSpace(@operator))
+        {
+            throw new ArgumentException("Unary operator cannot be empty.", nameof(@operator));
+        }
+
+        Operator = @operator;
+        Expression = expression;
+    }
+
+    public string Operator { get; }
+
+    public CompilerExpression Expression { get; }
+
+    protected override bool EqualsCore(CompilerExpression other)
+    {
+        var unary = (CompilerUnaryExpression)other;
+        return string.Equals(Operator, unary.Operator, StringComparison.Ordinal)
+            && EqualityComparer<CompilerExpression>.Default.Equals(Expression, unary.Expression);
+    }
+
+    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Operator, Expression);
+}
+
 /// <summary>Base class for ordered compiler-owned C# statements.</summary>
 public abstract class CompilerStatement : IEquatable<CompilerStatement>
 {
@@ -241,27 +346,37 @@ public sealed class CompilerAssignmentStatement : CompilerStatement
     public CompilerAssignmentStatement(
         CompilerExpression target,
         CompilerExpression value,
-        CompilerSourceSpan? span = null
+        CompilerSourceSpan? span = null,
+        string @operator = "="
     ) : base(span)
     {
         CompilerStructural.RequireNotNull(target, nameof(target));
         CompilerStructural.RequireNotNull(value, nameof(value));
+        if (string.IsNullOrWhiteSpace(@operator))
+        {
+            throw new ArgumentException("Assignment operator cannot be empty.", nameof(@operator));
+        }
+
         Target = target;
         Value = value;
+        Operator = @operator;
     }
 
     public CompilerExpression Target { get; }
 
     public CompilerExpression Value { get; }
 
+    public string Operator { get; }
+
     protected override bool EqualsCore(CompilerStatement other)
     {
         var assignment = (CompilerAssignmentStatement)other;
         return EqualityComparer<CompilerExpression>.Default.Equals(Target, assignment.Target)
-            && EqualityComparer<CompilerExpression>.Default.Equals(Value, assignment.Value);
+            && EqualityComparer<CompilerExpression>.Default.Equals(Value, assignment.Value)
+            && string.Equals(Operator, assignment.Operator, StringComparison.Ordinal);
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Target, Value);
+    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Target, Value, Operator);
 }
 
 public sealed class CompilerReturnStatement : CompilerStatement

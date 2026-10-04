@@ -19,6 +19,14 @@ public abstract class CompilerLiteral : IEquatable<CompilerLiteral>
     protected abstract int GetHashCodeCore();
 }
 
+/// <summary>Represents the C# <c>null</c> literal without a runtime object.</summary>
+public sealed class CompilerNullLiteral : CompilerLiteral
+{
+    protected override bool EqualsCore(CompilerLiteral other) => other is CompilerNullLiteral;
+
+    protected override int GetHashCodeCore() => 17;
+}
+
 /// <summary>Base class for scalar literals with an explicit element type.</summary>
 public abstract class CompilerScalarLiteral : CompilerLiteral
 {

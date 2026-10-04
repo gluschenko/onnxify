@@ -24,7 +24,7 @@
 | [OXY-020](OXY-020.md) | Establish Compiler Project Boundary And Contracts | DONE | 12 human-hours | 2026-09-05 | 2026-10-04 |
 | [OXY-021](OXY-021.md) | Define Compiler IR And Diagnostics | DONE | 20 human-hours | 2026-09-05 | 2026-10-04 |
 | [OXY-022](OXY-022.md) | Implement ONNX Tree Frontend And Backend | DONE | 40 human-hours | 2026-09-05 | 2026-10-04 |
-| [OXY-023](OXY-023.md) | Implement C# TorchSharp Frontend And Backend | TODO | 24 human-hours | 2026-09-05 | 2026-09-05 |
+| [OXY-023](OXY-023.md) | Implement C# TorchSharp Frontend And Backend | DONE | 24 human-hours | 2026-09-05 | 2026-10-05 |
 | [OXY-024](OXY-024.md) | Migrate Shared Operator Mappings And Verification | TODO | 32 human-hours | 2026-09-05 | 2026-09-05 |
 | [OXY-025](OXY-025.md) | Migrate Helpers, Modules, And Static Control Flow | TODO | 24 human-hours | 2026-09-05 | 2026-09-05 |
 | [OXY-026](OXY-026.md) | Add Compatibility Facades And Extensibility | TODO | 16 human-hours | 2026-09-05 | 2026-09-05 |

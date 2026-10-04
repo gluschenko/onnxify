@@ -92,6 +92,30 @@ public sealed class OnnxCompilerSession : ICompilerSession
 /// <summary>Convenience entry points for ONNX compiler operations.</summary>
 public static class Compiler
 {
+    /// <summary>Imports C# TorchSharp source into the shared compiler tree.</summary>
+    public static CompilerResult<CompilerComputationTree> CreateTreeFromTorchSharp(
+        CSharpTorchSharpSource source
+    )
+    {
+        CompilerStructural.RequireNotNull(source, nameof(source));
+        var result = new CSharpCompilerSession().CreateTree(source);
+        return result.IsSuccess
+            ? CompilerResult<CompilerComputationTree>.Success(
+                (CompilerComputationTree)result.Value!,
+                result.Diagnostics)
+            : CompilerResult<CompilerComputationTree>.Failure(result.Diagnostics);
+    }
+
+    /// <summary>Generates compiler-owned C# TorchSharp module source.</summary>
+    public static CompilerResult<string> GenerateCSharp(
+        CompilerComputationTree tree,
+        CompilerCSharpGenerationOptions? options = null
+    )
+    {
+        CompilerStructural.RequireNotNull(tree, nameof(tree));
+        return CSharpCompilerBackend.Generate(tree, options);
+    }
+
     /// <summary>Imports an in-memory ONNX model into the shared compiler tree.</summary>
     public static CompilerResult<CompilerComputationTree> CreateTreeFromOnnx(
         OnnxModel model,

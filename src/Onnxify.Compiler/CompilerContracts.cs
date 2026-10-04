@@ -109,9 +109,27 @@ public sealed class CSharpTorchSharpSource : ICompilerSource
     }
 
     /// <summary>
+    /// Initializes a source that points at a method in a compiled assembly. The compiler owns
+    /// the decompilation and never exposes the underlying decompiler syntax tree.
+    /// </summary>
+    /// <param name="module">The compiler-neutral module descriptor.</param>
+    public CSharpTorchSharpSource(CompilerTorchSharpModuleDescriptor module)
+    {
+        CompilerStructural.RequireNotNull(module, nameof(module));
+        Module = module;
+        SourceText = string.Empty;
+    }
+
+    /// <summary>
     /// Gets the supplied C# source text.
     /// </summary>
     public string SourceText { get; }
+
+    /// <summary>Gets the optional compiled-module descriptor used for compiler decompilation.</summary>
+    public CompilerTorchSharpModuleDescriptor? Module { get; }
+
+    /// <summary>Gets the optional compiled-module descriptor used for compiler decompilation.</summary>
+    public CompilerTorchSharpModuleDescriptor? ModuleDescriptor => Module;
 
     /// <inheritdoc />
     public CompilerSourceKind Kind => CompilerSourceKind.CSharpTorchSharp;

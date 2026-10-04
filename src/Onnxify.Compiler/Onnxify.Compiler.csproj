@@ -12,6 +12,7 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>onnx;dotnet;machine-learning;ai;compiler;torchsharp;onnx-graph;model-conversion</PackageTags>
     <Description>Shared compiler contracts and orchestration boundary for bidirectional C# TorchSharp and ONNX transformations.</Description>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
@@ -22,6 +23,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Onnxify\Onnxify.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ICSharpCode.Decompiler" Version="10.0.1.8346" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
   </ItemGroup>
 
 </Project>
