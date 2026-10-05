@@ -112,8 +112,9 @@ public sealed class CompilerFixedDimension : CompilerDimension
 
     protected override bool EqualsCore(CompilerDimension other)
     {
-        return Value == ((CompilerFixedDimension)other).Value
+        var result = Value == ((CompilerFixedDimension)other).Value
             && string.Equals(Denotation, other.Denotation, StringComparison.Ordinal);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Kind, Denotation, Value);
@@ -136,8 +137,9 @@ public sealed class CompilerSymbolicDimension : CompilerDimension
 
     protected override bool EqualsCore(CompilerDimension other)
     {
-        return string.Equals(Name, ((CompilerSymbolicDimension)other).Name, StringComparison.Ordinal)
+        var result = string.Equals(Name, ((CompilerSymbolicDimension)other).Name, StringComparison.Ordinal)
             && string.Equals(Denotation, other.Denotation, StringComparison.Ordinal);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Kind, Denotation, Name);
@@ -152,7 +154,8 @@ public sealed class CompilerUnknownDimension : CompilerDimension
 
     protected override bool EqualsCore(CompilerDimension other)
     {
-        return string.Equals(Denotation, other.Denotation, StringComparison.Ordinal);
+        var result = string.Equals(Denotation, other.Denotation, StringComparison.Ordinal);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Kind, Denotation);
@@ -170,8 +173,9 @@ public sealed class CompilerScalarType : CompilerType
 
     protected override bool EqualsCore(CompilerType other)
     {
-        return ElementType == ((CompilerScalarType)other).ElementType
+        var result = ElementType == ((CompilerScalarType)other).ElementType
             && string.Equals(Denotation, other.Denotation, StringComparison.Ordinal);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, ElementType, Denotation);
@@ -199,9 +203,10 @@ public sealed class CompilerTensorType : CompilerType
     protected override bool EqualsCore(CompilerType other)
     {
         var tensor = (CompilerTensorType)other;
-        return ElementType == tensor.ElementType
+        var result = ElementType == tensor.ElementType
             && CompilerStructural.SequenceEqual(Dimensions, tensor.Dimensions)
             && string.Equals(Denotation, other.Denotation, StringComparison.Ordinal);
+        return result;
     }
 
     protected override int GetHashCodeCore()
@@ -223,8 +228,9 @@ public sealed class CompilerOptionalType : CompilerType
 
     protected override bool EqualsCore(CompilerType other)
     {
-        return EqualityComparer<CompilerType>.Default.Equals(ElementType, ((CompilerOptionalType)other).ElementType)
+        var result = EqualityComparer<CompilerType>.Default.Equals(ElementType, ((CompilerOptionalType)other).ElementType)
             && string.Equals(Denotation, other.Denotation, StringComparison.Ordinal);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, ElementType, Denotation);
@@ -243,8 +249,9 @@ public sealed class CompilerSequenceType : CompilerType
 
     protected override bool EqualsCore(CompilerType other)
     {
-        return EqualityComparer<CompilerType>.Default.Equals(ElementType, ((CompilerSequenceType)other).ElementType)
+        var result = EqualityComparer<CompilerType>.Default.Equals(ElementType, ((CompilerSequenceType)other).ElementType)
             && string.Equals(Denotation, other.Denotation, StringComparison.Ordinal);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, ElementType, Denotation);
@@ -263,8 +270,9 @@ public sealed class CompilerTupleType : CompilerType
     protected override bool EqualsCore(CompilerType other)
     {
         var tuple = (CompilerTupleType)other;
-        return CompilerStructural.SequenceEqual(ElementTypes, tuple.ElementTypes)
+        var result = CompilerStructural.SequenceEqual(ElementTypes, tuple.ElementTypes)
             && string.Equals(Denotation, other.Denotation, StringComparison.Ordinal);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Denotation, CompilerStructural.GetHashCode(ElementTypes));
@@ -287,9 +295,10 @@ public sealed class CompilerMapType : CompilerType
     protected override bool EqualsCore(CompilerType other)
     {
         var map = (CompilerMapType)other;
-        return KeyType == map.KeyType
+        var result = KeyType == map.KeyType
             && EqualityComparer<CompilerType>.Default.Equals(ValueType, map.ValueType)
             && string.Equals(Denotation, other.Denotation, StringComparison.Ordinal);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, KeyType, ValueType, Denotation);
@@ -314,9 +323,10 @@ public sealed class CompilerSparseTensorType : CompilerType
     protected override bool EqualsCore(CompilerType other)
     {
         var sparse = (CompilerSparseTensorType)other;
-        return ElementType == sparse.ElementType
+        var result = ElementType == sparse.ElementType
             && CompilerStructural.SequenceEqual(Dimensions, sparse.Dimensions)
             && string.Equals(Denotation, other.Denotation, StringComparison.Ordinal);
+        return result;
     }
 
     protected override int GetHashCodeCore()
@@ -341,9 +351,10 @@ public sealed class CompilerOpaqueType : CompilerType
     protected override bool EqualsCore(CompilerType other)
     {
         var opaque = (CompilerOpaqueType)other;
-        return string.Equals(Domain, opaque.Domain, StringComparison.Ordinal)
+        var result = string.Equals(Domain, opaque.Domain, StringComparison.Ordinal)
             && string.Equals(Name, opaque.Name, StringComparison.Ordinal)
             && string.Equals(Denotation, other.Denotation, StringComparison.Ordinal);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Domain, Name, Denotation);

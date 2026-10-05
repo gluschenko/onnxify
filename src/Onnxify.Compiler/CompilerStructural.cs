@@ -14,7 +14,7 @@ internal static class CompilerStructural
 
     public static IReadOnlyList<T> Copy<T>(IEnumerable<T> values, string parameterName)
     {
-        RequireNotNull(values, nameof(values));
+        RequireNotNull(values, parameterName);
 
         var array = values.ToArray();
         for (var index = 0; index < array.Length; index++)
@@ -25,12 +25,14 @@ internal static class CompilerStructural
             }
         }
 
-        return new ReadOnlyCollection<T>(array);
+        var result = new ReadOnlyCollection<T>(array);
+        return result;
     }
 
     public static IReadOnlyList<T>? CopyNullable<T>(IEnumerable<T>? values, string parameterName)
     {
-        return values is null ? null : Copy(values, parameterName);
+        var result = values is null ? null : Copy(values, parameterName);
+        return result;
     }
 
     public static bool SequenceEqual<T>(IReadOnlyList<T>? left, IReadOnlyList<T>? right)
@@ -69,7 +71,10 @@ internal static class CompilerStructural
             hash = (hash * 31) + values.Count;
             foreach (var value in values)
             {
-                hash = (hash * 31) + EqualityComparer<T>.Default.GetHashCode(value!);
+                var itemHash = value is null
+                    ? 0
+                    : EqualityComparer<T>.Default.GetHashCode(value);
+                hash = (hash * 31) + itemHash;
             }
 
             return hash;

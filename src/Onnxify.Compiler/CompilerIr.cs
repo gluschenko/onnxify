@@ -37,9 +37,10 @@ public sealed class CompilerValueReference : IEquatable<CompilerValueReference>
 
     public bool Equals(CompilerValueReference? other)
     {
-        return other is not null
+        var result = other is not null
             && string.Equals(Name, other.Name, StringComparison.Ordinal)
             && IsEmptyOptional == other.IsEmptyOptional;
+        return result;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CompilerValueReference);
@@ -75,10 +76,11 @@ public sealed class CompilerValue : IEquatable<CompilerValue>
 
     public bool Equals(CompilerValue? other)
     {
-        return other is not null
+        var result = other is not null
             && string.Equals(Name, other.Name, StringComparison.Ordinal)
             && EqualityComparer<CompilerType>.Default.Equals(Type, other.Type)
             && EqualityComparer<CompilerSourceSpan?>.Default.Equals(Span, other.Span);
+        return result;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CompilerValue);
@@ -127,12 +129,13 @@ public sealed class CompilerStateMember : IEquatable<CompilerStateMember>
 
     public bool Equals(CompilerStateMember? other)
     {
-        return other is not null
+        var result = other is not null
             && string.Equals(Name, other.Name, StringComparison.Ordinal)
             && Kind == other.Kind
             && EqualityComparer<CompilerType>.Default.Equals(Type, other.Type)
             && EqualityComparer<CompilerLiteral?>.Default.Equals(Value, other.Value)
             && EqualityComparer<CompilerSourceSpan?>.Default.Equals(Span, other.Span);
+        return result;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CompilerStateMember);
@@ -171,11 +174,12 @@ public sealed class CompilerOperatorDescriptor : IEquatable<CompilerOperatorDesc
 
     public bool Equals(CompilerOperatorDescriptor? other)
     {
-        return other is not null
+        var result = other is not null
             && string.Equals(Name, other.Name, StringComparison.Ordinal)
             && string.Equals(Domain, other.Domain, StringComparison.Ordinal)
             && Capability == other.Capability
             && CompilerStructural.SequenceEqual(Constraints, other.Constraints);
+        return result;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CompilerOperatorDescriptor);
@@ -203,11 +207,12 @@ public abstract class CompilerComputationStep : IEquatable<CompilerComputationSt
 
     public bool Equals(CompilerComputationStep? other)
     {
-        return other is not null
+        var result = other is not null
             && GetType() == other.GetType()
             && string.Equals(Name, other.Name, StringComparison.Ordinal)
             && EqualityComparer<CompilerSourceSpan?>.Default.Equals(Span, other.Span)
             && EqualsCore(other);
+        return result;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CompilerComputationStep);
@@ -249,10 +254,11 @@ public sealed class CompilerOperation : CompilerComputationStep
     protected override bool EqualsCore(CompilerComputationStep other)
     {
         var operation = (CompilerOperation)other;
-        return EqualityComparer<CompilerOperatorDescriptor>.Default.Equals(Descriptor, operation.Descriptor)
+        var result = EqualityComparer<CompilerOperatorDescriptor>.Default.Equals(Descriptor, operation.Descriptor)
             && CompilerStructural.SequenceEqual(Inputs, operation.Inputs)
             && CompilerStructural.SequenceEqual(Outputs, operation.Outputs)
             && CompilerStructural.SequenceEqual(Attributes, operation.Attributes);
+        return result;
     }
 
     protected override int GetHashCodeCore()
@@ -307,9 +313,10 @@ public sealed class CompilerModuleCall : CompilerComputationStep
     protected override bool EqualsCore(CompilerComputationStep other)
     {
         var call = (CompilerModuleCall)other;
-        return string.Equals(TargetBlock, call.TargetBlock, StringComparison.Ordinal)
+        var result = string.Equals(TargetBlock, call.TargetBlock, StringComparison.Ordinal)
             && CompilerStructural.SequenceEqual(Inputs, call.Inputs)
             && CompilerStructural.SequenceEqual(Outputs, call.Outputs);
+        return result;
     }
 
     protected override int GetHashCodeCore()
@@ -359,12 +366,13 @@ public sealed class CompilerComputationBlock : IEquatable<CompilerComputationBlo
 
     public bool Equals(CompilerComputationBlock? other)
     {
-        return other is not null
+        var result = other is not null
             && string.Equals(Name, other.Name, StringComparison.Ordinal)
             && CompilerStructural.SequenceEqual(Inputs, other.Inputs)
             && CompilerStructural.SequenceEqual(Outputs, other.Outputs)
             && EqualityComparer<CompilerBlockStatement>.Default.Equals(Body, other.Body)
             && EqualityComparer<CompilerSourceSpan?>.Default.Equals(Span, other.Span);
+        return result;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CompilerComputationBlock);
@@ -463,7 +471,7 @@ public sealed class CompilerComputationTree : ICompilerTree, IEquatable<Compiler
 
     public bool Equals(CompilerComputationTree? other)
     {
-        return other is not null
+        var result = other is not null
             && string.Equals(Name, other.Name, StringComparison.Ordinal)
             && CompilerStructural.SequenceEqual(Inputs, other.Inputs)
             && CompilerStructural.SequenceEqual(Outputs, other.Outputs)
@@ -479,6 +487,7 @@ public sealed class CompilerComputationTree : ICompilerTree, IEquatable<Compiler
             && EqualityComparer<CompilerModelEnvelope?>.Default.Equals(ModelEnvelope, other.ModelEnvelope)
             && CompilerStructural.SequenceEqual(QuantizationAnnotations, other.QuantizationAnnotations)
             && string.Equals(Document, other.Document, StringComparison.Ordinal);
+        return result;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CompilerComputationTree);

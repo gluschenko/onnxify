@@ -11,7 +11,7 @@ using RoslynLanguageVersion = Microsoft.CodeAnalysis.CSharp.LanguageVersion;
 
 namespace Onnxify.Compiler;
 
-/// <summary>Compiler session for C# TorchSharp sources.</summary>
+/// <summary>Сеанс импорта и генерации C# TorchSharp через общее compiler IR.</summary>
 public sealed class CSharpCompilerSession : ICompilerSession
 {
     public CompilerResult<ICompilerTree> CreateTree(ICompilerSource source)
@@ -22,17 +22,20 @@ public sealed class CSharpCompilerSession : ICompilerSession
             return CompilerResult<ICompilerTree>.Failure(
             [
                 new CompilerDiagnostic(
-                    CompilerDiagnosticCodes.Unsupported,
-                    $"The C# compiler session cannot import source kind '{source.Kind}'.",
-                    CompilerDiagnosticStage.Parse,
-                    CompilerDiagnosticSeverity.Error),
+                    code: CompilerDiagnosticCodes.Unsupported,
+                    message: $"The C# compiler session cannot import source kind '{source.Kind}'.",
+                    stage: CompilerDiagnosticStage.Parse,
+                    severity: CompilerDiagnosticSeverity.Error),
             ]);
         }
 
-        var result = CSharpCompilerFrontend.Import(csharpSource);
-        return result.IsSuccess
-            ? CompilerResult<ICompilerTree>.Success(result.Value!, result.Diagnostics)
-            : CompilerResult<ICompilerTree>.Failure(result.Diagnostics);
+        var importResult = CSharpCompilerFrontend.Import(csharpSource);
+        var treeResult = CompilerResultMapper.Map(
+            source: importResult,
+            projection: static computationTree => (ICompilerTree)computationTree,
+            missingValueStage: CompilerDiagnosticStage.Analyze,
+            missingValueMessage: "The C# frontend reported success without producing a computation tree.");
+        return treeResult;
     }
 
     public CompilerResult<TOutput> Generate<TOutput>(
@@ -50,32 +53,39 @@ public sealed class CSharpCompilerSession : ICompilerSession
                 return CompilerResult<TOutput>.Failure(
                 [
                     new CompilerDiagnostic(
-                        CompilerDiagnosticCodes.InvalidSource,
-                        "The C# backend requires a CompilerComputationTree.",
-                        CompilerDiagnosticStage.Emit,
-                        CompilerDiagnosticSeverity.Error),
+                        code: CompilerDiagnosticCodes.InvalidSource,
+                        message: "The C# backend requires a CompilerComputationTree.",
+                        stage: CompilerDiagnosticStage.Emit,
+                        severity: CompilerDiagnosticSeverity.Error),
                 ]);
             }
 
-            var result = CSharpCompilerBackend.Generate(computationTree);
-            return result.IsSuccess
-                ? CompilerResult<TOutput>.Success((TOutput)(object)result.Value!, result.Diagnostics)
-                : CompilerResult<TOutput>.Failure(result.Diagnostics);
+            var generated = CSharpCompilerBackend.Generate(computationTree);
+            var resultSource = CompilerResultMapper.Map(
+                source: generated,
+                projection: static generatedSource => (TOutput)(object)generatedSource,
+                missingValueStage: CompilerDiagnosticStage.Emit,
+                missingValueMessage: "The C# backend reported success without producing source text.");
+            return resultSource;
         }
 
         return CompilerResult<TOutput>.Failure(
         [
             new CompilerDiagnostic(
-                CompilerDiagnosticCodes.Unsupported,
-                $"The C# compiler session cannot emit target '{sink.Kind}'.",
-                CompilerDiagnosticStage.Emit,
-                CompilerDiagnosticSeverity.Error),
+                code: CompilerDiagnosticCodes.Unsupported,
+                message: $"The C# compiler session cannot emit target '{sink.Kind}'.",
+                stage: CompilerDiagnosticStage.Emit,
+                severity: CompilerDiagnosticSeverity.Error),
         ]);
     }
 }
 
 internal static class CSharpCompilerFrontend
 {
+    /// <summary>
+    /// Разбирает заданный исходник или декомпилирует указанный метод и преобразует его в IR.
+    /// Ошибки анализа возвращаются как diagnostics, чтобы вызывающая сторона не зависела от Roslyn и ILSpy exceptions.
+    /// </summary>
     public static CompilerResult<CompilerComputationTree> Import(CSharpTorchSharpSource source)
     {
         try
@@ -92,12 +102,12 @@ internal static class CSharpCompilerFrontend
             return CompilerResult<CompilerComputationTree>.Failure(
             [
                 new CompilerDiagnostic(
-                    exception.Code,
-                    exception.Message,
-                    exception.Stage,
-                    CompilerDiagnosticSeverity.Error,
-                    exception.Span,
-                    exception.Context),
+                    code: exception.Code,
+                    message: exception.Message,
+                    stage: exception.Stage,
+                    severity: CompilerDiagnosticSeverity.Error,
+                    span: exception.Span,
+                    context: exception.Context),
             ]);
         }
         catch (Exception exception)
@@ -105,14 +115,18 @@ internal static class CSharpCompilerFrontend
             return CompilerResult<CompilerComputationTree>.Failure(
             [
                 new CompilerDiagnostic(
-                    CompilerDiagnosticCodes.InvalidSource,
-                    $"The C# source could not be imported: {exception.Message}",
-                    CompilerDiagnosticStage.Parse,
-                    CompilerDiagnosticSeverity.Error),
+                    code: CompilerDiagnosticCodes.InvalidSource,
+                    message: $"The C# source could not be imported: {exception.Message}",
+                    stage: CompilerDiagnosticStage.Parse,
+                    severity: CompilerDiagnosticSeverity.Error),
             ]);
         }
     }
 
+    /// <summary>
+    /// Декомпилирует только выбранный metadata token и передаёт его текст тому же scanner, что используется для source text.
+    /// Это сохраняет единый путь анализа и не позволяет decompiler AST проникнуть в публичные compiler contracts.
+    /// </summary>
     private static CompilerResult<CompilerComputationTree> ImportCompiledModule(
         CompilerTorchSharpModuleDescriptor descriptor
     )
@@ -120,10 +134,10 @@ internal static class CSharpCompilerFrontend
         if (!File.Exists(descriptor.AssemblyPath))
         {
             throw new CSharpCompilerDiagnosticException(
-                CompilerDiagnosticCodes.InvalidSource,
-                $"Assembly '{descriptor.AssemblyPath}' does not exist.",
-                CompilerDiagnosticStage.Parse,
-                Span(descriptor.Document, 0, 0));
+                code: CompilerDiagnosticCodes.InvalidSource,
+                message: $"Assembly '{descriptor.AssemblyPath}' does not exist.",
+                stage: CompilerDiagnosticStage.Parse,
+                span: Span(descriptor.Document, 0, 0));
         }
 
         var assembly = Assembly.LoadFrom(descriptor.AssemblyPath);
@@ -131,10 +145,10 @@ internal static class CSharpCompilerFrontend
         if (moduleType is null)
         {
             throw new CSharpCompilerDiagnosticException(
-                CompilerDiagnosticCodes.InvalidSource,
-                $"Type '{descriptor.TypeName}' was not found in '{descriptor.AssemblyPath}'.",
-                CompilerDiagnosticStage.Parse,
-                Span(descriptor.Document, 0, 0));
+                code: CompilerDiagnosticCodes.InvalidSource,
+                message: $"Type '{descriptor.TypeName}' was not found in '{descriptor.AssemblyPath}'.",
+                stage: CompilerDiagnosticStage.Parse,
+                span: Span(descriptor.Document, 0, 0));
         }
 
         var method = FindMethod(moduleType, descriptor);
@@ -153,10 +167,10 @@ internal static class CSharpCompilerFrontend
         if (decompiledMethod is null)
         {
             throw new CSharpCompilerDiagnosticException(
-                CompilerDiagnosticCodes.InvalidSource,
-                $"Method '{descriptor.MethodName}' could not be decompiled.",
-                CompilerDiagnosticStage.Parse,
-                Span(descriptor.Document, 0, 0));
+                code: CompilerDiagnosticCodes.InvalidSource,
+                message: $"Method '{descriptor.MethodName}' could not be decompiled.",
+                stage: CompilerDiagnosticStage.Parse,
+                span: Span(descriptor.Document, 0, 0));
         }
 
         // The decompiler is intentionally limited to the requested token. Parsing its textual
@@ -190,10 +204,10 @@ internal static class CSharpCompilerFrontend
             .OrderBy(x => x.MetadataToken)
             .FirstOrDefault()
             ?? throw new CSharpCompilerDiagnosticException(
-                CompilerDiagnosticCodes.InvalidSource,
-                $"Method '{descriptor.MethodName}' was not found on '{moduleType.FullName}'.",
-                CompilerDiagnosticStage.Parse,
-                Span(descriptor.Document, 0, 0));
+                code: CompilerDiagnosticCodes.InvalidSource,
+                message: $"Method '{descriptor.MethodName}' was not found on '{moduleType.FullName}'.",
+                stage: CompilerDiagnosticStage.Parse,
+                span: Span(descriptor.Document, 0, 0));
     }
 
     private static CompilerResult<CompilerComputationTree> ImportSourceText(
@@ -227,18 +241,19 @@ internal static class CSharpCompilerFrontend
         if (parseError is not null)
         {
             throw new CSharpCompilerDiagnosticException(
-                CompilerDiagnosticCodes.InvalidSource,
-                parseError.GetMessage(),
-                CompilerDiagnosticStage.Parse,
-                Span(document, parseError.Location));
+                code: CompilerDiagnosticCodes.InvalidSource,
+                message: parseError.GetMessage(),
+                stage: CompilerDiagnosticStage.Parse,
+                span: Span(document, parseError.Location));
         }
 
         var scanner = new CSharpSyntaxScanner(document, context);
-        return scanner.Scan(
+        var result = scanner.Scan(
             method,
             root.DescendantNodes()
                 .OfType<MethodDeclarationSyntax>()
                 .Where(x => !ReferenceEquals(x, method)));
+        return result;
     }
 
     private static string WrapBody(string sourceText)
@@ -269,14 +284,14 @@ internal static class CSharpCompilerFrontend
     )
     {
         return new CompilerSourceSpan(
-            CompilerSourceSpanKind.CSharp,
-            document,
-            start,
-            length,
-            1,
-            1,
-            1,
-            Math.Max(1, length + 1));
+            kind: CompilerSourceSpanKind.CSharp,
+            document: document,
+            start: start,
+            length: length,
+            startLine: 1,
+            startColumn: 1,
+            endLine: 1,
+            endColumn: Math.Max(1, length + 1));
     }
 
     internal static CompilerSourceSpan Span(
@@ -291,14 +306,14 @@ internal static class CSharpCompilerFrontend
 
         var lineSpan = location.GetLineSpan();
         return new CompilerSourceSpan(
-            CompilerSourceSpanKind.CSharp,
-            string.IsNullOrWhiteSpace(lineSpan.Path) ? document : lineSpan.Path,
-            location.SourceSpan.Start,
-            location.SourceSpan.Length,
-            lineSpan.StartLinePosition.Line + 1,
-            lineSpan.StartLinePosition.Character + 1,
-            lineSpan.EndLinePosition.Line + 1,
-            lineSpan.EndLinePosition.Character + 1);
+            kind: CompilerSourceSpanKind.CSharp,
+            document: string.IsNullOrWhiteSpace(lineSpan.Path) ? document : lineSpan.Path,
+            start: location.SourceSpan.Start,
+            length: location.SourceSpan.Length,
+            startLine: lineSpan.StartLinePosition.Line + 1,
+            startColumn: lineSpan.StartLinePosition.Character + 1,
+            endLine: lineSpan.EndLinePosition.Line + 1,
+            endColumn: lineSpan.EndLinePosition.Character + 1);
     }
 
     internal sealed class CompilationContext
@@ -335,6 +350,10 @@ internal sealed class CSharpSyntaxScanner
         _context = context;
     }
 
+    /// <summary>
+    /// Сканирует выбранный method body и переносит контракты, state и helper методы в compiler IR.
+    /// Decompiler и Roslyn остаются внутри frontend boundary; наружу выходит только immutable tree.
+    /// </summary>
     public CompilerResult<CompilerComputationTree> Scan(
         MethodDeclarationSyntax method,
         IEnumerable<MethodDeclarationSyntax>? helperMethods = null
@@ -343,76 +362,118 @@ internal sealed class CSharpSyntaxScanner
         var descriptor = _context?.Descriptor;
         var inputs = GetInputs(method, descriptor);
         var outputs = GetOutputs(method, descriptor);
-        var builder = new CompilerComputationTreeBuilder(
-            descriptor?.TypeName ?? method.Identifier.ValueText);
-        builder.SetDocument(_document);
-
-        foreach (var input in inputs)
-        {
-            builder.AddInput(
-                new CompilerValue(
-                    input.Name,
-                    input.Type,
-                    input.NameNode is null ? null : Span(input.NameNode)));
-        }
-
-        foreach (var output in outputs)
-        {
-            builder.AddOutput(new CompilerValue(output.Name, output.Type));
-        }
-
-        if (descriptor is not null)
-        {
-            foreach (var member in descriptor.StateMembers)
-            {
-                builder.AddStateMember(
-                    new CompilerStateMember(
-                        member.Name,
-                        member.Kind,
-                        member.Type,
-                        member.Value));
-                builder.AddMetadata($"state:{member.Name}", member.CSharpTypeName);
-            }
-
-            foreach (var child in descriptor.ChildModules)
-            {
-                builder.AddMetadata($"child:{child.Name}", child.TypeName);
-            }
-
-            foreach (var helper in descriptor.HelperMethods)
-            {
-                builder.AddMetadata($"helper:{helper.Name}", "true");
-            }
-        }
+        var builder = CreateBuilder(method, descriptor);
+        RegisterValueContracts(builder, inputs, outputs);
+        RegisterStateMetadata(builder, descriptor);
 
         var body = ScanBody(method);
-        AddDeclaredValues(builder, body, inputs, outputs, descriptor);
-        foreach (var helper in helperMethods ?? Array.Empty<MethodDeclarationSyntax>())
-        {
-            var helperInputs = GetInputs(helper, null);
-            var helperOutputs = GetOutputs(helper, null);
-            builder.AddBlock(
-                new CompilerComputationBlock(
-                    helper.Identifier.ValueText,
-                    helperInputs.Select(x => new CompilerValueReference(x.Name)),
-                    helperOutputs.Select(x => new CompilerValueReference(x.Name)),
-                    ScanBody(helper),
-                    Span(helper)));
-        }
+        AddDeclaredValues(
+            builder: builder,
+            body: body,
+            inputs: inputs,
+            outputs: outputs,
+            descriptor: descriptor);
+        AddHelperBlocks(builder, helperMethods);
 
         builder.SetSyntaxBody(body);
 
         try
         {
-            return CompilerResult<CompilerComputationTree>.Success(builder.Build());
+            var tree = builder.Build();
+            var result = CompilerResult<CompilerComputationTree>.Success(tree);
+            return result;
         }
         catch (ArgumentException exception)
         {
             throw new CSharpCompilerDiagnosticException(
-                CompilerDiagnosticCodes.DuplicateName,
-                exception.Message,
-                CompilerDiagnosticStage.Analyze,
-                Span(method));
+                code: CompilerDiagnosticCodes.DuplicateName,
+                message: exception.Message,
+                stage: CompilerDiagnosticStage.Analyze,
+                span: Span(method));
+        }
+    }
+
+    private CompilerComputationTreeBuilder CreateBuilder(
+        MethodDeclarationSyntax method,
+        CompilerTorchSharpModuleDescriptor? descriptor
+    )
+    {
+        var name = descriptor?.TypeName ?? method.Identifier.ValueText;
+        var builder = new CompilerComputationTreeBuilder(name);
+        builder.SetDocument(_document);
+        return builder;
+    }
+
+    private void RegisterValueContracts(
+        CompilerComputationTreeBuilder builder,
+        IReadOnlyList<ScanValue> inputs,
+        IReadOnlyList<ScanValue> outputs
+    )
+    {
+        foreach (var input in inputs)
+        {
+            var inputValue = new CompilerValue(
+                input.Name,
+                input.Type,
+                input.NameNode is null ? null : Span(input.NameNode));
+            builder.AddInput(inputValue);
+        }
+
+        foreach (var output in outputs)
+        {
+            var outputValue = new CompilerValue(output.Name, output.Type);
+            builder.AddOutput(outputValue);
+        }
+    }
+
+    private static void RegisterStateMetadata(
+        CompilerComputationTreeBuilder builder,
+        CompilerTorchSharpModuleDescriptor? descriptor
+    )
+    {
+        if (descriptor is null)
+        {
+            return;
+        }
+
+        foreach (var member in descriptor.StateMembers)
+        {
+            var stateMember = new CompilerStateMember(
+                name: member.Name,
+                kind: member.Kind,
+                type: member.Type,
+                value: member.Value);
+            builder.AddStateMember(stateMember);
+            builder.AddMetadata($"state:{member.Name}", member.CSharpTypeName);
+        }
+
+        foreach (var child in descriptor.ChildModules)
+        {
+            builder.AddMetadata($"child:{child.Name}", child.TypeName);
+        }
+
+        foreach (var helper in descriptor.HelperMethods)
+        {
+            builder.AddMetadata($"helper:{helper.Name}", "true");
+        }
+    }
+
+    private void AddHelperBlocks(
+        CompilerComputationTreeBuilder builder,
+        IEnumerable<MethodDeclarationSyntax>? helperMethods
+    )
+    {
+        foreach (var helper in helperMethods ?? Array.Empty<MethodDeclarationSyntax>())
+        {
+            var helperInputs = GetInputs(helper, descriptor: null);
+            var helperOutputs = GetOutputs(helper, descriptor: null);
+            var block = new CompilerComputationBlock(
+                name: helper.Identifier.ValueText,
+                inputs: helperInputs.Select(x => new CompilerValueReference(x.Name)),
+                outputs: helperOutputs.Select(x => new CompilerValueReference(x.Name)),
+                body: ScanBody(helper),
+                span: Span(helper));
+            builder.AddBlock(block);
         }
     }
 
@@ -422,7 +483,7 @@ internal sealed class CSharpSyntaxScanner
     )
     {
         var contracts = descriptor?.Inputs ?? Array.Empty<CompilerTorchSharpValueDescriptor>();
-        return method.ParameterList.Parameters
+        var result = method.ParameterList.Parameters
             .Select(
                 (parameter, index) =>
                 {
@@ -434,6 +495,7 @@ internal sealed class CSharpSyntaxScanner
                         contract?.CSharpTypeName ?? parameter.Type?.ToString());
                 })
             .ToArray();
+        return result;
     }
 
     private IReadOnlyList<ScanValue> GetOutputs(
@@ -484,6 +546,10 @@ internal sealed class CSharpSyntaxScanner
         throw Unsupported(method, "A method must have a body or expression body.");
     }
 
+    /// <summary>
+    /// Преобразует C# statement наиболее конкретным syntax-путём и сразу отклоняет динамические конструкции.
+    /// Такое dispatch сохраняет порядок statements и не маскирует неподдерживаемый код как opaque node.
+    /// </summary>
     private CompilerStatement ScanStatement(StatementSyntax statement)
     {
         switch (statement)
@@ -499,10 +565,10 @@ internal sealed class CSharpSyntaxScanner
                 Expression: AssignmentExpressionSyntax assignment,
             } expressionStatement:
                 return new CompilerAssignmentStatement(
-                    ScanExpression(assignment.Left),
-                    ScanExpression(assignment.Right),
-                    Span(expressionStatement),
-                    assignment.OperatorToken.ValueText);
+                    target: ScanExpression(assignment.Left),
+                    value: ScanExpression(assignment.Right),
+                    span: Span(expressionStatement),
+                    @operator: assignment.OperatorToken.ValueText);
 
             case ExpressionStatementSyntax expressionStatement:
                 return new CompilerExpressionStatement(
@@ -523,17 +589,17 @@ internal sealed class CSharpSyntaxScanner
                 }
 
                 return new CompilerStaticIfStatement(
-                    ScanExpression(ifStatement.Condition),
-                    ScanStatement(ifStatement.Statement),
-                    ifStatement.Else is null ? null : ScanStatement(ifStatement.Else.Statement),
-                    Span(ifStatement));
+                    condition: ScanExpression(ifStatement.Condition),
+                    whenTrue: ScanStatement(ifStatement.Statement),
+                    whenFalse: ifStatement.Else is null ? null : ScanStatement(ifStatement.Else.Statement),
+                    span: Span(ifStatement));
 
             case ForEachStatementSyntax foreachStatement:
                 return new CompilerStaticForeachStatement(
-                    foreachStatement.Identifier.ValueText,
-                    ScanExpression(foreachStatement.Expression),
-                    ScanStatement(foreachStatement.Statement),
-                    Span(foreachStatement));
+                    variableName: foreachStatement.Identifier.ValueText,
+                    collection: ScanExpression(foreachStatement.Expression),
+                    body: ScanStatement(foreachStatement.Statement),
+                    span: Span(foreachStatement));
 
             case UsingStatementSyntax usingStatement:
                 return ScanUsingStatement(usingStatement);
@@ -640,11 +706,16 @@ internal sealed class CSharpSyntaxScanner
                     Span(variable)));
         }
 
-        return statements.Count == 1
+        var result = statements.Count == 1
             ? statements[0]
             : new CompilerBlockStatement(statements, Span(source));
+        return result;
     }
 
+    /// <summary>
+    /// Преобразует поддержанные C# expressions в compiler-owned syntax IR с исходными spans.
+    /// Нераспознанные формы завершаются диагностикой на этапе Analyze, а не теряются при генерации.
+    /// </summary>
     private CompilerExpression ScanExpression(ExpressionSyntax expression)
     {
         switch (expression)
@@ -705,10 +776,10 @@ internal sealed class CSharpSyntaxScanner
 
             case BinaryExpressionSyntax binary:
                 return new CompilerBinaryExpression(
-                    ScanExpression(binary.Left),
-                    binary.OperatorToken.ValueText,
-                    ScanExpression(binary.Right),
-                    Span(binary));
+                    left: ScanExpression(binary.Left),
+                    @operator: binary.OperatorToken.ValueText,
+                    right: ScanExpression(binary.Right),
+                    span: Span(binary));
 
             case PrefixUnaryExpressionSyntax prefix:
                 return new CompilerUnaryExpression(
@@ -728,7 +799,8 @@ internal sealed class CSharpSyntaxScanner
                     throw Unsupported(conditional, "Only statically resolvable conditional expressions are supported.");
                 }
 
-                return ScanExpression(condition ? conditional.WhenTrue : conditional.WhenFalse);
+                var result = ScanExpression(condition ? conditional.WhenTrue : conditional.WhenFalse);
+                return result;
 
             default:
                 throw Unsupported(
@@ -747,9 +819,10 @@ internal sealed class CSharpSyntaxScanner
             throw Unsupported(source, "An array initializer is required.");
         }
 
-        return new CompilerArrayExpression(
+        var result = new CompilerArrayExpression(
             initializer.Expressions.Select(ScanExpression),
             Span(source));
+        return result;
     }
 
     private static CompilerLiteral ScanLiteral(LiteralExpressionSyntax literal)
@@ -903,13 +976,13 @@ internal sealed class CSharpSyntaxScanner
     private CSharpCompilerDiagnosticException Unsupported(SyntaxNode node, string message)
     {
         return new CSharpCompilerDiagnosticException(
-            CompilerDiagnosticCodes.Unsupported,
-            message,
-            CompilerDiagnosticStage.Analyze,
-            Span(node),
-            new CompilerDiagnosticContext(
-                _context?.Descriptor.MethodName ?? "forward",
-                node.Kind().ToString()));
+            code: CompilerDiagnosticCodes.Unsupported,
+            message: message,
+            stage: CompilerDiagnosticStage.Analyze,
+            span: Span(node),
+            context: new CompilerDiagnosticContext(
+                caller: _context?.Descriptor.MethodName ?? "forward",
+                callee: node.Kind().ToString()));
     }
 
     private static CompilerType InferType(string? csharpTypeName)
@@ -934,7 +1007,7 @@ internal sealed class CSharpSyntaxScanner
             "float" => new CompilerScalarType(CompilerElementType.Float32),
             "double" => new CompilerScalarType(CompilerElementType.Float64),
             "string" => new CompilerScalarType(CompilerElementType.String),
-            _ => new CompilerOpaqueType("CSharp", csharpTypeName!),
+            _ => new CompilerOpaqueType("CSharp", csharpTypeName ?? string.Empty),
         };
     }
 
@@ -989,6 +1062,10 @@ internal sealed class CSharpCompilerDiagnosticException : Exception
 
 internal static class CSharpCompilerBackend
 {
+    /// <summary>
+    /// Генерирует исходный TorchSharp-класс из syntax IR и возвращает diagnostics для конструкций без C# mapping.
+    /// Проверка до печати не даёт случайно представить ONNX operations как исполняемый C# код.
+    /// </summary>
     public static CompilerResult<string> Generate(
         CompilerComputationTree tree,
         CompilerCSharpGenerationOptions? options = null
@@ -1003,10 +1080,10 @@ internal static class CSharpCompilerBackend
                 return CompilerResult<string>.Failure(
                 [
                     new CompilerDiagnostic(
-                        CompilerDiagnosticCodes.Unsupported,
-                        "ONNX operations do not have C# TorchSharp mappings in OXY-023; operator mappings are implemented by OXY-024.",
-                        CompilerDiagnosticStage.Emit,
-                        CompilerDiagnosticSeverity.Error),
+                        code: CompilerDiagnosticCodes.Unsupported,
+                        message: "ONNX operations do not have C# TorchSharp mappings in OXY-023; operator mappings are implemented by OXY-024.",
+                        stage: CompilerDiagnosticStage.Emit,
+                        severity: CompilerDiagnosticSeverity.Error),
                 ]);
             }
 
@@ -1015,27 +1092,29 @@ internal static class CSharpCompilerBackend
                 return CompilerResult<string>.Failure(
                 [
                     new CompilerDiagnostic(
-                        CompilerDiagnosticCodes.Unsupported,
-                        "The compiler tree has no C# syntax body to emit.",
-                        CompilerDiagnosticStage.Emit,
-                        CompilerDiagnosticSeverity.Error),
+                        code: CompilerDiagnosticCodes.Unsupported,
+                        message: "The compiler tree has no C# syntax body to emit.",
+                        stage: CompilerDiagnosticStage.Emit,
+                        severity: CompilerDiagnosticSeverity.Error),
                 ]);
             }
 
             var printer = new CSharpSourcePrinter(tree, options);
-            return CompilerResult<string>.Success(printer.Print());
+            var source = printer.Print();
+            var result = CompilerResult<string>.Success(source);
+            return result;
         }
         catch (CSharpCompilerDiagnosticException exception)
         {
             return CompilerResult<string>.Failure(
             [
                 new CompilerDiagnostic(
-                    exception.Code,
-                    exception.Message,
-                    exception.Stage,
-                    CompilerDiagnosticSeverity.Error,
-                    exception.Span,
-                    exception.Context),
+                    code: exception.Code,
+                    message: exception.Message,
+                    stage: exception.Stage,
+                    severity: CompilerDiagnosticSeverity.Error,
+                    span: exception.Span,
+                    context: exception.Context),
             ]);
         }
     }
@@ -1047,15 +1126,18 @@ internal static class CSharpCompilerBackend
             || string.IsNullOrWhiteSpace(options.ModuleName))
         {
             throw new CSharpCompilerDiagnosticException(
-                CompilerDiagnosticCodes.InvalidSource,
-                "C# generation options require namespace, class name, and module name.",
-                CompilerDiagnosticStage.Emit);
+                code: CompilerDiagnosticCodes.InvalidSource,
+                message: "C# generation options require namespace, class name, and module name.",
+                stage: CompilerDiagnosticStage.Emit);
         }
     }
 }
 
 internal sealed class CSharpSourcePrinter
 {
+    private const string TORCH_TENSOR_TYPE = "global::TorchSharp.torch.Tensor";
+    private const string TORCH_MODULE_TYPE = "global::TorchSharp.torch.nn.Module";
+
     private readonly CompilerComputationTree _tree;
     private readonly CompilerCSharpGenerationOptions _options;
     private readonly StringBuilder _builder = new();
@@ -1070,7 +1152,21 @@ internal sealed class CSharpSourcePrinter
         _options = options;
     }
 
+    /// <summary>
+    /// Собирает C# модуль из compiler-owned IR, сохраняя порядок блоков и инструкций.
+    /// Печать разделена по структуре класса, чтобы каждую часть генерации можно было менять независимо.
+    /// </summary>
     public string Print()
+    {
+        PrintFileHeader();
+        PrintModuleMembers();
+        PrintForwardMethod();
+
+        var result = _builder.ToString();
+        return result;
+    }
+
+    private void PrintFileHeader()
     {
         if (_options.IncludeNullableContext)
         {
@@ -1091,18 +1187,21 @@ internal sealed class CSharpSourcePrinter
         _indent++;
         Line("}");
         _indent--;
+    }
 
+    private void PrintModuleMembers()
+    {
         foreach (var member in _tree.Parameters.Concat(_tree.Buffers).Concat(_tree.Initializers))
         {
             var memberType = TypeName(member.Type);
-            var memberValue = member.Value is null ? "null!" : Literal(member.Value);
+            var memberValue = member.Value is null ? "default" : Literal(member.Value);
             Line($"private {memberType} {member.Name} = {memberValue};");
         }
 
         foreach (var child in _tree.Metadata.Where(x => x.Key.StartsWith("child:", StringComparison.Ordinal)))
         {
             var childName = child.Key.Substring("child:".Length);
-            Line($"private global::TorchSharp.torch.nn.Module<global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor> {childName} = null!;");
+            Line($"private {TORCH_MODULE_TYPE}<{TORCH_TENSOR_TYPE}, {TORCH_TENSOR_TYPE}> {childName} = default;");
         }
 
         foreach (var block in _tree.Blocks)
@@ -1110,7 +1209,10 @@ internal sealed class CSharpSourcePrinter
             Line();
             PrintBlock(block);
         }
+    }
 
+    private void PrintForwardMethod()
+    {
         Line();
         Line($"public override {OutputType()} forward({InputParameters()})");
         Line("{");
@@ -1119,38 +1221,36 @@ internal sealed class CSharpSourcePrinter
         if (_tree.SyntaxBody is not null)
         {
             PrintStatement(_tree.SyntaxBody);
-            hasReturn = ContainsReturn(_tree.SyntaxBody);
+            hasReturn = AlwaysReturns(_tree.SyntaxBody);
         }
 
         if (_tree.Operations.Count != 0)
         {
-            PrintOperations();
-            hasReturn = true;
+            hasReturn = PrintOperations() || hasReturn;
         }
 
         if (!hasReturn)
         {
-            Line("return default!;");
+            Line("return default;");
         }
 
         _indent--;
         Line("}");
         _indent--;
         Line("}");
-        return _builder.ToString();
     }
 
-    private void PrintOperations()
+    private bool PrintOperations()
     {
         foreach (var operation in _tree.Operations)
         {
             if (operation is not CompilerModuleCall call)
             {
                 throw new CSharpCompilerDiagnosticException(
-                    CompilerDiagnosticCodes.Unsupported,
-                    $"Operation '{operation.Name}' cannot be emitted as C# TorchSharp code.",
-                    CompilerDiagnosticStage.Emit,
-                    operation.Span);
+                    code: CompilerDiagnosticCodes.Unsupported,
+                    message: $"Operation '{operation.Name}' cannot be emitted as C# TorchSharp code.",
+                    stage: CompilerDiagnosticStage.Emit,
+                    span: operation.Span);
             }
 
             var inputs = string.Join(", ", call.Inputs.Where(x => !x.IsEmptyOptional).Select(x => x.Name));
@@ -1166,20 +1266,29 @@ internal sealed class CSharpSourcePrinter
         }
 
         var finalOutputs = _tree.Outputs.Select(x => x.Name).ToArray();
-        if (finalOutputs.Length != 0)
+        if (finalOutputs.Length == 0)
         {
-            Line($"return {(_tree.Outputs.Count == 1 ? finalOutputs[0] : $"({string.Join(", ", finalOutputs)})")};");
+            return false;
         }
+
+        var returnValue = finalOutputs.Length == 1
+            ? finalOutputs[0]
+            : $"({string.Join(", ", finalOutputs)})";
+        Line($"return {returnValue};");
+
+        return true;
     }
 
     private string ModuleBaseType()
     {
-        return $"global::TorchSharp.torch.nn.Module<{string.Join(", ", _tree.Inputs.Select(_ => "global::TorchSharp.torch.Tensor").Concat([OutputType()]))}>";
+        var result = $"{TORCH_MODULE_TYPE}<{string.Join(", ", _tree.Inputs.Select(_ => TORCH_TENSOR_TYPE).Concat([OutputType()]))}>";
+        return result;
     }
 
     private string InputParameters()
     {
-        return string.Join(", ", _tree.Inputs.Select(x => $"global::TorchSharp.torch.Tensor {x.Name}"));
+        var result = string.Join(", ", _tree.Inputs.Select(x => $"{TORCH_TENSOR_TYPE} {x.Name}"));
+        return result;
     }
 
     private string OutputType()
@@ -1189,14 +1298,15 @@ internal sealed class CSharpSourcePrinter
             return TypeName(_tree.Outputs[0].Type);
         }
 
-        return $"({string.Join(", ", _tree.Outputs.Select(x => $"{TypeName(x.Type)} {x.Name}"))})";
+        var result = $"({string.Join(", ", _tree.Outputs.Select(x => $"{TypeName(x.Type)} {x.Name}"))})";
+        return result;
     }
 
     private static string TypeName(CompilerType type)
     {
         return type switch
         {
-            CompilerTensorType => "global::TorchSharp.torch.Tensor",
+            CompilerTensorType => TORCH_TENSOR_TYPE,
             CompilerScalarType scalar => scalar.ElementType switch
             {
                 CompilerElementType.Boolean => "bool",
@@ -1220,24 +1330,20 @@ internal sealed class CSharpSourcePrinter
 
     private void PrintBlock(CompilerComputationBlock block)
     {
-        var inputType = block.Inputs.Count == 1
-            ? "global::TorchSharp.torch.Tensor"
-            : $"({string.Join(", ", block.Inputs.Select(_ => "global::TorchSharp.torch.Tensor"))})";
         var outputType = block.Outputs.Count == 1
-            ? "global::TorchSharp.torch.Tensor"
-            : $"({string.Join(", ", block.Outputs.Select(x => $"global::TorchSharp.torch.Tensor {x.Name}"))})";
-        Line($"private {outputType} {block.Name}({string.Join(", ", block.Inputs.Select(x => $"global::TorchSharp.torch.Tensor {x.Name}"))})");
+            ? TORCH_TENSOR_TYPE
+            : $"({string.Join(", ", block.Outputs.Select(x => $"{TORCH_TENSOR_TYPE} {x.Name}"))})";
+        Line($"private {outputType} {block.Name}({string.Join(", ", block.Inputs.Select(x => $"{TORCH_TENSOR_TYPE} {x.Name}"))})");
         Line("{");
         _indent++;
         PrintStatement(block.Body);
-        if (!ContainsReturn(block.Body))
+        if (!AlwaysReturns(block.Body))
         {
-            Line("return default!;");
+            Line("return default;");
         }
 
         _indent--;
         Line("}");
-        _ = inputType;
     }
 
     private void PrintStatement(CompilerStatement statement)
@@ -1291,10 +1397,10 @@ internal sealed class CSharpSourcePrinter
                 break;
             default:
                 throw new CSharpCompilerDiagnosticException(
-                    CompilerDiagnosticCodes.Unsupported,
-                    $"C# statement '{statement.GetType().Name}' cannot be emitted.",
-                    CompilerDiagnosticStage.Emit,
-                    statement.Span);
+                    code: CompilerDiagnosticCodes.Unsupported,
+                    message: $"C# statement '{statement.GetType().Name}' cannot be emitted.",
+                    stage: CompilerDiagnosticStage.Emit,
+                    span: statement.Span);
         }
     }
 
@@ -1312,10 +1418,10 @@ internal sealed class CSharpSourcePrinter
             CompilerBinaryExpression binary => $"({Expression(binary.Left)} {binary.Operator} {Expression(binary.Right)})",
             CompilerUnaryExpression unary => $"({unary.Operator}{Expression(unary.Expression)})",
             _ => throw new CSharpCompilerDiagnosticException(
-                CompilerDiagnosticCodes.Unsupported,
-                $"C# expression '{expression.GetType().Name}' cannot be emitted.",
-                CompilerDiagnosticStage.Emit,
-                expression.Span),
+                code: CompilerDiagnosticCodes.Unsupported,
+                message: $"C# expression '{expression.GetType().Name}' cannot be emitted.",
+                stage: CompilerDiagnosticStage.Emit,
+                span: expression.Span),
         };
     }
 
@@ -1330,22 +1436,22 @@ internal sealed class CSharpSourcePrinter
             CompilerFloatingPointLiteral floating => floating.Value.ToString("R", CultureInfo.InvariantCulture) + "d",
             CompilerStringLiteral text => $"\"{Escape(text.Value)}\"",
             _ => throw new CSharpCompilerDiagnosticException(
-                CompilerDiagnosticCodes.Unsupported,
-                $"Literal '{literal.GetType().Name}' cannot be emitted as C# syntax.",
-                CompilerDiagnosticStage.Emit,
-                null),
+                code: CompilerDiagnosticCodes.Unsupported,
+                message: $"Literal '{literal.GetType().Name}' cannot be emitted as C# syntax.",
+                stage: CompilerDiagnosticStage.Emit,
+                span: null),
         };
     }
 
-    private static bool ContainsReturn(CompilerStatement statement)
+    private static bool AlwaysReturns(CompilerStatement statement)
     {
         return statement switch
         {
             CompilerReturnStatement => true,
-            CompilerBlockStatement block => block.Statements.Any(ContainsReturn),
-            CompilerStaticIfStatement conditional => ContainsReturn(conditional.WhenTrue)
-                || (conditional.WhenFalse is not null && ContainsReturn(conditional.WhenFalse)),
-            CompilerStaticForeachStatement loop => ContainsReturn(loop.Body),
+            CompilerBlockStatement block => block.Statements.Any(AlwaysReturns),
+            CompilerStaticIfStatement conditional => AlwaysReturns(conditional.WhenTrue)
+                && conditional.WhenFalse is not null
+                && AlwaysReturns(conditional.WhenFalse),
             _ => false,
         };
     }

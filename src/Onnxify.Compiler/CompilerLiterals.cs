@@ -5,9 +5,10 @@ public abstract class CompilerLiteral : IEquatable<CompilerLiteral>
 {
     public bool Equals(CompilerLiteral? other)
     {
-        return other is not null
+        var result = other is not null
             && GetType() == other.GetType()
             && EqualsCore(other);
+        return result;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CompilerLiteral);
@@ -50,7 +51,8 @@ public sealed class CompilerBooleanLiteral : CompilerScalarLiteral
 
     protected override bool EqualsCore(CompilerLiteral other)
     {
-        return Value == ((CompilerBooleanLiteral)other).Value;
+        var result = Value == ((CompilerBooleanLiteral)other).Value;
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, ElementType, Value);
@@ -78,7 +80,8 @@ public sealed class CompilerSignedIntegerLiteral : CompilerScalarLiteral
     protected override bool EqualsCore(CompilerLiteral other)
     {
         var integer = (CompilerSignedIntegerLiteral)other;
-        return ElementType == integer.ElementType && Value == integer.Value;
+        var result = ElementType == integer.ElementType && Value == integer.Value;
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, ElementType, Value);
@@ -106,7 +109,8 @@ public sealed class CompilerUnsignedIntegerLiteral : CompilerScalarLiteral
     protected override bool EqualsCore(CompilerLiteral other)
     {
         var integer = (CompilerUnsignedIntegerLiteral)other;
-        return ElementType == integer.ElementType && Value == integer.Value;
+        var result = ElementType == integer.ElementType && Value == integer.Value;
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, ElementType, Value);
@@ -134,7 +138,8 @@ public sealed class CompilerFloatingPointLiteral : CompilerScalarLiteral
     protected override bool EqualsCore(CompilerLiteral other)
     {
         var floatingPoint = (CompilerFloatingPointLiteral)other;
-        return ElementType == floatingPoint.ElementType && Value.Equals(floatingPoint.Value);
+        var result = ElementType == floatingPoint.ElementType && Value.Equals(floatingPoint.Value);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, ElementType, Value);
@@ -161,9 +166,10 @@ public sealed class CompilerComplexLiteral : CompilerScalarLiteral
     protected override bool EqualsCore(CompilerLiteral other)
     {
         var complex = (CompilerComplexLiteral)other;
-        return ElementType == complex.ElementType
+        var result = ElementType == complex.ElementType
             && Real.Equals(complex.Real)
             && Imaginary.Equals(complex.Imaginary);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, ElementType, Real, Imaginary);
@@ -181,7 +187,8 @@ public sealed class CompilerStringLiteral : CompilerScalarLiteral
 
     protected override bool EqualsCore(CompilerLiteral other)
     {
-        return string.Equals(Value, ((CompilerStringLiteral)other).Value, StringComparison.Ordinal);
+        var result = string.Equals(Value, ((CompilerStringLiteral)other).Value, StringComparison.Ordinal);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, ElementType, Value);
@@ -219,7 +226,8 @@ public sealed class CompilerPackedScalarLiteral : CompilerScalarLiteral
     protected override bool EqualsCore(CompilerLiteral other)
     {
         var packed = (CompilerPackedScalarLiteral)other;
-        return ElementType == packed.ElementType && EncodedValue == packed.EncodedValue;
+        var result = ElementType == packed.ElementType && EncodedValue == packed.EncodedValue;
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, ElementType, EncodedValue);
@@ -266,11 +274,12 @@ public sealed class CompilerExternalTensorData : IEquatable<CompilerExternalTens
 
     public bool Equals(CompilerExternalTensorData? other)
     {
-        return other is not null
+        var result = other is not null
             && string.Equals(Location, other.Location, StringComparison.Ordinal)
             && Offset == other.Offset
             && Length == other.Length
             && string.Equals(Checksum, other.Checksum, StringComparison.Ordinal);
+        return result;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CompilerExternalTensorData);
@@ -313,10 +322,11 @@ public sealed class CompilerTensorLiteral : CompilerLiteral
     protected override bool EqualsCore(CompilerLiteral other)
     {
         var tensor = (CompilerTensorLiteral)other;
-        return ElementType == tensor.ElementType
+        var result = ElementType == tensor.ElementType
             && CompilerStructural.SequenceEqual(Dimensions, tensor.Dimensions)
             && CompilerStructural.SequenceEqual(Values, tensor.Values)
             && EqualityComparer<CompilerExternalTensorData?>.Default.Equals(ExternalData, tensor.ExternalData);
+        return result;
     }
 
     protected override int GetHashCodeCore()
@@ -349,8 +359,9 @@ public sealed class CompilerArrayLiteral : CompilerLiteral
     protected override bool EqualsCore(CompilerLiteral other)
     {
         var array = (CompilerArrayLiteral)other;
-        return CompilerStructural.SequenceEqual(Items, array.Items)
+        var result = CompilerStructural.SequenceEqual(Items, array.Items)
             && string.Equals(ItemType, array.ItemType, StringComparison.Ordinal);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(
@@ -370,7 +381,8 @@ public sealed class CompilerTupleLiteral : CompilerLiteral
 
     protected override bool EqualsCore(CompilerLiteral other)
     {
-        return CompilerStructural.SequenceEqual(Items, ((CompilerTupleLiteral)other).Items);
+        var result = CompilerStructural.SequenceEqual(Items, ((CompilerTupleLiteral)other).Items);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.GetHashCode(Items);
@@ -389,9 +401,10 @@ public sealed class CompilerGraphLiteral : CompilerLiteral
 
     protected override bool EqualsCore(CompilerLiteral other)
     {
-        return EqualityComparer<CompilerComputationTree>.Default.Equals(
+        var result = EqualityComparer<CompilerComputationTree>.Default.Equals(
             Graph,
             ((CompilerGraphLiteral)other).Graph);
+        return result;
     }
 
     protected override int GetHashCodeCore() => Graph.GetHashCode();
@@ -422,9 +435,10 @@ public sealed class CompilerSparseTensorLiteral : CompilerLiteral
     protected override bool EqualsCore(CompilerLiteral other)
     {
         var sparse = (CompilerSparseTensorLiteral)other;
-        return CompilerStructural.SequenceEqual(Dimensions, sparse.Dimensions)
+        var result = CompilerStructural.SequenceEqual(Dimensions, sparse.Dimensions)
             && EqualityComparer<CompilerTensorLiteral>.Default.Equals(Values, sparse.Values)
             && EqualityComparer<CompilerTensorLiteral>.Default.Equals(Indices, sparse.Indices);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(
@@ -447,7 +461,8 @@ public sealed class CompilerTypeLiteral : CompilerLiteral
 
     protected override bool EqualsCore(CompilerLiteral other)
     {
-        return EqualityComparer<CompilerType>.Default.Equals(Value, ((CompilerTypeLiteral)other).Value);
+        var result = EqualityComparer<CompilerType>.Default.Equals(Value, ((CompilerTypeLiteral)other).Value);
+        return result;
     }
 
     protected override int GetHashCodeCore() => Value.GetHashCode();
@@ -474,9 +489,10 @@ public sealed class CompilerAttribute : IEquatable<CompilerAttribute>
 
     public bool Equals(CompilerAttribute? other)
     {
-        return other is not null
+        var result = other is not null
             && string.Equals(Name, other.Name, StringComparison.Ordinal)
             && EqualityComparer<CompilerLiteral>.Default.Equals(Value, other.Value);
+        return result;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CompilerAttribute);

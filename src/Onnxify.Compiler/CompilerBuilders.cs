@@ -136,28 +136,30 @@ internal sealed class CompilerComputationTreeBuilder
 
     public CompilerComputationTree Build()
     {
-        return new CompilerComputationTree(
-            Name,
-            _inputs,
-            _outputs,
-            _intermediateValues,
-            _parameters,
-            _buffers,
-            _initializers,
-            _operations,
-            _blocks,
-            _syntaxBody,
-            _metadata,
-            _captures,
-            _modelEnvelope,
-            _quantizationAnnotations,
-            _document);
+        var result = new CompilerComputationTree(
+            name: Name,
+            inputs: _inputs,
+            outputs: _outputs,
+            intermediateValues: _intermediateValues,
+            parameters: _parameters,
+            buffers: _buffers,
+            initializers: _initializers,
+            operations: _operations,
+            blocks: _blocks,
+            syntaxBody: _syntaxBody,
+            metadata: _metadata,
+            captures: _captures,
+            modelEnvelope: _modelEnvelope,
+            quantizationAnnotations: _quantizationAnnotations,
+            document: _document);
+        return result;
     }
 
     private bool IsKnownReference(string name)
     {
-        return _inputs.Concat(_outputs).Concat(_intermediateValues).Concat(_captures).Any(x => string.Equals(x.Name, name, StringComparison.Ordinal))
+        var result = _inputs.Concat(_outputs).Concat(_intermediateValues).Concat(_captures).Any(x => string.Equals(x.Name, name, StringComparison.Ordinal))
             || _parameters.Concat(_buffers).Concat(_initializers).Any(x => string.Equals(x.Name, name, StringComparison.Ordinal));
+        return result;
     }
 
     private static void AddUniqueValue(List<CompilerValue> target, CompilerValue value, string kind)

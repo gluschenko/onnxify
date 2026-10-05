@@ -12,10 +12,11 @@ public abstract class CompilerExpression : IEquatable<CompilerExpression>
 
     public bool Equals(CompilerExpression? other)
     {
-        return other is not null
+        var result = other is not null
             && GetType() == other.GetType()
             && EqualityComparer<CompilerSourceSpan?>.Default.Equals(Span, other.Span)
             && EqualsCore(other);
+        return result;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CompilerExpression);
@@ -44,7 +45,8 @@ public sealed class CompilerReferenceExpression : CompilerExpression
 
     protected override bool EqualsCore(CompilerExpression other)
     {
-        return string.Equals(Name, ((CompilerReferenceExpression)other).Name, StringComparison.Ordinal);
+        var result = string.Equals(Name, ((CompilerReferenceExpression)other).Name, StringComparison.Ordinal);
+        return result;
     }
 
     protected override int GetHashCodeCore() => Name.GetHashCode();
@@ -63,7 +65,8 @@ public sealed class CompilerLiteralExpression : CompilerExpression
 
     protected override bool EqualsCore(CompilerExpression other)
     {
-        return EqualityComparer<CompilerLiteral>.Default.Equals(Literal, ((CompilerLiteralExpression)other).Literal);
+        var result = EqualityComparer<CompilerLiteral>.Default.Equals(Literal, ((CompilerLiteralExpression)other).Literal);
+        return result;
     }
 
     protected override int GetHashCodeCore() => Literal.GetHashCode();
@@ -81,7 +84,8 @@ public sealed class CompilerArrayExpression : CompilerExpression
 
     protected override bool EqualsCore(CompilerExpression other)
     {
-        return CompilerStructural.SequenceEqual(Items, ((CompilerArrayExpression)other).Items);
+        var result = CompilerStructural.SequenceEqual(Items, ((CompilerArrayExpression)other).Items);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.GetHashCode(Items);
@@ -99,7 +103,8 @@ public sealed class CompilerTupleExpression : CompilerExpression
 
     protected override bool EqualsCore(CompilerExpression other)
     {
-        return CompilerStructural.SequenceEqual(Items, ((CompilerTupleExpression)other).Items);
+        var result = CompilerStructural.SequenceEqual(Items, ((CompilerTupleExpression)other).Items);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.GetHashCode(Items);
@@ -126,8 +131,9 @@ public sealed class CompilerIndexerExpression : CompilerExpression
     protected override bool EqualsCore(CompilerExpression other)
     {
         var indexer = (CompilerIndexerExpression)other;
-        return EqualityComparer<CompilerExpression>.Default.Equals(Target, indexer.Target)
+        var result = EqualityComparer<CompilerExpression>.Default.Equals(Target, indexer.Target)
             && EqualityComparer<CompilerExpression>.Default.Equals(Index, indexer.Index);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Target, Index);
@@ -153,8 +159,9 @@ public sealed class CompilerInvocationExpression : CompilerExpression
     protected override bool EqualsCore(CompilerExpression other)
     {
         var invocation = (CompilerInvocationExpression)other;
-        return EqualityComparer<CompilerExpression>.Default.Equals(Target, invocation.Target)
+        var result = EqualityComparer<CompilerExpression>.Default.Equals(Target, invocation.Target)
             && CompilerStructural.SequenceEqual(Arguments, invocation.Arguments);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Target, CompilerStructural.GetHashCode(Arguments));
@@ -186,8 +193,9 @@ public sealed class CompilerMemberAccessExpression : CompilerExpression
     protected override bool EqualsCore(CompilerExpression other)
     {
         var member = (CompilerMemberAccessExpression)other;
-        return EqualityComparer<CompilerExpression>.Default.Equals(Target, member.Target)
+        var result = EqualityComparer<CompilerExpression>.Default.Equals(Target, member.Target)
             && string.Equals(MemberName, member.MemberName, StringComparison.Ordinal);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Target, MemberName);
@@ -224,9 +232,10 @@ public sealed class CompilerBinaryExpression : CompilerExpression
     protected override bool EqualsCore(CompilerExpression other)
     {
         var binary = (CompilerBinaryExpression)other;
-        return EqualityComparer<CompilerExpression>.Default.Equals(Left, binary.Left)
+        var result = EqualityComparer<CompilerExpression>.Default.Equals(Left, binary.Left)
             && string.Equals(Operator, binary.Operator, StringComparison.Ordinal)
             && EqualityComparer<CompilerExpression>.Default.Equals(Right, binary.Right);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Left, Operator, Right);
@@ -258,8 +267,9 @@ public sealed class CompilerUnaryExpression : CompilerExpression
     protected override bool EqualsCore(CompilerExpression other)
     {
         var unary = (CompilerUnaryExpression)other;
-        return string.Equals(Operator, unary.Operator, StringComparison.Ordinal)
+        var result = string.Equals(Operator, unary.Operator, StringComparison.Ordinal)
             && EqualityComparer<CompilerExpression>.Default.Equals(Expression, unary.Expression);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Operator, Expression);
@@ -277,10 +287,11 @@ public abstract class CompilerStatement : IEquatable<CompilerStatement>
 
     public bool Equals(CompilerStatement? other)
     {
-        return other is not null
+        var result = other is not null
             && GetType() == other.GetType()
             && EqualityComparer<CompilerSourceSpan?>.Default.Equals(Span, other.Span)
             && EqualsCore(other);
+        return result;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CompilerStatement);
@@ -304,7 +315,8 @@ public sealed class CompilerBlockStatement : CompilerStatement
 
     protected override bool EqualsCore(CompilerStatement other)
     {
-        return CompilerStructural.SequenceEqual(Statements, ((CompilerBlockStatement)other).Statements);
+        var result = CompilerStructural.SequenceEqual(Statements, ((CompilerBlockStatement)other).Statements);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.GetHashCode(Statements);
@@ -334,8 +346,9 @@ public sealed class CompilerDeclarationStatement : CompilerStatement
     protected override bool EqualsCore(CompilerStatement other)
     {
         var declaration = (CompilerDeclarationStatement)other;
-        return string.Equals(Name, declaration.Name, StringComparison.Ordinal)
+        var result = string.Equals(Name, declaration.Name, StringComparison.Ordinal)
             && EqualityComparer<CompilerExpression?>.Default.Equals(Initializer, declaration.Initializer);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Name, Initializer);
@@ -371,9 +384,10 @@ public sealed class CompilerAssignmentStatement : CompilerStatement
     protected override bool EqualsCore(CompilerStatement other)
     {
         var assignment = (CompilerAssignmentStatement)other;
-        return EqualityComparer<CompilerExpression>.Default.Equals(Target, assignment.Target)
+        var result = EqualityComparer<CompilerExpression>.Default.Equals(Target, assignment.Target)
             && EqualityComparer<CompilerExpression>.Default.Equals(Value, assignment.Value)
             && string.Equals(Operator, assignment.Operator, StringComparison.Ordinal);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Target, Value, Operator);
@@ -391,7 +405,8 @@ public sealed class CompilerReturnStatement : CompilerStatement
 
     protected override bool EqualsCore(CompilerStatement other)
     {
-        return EqualityComparer<CompilerExpression?>.Default.Equals(Expression, ((CompilerReturnStatement)other).Expression);
+        var result = EqualityComparer<CompilerExpression?>.Default.Equals(Expression, ((CompilerReturnStatement)other).Expression);
+        return result;
     }
 
     protected override int GetHashCodeCore() => Expression?.GetHashCode() ?? 0;
@@ -410,7 +425,8 @@ public sealed class CompilerExpressionStatement : CompilerStatement
 
     protected override bool EqualsCore(CompilerStatement other)
     {
-        return EqualityComparer<CompilerExpression>.Default.Equals(Expression, ((CompilerExpressionStatement)other).Expression);
+        var result = EqualityComparer<CompilerExpression>.Default.Equals(Expression, ((CompilerExpressionStatement)other).Expression);
+        return result;
     }
 
     protected override int GetHashCodeCore() => Expression.GetHashCode();
@@ -441,9 +457,10 @@ public sealed class CompilerStaticIfStatement : CompilerStatement
     protected override bool EqualsCore(CompilerStatement other)
     {
         var conditional = (CompilerStaticIfStatement)other;
-        return EqualityComparer<CompilerExpression>.Default.Equals(Condition, conditional.Condition)
+        var result = EqualityComparer<CompilerExpression>.Default.Equals(Condition, conditional.Condition)
             && EqualityComparer<CompilerStatement>.Default.Equals(WhenTrue, conditional.WhenTrue)
             && EqualityComparer<CompilerStatement?>.Default.Equals(WhenFalse, conditional.WhenFalse);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Condition, WhenTrue, WhenFalse);
@@ -479,9 +496,10 @@ public sealed class CompilerStaticForeachStatement : CompilerStatement
     protected override bool EqualsCore(CompilerStatement other)
     {
         var loop = (CompilerStaticForeachStatement)other;
-        return string.Equals(VariableName, loop.VariableName, StringComparison.Ordinal)
+        var result = string.Equals(VariableName, loop.VariableName, StringComparison.Ordinal)
             && EqualityComparer<CompilerExpression>.Default.Equals(Collection, loop.Collection)
             && EqualityComparer<CompilerStatement>.Default.Equals(Body, loop.Body);
+        return result;
     }
 
     protected override int GetHashCodeCore() => CompilerStructural.Combine(17, VariableName, Collection, Body);

@@ -20,20 +20,22 @@ public sealed class OnnxCompilerSession : ICompilerSession
             return CompilerResult<ICompilerTree>.Failure(
             [
                 new CompilerDiagnostic(
-                    CompilerDiagnosticCodes.Unsupported,
-                    $"The ONNX compiler session cannot import source kind '{source.Kind}'.",
-                    CompilerDiagnosticStage.Parse,
-                    CompilerDiagnosticSeverity.Error),
+                    code: CompilerDiagnosticCodes.Unsupported,
+                    message: $"The ONNX compiler session cannot import source kind '{source.Kind}'.",
+                    stage: CompilerDiagnosticStage.Parse,
+                    severity: CompilerDiagnosticSeverity.Error),
             ]);
         }
 
-        var result = OnnxCompilerFrontend.Import(
+        var importResult = OnnxCompilerFrontend.Import(
             onnxSource.Model,
             onnxSource.Document);
-
-        return result.IsSuccess
-            ? CompilerResult<ICompilerTree>.Success(result.Value!, result.Diagnostics)
-            : CompilerResult<ICompilerTree>.Failure(result.Diagnostics);
+        var resultTree = CompilerResultMapper.Map(
+            source: importResult,
+            projection: static computationTree => (ICompilerTree)computationTree,
+            missingValueStage: CompilerDiagnosticStage.Normalize,
+            missingValueMessage: "The ONNX frontend reported success without producing a computation tree.");
+        return resultTree;
     }
 
     /// <inheritdoc />
@@ -50,41 +52,42 @@ public sealed class OnnxCompilerSession : ICompilerSession
             return CompilerResult<TOutput>.Failure(
             [
                 new CompilerDiagnostic(
-                    CompilerDiagnosticCodes.Unsupported,
-                    "The ONNX backend requires a CompilerComputationTree.",
-                    CompilerDiagnosticStage.Emit,
-                    CompilerDiagnosticSeverity.Error),
+                    code: CompilerDiagnosticCodes.Unsupported,
+                    message: "The ONNX backend requires a CompilerComputationTree.",
+                    stage: CompilerDiagnosticStage.Emit,
+                    severity: CompilerDiagnosticSeverity.Error),
             ]);
         }
 
         if (sink is OnnxModelCompilerSink && typeof(TOutput) == typeof(OnnxModel))
         {
-            var result = OnnxCompilerBackend.EmitModel(computationTree);
-            return result.IsSuccess
-                ? CompilerResult<TOutput>.Success((TOutput)(object)result.Value!, result.Diagnostics)
-                : CompilerResult<TOutput>.Failure(result.Diagnostics);
+            var emittedModel = OnnxCompilerBackend.EmitModel(computationTree);
+            var resultModel = CompilerResultMapper.Map(
+                source: emittedModel,
+                projection: static model => (TOutput)(object)model,
+                missingValueStage: CompilerDiagnosticStage.Emit,
+                missingValueMessage: "The ONNX backend reported success without producing a model.");
+            return resultModel;
         }
 
         if (sink is OnnxCompilerSink && typeof(TOutput) == typeof(OnnxGraph))
         {
-            var result = OnnxCompilerBackend.EmitModel(computationTree);
-            if (!result.IsSuccess)
-            {
-                return CompilerResult<TOutput>.Failure(result.Diagnostics);
-            }
-
-            return CompilerResult<TOutput>.Success(
-                (TOutput)(object)result.Value!.Graph,
-                result.Diagnostics);
+            var emittedModel = OnnxCompilerBackend.EmitModel(computationTree);
+            var resultGraph = CompilerResultMapper.Map(
+                source: emittedModel,
+                projection: static model => (TOutput)(object)model.Graph,
+                missingValueStage: CompilerDiagnosticStage.Emit,
+                missingValueMessage: "The ONNX backend reported success without producing a model.");
+            return resultGraph;
         }
 
         return CompilerResult<TOutput>.Failure(
         [
             new CompilerDiagnostic(
-                CompilerDiagnosticCodes.Unsupported,
-                $"The ONNX compiler session cannot emit target '{sink.Kind}'.",
-                CompilerDiagnosticStage.Emit,
-                CompilerDiagnosticSeverity.Error),
+                code: CompilerDiagnosticCodes.Unsupported,
+                message: $"The ONNX compiler session cannot emit target '{sink.Kind}'.",
+                stage: CompilerDiagnosticStage.Emit,
+                severity: CompilerDiagnosticSeverity.Error),
         ]);
     }
 }
@@ -99,11 +102,23 @@ public static class Compiler
     {
         CompilerStructural.RequireNotNull(source, nameof(source));
         var result = new CSharpCompilerSession().CreateTree(source);
-        return result.IsSuccess
-            ? CompilerResult<CompilerComputationTree>.Success(
-                (CompilerComputationTree)result.Value!,
-                result.Diagnostics)
-            : CompilerResult<CompilerComputationTree>.Failure(result.Diagnostics);
+        if (!result.IsSuccess)
+        {
+            return CompilerResult<CompilerComputationTree>.Failure(result.Diagnostics);
+        }
+
+        if (result.Value is not CompilerComputationTree computationTree)
+        {
+            return CompilerResult<CompilerComputationTree>.Failure(
+                result.Diagnostics.Append(new CompilerDiagnostic(
+                    code: CompilerDiagnosticCodes.InvalidSource,
+                    message: "The C# frontend reported success without producing a computation tree.",
+                    stage: CompilerDiagnosticStage.Analyze,
+                    severity: CompilerDiagnosticSeverity.Error)));
+        }
+
+        var treeResult = CompilerResult<CompilerComputationTree>.Success(computationTree, result.Diagnostics);
+        return treeResult;
     }
 
     /// <summary>Generates compiler-owned C# TorchSharp module source.</summary>
@@ -113,7 +128,8 @@ public static class Compiler
     )
     {
         CompilerStructural.RequireNotNull(tree, nameof(tree));
-        return CSharpCompilerBackend.Generate(tree, options);
+        var result = CSharpCompilerBackend.Generate(tree, options);
+        return result;
     }
 
     /// <summary>Imports an in-memory ONNX model into the shared compiler tree.</summary>
@@ -210,15 +226,17 @@ public static class Compiler
                 stream,
                 EnsureUntyped(options),
                 cancellationToken);
-            return CreateTreeFromOnnx(model, document ?? "<memory>");
+            var result = CreateTreeFromOnnx(model, document ?? "<memory>");
+            return result;
         }
         catch (Exception exception)
         {
-            return OnnxCompilerFrontend.Failure<CompilerComputationTree>(
+            var result = OnnxCompilerFrontend.Failure<CompilerComputationTree>(
                 CompilerDiagnosticCodes.InvalidSource,
                 $"The ONNX stream could not be loaded: {exception.Message}",
                 CompilerDiagnosticStage.Parse,
                 document ?? "<memory>");
+            return result;
         }
     }
 
@@ -229,7 +247,8 @@ public static class Compiler
     )
     {
         CompilerStructural.RequireNotNull(tree, nameof(tree));
-        return OnnxCompilerBackend.EmitModel(tree, options);
+        var result = OnnxCompilerBackend.EmitModel(tree, options);
+        return result;
     }
 
     /// <summary>Emits only the graph from the shared compiler tree.</summary>
@@ -239,9 +258,12 @@ public static class Compiler
     )
     {
         var model = GenerateOnnx(tree, options);
-        return model.IsSuccess
-            ? CompilerResult<OnnxGraph>.Success(model.Value!.Graph, model.Diagnostics)
-            : CompilerResult<OnnxGraph>.Failure(model.Diagnostics);
+        var result = CompilerResultMapper.Map(
+            source: model,
+            projection: static onnxModel => onnxModel.Graph,
+            missingValueStage: CompilerDiagnosticStage.Emit,
+            missingValueMessage: "The ONNX backend reported success without producing a model.");
+        return result;
     }
 
     private static OnnxModelBaseOptions EnsureUntyped(OnnxModelBaseOptions? options)
@@ -259,12 +281,13 @@ internal static class OnnxCompilerSessionExtensions
         OnnxCompilerSource source
     )
     {
-        var result = session.CreateTree(source);
-        return result.IsSuccess
-            ? CompilerResult<CompilerComputationTree>.Success(
-                (CompilerComputationTree)result.Value!,
-                result.Diagnostics)
-            : CompilerResult<CompilerComputationTree>.Failure(result.Diagnostics);
+        var sourceResult = session.CreateTree(source);
+        var treeResult = CompilerResultMapper.Map(
+            source: sourceResult,
+            projection: static compilerTree => (CompilerComputationTree)compilerTree,
+            missingValueStage: CompilerDiagnosticStage.Normalize,
+            missingValueMessage: "The ONNX frontend reported success without producing a computation tree.");
+        return treeResult;
     }
 }
 
@@ -281,6 +304,10 @@ internal sealed class CompilerConversionException : Exception
 
 internal static class OnnxCompilerFrontend
 {
+    /// <summary>
+    /// Преобразует ONNX model envelope и граф в immutable compiler IR.
+    /// Ошибки нормализации собираются в diagnostics и не оставляют частично построенное дерево успешным результатом.
+    /// </summary>
     public static CompilerResult<CompilerComputationTree> Import(
         OnnxModel model,
         string? document
@@ -292,32 +319,33 @@ internal static class OnnxCompilerFrontend
         try
         {
             var tree = ImportGraph(
-                model.Graph,
-                document ?? "<memory>",
-                diagnostics,
+                graph: model.Graph,
+                document: document ?? "<memory>",
+                diagnostics: diagnostics,
                 outerValues: null,
                 caller: null,
                 includeEnvelope: true,
                 model: model);
 
-            return new CompilerResult<CompilerComputationTree>(tree, diagnostics);
+            var result = new CompilerResult<CompilerComputationTree>(tree, diagnostics);
+            return result;
         }
         catch (CompilerConversionException exception)
         {
             diagnostics.Add(new CompilerDiagnostic(
-                exception.Code,
-                exception.Message,
-                CompilerDiagnosticStage.Normalize,
-                CompilerDiagnosticSeverity.Error));
+                code: exception.Code,
+                message: exception.Message,
+                stage: CompilerDiagnosticStage.Normalize,
+                severity: CompilerDiagnosticSeverity.Error));
             return CompilerResult<CompilerComputationTree>.Failure(diagnostics);
         }
         catch (Exception exception)
         {
             diagnostics.Add(new CompilerDiagnostic(
-                CompilerDiagnosticCodes.InvalidSource,
-                $"The ONNX graph could not be converted: {exception.Message}",
-                CompilerDiagnosticStage.Normalize,
-                CompilerDiagnosticSeverity.Error));
+                code: CompilerDiagnosticCodes.InvalidSource,
+                message: $"The ONNX graph could not be converted: {exception.Message}",
+                stage: CompilerDiagnosticStage.Normalize,
+                severity: CompilerDiagnosticSeverity.Error));
             return CompilerResult<CompilerComputationTree>.Failure(diagnostics);
         }
     }
@@ -332,22 +360,26 @@ internal static class OnnxCompilerFrontend
         return CompilerResult<T>.Failure(
         [
             new CompilerDiagnostic(
-                code,
-                message,
-                stage,
-                CompilerDiagnosticSeverity.Error,
-                new CompilerSourceSpan(
-                    CompilerSourceSpanKind.Onnx,
-                    document,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0)),
+                code: code,
+                message: message,
+                stage: stage,
+                severity: CompilerDiagnosticSeverity.Error,
+                span: new CompilerSourceSpan(
+                    kind: CompilerSourceSpanKind.Onnx,
+                    document: document,
+                    start: 0,
+                    length: 0,
+                    startLine: 0,
+                    startColumn: 0,
+                    endLine: 0,
+                    endColumn: 0)),
         ]);
     }
 
+    /// <summary>
+    /// Преобразует граф ONNX в единое IR-дерево, включая captured values и рекурсивные атрибуты-графы.
+    /// Сначала регистрируются типы и state, затем узлы, чтобы ссылки оставались корректными при любом порядке wire metadata.
+    /// </summary>
     private static CompilerComputationTree ImportGraph(
         OnnxGraph graph,
         string document,
@@ -393,13 +425,17 @@ internal static class OnnxCompilerFrontend
             var type = new CompilerTensorType(
                 CompilerElementTypeMap.FromSystemType(tensor.DataType),
                 tensor.Shape.Select(static x => (CompilerDimension)new CompilerFixedDimension(x)));
-            var literal = ImportTensorLiteral(tensor, diagnostics, document, caller);
+            var literal = ImportTensorLiteral(
+                tensor: tensor,
+                diagnostics: diagnostics,
+                document: document,
+                caller: caller);
             builder.AddStateMember(new CompilerStateMember(
-                tensor.Name,
-                CompilerStateMemberKind.Initializer,
-                type,
-                literal,
-                Span(document, 0, tensor.Name, null)));
+                name: tensor.Name,
+                kind: CompilerStateMemberKind.Initializer,
+                type: type,
+                value: literal,
+                span: Span(document: document, ordinal: 0, nodeName: tensor.Name, operatorName: null)));
             stateTypes[tensor.Name] = type;
         }
 
@@ -408,29 +444,48 @@ internal static class OnnxCompilerFrontend
             var type = new CompilerSparseTensorType(
                 CompilerElementTypeMap.FromSystemType(sparse.Value.DataType),
                 sparse.Shape.Select(static x => (CompilerDimension)new CompilerFixedDimension(x)));
-            var literal = ImportSparseTensorLiteral(sparse, diagnostics, document, caller);
+            var literal = ImportSparseTensorLiteral(
+                tensor: sparse,
+                diagnostics: diagnostics,
+                document: document,
+                caller: caller);
             builder.AddStateMember(new CompilerStateMember(
-                sparse.Name,
-                CompilerStateMemberKind.Initializer,
-                type,
-                literal,
-                Span(document, 0, sparse.Name, null)));
+                name: sparse.Name,
+                kind: CompilerStateMemberKind.Initializer,
+                type: type,
+                value: literal,
+                span: Span(document: document, ordinal: 0, nodeName: sparse.Name, operatorName: null)));
             stateTypes[sparse.Name] = type;
         }
 
         foreach (var value in graph.Inputs)
         {
-            AddValue(builder, values, value, isInput: true, isOutput: false);
+            AddValue(
+                builder: builder,
+                values: values,
+                value: value,
+                isInput: true,
+                isOutput: false);
         }
 
         foreach (var value in graph.Outputs)
         {
-            AddValue(builder, values, value, isInput: false, isOutput: true);
+            AddValue(
+                builder: builder,
+                values: values,
+                value: value,
+                isInput: false,
+                isOutput: true);
         }
 
         foreach (var value in graph.IntermediateValues)
         {
-            AddValue(builder, values, value, isInput: false, isOutput: false);
+            AddValue(
+                builder: builder,
+                values: values,
+                value: value,
+                isInput: false,
+                isOutput: false);
         }
 
         var allEdges = graph.Nodes
@@ -466,23 +521,52 @@ internal static class OnnxCompilerFrontend
             knownTypes[stateType.Key] = stateType.Value;
         }
 
+        ImportNodes(
+            graph: graph,
+            builder: builder,
+            knownTypes: knownTypes,
+            document: document,
+            caller: caller,
+            diagnostics: diagnostics);
+
+        var result = builder.Build();
+        return result;
+    }
+
+    /// <summary>
+    /// Импортирует узлы в исходном порядке и нормализует атрибуты по имени для стабильного IR.
+    /// Неизвестные ONNX operators остаются generic operations и получают warning для последующих backend этапов.
+    /// </summary>
+    private static void ImportNodes(
+        OnnxGraph graph,
+        CompilerComputationTreeBuilder builder,
+        IReadOnlyDictionary<string, CompilerType> knownTypes,
+        string document,
+        string? caller,
+        List<CompilerDiagnostic> diagnostics
+    )
+    {
         foreach (var pair in graph.Nodes.Select((node, index) => (node, index)))
         {
             var node = pair.node;
             var nodeName = string.IsNullOrWhiteSpace(node.Name)
                 ? $"__onnx_node_{pair.index}"
                 : node.Name;
-            var span = Span(document, pair.index, nodeName, node.OpType);
+            var span = Span(
+                document: document,
+                ordinal: pair.index,
+                nodeName: nodeName,
+                operatorName: node.OpType);
 
             if (string.IsNullOrWhiteSpace(node.Name))
             {
                 diagnostics.Add(new CompilerDiagnostic(
-                    CompilerDiagnosticCodes.Lossy,
-                    $"ONNX node at ordinal {pair.index} had no name; '{nodeName}' was synthesized.",
-                    CompilerDiagnosticStage.Normalize,
-                    CompilerDiagnosticSeverity.Warning,
-                    span,
-                    new CompilerDiagnosticContext(caller, node.OpType)));
+                    code: CompilerDiagnosticCodes.Lossy,
+                    message: $"ONNX node at ordinal {pair.index} had no name; '{nodeName}' was synthesized.",
+                    stage: CompilerDiagnosticStage.Normalize,
+                    severity: CompilerDiagnosticSeverity.Warning,
+                    span: span,
+                    context: new CompilerDiagnosticContext(caller, node.OpType)));
             }
 
             var attributes = new List<CompilerAttribute>();
@@ -493,52 +577,51 @@ internal static class OnnxCompilerFrontend
                     attributes.Add(new CompilerAttribute(
                         attribute.Name,
                         ImportAttributeLiteral(
-                            attribute.GetValue(),
-                            document,
-                            pair.index,
-                            nodeName,
-                            node.OpType,
-                            knownTypes,
-                            diagnostics)));
+                            value: attribute.GetValue(),
+                            document: document,
+                            ordinal: pair.index,
+                            nodeName: nodeName,
+                            operatorName: node.OpType,
+                            outerValues: knownTypes,
+                            diagnostics: diagnostics)));
                 }
                 catch (CompilerConversionException exception)
                 {
                     diagnostics.Add(new CompilerDiagnostic(
-                        exception.Code,
-                        exception.Message,
-                        CompilerDiagnosticStage.Normalize,
-                        CompilerDiagnosticSeverity.Error,
-                        span,
-                        new CompilerDiagnosticContext(caller, node.OpType)));
+                        code: exception.Code,
+                        message: exception.Message,
+                        stage: CompilerDiagnosticStage.Normalize,
+                        severity: CompilerDiagnosticSeverity.Error,
+                        span: span,
+                        context: new CompilerDiagnosticContext(caller, node.OpType)));
                 }
             }
 
             var descriptor = new CompilerOperatorDescriptor(
-                node.OpType,
-                node.Domain,
-                CompilerOperationCapability.Unsupported,
-                [string.IsNullOrEmpty(node.Domain) ? "ai.onnx" : node.Domain]);
+                name: node.OpType,
+                domain: node.Domain,
+                capability: CompilerOperationCapability.Unsupported,
+                constraints: [string.IsNullOrEmpty(node.Domain) ? "ai.onnx" : node.Domain]);
 
             diagnostics.Add(new CompilerDiagnostic(
-                CompilerDiagnosticCodes.Unsupported,
-                $"No semantic compiler mapping is registered for ONNX operator '{node.Domain}::{node.OpType}'; the generic operation is preserved.",
-                CompilerDiagnosticStage.Analyze,
-                CompilerDiagnosticSeverity.Warning,
-                span,
-                new CompilerDiagnosticContext(
-                    caller ?? (string.IsNullOrEmpty(graph.Name) ? "<graph>" : graph.Name),
-                    node.OpType)));
+                code: CompilerDiagnosticCodes.Unsupported,
+                message: $"No semantic compiler mapping is registered for ONNX operator '{node.Domain}::{node.OpType}'; the generic operation is preserved.",
+                stage: CompilerDiagnosticStage.Analyze,
+                severity: CompilerDiagnosticSeverity.Warning,
+                span: span,
+                context: new CompilerDiagnosticContext(
+                    caller: caller ?? (string.IsNullOrEmpty(graph.Name) ? "<graph>" : graph.Name),
+                    callee: node.OpType)));
 
-            builder.AddOperation(new CompilerOperation(
-                nodeName,
-                descriptor,
-                node.Inputs.Select(ToReference),
-                node.Outputs.Select(ToReference),
-                attributes,
-                span));
+            var operation = new CompilerOperation(
+                name: nodeName,
+                descriptor: descriptor,
+                inputs: node.Inputs.Select(ToReference),
+                outputs: node.Outputs.Select(ToReference),
+                attributes: attributes,
+                span: span);
+            builder.AddOperation(operation);
         }
-
-        return builder.Build();
     }
 
     private static void AddValue(
@@ -618,21 +701,29 @@ internal static class OnnxCompilerFrontend
 
         if (value is OnnxTensor tensor)
         {
-            return ImportTensorLiteral(tensor, diagnostics, document, nodeName);
+            return ImportTensorLiteral(
+                tensor: tensor,
+                diagnostics: diagnostics,
+                document: document,
+                caller: nodeName);
         }
 
         if (value is OnnxSparseTensor sparse)
         {
-            return ImportSparseTensorLiteral(sparse, diagnostics, document, nodeName);
+            return ImportSparseTensorLiteral(
+                tensor: sparse,
+                diagnostics: diagnostics,
+                document: document,
+                caller: nodeName);
         }
 
         if (value is OnnxGraph graph)
         {
             var nested = ImportGraph(
-                graph,
-                document,
-                diagnostics,
-                outerValues,
+                graph: graph,
+                document: document,
+                diagnostics: diagnostics,
+                outerValues: outerValues,
                 caller: $"{nodeName}::{operatorName}",
                 includeEnvelope: false,
                 model: null);
@@ -647,22 +738,32 @@ internal static class OnnxCompilerFrontend
         if (value is Array array)
         {
             var items = new List<CompilerLiteral>(array.Length);
-            foreach (var item in array)
+            for (var index = 0; index < array.Length; index++)
             {
+                var item = array.GetValue(index);
+                if (item is null)
+                {
+                    throw new CompilerConversionException(
+                        CompilerDiagnosticCodes.InvalidSource,
+                        $"ONNX attribute array for node '{nodeName}' contains a null value at index {index}.");
+                }
+
                 items.Add(ImportAttributeLiteral(
-                    item!,
-                    document,
-                    ordinal,
-                    nodeName,
-                    operatorName,
-                    outerValues,
-                    diagnostics));
+                    value: item,
+                    document: document,
+                    ordinal: ordinal,
+                    nodeName: nodeName,
+                    operatorName: operatorName,
+                    outerValues: outerValues,
+                    diagnostics: diagnostics));
             }
 
-            return new CompilerArrayLiteral(items, array.GetType().GetElementType()?.FullName);
+            var arrayLiteral = new CompilerArrayLiteral(items, array.GetType().GetElementType()?.FullName);
+            return arrayLiteral;
         }
 
-        return CompilerElementTypeMap.ToLiteral(value);
+        var result = CompilerElementTypeMap.ToLiteral(value);
+        return result;
     }
 
     private static CompilerTensorLiteral ImportTensorLiteral(
@@ -683,14 +784,15 @@ internal static class OnnxCompilerFrontend
         if (tensor.DataLocation == OnnxTensor.TensorDataLocation.External)
         {
             diagnostics.Add(new CompilerDiagnostic(
-                CompilerDiagnosticCodes.Lossy,
-                $"Tensor '{tensor.Name}' used ONNX external data; the compiler preserves its values but not the external storage placement.",
-                CompilerDiagnosticStage.Normalize,
-                CompilerDiagnosticSeverity.Warning,
-                Span(document, 0, caller, null)));
+                code: CompilerDiagnosticCodes.Lossy,
+                message: $"Tensor '{tensor.Name}' used ONNX external data; the compiler preserves its values but not the external storage placement.",
+                stage: CompilerDiagnosticStage.Normalize,
+                severity: CompilerDiagnosticSeverity.Warning,
+                span: Span(document: document, ordinal: 0, nodeName: caller, operatorName: null)));
         }
 
-        return new CompilerTensorLiteral(elementType, dimensions, values);
+        var result = new CompilerTensorLiteral(elementType, dimensions, values);
+        return result;
     }
 
     private static CompilerSparseTensorLiteral ImportSparseTensorLiteral(
@@ -701,10 +803,19 @@ internal static class OnnxCompilerFrontend
     )
     {
         var dimensions = tensor.Shape.Select(static x => (CompilerDimension)new CompilerFixedDimension(x));
-        return new CompilerSparseTensorLiteral(
+        var result = new CompilerSparseTensorLiteral(
             dimensions,
-            ImportTensorLiteral(tensor.Value, diagnostics, document, caller),
-            ImportTensorLiteral(tensor.Indices, diagnostics, document, caller));
+            ImportTensorLiteral(
+                tensor: tensor.Value,
+                diagnostics: diagnostics,
+                document: document,
+                caller: caller),
+            ImportTensorLiteral(
+                tensor: tensor.Indices,
+                diagnostics: diagnostics,
+                document: document,
+                caller: caller));
+        return result;
     }
 
     private static CompilerSourceSpan Span(
@@ -715,21 +826,25 @@ internal static class OnnxCompilerFrontend
     )
     {
         return new CompilerSourceSpan(
-            CompilerSourceSpanKind.Onnx,
-            document,
-            ordinal,
-            1,
-            ordinal,
-            0,
-            ordinal,
-            1,
-            nodeName,
-            operatorName);
+            kind: CompilerSourceSpanKind.Onnx,
+            document: document,
+            start: ordinal,
+            length: 1,
+            startLine: ordinal,
+            startColumn: 0,
+            endLine: ordinal,
+            endColumn: 1,
+            nodeName: nodeName,
+            operatorName: operatorName);
     }
 }
 
 internal static class OnnxCompilerBackend
 {
+    /// <summary>
+    /// Эмитирует полную ONNX-модель из compiler IR и проверяет её повторной загрузкой после сериализации.
+    /// Валидация охватывает не только структуру IR, но и фактическую protobuf границу core API.
+    /// </summary>
     public static CompilerResult<OnnxModel> EmitModel(
         CompilerComputationTree tree,
         OnnxModelCreationOptions? creationOptions = null
@@ -764,7 +879,11 @@ internal static class OnnxCompilerBackend
                 }
             }
 
-            EmitGraph(tree, model.Graph, diagnostics, caller: null);
+            EmitGraph(
+                tree: tree,
+                graph: model.Graph,
+                diagnostics: diagnostics,
+                caller: null);
 
             if (diagnostics.Any(x => x.Severity == CompilerDiagnosticSeverity.Error))
             {
@@ -781,28 +900,33 @@ internal static class OnnxCompilerBackend
                     NodeTypeResolutionStrategy = NodeTypeResolutionStrategy.PreserveUntyped,
                 });
 
-            return new CompilerResult<OnnxModel>(model, diagnostics);
+            var result = new CompilerResult<OnnxModel>(model, diagnostics);
+            return result;
         }
         catch (CompilerConversionException exception)
         {
             diagnostics.Add(new CompilerDiagnostic(
-                exception.Code,
-                exception.Message,
-                CompilerDiagnosticStage.Emit,
-                CompilerDiagnosticSeverity.Error));
+                code: exception.Code,
+                message: exception.Message,
+                stage: CompilerDiagnosticStage.Emit,
+                severity: CompilerDiagnosticSeverity.Error));
             return CompilerResult<OnnxModel>.Failure(diagnostics);
         }
         catch (Exception exception)
         {
             diagnostics.Add(new CompilerDiagnostic(
-                CompilerDiagnosticCodes.InvalidSource,
-                $"The compiler could not emit a valid ONNX model: {exception.Message}",
-                CompilerDiagnosticStage.Validate,
-                CompilerDiagnosticSeverity.Error));
+                code: CompilerDiagnosticCodes.InvalidSource,
+                message: $"The compiler could not emit a valid ONNX model: {exception.Message}",
+                stage: CompilerDiagnosticStage.Validate,
+                severity: CompilerDiagnosticSeverity.Error));
             return CompilerResult<OnnxModel>.Failure(diagnostics);
         }
     }
 
+    /// <summary>
+    /// Создаёт graph values, state и узлы в порядке IR перед сериализацией модели.
+    /// Отдельный graph-проход сохраняет ONNX порядок и даёт вложенным graph literals тот же backend путь.
+    /// </summary>
     private static void EmitGraph(
         CompilerComputationTree tree,
         OnnxGraph graph,
@@ -863,7 +987,11 @@ internal static class OnnxCompilerBackend
 
         foreach (var initializer in tree.Initializers)
         {
-            AddInitializer(graph, initializer, diagnostics, caller);
+            AddInitializer(
+                graph: graph,
+                initializer: initializer,
+                diagnostics: diagnostics,
+                caller: caller);
         }
 
         if (tree.Parameters.Count > 0 || tree.Buffers.Count > 0)
@@ -878,7 +1006,11 @@ internal static class OnnxCompilerBackend
             switch (operation)
             {
                 case CompilerOperation compilerOperation:
-                    EmitOperation(graph, compilerOperation, diagnostics, caller);
+                    EmitOperation(
+                        graph: graph,
+                        operation: compilerOperation,
+                        diagnostics: diagnostics,
+                        caller: caller);
                     break;
                 case CompilerModuleCall moduleCall:
                     throw new CompilerConversionException(
@@ -917,7 +1049,15 @@ internal static class OnnxCompilerBackend
     private static OnnxValue CreateOnnxValue(string name, OnnxValueType type)
     {
         var valueType = typeof(OnnxValue<>).MakeGenericType(type.GetType());
-        return (OnnxValue)Activator.CreateInstance(valueType, name, type)!;
+        var instance = Activator.CreateInstance(valueType, name, type);
+        if (instance is not OnnxValue onnxValue)
+        {
+            throw new CompilerConversionException(
+                CompilerDiagnosticCodes.Unsupported,
+                $"An ONNX value of runtime type '{valueType.FullName}' could not be created.");
+        }
+
+        return onnxValue;
     }
 
     private static void EmitOperation(
@@ -930,12 +1070,14 @@ internal static class OnnxCompilerBackend
         if (operation.Descriptor.Capability == CompilerOperationCapability.Unsupported)
         {
             diagnostics.Add(new CompilerDiagnostic(
-                CompilerDiagnosticCodes.Unsupported,
-                $"Operation '{operation.Name}' is emitted through generic ONNX passthrough because no semantic mapping is registered.",
-                CompilerDiagnosticStage.Emit,
-                CompilerDiagnosticSeverity.Warning,
-                operation.Span,
-                new CompilerDiagnosticContext(caller, operation.Descriptor.Name)));
+                code: CompilerDiagnosticCodes.Unsupported,
+                message: $"Operation '{operation.Name}' is emitted through generic ONNX passthrough because no semantic mapping is registered.",
+                stage: CompilerDiagnosticStage.Emit,
+                severity: CompilerDiagnosticSeverity.Warning,
+                span: operation.Span,
+                context: new CompilerDiagnosticContext(
+                    caller: caller,
+                    callee: operation.Descriptor.Name)));
         }
 
         var inputs = operation.Inputs.Select(x => (IOnnxGraphEdge)new OnnxEdge(x.IsEmptyOptional ? string.Empty : x.Name));
@@ -963,10 +1105,18 @@ internal static class OnnxCompilerBackend
         var value = ToOnnxAttributeValue(attribute.Value, diagnostics, caller);
         var valueType = value.GetType();
         var attributeType = typeof(OnnxAttribute<>).MakeGenericType(valueType);
-        return (OnnxAttribute)Activator.CreateInstance(
+        var instance = Activator.CreateInstance(
             attributeType,
             attribute.Name,
-            value)!;
+            value);
+        if (instance is not OnnxAttribute onnxAttribute)
+        {
+            throw new CompilerConversionException(
+                CompilerDiagnosticCodes.Unsupported,
+                $"ONNX attribute '{attribute.Name}' could not be created.");
+        }
+
+        return onnxAttribute;
     }
 
     private static object ToOnnxAttributeValue(
@@ -987,7 +1137,14 @@ internal static class OnnxCompilerBackend
                 }
 
                 diagnostics.AddRange(nestedModelResult.Diagnostics);
-                return nestedModelResult.Value!.Graph;
+                if (nestedModelResult.Value is not { } nestedModel)
+                {
+                    throw new CompilerConversionException(
+                        CompilerDiagnosticCodes.InvalidSource,
+                        $"Nested graph '{graphLiteral.Graph.Name}' emitted no ONNX model.");
+                }
+
+                return nestedModel.Graph;
             case CompilerTensorLiteral tensorLiteral:
                 return CreateTensor(tensorLiteral);
             case CompilerSparseTensorLiteral sparseLiteral:
@@ -1069,7 +1226,15 @@ internal static class OnnxCompilerBackend
         var method = typeof(OnnxGraph)
             .GetMethods(BindingFlags.Public | BindingFlags.Instance)
             .Single(x => x.Name == nameof(OnnxGraph.AddTensor) && x.IsGenericMethodDefinition);
-        method.MakeGenericMethod(array.GetType().GetElementType()!)
+        var elementType = array.GetType().GetElementType();
+        if (elementType is null)
+        {
+            throw new CompilerConversionException(
+                CompilerDiagnosticCodes.Unsupported,
+                $"Tensor initializer '{name}' has no runtime element type.");
+        }
+
+        method.MakeGenericMethod(elementType)
             .Invoke(graph, [name, tensor.Dimensions.Select(ToFixedDimension).ToArray(), array]);
     }
 
@@ -1084,9 +1249,18 @@ internal static class OnnxCompilerBackend
         var method = typeof(OnnxGraph)
             .GetMethods(BindingFlags.Public | BindingFlags.Instance)
             .Single(x => x.Name == nameof(OnnxGraph.AddSparseTensor) && x.IsGenericMethodDefinition);
+        var valueElementType = values.GetType().GetElementType();
+        var indexElementType = indices.GetType().GetElementType();
+        if (valueElementType is null || indexElementType is null)
+        {
+            throw new CompilerConversionException(
+                CompilerDiagnosticCodes.Unsupported,
+                $"Sparse initializer '{name}' has no runtime element type.");
+        }
+
         method.MakeGenericMethod(
-                values.GetType().GetElementType()!,
-                indices.GetType().GetElementType()!)
+                valueElementType,
+                indexElementType)
             .Invoke(
                 graph,
                 [
@@ -1103,14 +1277,16 @@ internal static class OnnxCompilerBackend
     {
         var model = OnnxModel.Create();
         AddSparseTensor(model.Graph, "attribute", sparse);
-        return model.Graph.SparseInitializers.Single();
+        var result = model.Graph.SparseInitializers.Single();
+        return result;
     }
 
     private static OnnxTensor CreateTensor(CompilerTensorLiteral tensor)
     {
         var model = OnnxModel.Create();
         AddTensor(model.Graph, "attribute", tensor);
-        return model.Graph.Initializers.Single();
+        var result = model.Graph.Initializers.Single();
+        return result;
     }
 
     private static long ToFixedDimension(CompilerDimension dimension)
@@ -1331,8 +1507,8 @@ internal static class CompilerElementTypeMap
     {
         if (elementType is CompilerElementType.Complex64 or CompilerElementType.Complex128)
         {
-            var real = Convert.ToDouble(value.GetType().GetProperty("Real")?.GetValue(value));
-            var imaginary = Convert.ToDouble(value.GetType().GetProperty("Imaginary")?.GetValue(value));
+            var real = Convert.ToDouble(GetRequiredNumericProperty(value, "Real"));
+            var imaginary = Convert.ToDouble(GetRequiredNumericProperty(value, "Imaginary"));
             return new CompilerComplexLiteral(elementType, real, imaginary);
         }
 
@@ -1348,7 +1524,7 @@ internal static class CompilerElementTypeMap
             or CompilerElementType.UInt2
             or CompilerElementType.Int2)
         {
-            var raw = value.GetType().GetProperty("Value")?.GetValue(value);
+            var raw = GetRequiredNumericProperty(value, "Value");
             return new CompilerPackedScalarLiteral(elementType, Convert.ToUInt64(raw));
         }
 
@@ -1373,8 +1549,14 @@ internal static class CompilerElementTypeMap
         return literal switch
         {
             CompilerBooleanLiteral boolean => boolean.Value,
-            CompilerSignedIntegerLiteral signed => Convert.ChangeType(signed.Value, ToSystemType(signed.ElementType))!,
-            CompilerUnsignedIntegerLiteral unsigned => Convert.ChangeType(unsigned.Value, ToSystemType(unsigned.ElementType))!,
+            CompilerSignedIntegerLiteral signed => ConvertToRequiredValue(
+                signed.Value,
+                ToSystemType(signed.ElementType),
+                signed.ElementType),
+            CompilerUnsignedIntegerLiteral unsigned => ConvertToRequiredValue(
+                unsigned.Value,
+                ToSystemType(unsigned.ElementType),
+                unsigned.ElementType),
             CompilerFloatingPointLiteral floating => ConvertFloating(floating),
             CompilerComplexLiteral complex => CreateComplex(complex),
             CompilerStringLiteral text => text.Value,
@@ -1401,7 +1583,10 @@ internal static class CompilerElementTypeMap
     {
         return literal.ElementType switch
         {
-            CompilerElementType.Float16 => Convert.ChangeType(literal.Value, ToSystemType(literal.ElementType))!,
+            CompilerElementType.Float16 => ConvertToRequiredValue(
+                literal.Value,
+                ToSystemType(literal.ElementType),
+                literal.ElementType),
             CompilerElementType.Float32 => (float)literal.Value,
             CompilerElementType.Float64 => literal.Value,
             _ => throw new CompilerConversionException(
@@ -1413,14 +1598,22 @@ internal static class CompilerElementTypeMap
     private static object CreateComplex(CompilerComplexLiteral literal)
     {
         var type = ToSystemType(literal.ElementType);
-        return Activator.CreateInstance(
+        var complex = Activator.CreateInstance(
             type,
             literal.ElementType == CompilerElementType.Complex64
                 ? (object)(float)literal.Real
                 : literal.Real,
             literal.ElementType == CompilerElementType.Complex64
                 ? (object)(float)literal.Imaginary
-                : literal.Imaginary)!;
+                : literal.Imaginary);
+        if (complex is null)
+        {
+            throw new CompilerConversionException(
+                CompilerDiagnosticCodes.Unsupported,
+                $"Complex scalar type '{literal.ElementType}' could not be constructed.");
+        }
+
+        return complex;
     }
 
     private static object CreatePacked(CompilerPackedScalarLiteral literal)
@@ -1433,7 +1626,15 @@ internal static class CompilerElementTypeMap
         {
             var encodedType = encodedFactory.GetParameters().Single().ParameterType;
             var encoded = Convert.ChangeType(literal.EncodedValue, encodedType);
-            return encodedFactory.Invoke(null, [encoded])!;
+            var packed = encodedFactory.Invoke(null, [encoded]);
+            if (packed is null)
+            {
+                throw new CompilerConversionException(
+                    CompilerDiagnosticCodes.Unsupported,
+                    $"Packed scalar type '{literal.ElementType}' returned no value from FromEncoded.");
+            }
+
+            return packed;
         }
 
         var constructorArgument = literal.ElementType switch
@@ -1451,6 +1652,36 @@ internal static class CompilerElementTypeMap
         }
 
         return constructor.Invoke([constructorArgument]);
+    }
+
+    private static object GetRequiredNumericProperty(object value, string propertyName)
+    {
+        var property = value.GetType().GetProperty(propertyName);
+        if (property?.GetValue(value) is not { } propertyValue)
+        {
+            throw new CompilerConversionException(
+                CompilerDiagnosticCodes.InvalidSource,
+                $"Numeric value '{value.GetType().FullName}' does not expose a usable '{propertyName}' property.");
+        }
+
+        return propertyValue;
+    }
+
+    private static object ConvertToRequiredValue(
+        object value,
+        Type targetType,
+        CompilerElementType elementType
+    )
+    {
+        var converted = Convert.ChangeType(value, targetType);
+        if (converted is null)
+        {
+            throw new CompilerConversionException(
+                CompilerDiagnosticCodes.Unsupported,
+                $"Scalar value of element type '{elementType}' could not be converted to '{targetType.FullName}'.");
+        }
+
+        return converted;
     }
 
     private static Type FindType(string name)

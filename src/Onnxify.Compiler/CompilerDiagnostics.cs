@@ -105,7 +105,7 @@ public sealed class CompilerSourceSpan : IEquatable<CompilerSourceSpan>
 
     public bool Equals(CompilerSourceSpan? other)
     {
-        return other is not null
+        var result = other is not null
             && Kind == other.Kind
             && string.Equals(Document, other.Document, StringComparison.Ordinal)
             && Start == other.Start
@@ -116,6 +116,7 @@ public sealed class CompilerSourceSpan : IEquatable<CompilerSourceSpan>
             && EndColumn == other.EndColumn
             && string.Equals(NodeName, other.NodeName, StringComparison.Ordinal)
             && string.Equals(OperatorName, other.OperatorName, StringComparison.Ordinal);
+        return result;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CompilerSourceSpan);
@@ -152,9 +153,10 @@ public sealed class CompilerDiagnosticContext : IEquatable<CompilerDiagnosticCon
 
     public bool Equals(CompilerDiagnosticContext? other)
     {
-        return other is not null
+        var result = other is not null
             && string.Equals(Caller, other.Caller, StringComparison.Ordinal)
             && string.Equals(Callee, other.Callee, StringComparison.Ordinal);
+        return result;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CompilerDiagnosticContext);
@@ -206,13 +208,14 @@ public sealed class CompilerDiagnostic : IEquatable<CompilerDiagnostic>
 
     public bool Equals(CompilerDiagnostic? other)
     {
-        return other is not null
+        var result = other is not null
             && string.Equals(Code, other.Code, StringComparison.Ordinal)
             && string.Equals(Message, other.Message, StringComparison.Ordinal)
             && Stage == other.Stage
             && Severity == other.Severity
             && EqualityComparer<CompilerSourceSpan?>.Default.Equals(Span, other.Span)
             && EqualityComparer<CompilerDiagnosticContext?>.Default.Equals(Context, other.Context);
+        return result;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CompilerDiagnostic);
@@ -242,7 +245,8 @@ public sealed class CompilerResult<T>
     public static CompilerResult<T> Success(T value, IEnumerable<CompilerDiagnostic>? diagnostics = null)
     {
         CompilerStructural.RequireNotNull(value, nameof(value));
-        return new CompilerResult<T>(value, diagnostics);
+        var result = new CompilerResult<T>(value, diagnostics);
+        return result;
     }
 
     public static CompilerResult<T> Failure(
@@ -251,6 +255,40 @@ public sealed class CompilerResult<T>
     )
     {
         CompilerStructural.RequireNotNull(diagnostics, nameof(diagnostics));
-        return new CompilerResult<T>(value, diagnostics);
+        var result = new CompilerResult<T>(value, diagnostics);
+        return result;
+    }
+}
+
+internal delegate TOutput CompilerResultProjection<in TInput, out TOutput>(TInput value);
+
+internal static class CompilerResultMapper
+{
+    public static CompilerResult<TOutput> Map<TInput, TOutput>(
+        CompilerResult<TInput> source,
+        CompilerResultProjection<TInput, TOutput> projection,
+        CompilerDiagnosticStage missingValueStage,
+        string missingValueMessage
+    )
+    {
+        if (!source.IsSuccess)
+        {
+            return CompilerResult<TOutput>.Failure(source.Diagnostics);
+        }
+
+        if (source.Value is not { } value)
+        {
+            var diagnostic = new CompilerDiagnostic(
+                code: CompilerDiagnosticCodes.InvalidSource,
+                message: missingValueMessage,
+                stage: missingValueStage,
+                severity: CompilerDiagnosticSeverity.Error);
+            var failure = CompilerResult<TOutput>.Failure(source.Diagnostics.Append(diagnostic));
+            return failure;
+        }
+
+        var mappedValue = projection(value);
+        var result = CompilerResult<TOutput>.Success(mappedValue, source.Diagnostics);
+        return result;
     }
 }

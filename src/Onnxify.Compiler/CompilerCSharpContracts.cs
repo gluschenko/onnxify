@@ -19,7 +19,7 @@ public sealed class CompilerTorchSharpValueDescriptor : IEquatable<CompilerTorch
         Type = type;
         CSharpTypeName = string.IsNullOrWhiteSpace(csharpTypeName)
             ? "global::TorchSharp.torch.Tensor"
-            : csharpTypeName!;
+            : csharpTypeName ?? "global::TorchSharp.torch.Tensor";
     }
 
     public string Name { get; }
@@ -30,10 +30,11 @@ public sealed class CompilerTorchSharpValueDescriptor : IEquatable<CompilerTorch
 
     public bool Equals(CompilerTorchSharpValueDescriptor? other)
     {
-        return other is not null
+        var result = other is not null
             && string.Equals(Name, other.Name, StringComparison.Ordinal)
             && EqualityComparer<CompilerType>.Default.Equals(Type, other.Type)
             && string.Equals(CSharpTypeName, other.CSharpTypeName, StringComparison.Ordinal);
+        return result;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CompilerTorchSharpValueDescriptor);
@@ -69,7 +70,7 @@ public sealed class CompilerTorchSharpStateMemberDescriptor : IEquatable<Compile
         Value = value;
         CSharpTypeName = string.IsNullOrWhiteSpace(csharpTypeName)
             ? "global::TorchSharp.torch.Tensor"
-            : csharpTypeName!;
+            : csharpTypeName ?? "global::TorchSharp.torch.Tensor";
     }
 
     public string Name { get; }
@@ -84,12 +85,13 @@ public sealed class CompilerTorchSharpStateMemberDescriptor : IEquatable<Compile
 
     public bool Equals(CompilerTorchSharpStateMemberDescriptor? other)
     {
-        return other is not null
+        var result = other is not null
             && string.Equals(Name, other.Name, StringComparison.Ordinal)
             && Kind == other.Kind
             && EqualityComparer<CompilerType>.Default.Equals(Type, other.Type)
             && EqualityComparer<CompilerLiteral?>.Default.Equals(Value, other.Value)
             && string.Equals(CSharpTypeName, other.CSharpTypeName, StringComparison.Ordinal);
+        return result;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CompilerTorchSharpStateMemberDescriptor);
@@ -118,7 +120,7 @@ public sealed class CompilerTorchSharpChildModuleDescriptor : IEquatable<Compile
 
         Name = name;
         TypeName = typeName;
-        BlockName = string.IsNullOrWhiteSpace(blockName) ? name : blockName!;
+        BlockName = string.IsNullOrWhiteSpace(blockName) ? name : blockName ?? name;
     }
 
     public string Name { get; }
@@ -129,10 +131,11 @@ public sealed class CompilerTorchSharpChildModuleDescriptor : IEquatable<Compile
 
     public bool Equals(CompilerTorchSharpChildModuleDescriptor? other)
     {
-        return other is not null
+        var result = other is not null
             && string.Equals(Name, other.Name, StringComparison.Ordinal)
             && string.Equals(TypeName, other.TypeName, StringComparison.Ordinal)
             && string.Equals(BlockName, other.BlockName, StringComparison.Ordinal);
+        return result;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CompilerTorchSharpChildModuleDescriptor);
@@ -167,10 +170,11 @@ public sealed class CompilerTorchSharpHelperMethodDescriptor : IEquatable<Compil
 
     public bool Equals(CompilerTorchSharpHelperMethodDescriptor? other)
     {
-        return other is not null
+        var result = other is not null
             && string.Equals(Name, other.Name, StringComparison.Ordinal)
             && CompilerStructural.SequenceEqual(Inputs, other.Inputs)
             && CompilerStructural.SequenceEqual(Outputs, other.Outputs);
+        return result;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CompilerTorchSharpHelperMethodDescriptor);
@@ -220,7 +224,7 @@ public sealed class CompilerTorchSharpModuleDescriptor : IEquatable<CompilerTorc
         TypeName = typeName;
         MethodName = methodName;
         MethodMetadataToken = methodMetadataToken;
-        Document = string.IsNullOrWhiteSpace(document) ? AssemblyPath : document!;
+        Document = string.IsNullOrWhiteSpace(document) ? AssemblyPath : document ?? AssemblyPath;
         Inputs = CompilerStructural.Copy(inputs ?? Array.Empty<CompilerTorchSharpValueDescriptor>(), nameof(inputs));
         Outputs = CompilerStructural.Copy(outputs ?? Array.Empty<CompilerTorchSharpValueDescriptor>(), nameof(outputs));
         StateMembers = CompilerStructural.Copy(stateMembers ?? Array.Empty<CompilerTorchSharpStateMemberDescriptor>(), nameof(stateMembers));
@@ -250,7 +254,7 @@ public sealed class CompilerTorchSharpModuleDescriptor : IEquatable<CompilerTorc
 
     public bool Equals(CompilerTorchSharpModuleDescriptor? other)
     {
-        return other is not null
+        var result = other is not null
             && string.Equals(AssemblyPath, other.AssemblyPath, StringComparison.Ordinal)
             && string.Equals(TypeName, other.TypeName, StringComparison.Ordinal)
             && string.Equals(MethodName, other.MethodName, StringComparison.Ordinal)
@@ -261,6 +265,7 @@ public sealed class CompilerTorchSharpModuleDescriptor : IEquatable<CompilerTorc
             && CompilerStructural.SequenceEqual(StateMembers, other.StateMembers)
             && CompilerStructural.SequenceEqual(ChildModules, other.ChildModules)
             && CompilerStructural.SequenceEqual(HelperMethods, other.HelperMethods);
+        return result;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CompilerTorchSharpModuleDescriptor);
