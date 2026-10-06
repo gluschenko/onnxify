@@ -629,6 +629,12 @@ internal sealed class CSharpSyntaxScanner
             return false;
         }
 
+        if (mapping.OnnxName is "MatMul" or "Gemm")
+        {
+            AddMatrixOperation(method, invocation, mapping, receiver, inputs, outputs, builder);
+            return true;
+        }
+
         var operationInputs = new List<CompilerExpression>();
         if (receiver is not null)
         {
@@ -719,6 +725,131 @@ internal sealed class CSharpSyntaxScanner
             span: invocation.Span));
         return true;
     }
+
+    private void AddMatrixOperation(
+        MethodDeclarationSyntax method,
+        CompilerInvocationExpression invocation,
+        CompilerOperatorMapping mapping,
+        CompilerExpression? receiver,
+        IReadOnlyList<ScanValue> inputs,
+        IReadOnlyList<ScanValue> outputs,
+        CompilerComputationTreeBuilder builder
+    )
+    {
+        if (outputs.Count != 1)
+        {
+            throw Unsupported(method, $"TorchSharp mapping '{mapping.OnnxName}' requires exactly one output.");
+        }
+
+        var callName = CompilerOperatorMappingRegistry.GetTorchSharpCallName(invocation.Target, receiver);
+        var operationInputs = new List<CompilerValueReference>();
+        var attributes = new List<CompilerAttribute>();
+        if (mapping.OnnxName == "MatMul")
+        {
+            var operands = new List<CompilerExpression>();
+            if (receiver is not null)
+            {
+                operands.Add(receiver);
+            }
+
+            operands.AddRange(invocation.Arguments);
+            if (operands.Count != 2)
+            {
+                throw Unsupported(method, $"TorchSharp call '{callName}' requires exactly two tensor operands.");
+            }
+
+            operationInputs.AddRange(operands.Select(operand => RequireMatrixTensorReference(method, operand, inputs, callName)));
+        }
+        else if (callName == "torch.nn.functional.linear")
+        {
+            if (receiver is not null || invocation.Arguments.Count is < 2 or > 3)
+            {
+                throw Unsupported(method, "torch.nn.functional.linear requires input, weight, and an optional bias tensor.");
+            }
+
+            operationInputs.Add(RequireMatrixTensorReference(method, invocation.Arguments[0], inputs, callName));
+            operationInputs.Add(RequireMatrixTensorReference(method, invocation.Arguments[1], inputs, callName));
+            if (invocation.Arguments.Count == 3)
+            {
+                operationInputs.Add(RequireMatrixTensorReference(method, invocation.Arguments[2], inputs, callName));
+            }
+
+            attributes.Add(IntegerAttribute("transB", 1));
+        }
+        else
+        {
+            var arguments = new List<CompilerExpression>();
+            if (receiver is not null)
+            {
+                arguments.Add(receiver);
+            }
+
+            arguments.AddRange(invocation.Arguments);
+            if (arguments.Count is < 3 or > 5)
+            {
+                throw Unsupported(method, "torch.addmm requires input, mat1, mat2, and optional constant beta and alpha values.");
+            }
+
+            var c = RequireMatrixTensorReference(method, arguments[0], inputs, callName);
+            var a = RequireMatrixTensorReference(method, arguments[1], inputs, callName);
+            var b = RequireMatrixTensorReference(method, arguments[2], inputs, callName);
+            operationInputs.Add(a);
+            operationInputs.Add(b);
+            operationInputs.Add(c);
+            var beta = arguments.Count >= 4 ? RequireNumericLiteral(method, arguments[3], "beta") : 1f;
+            var alpha = arguments.Count >= 5 ? RequireNumericLiteral(method, arguments[4], "alpha") : 1f;
+            attributes.Add(FloatAttribute("alpha", alpha));
+            attributes.Add(FloatAttribute("beta", beta));
+        }
+
+        builder.AddOperation(new CompilerOperation(
+            name: mapping.OnnxName.ToLowerInvariant(),
+            descriptor: mapping.Descriptor,
+            inputs: operationInputs,
+            outputs: [new CompilerValueReference(outputs[0].Name)],
+            attributes: attributes,
+            span: invocation.Span));
+    }
+
+    private CompilerValueReference RequireMatrixTensorReference(
+        MethodDeclarationSyntax method,
+        CompilerExpression expression,
+        IReadOnlyList<ScanValue> inputs,
+        string callName
+    )
+    {
+        if (expression is CompilerReferenceExpression reference
+            && inputs.Any(input => string.Equals(input.Name, reference.Name, StringComparison.Ordinal)))
+        {
+            return new CompilerValueReference(reference.Name);
+        }
+
+        throw Unsupported(method, $"TorchSharp call '{callName}' requires tensor parameters for its matrix operands.");
+    }
+
+    private float RequireNumericLiteral(MethodDeclarationSyntax method, CompilerExpression expression, string parameterName)
+    {
+        if (expression is CompilerLiteralExpression literal)
+        {
+            return literal.Literal switch
+            {
+                CompilerFloatingPointLiteral floatingPoint => (float)floatingPoint.Value,
+                CompilerSignedIntegerLiteral integer => integer.Value,
+                CompilerUnsignedIntegerLiteral integer => integer.Value,
+                _ => throw Unsupported(method, $"Gemm parameter '{parameterName}' must be a numeric compile-time constant."),
+            };
+        }
+
+        throw Unsupported(method, $"Gemm parameter '{parameterName}' must be a numeric compile-time constant.");
+    }
+
+    private static CompilerAttribute FloatAttribute(string name, float value) => new(
+        name,
+        new CompilerFloatingPointLiteral(CompilerElementType.Float32, value));
+
+    private static CompilerAttribute IntegerAttribute(string name, long value) => new(
+        name,
+        new CompilerSignedIntegerLiteral(CompilerElementType.Int64, value));
 
     private void AddBinaryOperation(
         MethodDeclarationSyntax method,
@@ -1669,7 +1800,7 @@ internal sealed class CSharpSyntaxScanner
             case InvocationExpressionSyntax invocation:
                 return new CompilerInvocationExpression(
                     ScanExpression(invocation.Expression),
-                    invocation.ArgumentList.Arguments.Select(x => ScanExpression(x.Expression)),
+                    ScanInvocationArguments(invocation),
                     Span(invocation));
 
             case ElementAccessExpressionSyntax indexer:
@@ -1740,6 +1871,72 @@ internal sealed class CSharpSyntaxScanner
                 throw Unsupported(
                     expression,
                     $"C# expression '{expression.Kind()}' is not supported by the compiler frontend.");
+        }
+    }
+
+    private IEnumerable<CompilerExpression> ScanInvocationArguments(InvocationExpressionSyntax invocation)
+    {
+        var arguments = invocation.ArgumentList.Arguments;
+        if (!TryGetSyntaxMemberPath(invocation.Expression, out var targetPath)
+            || !targetPath.EndsWith("addmm", StringComparison.Ordinal)
+            || !arguments.Any(static argument => argument.NameColon is not null))
+        {
+            return arguments.Select(argument => ScanExpression(argument.Expression)).ToArray();
+        }
+
+        var isStaticAddmm = targetPath.StartsWith("torch.", StringComparison.Ordinal)
+            || targetPath.Contains(".torch.addmm", StringComparison.Ordinal);
+        var tensorArgumentCount = isStaticAddmm ? 3 : 2;
+        var positional = arguments.Where(static argument => argument.NameColon is null).ToArray();
+        var named = arguments
+            .Where(static argument => argument.NameColon is not null)
+            .ToDictionary(
+                static argument => argument.NameColon!.Name.Identifier.ValueText,
+                argument => ScanExpression(argument.Expression),
+                StringComparer.Ordinal);
+        if (positional.Length < tensorArgumentCount
+            || named.Keys.Any(static name => name is not ("beta" or "alpha")))
+        {
+            throw Unsupported(invocation, "Named Gemm syntax supports positional tensor operands and only beta/alpha named arguments.");
+        }
+
+        var normalized = positional
+            .Take(tensorArgumentCount)
+            .Select(argument => ScanExpression(argument.Expression))
+            .ToList();
+        var positionalAttributes = positional.Skip(tensorArgumentCount)
+            .Select(argument => ScanExpression(argument.Expression))
+            .ToArray();
+        var beta = named.TryGetValue("beta", out var namedBeta)
+            ? namedBeta
+            : positionalAttributes.Length > 0 ? positionalAttributes[0] : FloatLiteral(1f);
+        var alpha = named.TryGetValue("alpha", out var namedAlpha)
+            ? namedAlpha
+            : positionalAttributes.Length > 1 ? positionalAttributes[1] : FloatLiteral(1f);
+        normalized.Add(beta);
+        normalized.Add(alpha);
+        return normalized;
+    }
+
+    private static CompilerExpression FloatLiteral(float value) => new CompilerLiteralExpression(
+        new CompilerFloatingPointLiteral(CompilerElementType.Float32, value));
+
+    private static bool TryGetSyntaxMemberPath(ExpressionSyntax expression, out string path)
+    {
+        switch (expression)
+        {
+            case IdentifierNameSyntax identifier:
+                path = identifier.Identifier.ValueText;
+                return true;
+            case MemberAccessExpressionSyntax member when TryGetSyntaxMemberPath(member.Expression, out var prefix):
+                path = $"{prefix}.{member.Name.Identifier.ValueText}";
+                return true;
+            case AliasQualifiedNameSyntax aliasQualified:
+                path = $"{aliasQualified.Alias.Identifier.ValueText}::{aliasQualified.Name.Identifier.ValueText}";
+                return true;
+            default:
+                path = string.Empty;
+                return false;
         }
     }
 

@@ -955,6 +955,19 @@ internal static class OnnxCompilerFrontend
                     context: new CompilerDiagnosticContext(caller, node.OpType)));
             }
 
+            if (hasMapping
+                && mapping!.OnnxName is "MatMul" or "Gemm"
+                && TryGetMatrixSemanticError(node, mapping.OnnxName, attributes, knownTypes, out var matrixError))
+            {
+                diagnostics.Add(new CompilerDiagnostic(
+                    code: CompilerDiagnosticCodes.Unsupported,
+                    message: matrixError,
+                    stage: CompilerDiagnosticStage.Analyze,
+                    severity: CompilerDiagnosticSeverity.Error,
+                    span: span,
+                    context: new CompilerDiagnosticContext(caller, node.OpType)));
+            }
+
             var descriptor = mapping is not null && hasMapping
                 ? mapping.Descriptor
                 : new CompilerOperatorDescriptor(
@@ -985,6 +998,203 @@ internal static class OnnxCompilerFrontend
                 span: span);
             builder.AddOperation(operation);
         }
+    }
+
+    private static bool TryGetMatrixSemanticError(
+        OnnxNode node,
+        string operatorName,
+        IReadOnlyList<CompilerAttribute> attributes,
+        IReadOnlyDictionary<string, CompilerType> knownTypes,
+        out string message
+    )
+    {
+        message = string.Empty;
+        if (operatorName == "Gemm")
+        {
+            foreach (var flagName in new[] { "transA", "transB" })
+            {
+                var flag = GetMatrixIntegerAttribute(attributes, flagName, 0);
+                if (flag is not (0 or 1))
+                {
+                    message = $"ONNX Gemm attribute '{flagName}' must be 0 or 1.";
+                    return true;
+                }
+            }
+
+            foreach (var scaleName in new[] { "alpha", "beta" })
+            {
+                var scale = attributes.FirstOrDefault(attribute => attribute.Name == scaleName)?.Value;
+                if (scale is not null && scale is not (CompilerFloatingPointLiteral or CompilerSignedIntegerLiteral or CompilerUnsignedIntegerLiteral))
+                {
+                    message = $"ONNX Gemm attribute '{scaleName}' must be numeric.";
+                    return true;
+                }
+            }
+        }
+
+        var tensors = node.Inputs
+            .Where(static input => !string.IsNullOrEmpty(input.Name))
+            .Select(input => knownTypes.TryGetValue(input.Name, out var type) ? type as CompilerTensorType : null)
+            .ToArray();
+        if (tensors.Length < 2 || tensors.Take(2).Any(static tensor => tensor is null))
+        {
+            return false;
+        }
+
+        var left = tensors[0]!;
+        var right = tensors[1]!;
+        if (left.ElementType != right.ElementType)
+        {
+            message = $"ONNX {operatorName} requires both matrix operands to have the same element type.";
+            return true;
+        }
+
+        var isGemm = operatorName == "Gemm";
+        if (!IsSupportedMatrixElementType(left.ElementType, isGemm))
+        {
+            message = $"ONNX {operatorName} does not have a registered runtime-verified mapping for element type '{left.ElementType}'.";
+            return true;
+        }
+
+        if (isGemm && tensors.Length > 2 && tensors[2] is { } biasType && biasType.ElementType != left.ElementType)
+        {
+            message = "ONNX Gemm requires bias input C to have the same element type as A and B.";
+            return true;
+        }
+
+        if (left.Dimensions is null || right.Dimensions is null
+            || left.Dimensions.Any(static dimension => dimension is not CompilerFixedDimension)
+            || right.Dimensions.Any(static dimension => dimension is not CompilerFixedDimension))
+        {
+            return false;
+        }
+
+        var leftDimensions = left.Dimensions.Cast<CompilerFixedDimension>().Select(static dimension => dimension.Value).ToArray();
+        var rightDimensions = right.Dimensions.Cast<CompilerFixedDimension>().Select(static dimension => dimension.Value).ToArray();
+        if (isGemm)
+        {
+            if (leftDimensions.Length != 2 || rightDimensions.Length != 2)
+            {
+                message = "ONNX Gemm requires rank-2 A and B inputs.";
+                return true;
+            }
+
+            var transA = GetMatrixIntegerAttribute(attributes, "transA", 0) == 1;
+            var transB = GetMatrixIntegerAttribute(attributes, "transB", 0) == 1;
+            var aRows = leftDimensions[transA ? 1 : 0];
+            var aColumns = leftDimensions[transA ? 0 : 1];
+            var bRows = rightDimensions[transB ? 1 : 0];
+            var bColumns = rightDimensions[transB ? 0 : 1];
+            if (aColumns != bRows)
+            {
+                message = $"ONNX Gemm inner dimensions are incompatible ({aColumns} and {bRows}).";
+                return true;
+            }
+
+            if (tensors.Length > 2 && tensors[2]?.Dimensions is { } biasDimensions
+                && biasDimensions.All(static dimension => dimension is CompilerFixedDimension))
+            {
+                if (biasDimensions.Count > 2)
+                {
+                    message = "ONNX Gemm bias input C must have rank at most 2.";
+                    return true;
+                }
+
+                var biasShape = biasDimensions.Cast<CompilerFixedDimension>().Select(static dimension => dimension.Value).ToArray();
+                if (!CanBroadcastTo(biasShape, [aRows, bColumns]))
+                {
+                    message = "ONNX Gemm bias input C cannot be broadcast to the matrix output shape.";
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        if (leftDimensions.Length == 0 || rightDimensions.Length == 0)
+        {
+            message = "ONNX MatMul requires both inputs to have rank at least 1.";
+            return true;
+        }
+
+        var leftContract = leftDimensions[leftDimensions.Length - 1];
+        var rightContract = rightDimensions.Length == 1 ? rightDimensions[0] : rightDimensions[rightDimensions.Length - 2];
+        if (leftContract != rightContract)
+        {
+            message = $"ONNX MatMul inner dimensions are incompatible ({leftContract} and {rightContract}).";
+            return true;
+        }
+
+        var leftBatch = leftDimensions.Take(Math.Max(0, leftDimensions.Length - 2)).ToArray();
+        var rightBatch = rightDimensions.Take(Math.Max(0, rightDimensions.Length - 2)).ToArray();
+        if (leftDimensions.Length == 1)
+        {
+            leftBatch = [];
+        }
+
+        if (rightDimensions.Length == 1)
+        {
+            rightBatch = [];
+        }
+
+        if (!CanMultidirectionallyBroadcast(leftBatch, rightBatch))
+        {
+            message = "ONNX MatMul batch dimensions cannot be broadcast together.";
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsSupportedMatrixElementType(CompilerElementType elementType, bool isGemm)
+    {
+        return isGemm
+            ? elementType is CompilerElementType.Float32 or CompilerElementType.Float64
+            : elementType is CompilerElementType.Float32 or CompilerElementType.Float64
+                or CompilerElementType.Int32 or CompilerElementType.Int64;
+    }
+
+    private static long GetMatrixIntegerAttribute(IReadOnlyList<CompilerAttribute> attributes, string name, long defaultValue)
+    {
+        return attributes.FirstOrDefault(attribute => attribute.Name == name)?.Value switch
+        {
+            null => defaultValue,
+            CompilerSignedIntegerLiteral signed => signed.Value,
+            CompilerUnsignedIntegerLiteral unsigned => checked((long)unsigned.Value),
+            _ => defaultValue,
+        };
+    }
+
+    private static bool CanMultidirectionallyBroadcast(long[] left, long[] right)
+    {
+        var rank = Math.Max(left.Length, right.Length);
+        for (var offset = 1; offset <= rank; offset++)
+        {
+            var leftDimension = offset <= left.Length ? left[left.Length - offset] : 1;
+            var rightDimension = offset <= right.Length ? right[right.Length - offset] : 1;
+            if (leftDimension != rightDimension && leftDimension != 1 && rightDimension != 1)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool CanBroadcastTo(long[] source, long[] target)
+    {
+        var rank = Math.Max(source.Length, target.Length);
+        for (var offset = 1; offset <= rank; offset++)
+        {
+            var sourceDimension = offset <= source.Length ? source[source.Length - offset] : 1;
+            var targetDimension = offset <= target.Length ? target[target.Length - offset] : 1;
+            if (sourceDimension != targetDimension && sourceDimension != 1)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static bool HasKnownIncompatibleBroadcast(

@@ -18,13 +18,17 @@ internal sealed class CompilerOperatorMapping
         bool supportsMultidirectionalBroadcast = false,
         IEnumerable<CompilerElementType?>? inputElementTypes = null,
         CompilerElementType? outputElementType = null,
-        CompilerOperationCapability capability = CompilerOperationCapability.Bidirectional
+        CompilerOperationCapability capability = CompilerOperationCapability.Bidirectional,
+        int? minimumInputCount = null,
+        int? maximumInputCount = null
     )
     {
         OnnxName = onnxName;
         OnnxDomain = string.Empty;
         TorchSharpNames = torchSharpNames.ToArray();
         InputCount = inputCount;
+        MinimumInputCount = minimumInputCount ?? inputCount;
+        MaximumInputCount = maximumInputCount ?? inputCount;
         AttributeNames = (attributeNames ?? Array.Empty<string>()).ToArray();
         FixedTorchSharpArguments = (fixedTorchSharpArguments ?? Array.Empty<float>()).ToArray();
         BinaryOperator = binaryOperator;
@@ -39,7 +43,9 @@ internal sealed class CompilerOperatorMapping
             OnnxDomain,
             capability,
             [
-                $"Inputs: {InputCount}; attributes: {string.Join(", ", AttributeNames)}",
+                MinimumInputCount == MaximumInputCount
+                    ? $"Inputs: {InputCount}; attributes: {string.Join(", ", AttributeNames)}"
+                    : $"Inputs: {MinimumInputCount}-{MaximumInputCount}; attributes: {string.Join(", ", AttributeNames)}",
                 $"TorchSharp forms: {string.Join(", ", TorchSharpNames)}",
             ]);
     }
@@ -55,6 +61,10 @@ internal sealed class CompilerOperatorMapping
     public IReadOnlyList<float> FixedTorchSharpArguments { get; }
 
     public int InputCount { get; }
+
+    public int MinimumInputCount { get; }
+
+    public int MaximumInputCount { get; }
 
     public string? BinaryOperator { get; }
 
@@ -76,16 +86,18 @@ internal sealed class CompilerOperatorMapping
 
     public bool Accepts(CompilerOperation operation)
     {
-        return operation.Inputs.Count == InputCount
+        return operation.Inputs.Count >= MinimumInputCount
+            && operation.Inputs.Count <= MaximumInputCount
             && operation.Outputs.Count == 1
-            && operation.Inputs.All(input => !input.IsEmptyOptional)
+            && (OnnxName == "Gemm" || operation.Inputs.All(input => !input.IsEmptyOptional))
             && operation.Outputs.All(output => !output.IsEmptyOptional)
             && operation.Attributes.All(attribute => AttributeNames.Contains(attribute.Name, StringComparer.Ordinal));
     }
 
     public bool Accepts(OnnxNode node)
     {
-        return node.Inputs.Count == InputCount
+        return node.Inputs.Count >= MinimumInputCount
+            && node.Inputs.Count <= MaximumInputCount
             && node.Outputs.Count == 1
             && node.Attributes.All(attribute => AttributeNames.Contains(attribute.Name, StringComparer.Ordinal));
     }
@@ -105,6 +117,14 @@ internal sealed class CompilerOperatorMapping
         var x = inputs[0];
         var y = inputs.Length > 1 ? inputs[1] : string.Empty;
         var z = inputs.Length > 2 ? inputs[2] : string.Empty;
+        if (OnnxName == "MatMul")
+        {
+            return $"torch.matmul({x}, {y})";
+        }
+        if (OnnxName == "Gemm")
+        {
+            return EmitGemmExpression(operation, x, y, z);
+        }
         if (OnnxName == "Where")
         {
             return $"torch.where({x}, {y}, {z})";
@@ -153,6 +173,43 @@ internal sealed class CompilerOperatorMapping
             _ => throw new CSharpCompilerDiagnosticException(
                 CompilerDiagnosticCodes.Unsupported,
                 $"No TorchSharp emitter is registered for ONNX operator '{OnnxName}'.",
+                CompilerDiagnosticStage.Emit,
+                operation.Span),
+        };
+    }
+
+    private static string EmitGemmExpression(CompilerOperation operation, string a, string b, string c)
+    {
+        var transA = GetIntegerAttribute(operation, "transA", 0) == 1;
+        var transB = GetIntegerAttribute(operation, "transB", 0) == 1;
+        if (transA)
+        {
+            a = $"{a}.transpose(0, 1)";
+        }
+
+        if (transB)
+        {
+            b = $"{b}.transpose(0, 1)";
+        }
+
+        var alpha = GetFloatAttribute(operation, "alpha", 1f).ToString("R", CultureInfo.InvariantCulture) + "f";
+        var beta = GetFloatAttribute(operation, "beta", 1f).ToString("R", CultureInfo.InvariantCulture) + "f";
+        var product = $"torch.matmul({a}, {b})";
+        product = alpha == "1f" ? product : $"({alpha} * {product})";
+        return string.IsNullOrEmpty(c) ? product : $"({product} + ({beta} * {c}))";
+    }
+
+    private static long GetIntegerAttribute(CompilerOperation operation, string name, long defaultValue)
+    {
+        var attribute = operation.Attributes.FirstOrDefault(value => string.Equals(value.Name, name, StringComparison.Ordinal));
+        return attribute?.Value switch
+        {
+            null => defaultValue,
+            CompilerSignedIntegerLiteral signed => signed.Value,
+            CompilerUnsignedIntegerLiteral unsigned => checked((long)unsigned.Value),
+            _ => throw new CSharpCompilerDiagnosticException(
+                CompilerDiagnosticCodes.Unsupported,
+                $"Gemm attribute '{name}' must be an integer.",
                 CompilerDiagnosticStage.Emit,
                 operation.Span),
         };
@@ -279,6 +336,8 @@ internal static class CompilerOperatorMappingRegistry
         new("Floor", ["torch.floor", "Tensor.floor"], torchSharpMethod: "floor"),
         new("Log", ["torch.log", "Tensor.log"], torchSharpMethod: "log"),
         new("Mod", ["torch.remainder", "Tensor.remainder"], inputCount: 2, torchSharpMethod: "remainder", supportsMultidirectionalBroadcast: true),
+        new("MatMul", ["torch.matmul", "torch.mm", "torch.bmm", "Tensor.matmul", "Tensor.mm", "Tensor.bmm"], inputCount: 2),
+        new("Gemm", ["torch.addmm", "Tensor.addmm", "torch.nn.functional.linear"], inputCount: 3, attributeNames: ["alpha", "beta", "transA", "transB"], minimumInputCount: 2, maximumInputCount: 3),
         new("Neg", ["torch.neg", "Tensor.neg"], unaryOperator: "-"),
         new("Sub", ["torch.sub", "Tensor.sub"], inputCount: 2, binaryOperator: "-", supportsMultidirectionalBroadcast: true),
         new("Sin", ["torch.sin", "Tensor.sin"], torchSharpMethod: "sin"),
@@ -388,6 +447,16 @@ internal static class CompilerOperatorMappingRegistry
         }
 
         return false;
+    }
+
+    public static string GetTorchSharpCallName(CompilerExpression target, CompilerExpression? receiver)
+    {
+        if (receiver is not null && target is CompilerMemberAccessExpression member)
+        {
+            return $"Tensor.{member.MemberName}";
+        }
+
+        return TryGetMemberPath(target, out var name) ? name : string.Empty;
     }
 
     private static bool IsSameOnnxDomain(string expected, string actual)
