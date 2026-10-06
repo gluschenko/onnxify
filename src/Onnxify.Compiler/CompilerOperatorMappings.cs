@@ -12,6 +12,12 @@ internal sealed class CompilerOperatorMapping
         int inputCount = 1,
         IEnumerable<string>? attributeNames = null,
         IEnumerable<float>? fixedTorchSharpArguments = null,
+        string? binaryOperator = null,
+        string? unaryOperator = null,
+        string? torchSharpMethod = null,
+        bool supportsMultidirectionalBroadcast = false,
+        IEnumerable<CompilerElementType?>? inputElementTypes = null,
+        CompilerElementType? outputElementType = null,
         CompilerOperationCapability capability = CompilerOperationCapability.Bidirectional
     )
     {
@@ -21,6 +27,12 @@ internal sealed class CompilerOperatorMapping
         InputCount = inputCount;
         AttributeNames = (attributeNames ?? Array.Empty<string>()).ToArray();
         FixedTorchSharpArguments = (fixedTorchSharpArguments ?? Array.Empty<float>()).ToArray();
+        BinaryOperator = binaryOperator;
+        UnaryOperator = unaryOperator;
+        TorchSharpMethod = torchSharpMethod;
+        SupportsMultidirectionalBroadcast = supportsMultidirectionalBroadcast;
+        InputElementTypes = (inputElementTypes ?? Array.Empty<CompilerElementType?>()).ToArray();
+        OutputElementType = outputElementType;
         Capability = capability;
         Descriptor = new CompilerOperatorDescriptor(
             onnxName,
@@ -43,6 +55,18 @@ internal sealed class CompilerOperatorMapping
     public IReadOnlyList<float> FixedTorchSharpArguments { get; }
 
     public int InputCount { get; }
+
+    public string? BinaryOperator { get; }
+
+    public string? UnaryOperator { get; }
+
+    public string? TorchSharpMethod { get; }
+
+    public bool SupportsMultidirectionalBroadcast { get; }
+
+    public IReadOnlyList<CompilerElementType?> InputElementTypes { get; }
+
+    public CompilerElementType? OutputElementType { get; }
 
     public CompilerOperationCapability Capability { get; }
 
@@ -80,6 +104,33 @@ internal sealed class CompilerOperatorMapping
         var inputs = operation.Inputs.Select(reference => reference.Name).ToArray();
         var x = inputs[0];
         var y = inputs.Length > 1 ? inputs[1] : string.Empty;
+        var z = inputs.Length > 2 ? inputs[2] : string.Empty;
+        if (OnnxName == "Where")
+        {
+            return $"torch.where({x}, {y}, {z})";
+        }
+        if (OnnxName == "Cast")
+        {
+            var targetType = GetCastTargetType(operation);
+            return $"{x}.to_type(torch.ScalarType.{targetType})";
+        }
+        if (BinaryOperator is not null)
+        {
+            return $"({x} {BinaryOperator} {y})";
+        }
+
+        if (UnaryOperator is not null)
+        {
+            return $"({UnaryOperator}{x})";
+        }
+
+        if (TorchSharpMethod is not null)
+        {
+            return InputCount == 1
+                ? $"{x}.{TorchSharpMethod}()"
+                : $"{x}.{TorchSharpMethod}({y})";
+        }
+
         return OnnxName switch
         {
             "Celu" => $"torch.nn.functional.celu({x}, alpha: {GetFloatAttribute(operation, "alpha", 1f)}f)",
@@ -90,6 +141,7 @@ internal sealed class CompilerOperatorMapping
             "LeakyRelu" => $"torch.nn.functional.leaky_relu({x}, negative_slope: {GetFloatAttribute(operation, "alpha", 0.01f)}f)",
             "Mish" => $"({x} * {x}.softplus().tanh())",
             "PRelu" => $"torch.nn.functional.prelu({x}, {y})",
+            "Pow" => $"{x}.pow({y})",
             "Relu" => $"torch.nn.functional.relu({x})",
             "Selu" => SeluExpression(x, operation),
             "Sigmoid" => $"{x}.sigmoid()",
@@ -158,6 +210,38 @@ internal sealed class CompilerOperatorMapping
         };
     }
 
+    private static string GetCastTargetType(CompilerOperation operation)
+    {
+        var attribute = operation.Attributes.FirstOrDefault(static value => value.Name == "to");
+        var onnxType = attribute?.Value switch
+        {
+            CompilerSignedIntegerLiteral signed => signed.Value,
+            CompilerUnsignedIntegerLiteral unsigned => checked((long)unsigned.Value),
+            _ => 0,
+        };
+        return onnxType switch
+        {
+            1 => "Float32",
+            2 => "UInt8",
+            3 => "Int8",
+            4 => "UInt16",
+            5 => "Int16",
+            6 => "Int32",
+            7 => "Int64",
+            9 => "Bool",
+            10 => "Float16",
+            11 => "Float64",
+            12 => "UInt32",
+            13 => "UInt64",
+            16 => "BFloat16",
+            _ => throw new CSharpCompilerDiagnosticException(
+                CompilerDiagnosticCodes.Unsupported,
+                $"ONNX Cast target element type '{onnxType}' is unsupported.",
+                CompilerDiagnosticStage.Emit,
+                operation.Span),
+        };
+    }
+
     private static string StringAttribute(CompilerOperation operation, string name, string defaultValue)
     {
         var attribute = operation.Attributes.FirstOrDefault(value => string.Equals(value.Name, name, StringComparison.Ordinal));
@@ -174,11 +258,54 @@ internal sealed class CompilerOperatorMapping
     }
 }
 
-/// <summary>Single registry for compiler activation identity and directional capability.</summary>
+/// <summary>Single registry for compiler operator identity, syntax forms, and directional capability.</summary>
 internal static class CompilerOperatorMappingRegistry
 {
     private static readonly CompilerOperatorMapping[] MAPPINGS =
     [
+        new("Abs", ["torch.abs", "Tensor.abs"], torchSharpMethod: "abs"),
+        new("Add", ["torch.add", "Tensor.add"], inputCount: 2, binaryOperator: "+", supportsMultidirectionalBroadcast: true),
+        new("Acos", ["torch.acos", "Tensor.acos"], torchSharpMethod: "acos"),
+        new("Acosh", ["torch.acosh", "Tensor.acosh"], torchSharpMethod: "acosh"),
+        new("Asin", ["torch.asin", "Tensor.asin"], torchSharpMethod: "asin"),
+        new("Asinh", ["torch.asinh", "Tensor.asinh"], torchSharpMethod: "asinh"),
+        new("Atan", ["torch.atan", "Tensor.atan"], torchSharpMethod: "atan"),
+        new("Atanh", ["torch.atanh", "Tensor.atanh"], torchSharpMethod: "atanh"),
+        new("Ceil", ["torch.ceil", "Tensor.ceil"], torchSharpMethod: "ceil"),
+        new("Cast", ["Tensor.to_type"], attributeNames: ["to"]),
+        new("Cos", ["torch.cos", "Tensor.cos"], torchSharpMethod: "cos"),
+        new("Cosh", ["torch.cosh", "Tensor.cosh"], torchSharpMethod: "cosh"),
+        new("Exp", ["torch.exp", "Tensor.exp"], torchSharpMethod: "exp"),
+        new("Floor", ["torch.floor", "Tensor.floor"], torchSharpMethod: "floor"),
+        new("Log", ["torch.log", "Tensor.log"], torchSharpMethod: "log"),
+        new("Mod", ["torch.remainder", "Tensor.remainder"], inputCount: 2, torchSharpMethod: "remainder", supportsMultidirectionalBroadcast: true),
+        new("Neg", ["torch.neg", "Tensor.neg"], unaryOperator: "-"),
+        new("Sub", ["torch.sub", "Tensor.sub"], inputCount: 2, binaryOperator: "-", supportsMultidirectionalBroadcast: true),
+        new("Sin", ["torch.sin", "Tensor.sin"], torchSharpMethod: "sin"),
+        new("Sinh", ["torch.sinh", "Tensor.sinh"], torchSharpMethod: "sinh"),
+        new("Sqrt", ["torch.sqrt", "Tensor.sqrt"], torchSharpMethod: "sqrt"),
+        new("Tan", ["torch.tan", "Tensor.tan"], torchSharpMethod: "tan"),
+        new("Mul", ["torch.mul", "Tensor.mul"], inputCount: 2, binaryOperator: "*", supportsMultidirectionalBroadcast: true),
+        new("Div", ["torch.div", "Tensor.div"], inputCount: 2, binaryOperator: "/", supportsMultidirectionalBroadcast: true),
+        new("Equal", ["torch.eq", "Tensor.eq"], inputCount: 2, binaryOperator: "==", torchSharpMethod: "eq", supportsMultidirectionalBroadcast: true, outputElementType: CompilerElementType.Boolean),
+        new("Pow", ["torch.pow", "Tensor.pow"], inputCount: 2, supportsMultidirectionalBroadcast: true),
+        new("Greater", ["torch.gt", "Tensor.gt"], inputCount: 2, binaryOperator: ">", torchSharpMethod: "gt", supportsMultidirectionalBroadcast: true, outputElementType: CompilerElementType.Boolean),
+        new("GreaterOrEqual", ["torch.ge", "Tensor.ge"], inputCount: 2, binaryOperator: ">=", torchSharpMethod: "ge", supportsMultidirectionalBroadcast: true, outputElementType: CompilerElementType.Boolean),
+        new("Less", ["torch.lt", "Tensor.lt"], inputCount: 2, binaryOperator: "<", torchSharpMethod: "lt", supportsMultidirectionalBroadcast: true, outputElementType: CompilerElementType.Boolean),
+        new("LessOrEqual", ["torch.le", "Tensor.le"], inputCount: 2, binaryOperator: "<=", torchSharpMethod: "le", supportsMultidirectionalBroadcast: true, outputElementType: CompilerElementType.Boolean),
+        new("Max", ["torch.maximum", "Tensor.maximum"], inputCount: 2, torchSharpMethod: "maximum", supportsMultidirectionalBroadcast: true),
+        new("Min", ["torch.minimum", "Tensor.minimum"], inputCount: 2, torchSharpMethod: "minimum", supportsMultidirectionalBroadcast: true),
+        new("And", ["torch.logical_and", "Tensor.logical_and"], inputCount: 2, torchSharpMethod: "logical_and", supportsMultidirectionalBroadcast: true, inputElementTypes: [CompilerElementType.Boolean, CompilerElementType.Boolean], outputElementType: CompilerElementType.Boolean),
+        new("Or", ["torch.logical_or", "Tensor.logical_or"], inputCount: 2, torchSharpMethod: "logical_or", supportsMultidirectionalBroadcast: true, inputElementTypes: [CompilerElementType.Boolean, CompilerElementType.Boolean], outputElementType: CompilerElementType.Boolean),
+        new("Xor", ["torch.logical_xor", "Tensor.logical_xor"], inputCount: 2, torchSharpMethod: "logical_xor", supportsMultidirectionalBroadcast: true, inputElementTypes: [CompilerElementType.Boolean, CompilerElementType.Boolean], outputElementType: CompilerElementType.Boolean),
+        new("Not", ["torch.logical_not", "Tensor.logical_not"], unaryOperator: "!", torchSharpMethod: "logical_not", inputElementTypes: [CompilerElementType.Boolean], outputElementType: CompilerElementType.Boolean),
+        new("Where", ["torch.where"], inputCount: 3, supportsMultidirectionalBroadcast: true, inputElementTypes: [CompilerElementType.Boolean, null, null]),
+        new("Reciprocal", ["torch.reciprocal", "Tensor.reciprocal"], torchSharpMethod: "reciprocal"),
+        new("Round", ["torch.round", "Tensor.round"], torchSharpMethod: "round"),
+        new("Sign", ["torch.sign", "Tensor.sign"], torchSharpMethod: "sign"),
+        new("Trunc", ["torch.trunc", "Tensor.trunc"], torchSharpMethod: "trunc"),
+        new("Erf", ["torch.erf", "Tensor.erf"], torchSharpMethod: "erf"),
+        new("IsNaN", ["torch.isnan", "Tensor.isnan"], torchSharpMethod: "isnan", outputElementType: CompilerElementType.Boolean),
         new("Celu", ["torch.nn.functional.celu"], attributeNames: ["alpha"]),
         new("Elu", ["torch.nn.functional.elu"], attributeNames: ["alpha"]),
         new("Gelu", ["torch.nn.functional.gelu"], attributeNames: ["approximate"]),
@@ -215,6 +342,26 @@ internal static class CompilerOperatorMappingRegistry
     )
     {
         mapping = MAPPINGS.FirstOrDefault(candidate => candidate.MatchesTorchSharpName(name));
+        return mapping is not null;
+    }
+
+    public static bool TryGetTorchSharpBinaryOperator(
+        string operation,
+        out CompilerOperatorMapping? mapping
+    )
+    {
+        mapping = MAPPINGS.FirstOrDefault(candidate =>
+            string.Equals(candidate.BinaryOperator, operation, StringComparison.Ordinal));
+        return mapping is not null;
+    }
+
+    public static bool TryGetTorchSharpUnaryOperator(
+        string operation,
+        out CompilerOperatorMapping? mapping
+    )
+    {
+        mapping = MAPPINGS.FirstOrDefault(candidate =>
+            string.Equals(candidate.UnaryOperator, operation, StringComparison.Ordinal));
         return mapping is not null;
     }
 

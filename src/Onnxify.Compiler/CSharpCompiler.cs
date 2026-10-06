@@ -519,11 +519,12 @@ internal sealed class CSharpSyntaxScanner
         var outputs = GetOutputs(method, descriptor);
         ValidateNoRecursiveCall(method);
         ValidateNoDynamicModuleDispatch(method);
+        var body = ScanBody(method);
+        (inputs, outputs) = ApplyOperatorTypeContracts(body, inputs, outputs);
         var builder = CreateBuilder(method, descriptor);
         RegisterValueContracts(builder, inputs, outputs);
         RegisterStateMetadata(builder, descriptor);
 
-        var body = ScanBody(method);
         AddDeclaredValues(
             builder: builder,
             body: body,
@@ -579,8 +580,38 @@ internal sealed class CSharpSyntaxScanner
             return true;
         }
 
-        if (!TryGetStaticReturnExpression(body, out var returnExpression)
-            || returnExpression is not CompilerInvocationExpression invocation)
+        if (!TryGetStaticReturnExpression(body, out var returnExpression))
+        {
+            return false;
+        }
+
+        if (returnExpression is CompilerBinaryExpression binaryExpression
+            && CompilerOperatorMappingRegistry.TryGetTorchSharpBinaryOperator(
+                binaryExpression.Operator,
+                out var binaryMapping)
+            && binaryMapping is not null)
+        {
+            AddBinaryOperation(
+                method,
+                binaryExpression,
+                binaryMapping,
+                inputs,
+                outputs,
+                builder);
+            return true;
+        }
+
+        if (returnExpression is CompilerUnaryExpression unaryExpression
+            && CompilerOperatorMappingRegistry.TryGetTorchSharpUnaryOperator(
+                unaryExpression.Operator,
+                out var unaryMapping)
+            && unaryMapping is not null)
+        {
+            AddUnaryOperation(method, unaryExpression, unaryMapping, inputs, outputs, builder);
+            return true;
+        }
+
+        if (returnExpression is not CompilerInvocationExpression invocation)
         {
             return false;
         }
@@ -617,16 +648,31 @@ internal sealed class CSharpSyntaxScanner
         }
 
         operationInputs.AddRange(invocation.Arguments.Take(requiredInvocationInputs));
-        var inputReferences = new List<CompilerReferenceExpression>();
-        foreach (var expression in operationInputs)
+        var operationInputReferences = new List<CompilerValueReference>();
+        for (var index = 0; index < operationInputs.Count; index++)
         {
-            if (expression is not CompilerReferenceExpression reference
-                || !inputs.Any(input => string.Equals(input.Name, reference.Name, StringComparison.Ordinal)))
+            var expression = operationInputs[index];
+            if (expression is CompilerReferenceExpression reference
+                && inputs.Any(input => string.Equals(input.Name, reference.Name, StringComparison.Ordinal)))
             {
-                throw Unsupported(method, $"TorchSharp mapping '{mapping.TorchSharpNames[0]}' only supports tensor parameters that reference method inputs.");
+                operationInputReferences.Add(new CompilerValueReference(reference.Name));
+                continue;
             }
 
-            inputReferences.Add(reference);
+            if (TryAddScalarInitializer(
+                method,
+                mapping,
+                index,
+                expression,
+                inputs,
+                builder,
+                out var initializerReference))
+            {
+                operationInputReferences.Add(initializerReference);
+                continue;
+            }
+
+            throw Unsupported(method, $"TorchSharp mapping '{mapping.TorchSharpNames[0]}' requires tensor inputs or scalar literal operands.");
         }
 
         var attributes = new List<CompilerAttribute>();
@@ -635,6 +681,16 @@ internal sealed class CSharpSyntaxScanner
             .Take(mapping.AttributeNames.Count)
             .Select((argument, index) => (argument, index)))
         {
+            if (mapping.OnnxName == "Cast"
+                && TryGetMemberPath(argument, out var castTypeName)
+                && TryGetCastType(castTypeName, out var onnxCastType))
+            {
+                attributes.Add(new CompilerAttribute(
+                    mapping.AttributeNames[index],
+                    new CompilerSignedIntegerLiteral(CompilerElementType.Int64, onnxCastType)));
+                continue;
+            }
+
             if (argument is not CompilerLiteralExpression literalExpression)
             {
                 throw Unsupported(method, $"TorchSharp mapping '{mapping.TorchSharpNames[0]}' requires compile-time literal activation arguments.");
@@ -657,12 +713,159 @@ internal sealed class CSharpSyntaxScanner
         builder.AddOperation(new CompilerOperation(
             name: mapping.OnnxName.ToLowerInvariant(),
             descriptor: mapping.Descriptor,
-            inputs: inputReferences.Select(reference => new CompilerValueReference(reference.Name)),
+            inputs: operationInputReferences,
             outputs: [new CompilerValueReference(outputs[0].Name)],
             attributes: attributes,
             span: invocation.Span));
         return true;
     }
+
+    private void AddBinaryOperation(
+        MethodDeclarationSyntax method,
+        CompilerBinaryExpression expression,
+        CompilerOperatorMapping mapping,
+        IReadOnlyList<ScanValue> inputs,
+        IReadOnlyList<ScanValue> outputs,
+        CompilerComputationTreeBuilder builder
+    )
+    {
+        if (mapping.InputCount != 2 || outputs.Count != 1)
+        {
+            throw Unsupported(method, $"TorchSharp operator mapping '{mapping.OnnxName}' requires two inputs and one output.");
+        }
+
+        var inputExpressions = new[] { expression.Left, expression.Right };
+        var references = new List<CompilerValueReference>();
+        foreach (var (inputExpression, index) in inputExpressions.Select((value, index) => (value, index)))
+        {
+            if (inputExpression is CompilerReferenceExpression reference
+                && inputs.Any(input => string.Equals(input.Name, reference.Name, StringComparison.Ordinal)))
+            {
+                references.Add(new CompilerValueReference(reference.Name));
+                continue;
+            }
+
+            if (TryAddScalarInitializer(method, mapping, index, inputExpression, inputs, builder, out var initializerReference))
+            {
+                references.Add(initializerReference);
+                continue;
+            }
+
+            throw Unsupported(method, $"TorchSharp operator mapping '{mapping.OnnxName}' requires tensor inputs or a scalar literal paired with a tensor input.");
+        }
+
+        if (references.Count != 2)
+        {
+            throw Unsupported(method, $"TorchSharp operator mapping '{mapping.OnnxName}' requires at least one tensor input.");
+        }
+
+        builder.AddOperation(new CompilerOperation(
+            name: mapping.OnnxName.ToLowerInvariant(),
+            descriptor: mapping.Descriptor,
+            inputs: references,
+            outputs: [new CompilerValueReference(outputs[0].Name)],
+            span: expression.Span));
+    }
+
+    private void AddUnaryOperation(
+        MethodDeclarationSyntax method,
+        CompilerUnaryExpression expression,
+        CompilerOperatorMapping mapping,
+        IReadOnlyList<ScanValue> inputs,
+        IReadOnlyList<ScanValue> outputs,
+        CompilerComputationTreeBuilder builder
+    )
+    {
+        if (mapping.InputCount != 1
+            || outputs.Count != 1
+            || expression.Expression is not CompilerReferenceExpression reference
+            || !inputs.Any(input => string.Equals(input.Name, reference.Name, StringComparison.Ordinal)))
+        {
+            throw Unsupported(method, $"TorchSharp operator mapping '{mapping.OnnxName}' requires one tensor input and one output.");
+        }
+
+        builder.AddOperation(new CompilerOperation(
+            name: mapping.OnnxName.ToLowerInvariant(),
+            descriptor: mapping.Descriptor,
+            inputs: [new CompilerValueReference(reference.Name)],
+            outputs: [new CompilerValueReference(outputs[0].Name)],
+            span: expression.Span));
+    }
+
+    private bool TryAddScalarInitializer(
+        MethodDeclarationSyntax method,
+        CompilerOperatorMapping mapping,
+        int index,
+        CompilerExpression expression,
+        IReadOnlyList<ScanValue> inputs,
+        CompilerComputationTreeBuilder builder,
+        out CompilerValueReference reference
+    )
+    {
+        if (expression is CompilerLiteralExpression { Literal: CompilerScalarLiteral scalarLiteral })
+        {
+            var elementType = inputs
+                .Select(input => input.Type)
+                .OfType<CompilerTensorType>()
+                .Select(tensorType => (CompilerElementType?)tensorType.ElementType)
+                .FirstOrDefault();
+            if (elementType is null)
+            {
+                throw Unsupported(method, $"TorchSharp mapping '{mapping.OnnxName}' cannot infer scalar dtype without a tensor parameter.");
+            }
+
+            var name = $"__{mapping.OnnxName.ToLowerInvariant()}_scalar{index}";
+            var value = ConvertScalarLiteral(scalarLiteral, elementType.Value, method);
+            var tensorLiteral = new CompilerTensorLiteral(
+                elementType.Value,
+                Array.Empty<CompilerDimension>(),
+                [value]);
+            builder.AddStateMember(new CompilerStateMember(
+                name,
+                CompilerStateMemberKind.Initializer,
+                new CompilerTensorType(elementType.Value, Array.Empty<CompilerDimension>()),
+                tensorLiteral));
+            reference = new CompilerValueReference(name);
+            return true;
+        }
+
+        reference = null!;
+        return false;
+    }
+
+    private CompilerScalarLiteral ConvertScalarLiteral(
+        CompilerScalarLiteral literal,
+        CompilerElementType targetType,
+        SyntaxNode source
+    )
+    {
+        try
+        {
+            return targetType switch
+            {
+                CompilerElementType.Float16 or CompilerElementType.BFloat16 or CompilerElementType.Float32 or CompilerElementType.Float64
+                    => new CompilerFloatingPointLiteral(targetType, Convert.ToDouble(ScalarValue(literal), CultureInfo.InvariantCulture)),
+                CompilerElementType.Int8 or CompilerElementType.Int16 or CompilerElementType.Int32 or CompilerElementType.Int64
+                    => new CompilerSignedIntegerLiteral(targetType, Convert.ToInt64(ScalarValue(literal), CultureInfo.InvariantCulture)),
+                CompilerElementType.UInt8 or CompilerElementType.UInt16 or CompilerElementType.UInt32 or CompilerElementType.UInt64
+                    => new CompilerUnsignedIntegerLiteral(targetType, Convert.ToUInt64(ScalarValue(literal), CultureInfo.InvariantCulture)),
+                _ => throw Unsupported(source, $"Scalar operands are unsupported for tensor element type '{targetType}'."),
+            };
+        }
+        catch (Exception exception) when (exception is FormatException or InvalidCastException or OverflowException)
+        {
+            throw Unsupported(source, $"Scalar operand cannot be represented as '{targetType}'.");
+        }
+    }
+
+    private static object ScalarValue(CompilerScalarLiteral literal) => literal switch
+    {
+        CompilerBooleanLiteral boolean => boolean.Value,
+        CompilerSignedIntegerLiteral integer => integer.Value,
+        CompilerUnsignedIntegerLiteral integer => integer.Value,
+        CompilerFloatingPointLiteral floating => floating.Value,
+        _ => throw new InvalidCastException(),
+    };
 
     private void AddHelperCall(
         MethodDeclarationSyntax method,
@@ -877,6 +1080,121 @@ internal sealed class CSharpSyntaxScanner
 
         return result;
     }
+
+    private static (IReadOnlyList<ScanValue> Inputs, IReadOnlyList<ScanValue> Outputs) ApplyOperatorTypeContracts(
+        CompilerBlockStatement body,
+        IReadOnlyList<ScanValue> inputs,
+        IReadOnlyList<ScanValue> outputs
+    )
+    {
+        if (!TryGetStaticReturnExpression(body, out var returnExpression)
+            || returnExpression is not CompilerInvocationExpression invocation
+            || !CompilerOperatorMappingRegistry.TryGetTorchSharpCall(invocation.Target, out var mapping, out var receiver)
+            || mapping is null)
+        {
+            return (inputs, outputs);
+        }
+
+        var inputExpressions = new List<CompilerExpression>();
+        if (receiver is not null)
+        {
+            inputExpressions.Add(receiver);
+        }
+
+        inputExpressions.AddRange(invocation.Arguments);
+        var typedInputs = inputs.ToDictionary(input => input.Name, input => input, StringComparer.Ordinal);
+        for (var index = 0; index < Math.Min(inputExpressions.Count, mapping.InputElementTypes.Count); index++)
+        {
+            if (mapping.InputElementTypes[index] is not { } elementType
+                || inputExpressions[index] is not CompilerReferenceExpression reference
+                || !typedInputs.TryGetValue(reference.Name, out var input)
+                || input.Type is not CompilerTensorType tensorType)
+            {
+                continue;
+            }
+
+            typedInputs[reference.Name] = new ScanValue(
+                input.Name,
+                new CompilerTensorType(elementType, tensorType.Dimensions, tensorType.Denotation),
+                input.NameNode,
+                input.CSharpTypeName);
+        }
+
+        var castOutputType = mapping.OnnxName == "Cast"
+            && invocation.Arguments.Count == 1
+            && TryGetMemberPath(invocation.Arguments[0], out var targetTypeName)
+            && TryGetCastType(targetTypeName, out var castTypeCode)
+                ? CompilerElementTypeFromOnnxCastCode(castTypeCode)
+                : (CompilerElementType?)null;
+        var outputElementType = castOutputType ?? mapping.OutputElementType;
+        var typedOutputs = outputElementType is { } outputType && outputs.Count == 1
+            ? [new ScanValue(
+                outputs[0].Name,
+                new CompilerTensorType(
+                    outputType,
+                    outputs[0].Type is CompilerTensorType outputTensorType ? outputTensorType.Dimensions : null),
+                outputs[0].NameNode,
+                outputs[0].CSharpTypeName)]
+            : outputs;
+        return (inputs.Select(input => typedInputs[input.Name]).ToArray(), typedOutputs);
+    }
+
+    private static bool TryGetCastType(string memberPath, out long onnxType)
+    {
+        var typeName = memberPath.Split('.').Last();
+        (onnxType, _) = typeName switch
+        {
+            "Float32" or "Float" => (1L, true),
+            "UInt8" or "Byte" => (2L, true),
+            "Int8" or "SByte" => (3L, true),
+            "UInt16" => (4L, true),
+            "Int16" or "Short" => (5L, true),
+            "Int32" or "Int" => (6L, true),
+            "Int64" or "Long" => (7L, true),
+            "Bool" or "Boolean" => (9L, true),
+            "Float16" or "Half" => (10L, true),
+            "Float64" or "Double" => (11L, true),
+            "UInt32" => (12L, true),
+            "UInt64" => (13L, true),
+            "BFloat16" => (16L, true),
+            _ => (0L, false),
+        };
+        return onnxType != 0;
+    }
+
+    private static bool TryGetMemberPath(CompilerExpression expression, out string path)
+    {
+        switch (expression)
+        {
+            case CompilerReferenceExpression reference:
+                path = reference.Name;
+                return true;
+            case CompilerMemberAccessExpression member when TryGetMemberPath(member.Target, out var prefix):
+                path = $"{prefix}.{member.MemberName}";
+                return true;
+            default:
+                path = string.Empty;
+                return false;
+        }
+    }
+
+    private static CompilerElementType CompilerElementTypeFromOnnxCastCode(long onnxType) => onnxType switch
+    {
+        1 => CompilerElementType.Float32,
+        2 => CompilerElementType.UInt8,
+        3 => CompilerElementType.Int8,
+        4 => CompilerElementType.UInt16,
+        5 => CompilerElementType.Int16,
+        6 => CompilerElementType.Int32,
+        7 => CompilerElementType.Int64,
+        9 => CompilerElementType.Boolean,
+        10 => CompilerElementType.Float16,
+        11 => CompilerElementType.Float64,
+        12 => CompilerElementType.UInt32,
+        13 => CompilerElementType.UInt64,
+        16 => CompilerElementType.BFloat16,
+        _ => CompilerElementType.Unknown,
+    };
 
     private static string CSharpTypeName(CompilerType type)
     {
@@ -2097,12 +2415,60 @@ internal sealed class CSharpSourcePrinter
             CompilerFloatingPointLiteral floating => floating.Value.ToString("R", CultureInfo.InvariantCulture)
                 + (floating.ElementType == CompilerElementType.Float32 ? "f" : "d"),
             CompilerStringLiteral text => $"\"{Escape(text.Value)}\"",
+            CompilerTensorLiteral tensor => TensorLiteral(tensor),
             _ => throw new CSharpCompilerDiagnosticException(
                 code: CompilerDiagnosticCodes.Unsupported,
                 message: $"Literal '{literal.GetType().Name}' cannot be emitted as C# syntax.",
                 stage: CompilerDiagnosticStage.Emit,
                 span: null),
         };
+    }
+
+    private static string TensorLiteral(CompilerTensorLiteral tensor)
+    {
+        var elementType = tensor.ElementType switch
+        {
+            CompilerElementType.Float32 => "float",
+            CompilerElementType.Float64 => "double",
+            CompilerElementType.Int8 => "sbyte",
+            CompilerElementType.UInt8 => "byte",
+            CompilerElementType.Int16 => "short",
+            CompilerElementType.UInt16 => "ushort",
+            CompilerElementType.Int32 => "int",
+            CompilerElementType.UInt32 => "uint",
+            CompilerElementType.Int64 => "long",
+            CompilerElementType.UInt64 => "ulong",
+            _ => throw new CSharpCompilerDiagnosticException(
+                CompilerDiagnosticCodes.Unsupported,
+                $"Scalar initializer dtype '{tensor.ElementType}' cannot be emitted as a TorchSharp tensor.",
+                CompilerDiagnosticStage.Emit),
+        };
+        var values = string.Join(", ", tensor.Values.Select(Literal));
+        var dimensions = string.Join(", ", tensor.Dimensions.Select(dimension =>
+            dimension is CompilerFixedDimension fixedDimension
+                ? fixedDimension.Value.ToString(CultureInfo.InvariantCulture) + "L"
+                : throw new CSharpCompilerDiagnosticException(
+                    CompilerDiagnosticCodes.Unsupported,
+                    "Scalar initializer dimensions must be fixed.",
+                    CompilerDiagnosticStage.Emit)));
+        var torchType = tensor.ElementType switch
+        {
+            CompilerElementType.Float32 => "Float32",
+            CompilerElementType.Float64 => "Float64",
+            CompilerElementType.Int8 => "Int8",
+            CompilerElementType.UInt8 => "UInt8",
+            CompilerElementType.Int16 => "Int16",
+            CompilerElementType.UInt16 => "UInt16",
+            CompilerElementType.Int32 => "Int32",
+            CompilerElementType.UInt32 => "UInt32",
+            CompilerElementType.Int64 => "Int64",
+            CompilerElementType.UInt64 => "UInt64",
+            _ => throw new CSharpCompilerDiagnosticException(
+                CompilerDiagnosticCodes.Unsupported,
+                $"Scalar initializer dtype '{tensor.ElementType}' cannot be emitted as a TorchSharp tensor.",
+                CompilerDiagnosticStage.Emit),
+        };
+        return $"torch.tensor(new {elementType}[] {{ {values} }}, [{dimensions}], dtype: torch.ScalarType.{torchType})";
     }
 
     private static bool AlwaysReturns(CompilerStatement statement)

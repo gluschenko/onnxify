@@ -188,7 +188,10 @@ public static class Compiler
             {
                 if (handler.TryProvideMetadata(source, out var metadata))
                 {
-                    return new Dictionary<string, string>(metadata, StringComparer.Ordinal);
+                    return metadata.ToDictionary(
+                        static pair => pair.Key,
+                        static pair => pair.Value,
+                        StringComparer.Ordinal);
                 }
             }
             catch (Exception exception)
@@ -939,6 +942,19 @@ internal static class OnnxCompilerFrontend
                     out mapping)
                 && mapping is not null
                 && mapping.Accepts(node);
+            if (hasMapping
+                && mapping!.SupportsMultidirectionalBroadcast
+                && HasKnownIncompatibleBroadcast(node, knownTypes))
+            {
+                diagnostics.Add(new CompilerDiagnostic(
+                    code: CompilerDiagnosticCodes.Unsupported,
+                    message: $"ONNX operator '{node.OpType}' has input shapes that cannot be broadcast together.",
+                    stage: CompilerDiagnosticStage.Analyze,
+                    severity: CompilerDiagnosticSeverity.Error,
+                    span: span,
+                    context: new CompilerDiagnosticContext(caller, node.OpType)));
+            }
+
             var descriptor = mapping is not null && hasMapping
                 ? mapping.Descriptor
                 : new CompilerOperatorDescriptor(
@@ -969,6 +985,43 @@ internal static class OnnxCompilerFrontend
                 span: span);
             builder.AddOperation(operation);
         }
+    }
+
+    private static bool HasKnownIncompatibleBroadcast(
+        OnnxNode node,
+        IReadOnlyDictionary<string, CompilerType> knownTypes
+    )
+    {
+        var shapes = node.Inputs
+            .Select(input => input.Name)
+            .Select(name => knownTypes.TryGetValue(name, out var type) ? type as CompilerTensorType : null)
+            .ToArray();
+        if (shapes.Length < 2
+            || shapes.Any(shape => shape?.Dimensions is null
+                || shape.Dimensions.Any(dimension => dimension is not CompilerFixedDimension)))
+        {
+            return false;
+        }
+
+        var dimensions = shapes
+            .Select(shape => shape!.Dimensions!.Cast<CompilerFixedDimension>().Select(dimension => dimension.Value).ToArray())
+            .ToArray();
+        var rank = dimensions.Max(shape => shape.Length);
+        for (var offset = 1; offset <= rank; offset++)
+        {
+            var alignedDimensions = dimensions
+                .Select(shape => offset <= shape.Length ? shape[shape.Length - offset] : 1)
+                .Where(dimension => dimension != 1)
+                .Distinct()
+                .Take(2)
+                .Count();
+            if (alignedDimensions > 1)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static void AddValue(

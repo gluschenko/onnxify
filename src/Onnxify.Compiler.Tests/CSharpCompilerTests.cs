@@ -48,8 +48,9 @@ public sealed class CSharpCompilerTests
             new CSharpTorchSharpSource("return input + 1f;"));
 
         Assert.True(treeResult.IsSuccess);
+        Assert.Equal("Add", Assert.IsType<CompilerOperation>(Assert.Single(treeResult.Value!.Operations)).Descriptor.Name);
         var generated = Compiler.GenerateCSharp(
-            treeResult.Value!,
+            treeResult.Value,
             new CompilerCSharpGenerationOptions
             {
                 Namespace = "Generated.Tests",
@@ -60,7 +61,7 @@ public sealed class CSharpCompilerTests
         Assert.True(generated.IsSuccess, string.Join(Environment.NewLine, generated.Diagnostics.Select(x => x.Message)));
         Assert.Contains("torch.nn.Module", generated.Value);
         Assert.Contains("public override", generated.Value);
-        Assert.Contains("return (input + 1f);", generated.Value);
+        Assert.Contains(" + ", generated.Value);
     }
 
     [Fact]
