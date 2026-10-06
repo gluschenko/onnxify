@@ -95,6 +95,115 @@ public sealed class OnnxCompilerSession : ICompilerSession
 /// <summary>Convenience entry points for ONNX compiler operations.</summary>
 public static class Compiler
 {
+    /// <summary>Exports an opaque consumer module through registered module exporters.</summary>
+    public static CompilerResult<CompilerComputationTree> CreateTreeFromModule(
+        object module,
+        CompilerOptions options
+    )
+    {
+        CompilerStructural.RequireNotNull(module, nameof(module));
+        CompilerStructural.RequireNotNull(options, nameof(options));
+        var handlers = options.Extensions.Get<ICompilerModuleExporter>();
+        CompilerResult<CompilerComputationTree>? result = null;
+        var delegatedWithOptions = false;
+        if (handlers.Count > 0 && handlers.Count(x => x.Priority == handlers[0].Priority) > 1)
+        {
+            result = ExtensionAmbiguity(options, $"Multiple {nameof(ICompilerModuleExporter)} handlers have priority {handlers[0].Priority}.");
+        }
+        else
+        {
+            foreach (var handler in handlers)
+            {
+                try
+                {
+                    if (handler.TryExport(module, out var source) && source is not null)
+                    {
+                        result = source switch
+                        {
+                            CSharpTorchSharpSource csharp => DelegateTorchSharp(csharp),
+                            OnnxCompilerSource onnx => DelegateOnnx(onnx),
+                            _ => CompilerResult<CompilerComputationTree>.Failure([new CompilerDiagnostic(
+                                CompilerDiagnosticCodes.Unsupported,
+                                $"Module exporter returned unsupported source kind '{source.Kind}'.",
+                                CompilerDiagnosticStage.Parse,
+                                CompilerDiagnosticSeverity.Error)]),
+                        };
+                        break;
+                    }
+                }
+                catch (Exception exception)
+                {
+                    var diagnostic = ExtensionFailure(options, exception);
+                    if (options.ErrorMode == CompilerErrorMode.Strict)
+                    {
+                        result = CompilerResult<CompilerComputationTree>.Failure([diagnostic]);
+                        break;
+                    }
+                    options.Report([diagnostic]);
+                }
+            }
+        }
+
+        result ??= CompilerResult<CompilerComputationTree>.Failure([new CompilerDiagnostic(
+            CompilerDiagnosticCodes.Unsupported,
+            "No registered module exporter accepted the supplied module.",
+            CompilerDiagnosticStage.Parse,
+            CompilerDiagnosticSeverity.Error)]);
+        return delegatedWithOptions ? result : options.Observe(result);
+
+        CompilerResult<CompilerComputationTree> DelegateTorchSharp(CSharpTorchSharpSource source)
+        {
+            delegatedWithOptions = true;
+            return CreateTreeFromTorchSharp(source, options);
+        }
+
+        CompilerResult<CompilerComputationTree> DelegateOnnx(OnnxCompilerSource source)
+        {
+            delegatedWithOptions = true;
+            return CreateTreeFromOnnx(source.Model, source.Document, options);
+        }
+    }
+
+    /// <summary>Collects metadata using registered compiler metadata providers in priority order.</summary>
+    public static IReadOnlyDictionary<string, string> GetMetadata(
+        ICompilerSource source,
+        CompilerOptions options
+    )
+    {
+        CompilerStructural.RequireNotNull(source, nameof(source));
+        CompilerStructural.RequireNotNull(options, nameof(options));
+        var handlers = options.Extensions.Get<ICompilerMetadataProvider>();
+        if (handlers.Count > 0 && handlers.Count(x => x.Priority == handlers[0].Priority) > 1)
+        {
+            var diagnostic = new CompilerDiagnostic(CompilerDiagnosticCodes.Ambiguous,
+                "Multiple metadata providers have the same highest priority.", CompilerDiagnosticStage.Analyze,
+                options.ErrorMode == CompilerErrorMode.Strict ? CompilerDiagnosticSeverity.Error : CompilerDiagnosticSeverity.Warning);
+            options.Report([diagnostic]);
+            return new Dictionary<string, string>();
+        }
+
+        foreach (var handler in handlers)
+        {
+            try
+            {
+                if (handler.TryProvideMetadata(source, out var metadata))
+                {
+                    return new Dictionary<string, string>(metadata, StringComparer.Ordinal);
+                }
+            }
+            catch (Exception exception)
+            {
+                options.Report([ExtensionFailure(options, exception)]);
+                if (options.ErrorMode == CompilerErrorMode.Strict)
+                {
+                    break;
+                }
+            }
+        }
+
+        return new Dictionary<string, string>();
+    }
+
     /// <summary>Imports C# TorchSharp source into the shared compiler tree.</summary>
     public static CompilerResult<CompilerComputationTree> CreateTreeFromTorchSharp(
         CSharpTorchSharpSource source
@@ -121,6 +230,26 @@ public static class Compiler
         return treeResult;
     }
 
+    /// <summary>Imports TorchSharp source using registered compiler extensions and observation options.</summary>
+    public static CompilerResult<CompilerComputationTree> CreateTreeFromTorchSharp(
+        CSharpTorchSharpSource source,
+        CompilerOptions options
+    )
+    {
+        CompilerStructural.RequireNotNull(source, nameof(source));
+        CompilerStructural.RequireNotNull(options, nameof(options));
+        var result = TryExtensionTree<ICompilerSourceScanner>(source, options, static (extension, input) => extension.Scan(input))
+            ?? TryExtensionTree<ICompilerMethodLowering>(source, options, static (extension, input) => extension.Lower(input))
+            ?? (source.Module is not null && !options.EnableRuntimeReflection
+                ? CompilerResult<CompilerComputationTree>.Failure([new CompilerDiagnostic(
+                    CompilerDiagnosticCodes.Unsupported,
+                    "Runtime metadata reflection is disabled, but this source requires a compiled module descriptor.",
+                    CompilerDiagnosticStage.Parse,
+                    CompilerDiagnosticSeverity.Error)])
+                : CreateTreeFromTorchSharp(source));
+        return options.Observe(result);
+    }
+
     /// <summary>Generates compiler-owned C# TorchSharp module source.</summary>
     public static CompilerResult<string> GenerateCSharp(
         CompilerComputationTree tree,
@@ -132,6 +261,24 @@ public static class Compiler
         return result;
     }
 
+    /// <summary>Generates C# using registered compiler extensions and observation options.</summary>
+    public static CompilerResult<string> GenerateCSharp(
+        CompilerComputationTree tree,
+        CompilerCSharpGenerationOptions? generationOptions,
+        CompilerOptions compilerOptions
+    )
+    {
+        CompilerStructural.RequireNotNull(tree, nameof(tree));
+        CompilerStructural.RequireNotNull(compilerOptions, nameof(compilerOptions));
+        var extensionResult = TryExtensionPrint(tree, CompilerTargetKind.CSharp, compilerOptions);
+        var result = extensionResult is CompilerResult<object> printed && printed.Value is string source
+            ? CompilerResult<string>.Success(source, printed.Diagnostics)
+            : extensionResult is CompilerResult<object> failed && !failed.IsSuccess
+                ? CompilerResult<string>.Failure(failed.Diagnostics)
+                : GenerateCSharp(tree, generationOptions);
+        return compilerOptions.Observe(result);
+    }
+
     /// <summary>Imports an in-memory ONNX model into the shared compiler tree.</summary>
     public static CompilerResult<CompilerComputationTree> CreateTreeFromOnnx(
         OnnxModel model,
@@ -140,6 +287,135 @@ public static class Compiler
     {
         return new OnnxCompilerSession().CreateTreeTyped(
             new OnnxCompilerSource(model, document));
+    }
+
+    /// <summary>Imports an ONNX model using compiler extensions and observation options.</summary>
+    public static CompilerResult<CompilerComputationTree> CreateTreeFromOnnx(
+        OnnxModel model,
+        string? document,
+        CompilerOptions options
+    )
+    {
+        CompilerStructural.RequireNotNull(model, nameof(model));
+        CompilerStructural.RequireNotNull(options, nameof(options));
+        var source = new OnnxCompilerSource(model, document);
+        var result = TryExtensionTree<ICompilerSourceScanner>(source, options, static (extension, input) => extension.Scan(input))
+            ?? TryExtensionTree<ICompilerMethodLowering>(source, options, static (extension, input) => extension.Lower(input))
+            ?? CreateTreeFromOnnx(model, document);
+        return options.Observe(result);
+    }
+
+    private static CompilerResult<CompilerComputationTree>? TryExtensionTree<TExtension>(
+        ICompilerSource source,
+        CompilerOptions options,
+        Func<TExtension, ICompilerSource, CompilerResult<CompilerComputationTree>?> invoke
+    ) where TExtension : class, ICompilerExtension
+    {
+        var handlers = options.Extensions.Get<TExtension>();
+        if (handlers.Count == 0)
+        {
+            return null;
+        }
+
+        var highestPriority = handlers[0].Priority;
+        var candidates = handlers.Where(handler => handler.Priority == highestPriority).ToArray();
+        if (candidates.Length > 1)
+        {
+            return ExtensionAmbiguity(options, $"Multiple {typeof(TExtension).Name} handlers have priority {highestPriority}.");
+        }
+
+        foreach (var handler in handlers)
+        {
+            try
+            {
+                var result = invoke(handler, source);
+                if (result is not null)
+                {
+                    return result;
+                }
+            }
+            catch (Exception exception)
+            {
+                var diagnostic = ExtensionFailure(options, exception);
+                if (options.ErrorMode == CompilerErrorMode.Strict)
+                {
+                    return CompilerResult<CompilerComputationTree>.Failure([diagnostic]);
+                }
+                options.Report([diagnostic]);
+            }
+        }
+
+        return null;
+    }
+
+    private static CompilerResult<object>? TryExtensionPrint(
+        CompilerComputationTree tree,
+        CompilerTargetKind target,
+        CompilerOptions options
+    )
+    {
+        var handlers = options.Extensions.Get<ICompilerOutputPrinter>();
+        if (handlers.Count == 0)
+        {
+            return null;
+        }
+
+        if (handlers.Count(x => x.Priority == handlers[0].Priority) > 1)
+        {
+            var diagnostic = new CompilerDiagnostic(CompilerDiagnosticCodes.Ambiguous,
+                "Multiple output printers have the same highest priority; the built-in printer will be used.",
+                CompilerDiagnosticStage.Emit,
+                options.ErrorMode == CompilerErrorMode.Strict ? CompilerDiagnosticSeverity.Error : CompilerDiagnosticSeverity.Warning);
+            if (options.ErrorMode == CompilerErrorMode.Strict)
+            {
+                return CompilerResult<object>.Failure([diagnostic]);
+            }
+            options.Report([diagnostic]);
+            return null;
+        }
+
+        foreach (var handler in handlers)
+        {
+            try
+            {
+                var result = handler.Print(tree, target);
+                if (result is not null)
+                {
+                    return result;
+                }
+            }
+            catch (Exception exception)
+            {
+                var diagnostic = ExtensionFailure(options, exception);
+                if (options.ErrorMode == CompilerErrorMode.Strict)
+                {
+                    return CompilerResult<object>.Failure([diagnostic]);
+                }
+                options.Report([diagnostic]);
+            }
+        }
+
+        return null;
+    }
+
+    private static CompilerResult<CompilerComputationTree>? ExtensionAmbiguity(CompilerOptions options, string message)
+    {
+        var diagnostic = new CompilerDiagnostic(CompilerDiagnosticCodes.Ambiguous, message,
+            CompilerDiagnosticStage.Analyze,
+            options.ErrorMode == CompilerErrorMode.Strict ? CompilerDiagnosticSeverity.Error : CompilerDiagnosticSeverity.Warning);
+        if (options.ErrorMode == CompilerErrorMode.Strict)
+        {
+            return CompilerResult<CompilerComputationTree>.Failure([diagnostic]);
+        }
+        options.Report([diagnostic]);
+        return null;
+    }
+
+    private static CompilerDiagnostic ExtensionFailure(CompilerOptions options, Exception exception)
+    {
+        return new CompilerDiagnostic(CompilerDiagnosticCodes.Unsupported,
+            $"Compiler extension failed: {exception.Message}", CompilerDiagnosticStage.Analyze,
+            options.ErrorMode == CompilerErrorMode.Strict ? CompilerDiagnosticSeverity.Error : CompilerDiagnosticSeverity.Warning);
     }
 
     /// <summary>Loads and imports an ONNX model from a file.</summary>
@@ -251,6 +527,33 @@ public static class Compiler
         return result;
     }
 
+    /// <summary>Emits ONNX through registered compiler printers and observation options.</summary>
+    public static CompilerResult<OnnxModel> GenerateOnnx(
+        CompilerComputationTree tree,
+        OnnxModelCreationOptions? generationOptions,
+        CompilerOptions compilerOptions
+    )
+    {
+        CompilerStructural.RequireNotNull(tree, nameof(tree));
+        CompilerStructural.RequireNotNull(compilerOptions, nameof(compilerOptions));
+        var extensionResult = TryExtensionPrint(tree, CompilerTargetKind.OnnxModel, compilerOptions);
+        CompilerResult<OnnxModel> result;
+        if (extensionResult is CompilerResult<object> printed && printed.Value is OnnxModel model)
+        {
+            result = CompilerResult<OnnxModel>.Success(model, printed.Diagnostics);
+        }
+        else if (extensionResult is CompilerResult<object> failed && !failed.IsSuccess)
+        {
+            result = CompilerResult<OnnxModel>.Failure(failed.Diagnostics);
+        }
+        else
+        {
+            result = GenerateOnnx(tree, generationOptions);
+        }
+
+        return compilerOptions.Observe(result);
+    }
+
     /// <summary>Emits only the graph from the shared compiler tree.</summary>
     public static CompilerResult<OnnxGraph> GenerateOnnxGraph(
         CompilerComputationTree tree,
@@ -264,6 +567,38 @@ public static class Compiler
             missingValueStage: CompilerDiagnosticStage.Emit,
             missingValueMessage: "The ONNX backend reported success without producing a model.");
         return result;
+    }
+
+    /// <summary>Emits an ONNX graph through registered compiler printers and observation options.</summary>
+    public static CompilerResult<OnnxGraph> GenerateOnnxGraph(
+        CompilerComputationTree tree,
+        OnnxModelCreationOptions? generationOptions,
+        CompilerOptions compilerOptions
+    )
+    {
+        CompilerStructural.RequireNotNull(tree, nameof(tree));
+        CompilerStructural.RequireNotNull(compilerOptions, nameof(compilerOptions));
+        var extensionResult = TryExtensionPrint(tree, CompilerTargetKind.OnnxGraph, compilerOptions);
+        CompilerResult<OnnxGraph> result;
+        if (extensionResult is CompilerResult<object> printed && printed.Value is OnnxGraph graph)
+        {
+            result = CompilerResult<OnnxGraph>.Success(graph, printed.Diagnostics);
+        }
+        else if (extensionResult is CompilerResult<object> failed && !failed.IsSuccess)
+        {
+            result = CompilerResult<OnnxGraph>.Failure(failed.Diagnostics);
+        }
+        else
+        {
+            var model = GenerateOnnx(tree, generationOptions);
+            result = CompilerResultMapper.Map(
+                source: model,
+                projection: static onnxModel => onnxModel.Graph,
+                missingValueStage: CompilerDiagnosticStage.Emit,
+                missingValueMessage: "The ONNX backend reported success without producing a model.");
+        }
+
+        return compilerOptions.Observe(result);
     }
 
     private static OnnxModelBaseOptions EnsureUntyped(OnnxModelBaseOptions? options)

@@ -83,6 +83,9 @@
       <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.dll" Condition="Exists('$(TargetDir)Onnxify.dll')" />
       <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.pdb" Condition="Exists('$(TargetDir)Onnxify.pdb')" />
       <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.xml" Condition="Exists('$(TargetDir)Onnxify.xml')" />
+      <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.Compiler.dll" Condition="Exists('$(TargetDir)Onnxify.Compiler.dll')" />
+      <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.Compiler.pdb" Condition="Exists('$(TargetDir)Onnxify.Compiler.pdb')" />
+      <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.Compiler.xml" Condition="Exists('$(TargetDir)Onnxify.Compiler.xml')" />
     </ItemGroup>
 
     <Copy
@@ -111,6 +114,9 @@
       <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.dll')" />
       <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.pdb" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.pdb')" />
       <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.xml" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.xml')" />
+      <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.Compiler.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.Compiler.dll')" />
+      <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.Compiler.pdb" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.Compiler.pdb')" />
+      <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.Compiler.xml" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.Compiler.xml')" />
       <TfmSpecificPackageFile Include="$(TargetDir)Google.Protobuf.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Google.Protobuf.dll')" />
       <TfmSpecificPackageFile Include="$(TargetDir)Google.Protobuf.pdb" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Google.Protobuf.pdb')" />
       <TfmSpecificPackageFile Include="$(TargetDir)Google.Protobuf.xml" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Google.Protobuf.xml')" />

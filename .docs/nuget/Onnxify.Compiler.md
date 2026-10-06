@@ -12,9 +12,9 @@ The compiler package is also brought in transitively by the Onnxify consumer pac
 
 ## Current Scope
 
-The package provides the compiler-owned source, sink, and session contracts plus the immutable computation-tree IR used by both directions. The IR includes typed tensor/value metadata, dimensions, literals, state members, normalized operator attributes, nested ONNX graphs, model metadata, quantization annotations, module calls, reusable blocks, ordered C# syntax, capability classifications, and stage-aware diagnostics.
+The package provides compiler-owned source, sink, and session contracts plus the immutable compiler computation tree used by both directions. The tree includes typed tensor/value metadata, dimensions, literals, state members, normalized operator attributes, nested ONNX graphs, model metadata, quantization annotations, module calls, reusable blocks, ordered C# syntax, capability classifications, and stage-aware diagnostics.
 
-The ONNX frontend and backend are available through `Compiler.CreateTreeFromOnnx(...)`, `Compiler.GenerateOnnx(...)`, and `Compiler.GenerateOnnxGraph(...)`. File, stream, asynchronous, in-memory, sparse initializer, typed attribute, and nested graph round-trips are represented through compiler-owned IR and return `CompilerResult<T>` diagnostics.
+The ONNX frontend and backend are available through `Compiler.CreateTreeFromOnnx(...)`, `Compiler.GenerateOnnx(...)`, and `Compiler.GenerateOnnxGraph(...)`. File, stream, asynchronous, in-memory, sparse initializer, typed attribute, and nested graph round-trips are represented through the compiler computation tree and return `CompilerResult<T>` diagnostics.
 
 ```csharp
 var imported = Compiler.CreateTreeFromOnnx("model.onnx");
@@ -32,9 +32,27 @@ emitted.Value!.Save("roundtripped.onnx", overwrite: true);
 
 Unknown operators can be preserved as generic ONNX operations with an `Unsupported` warning. Full bidirectional operator mappings remain the scope of OXY-024.
 
+`CompilerOptions` adds opt-in extension points and observation callbacks without changing existing overloads. The default error mode is permissive: a declined extension is skipped and an exception is reported as a warning before trying the next extension or built-in handler. Equal highest priorities report ambiguity and select the built-in handler. Strict mode upgrades extension exceptions and ambiguity to errors.
+
+```csharp
+var options = new CompilerOptions
+{
+    ErrorMode = CompilerErrorMode.Strict,
+    DiagnosticCallback = diagnostic => logger.LogWarning("{Code}: {Message}", diagnostic.Code, diagnostic.Message),
+    IntermediateRepresentationCallback = tree => Inspect(tree),
+    EnableRuntimeReflection = false,
+};
+options.Extensions.Add(myScanner);
+options.Extensions.Add(myPrinter);
+
+var result = Compiler.CreateTreeFromTorchSharp(source, options);
+```
+
+Compiler extensions implement `ICompilerMetadataProvider`, `ICompilerModuleExporter`, `ICompilerSourceScanner`, `ICompilerOutputPrinter`, or `ICompilerMethodLowering`; they are registered through `CompilerOptions.Extensions` and ordered by descending `Priority`.
+
 The C# TorchSharp frontend accepts either source text or a compiler-neutral descriptor created by
 `Onnxify.TorchSharp`. The compiler decompiles only the requested method, scans the supported syntax
-subset into immutable IR, and reports unsupported dynamic syntax as diagnostics:
+subset into an immutable compiler computation tree, and reports unsupported dynamic syntax as diagnostics:
 
 ```csharp
 using Onnxify.Compiler;

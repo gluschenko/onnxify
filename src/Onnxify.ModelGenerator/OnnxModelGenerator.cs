@@ -5,6 +5,8 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Onnx;
+using Onnxify.Compiler;
+using CompilerFacade = Onnxify.Compiler.Compiler;
 using Onnxify.ModelGenerator.Services.TorchModuleInlineOperators;
 using Onnxify.ModelGenerator.Services;
 using Onnxify.ModelGenerator.Services.TorchModuleOperators;
@@ -68,7 +70,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
     private static readonly DiagnosticDescriptor _invalidImportTypeDescriptor = new(
         id: "OMG005",
         title: "Invalid ONNX model import type",
-        messageFormat: "Model '{0}' uses invalid OnnxifyModelImportType value '{1}'. Supported values are OnnxRuntimeInference and TorchModule.",
+        messageFormat: "Model '{0}' uses invalid OnnxifyModelImportType value '{1}'. Supported values are OnnxRuntimeInference, TorchModule, and TorchModuleExperimental.",
         category: "Onnxify.ModelGenerator",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true
@@ -78,6 +80,15 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         id: "OMG006",
         title: "Unsupported ONNX graph for TorchModule generation",
         messageFormat: "Model '{0}' cannot generate a TorchModule: {1}",
+        category: "Onnxify.ModelGenerator",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
+
+    private static readonly DiagnosticDescriptor _conflictingTorchModuleDescriptor = new(
+        id: "OMG007",
+        title: "Conflicting TorchModule generation modes",
+        messageFormat: "Model '{0}' cannot select both TorchModule and TorchModuleExperimental because both generate the same type name",
         category: "Onnxify.ModelGenerator",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true
@@ -161,6 +172,13 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             return new ModelAnalysisResult(null, diagnostics.ToImmutableArray());
         }
 
+        if (importTypes.HasFlag(ModelImportType.TorchModule)
+            && importTypes.HasFlag(ModelImportType.TorchModuleExperimental))
+        {
+            diagnostics.Add(Diagnostic.Create(_conflictingTorchModuleDescriptor, Location.None, fileName));
+            return new ModelAnalysisResult(null, diagnostics.ToImmutableArray());
+        }
+
         var inputPropertyNames = new HashSet<string>(StringComparer.Ordinal);
         var outputPropertyNames = new HashSet<string>(StringComparer.Ordinal);
         var inputMethodParameterNames = new HashSet<string>(StringComparer.Ordinal);
@@ -220,6 +238,45 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         }
 
         TorchModuleGenerationSpecification? torchModule = null;
+        string? experimentalTorchModuleSource = null;
+        if (importTypes.HasFlag(ModelImportType.TorchModuleExperimental))
+        {
+            try
+            {
+                var compilerModel = Onnxify.OnnxModel.FromFile(file.Path,
+                    new Onnxify.OnnxModelBaseOptions
+                    {
+                        NodeTypeResolutionStrategy = Onnxify.NodeTypeResolutionStrategy.PreserveUntyped,
+                    });
+                var treeResult = CompilerFacade.CreateTreeFromOnnx(compilerModel, file.Path);
+                if (!treeResult.IsSuccess || treeResult.Value is null)
+                {
+                    AddCompilerDiagnostics(fileName, treeResult.Diagnostics, diagnostics);
+                    return new ModelAnalysisResult(null, diagnostics.ToImmutableArray());
+                }
+
+                var generated = CompilerFacade.GenerateCSharp(treeResult.Value,
+                    new CompilerCSharpGenerationOptions
+                    {
+                        Namespace = namespaceName,
+                        ClassName = $"{className}TorchModule",
+                        ModuleName = $"{className}TorchModule",
+                    });
+                if (!generated.IsSuccess || generated.Value is null)
+                {
+                    AddCompilerDiagnostics(fileName, generated.Diagnostics, diagnostics);
+                    return new ModelAnalysisResult(null, diagnostics.ToImmutableArray());
+                }
+
+                experimentalTorchModuleSource = generated.Value;
+            }
+            catch (Exception exception)
+            {
+                diagnostics.Add(Diagnostic.Create(_unsupportedTorchModuleDescriptor, Location.None,
+                    fileName, exception.Message));
+                return new ModelAnalysisResult(null, diagnostics.ToImmutableArray());
+            }
+        }
         if (importTypes.HasFlag(ModelImportType.TorchModule))
         {
             OnnxModel onnxModel;
@@ -263,7 +320,8 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             importTypes,
             inputs.ToImmutableArray(),
             outputs.ToImmutableArray(),
-            torchModule
+            torchModule,
+            experimentalTorchModuleSource
         );
 
         return new ModelAnalysisResult(specification, diagnostics.ToImmutableArray());
@@ -355,6 +413,21 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             {
                 context.AddSource($"{specification.ClassName}TorchModule.g.cs", new TorchModulePrinter().GenerateSource(specification));
             }
+
+            if (specification.ImportTypes.HasFlag(ModelImportType.TorchModuleExperimental)
+                && specification.ExperimentalTorchModuleSource is not null)
+            {
+                context.AddSource($"{specification.ClassName}TorchModule.g.cs", specification.ExperimentalTorchModuleSource);
+            }
+        }
+    }
+
+    private static void AddCompilerDiagnostics(string fileName, IEnumerable<CompilerDiagnostic> source, List<Diagnostic> diagnostics)
+    {
+        foreach (var item in source)
+        {
+            diagnostics.Add(Diagnostic.Create(_unsupportedTorchModuleDescriptor, Location.None, fileName,
+                $"{item.Code}: {item.Message}"));
         }
     }
 
@@ -603,6 +676,12 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
             if (string.Equals(value, "TorchModule", StringComparison.OrdinalIgnoreCase))
             {
                 importTypes |= ModelImportType.TorchModule;
+                continue;
+            }
+
+            if (string.Equals(value, "TorchModuleExperimental", StringComparison.OrdinalIgnoreCase))
+            {
+                importTypes |= ModelImportType.TorchModuleExperimental;
                 continue;
             }
 
@@ -1512,7 +1591,8 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         ModelImportType ImportTypes,
         ImmutableArray<ModelTensorContract> Inputs,
         ImmutableArray<ModelTensorContract> Outputs,
-        TorchModuleGenerationSpecification? TorchModule
+        TorchModuleGenerationSpecification? TorchModule,
+        string? ExperimentalTorchModuleSource
     )
     {
         public string FullyQualifiedClassName => $"{NamespaceName}.{ClassName}";
@@ -1524,6 +1604,7 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         None = 0,
         OnnxRuntimeInference = 1,
         TorchModule = 2,
+        TorchModuleExperimental = 4,
     }
 
     internal sealed record TorchModuleGenerationSpecification(
