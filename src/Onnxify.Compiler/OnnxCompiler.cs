@@ -305,7 +305,7 @@ internal sealed class CompilerConversionException : Exception
 internal static class OnnxCompilerFrontend
 {
     /// <summary>
-    /// Преобразует ONNX model envelope и граф в immutable compiler IR.
+    /// Преобразует ONNX model envelope и граф в immutable промежуточное представление compiler.
     /// Ошибки нормализации собираются в diagnostics и не оставляют частично построенное дерево успешным результатом.
     /// </summary>
     public static CompilerResult<CompilerComputationTree> Import(
@@ -377,7 +377,7 @@ internal static class OnnxCompilerFrontend
     }
 
     /// <summary>
-    /// Преобразует граф ONNX в единое IR-дерево, включая captured values и рекурсивные атрибуты-графы.
+    /// Преобразует граф ONNX в единое дерево промежуточного представления, включая captured values и рекурсивные атрибуты-графы.
     /// Сначала регистрируются типы и state, затем узлы, чтобы ссылки оставались корректными при любом порядке wire metadata.
     /// </summary>
     private static CompilerComputationTree ImportGraph(
@@ -401,7 +401,7 @@ internal static class OnnxCompilerFrontend
                 producerName: model.ProducerName,
                 producerVersion: model.ProducerVersion,
                 modelVersion: model.ModelVersion,
-                irVersion: model.IrVersion,
+                intermediateRepresentationVersion: model.IrVersion,
                 document: model.Document,
                 domain: model.Domain,
                 metadata: model.MetadataProps,
@@ -534,7 +534,7 @@ internal static class OnnxCompilerFrontend
     }
 
     /// <summary>
-    /// Импортирует узлы в исходном порядке и нормализует атрибуты по имени для стабильного IR.
+    /// Импортирует узлы в исходном порядке и нормализует атрибуты по имени для стабильного промежуточного представления.
     /// Неизвестные ONNX operators остаются generic operations и получают warning для последующих backend этапов.
     /// </summary>
     private static void ImportNodes(
@@ -854,8 +854,8 @@ internal static class OnnxCompilerFrontend
 internal static class OnnxCompilerBackend
 {
     /// <summary>
-    /// Эмитирует полную ONNX-модель из compiler IR и проверяет её повторной загрузкой после сериализации.
-    /// Валидация охватывает не только структуру IR, но и фактическую protobuf границу core API.
+    /// Эмитирует полную ONNX-модель из промежуточного представления compiler и проверяет её повторной загрузкой после сериализации.
+    /// Валидация охватывает не только структуру промежуточного представления, но и фактическую protobuf границу core API.
     /// </summary>
     public static CompilerResult<OnnxModel> EmitModel(
         CompilerComputationTree tree,
@@ -888,7 +888,7 @@ internal static class OnnxCompilerBackend
                 model.ProducerName = envelope.ProducerName;
                 model.ProducerVersion = envelope.ProducerVersion;
                 model.ModelVersion = envelope.ModelVersion;
-                model.IrVersion = envelope.IrVersion;
+                model.IrVersion = envelope.IntermediateRepresentationVersion;
                 model.Document = envelope.Document;
                 model.Domain = envelope.Domain;
                 model.ClearOpsetImports();
@@ -948,7 +948,7 @@ internal static class OnnxCompilerBackend
     }
 
     /// <summary>
-    /// Создаёт graph values, state и узлы в порядке IR перед сериализацией модели.
+    /// Создаёт graph values, state и узлы в порядке промежуточного представления перед сериализацией модели.
     /// Отдельный graph-проход сохраняет ONNX порядок и даёт вложенным graph literals тот же backend путь.
     /// </summary>
     private static void EmitGraph(
@@ -1037,15 +1037,327 @@ internal static class OnnxCompilerBackend
                         caller: caller);
                     break;
                 case CompilerModuleCall moduleCall:
-                    throw new CompilerConversionException(
-                        CompilerDiagnosticCodes.Unsupported,
-                        $"Module call '{moduleCall.Name}' has no direct ONNX representation.");
+                    EmitModuleCall(
+                        graph: graph,
+                        moduleCall: moduleCall,
+                        blocks: tree.Blocks.ToDictionary(block => block.Name, StringComparer.Ordinal),
+                        diagnostics: diagnostics,
+                        caller: caller,
+                        callStack: []);
+                    break;
                 default:
                     throw new CompilerConversionException(
                         CompilerDiagnosticCodes.Unsupported,
                         $"Computation step '{operation.Name}' has no ONNX representation.");
             }
         }
+    }
+
+    private static void EmitModuleCall(
+        OnnxGraph graph,
+        CompilerModuleCall moduleCall,
+        IReadOnlyDictionary<string, CompilerComputationBlock> blocks,
+        List<CompilerDiagnostic> diagnostics,
+        string? caller,
+        IReadOnlyList<string> callStack
+    )
+    {
+        if (callStack.Contains(moduleCall.TargetBlock, StringComparer.Ordinal))
+        {
+            throw new CompilerConversionException(
+                CompilerDiagnosticCodes.Unsupported,
+                $"Recursive helper/module call '{moduleCall.TargetBlock}' cannot be inlined into an ONNX graph.");
+        }
+
+        if (!blocks.TryGetValue(moduleCall.TargetBlock, out var block))
+        {
+            throw new CompilerConversionException(
+                CompilerDiagnosticCodes.MissingReference,
+                $"Module call '{moduleCall.Name}' references missing block '{moduleCall.TargetBlock}'.");
+        }
+
+        if (block.Inputs.Count != moduleCall.Arguments.Count || block.Outputs.Count != moduleCall.Outputs.Count)
+        {
+            throw new CompilerConversionException(
+                CompilerDiagnosticCodes.Unsupported,
+                $"Module call '{moduleCall.Name}' has input or output bindings that do not match block '{block.Name}'.");
+        }
+
+        var bindings = block.Inputs
+            .Select((input, index) => new KeyValuePair<string, CompilerExpression>(input.Name, moduleCall.Arguments[index]))
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+        var returns = FindReturns(block.Body, bindings);
+        if (returns.Count != block.Outputs.Count)
+        {
+            throw new CompilerConversionException(
+                CompilerDiagnosticCodes.Unsupported,
+                $"Block '{block.Name}' does not return the declared number of values.");
+        }
+
+        var nestedCallStack = callStack.Append(block.Name).ToArray();
+        for (var index = 0; index < returns.Count; index++)
+        {
+            var output = moduleCall.Outputs[index];
+            var expression = ResolveExpression(returns[index], bindings);
+            if (expression is CompilerReferenceExpression reference)
+            {
+                graph.AddNode(
+                    name: $"{moduleCall.Name}__identity{index}",
+                    opType: "Identity",
+                    domain: string.Empty,
+                    docString: string.Empty,
+                    inputs: [(IOnnxGraphEdge)new OnnxEdge(reference.Name)],
+                    outputs: [(IOnnxGraphEdge)new OnnxEdge(output.Name)],
+                    attributes: []);
+                continue;
+            }
+
+            if (expression is not CompilerInvocationExpression invocation)
+            {
+                throw new CompilerConversionException(
+                    CompilerDiagnosticCodes.Unsupported,
+                    $"Block '{block.Name}' returns an expression that cannot be lowered to ONNX.");
+            }
+
+            if (CompilerOperatorMappingRegistry.TryGetTorchSharpCall(invocation.Target, out var mapping, out var receiver)
+                && mapping is not null)
+            {
+                EmitMappedInvocation(
+                    graph: graph,
+                    name: $"{moduleCall.Name}__{mapping.OnnxName.ToLowerInvariant()}{index}",
+                    output: output,
+                    invocation: invocation,
+                    mapping: mapping,
+                    receiver: receiver,
+                    bindings: bindings,
+                    diagnostics: diagnostics,
+                    caller: caller);
+                continue;
+            }
+
+            if (TryGetInvocationName(invocation.Target, out var nestedBlockName)
+                && blocks.ContainsKey(nestedBlockName))
+            {
+                var nestedArguments = invocation.Arguments
+                    .Select(argument => ResolveExpression(argument, bindings))
+                    .ToArray();
+                EmitModuleCall(
+                    graph: graph,
+                    moduleCall: CompilerModuleCall.CreateWithArguments(
+                        name: $"{moduleCall.Name}__{nestedBlockName}{index}",
+                        targetBlock: nestedBlockName,
+                        arguments: nestedArguments,
+                        outputs: [output],
+                        span: invocation.Span),
+                    blocks: blocks,
+                    diagnostics: diagnostics,
+                    caller: nestedBlockName,
+                    callStack: nestedCallStack);
+                continue;
+            }
+
+            throw new CompilerConversionException(
+                CompilerDiagnosticCodes.Unsupported,
+                $"Block '{block.Name}' calls an operation without a registered ONNX mapping.");
+        }
+    }
+
+    private static void EmitMappedInvocation(
+        OnnxGraph graph,
+        string name,
+        CompilerValueReference output,
+        CompilerInvocationExpression invocation,
+        CompilerOperatorMapping mapping,
+        CompilerExpression? receiver,
+        IReadOnlyDictionary<string, CompilerExpression> bindings,
+        List<CompilerDiagnostic> diagnostics,
+        string? caller
+    )
+    {
+        var expressions = new List<CompilerExpression>();
+        if (receiver is not null)
+        {
+            expressions.Add(receiver);
+        }
+
+        var requiredInputs = mapping.InputCount - expressions.Count;
+        if (requiredInputs < 0
+            || invocation.Arguments.Count < requiredInputs + mapping.FixedTorchSharpArguments.Count
+            || invocation.Arguments.Count > requiredInputs + mapping.AttributeNames.Count + mapping.FixedTorchSharpArguments.Count)
+        {
+            throw new CompilerConversionException(
+                CompilerDiagnosticCodes.Unsupported,
+                $"Call to '{mapping.TorchSharpNames[0]}' has an unsupported input or attribute configuration.");
+        }
+
+        expressions.AddRange(invocation.Arguments.Take(requiredInputs));
+        var inputs = expressions.Select(expression => ResolveReference(expression, bindings)).ToArray();
+        var attributes = new List<CompilerAttribute>();
+        foreach (var (argument, index) in invocation.Arguments
+            .Skip(requiredInputs)
+            .Take(mapping.AttributeNames.Count)
+            .Select((argument, index) => (argument, index)))
+        {
+            var resolvedArgument = ResolveExpression(argument, bindings);
+            if (resolvedArgument is not CompilerLiteralExpression literal)
+            {
+                throw new CompilerConversionException(
+                    CompilerDiagnosticCodes.Unsupported,
+                    $"Call to '{mapping.TorchSharpNames[0]}' requires literal arguments for mapped attributes.");
+            }
+
+            attributes.Add(new CompilerAttribute(mapping.AttributeNames[index], literal.Literal));
+        }
+
+        foreach (var (argument, index) in invocation.Arguments
+            .Skip(invocation.Arguments.Count - mapping.FixedTorchSharpArguments.Count)
+            .Select((argument, index) => (argument, index)))
+        {
+            if (ResolveExpression(argument, bindings) is not CompilerLiteralExpression
+                {
+                    Literal: CompilerFloatingPointLiteral fixedValue,
+                }
+                || (float)fixedValue.Value != mapping.FixedTorchSharpArguments[index])
+            {
+                throw new CompilerConversionException(
+                    CompilerDiagnosticCodes.Unsupported,
+                    $"Call to '{mapping.TorchSharpNames[0]}' has unsupported fixed trailing arguments.");
+            }
+        }
+
+        var operation = new CompilerOperation(
+            name: name,
+            descriptor: mapping.Descriptor,
+            inputs: inputs,
+            outputs: [output],
+            attributes: attributes,
+            span: invocation.Span);
+        if (!mapping.Accepts(operation))
+        {
+            throw new CompilerConversionException(
+                CompilerDiagnosticCodes.Unsupported,
+                $"Call to '{mapping.TorchSharpNames[0]}' has an unsupported ONNX signature.");
+        }
+
+        EmitOperation(graph, operation, diagnostics, caller);
+    }
+
+    private static IReadOnlyList<CompilerExpression> FindReturns(
+        CompilerStatement statement,
+        IReadOnlyDictionary<string, CompilerExpression> bindings
+    )
+    {
+        var results = new List<CompilerExpression>();
+        CollectReturns(statement, results, bindings);
+        return results;
+    }
+
+    private static void CollectReturns(
+        CompilerStatement statement,
+        List<CompilerExpression> results,
+        IReadOnlyDictionary<string, CompilerExpression> bindings
+    )
+    {
+        switch (statement)
+        {
+            case CompilerReturnStatement { Expression: not null } returnStatement:
+                if (returnStatement.Expression is CompilerTupleExpression tuple)
+                {
+                    results.AddRange(tuple.Items);
+                }
+                else
+                {
+                    results.Add(returnStatement.Expression);
+                }
+                break;
+            case CompilerBlockStatement block:
+                foreach (var child in block.Statements)
+                {
+                    CollectReturns(child, results, bindings);
+                }
+
+                break;
+            case CompilerStaticIfStatement conditional:
+                if (TryEvaluateStaticBoolean(ResolveExpression(conditional.Condition, bindings), out var condition))
+                {
+                    CollectReturns(
+                        condition ? conditional.WhenTrue : conditional.WhenFalse ?? new CompilerBlockStatement([]),
+                        results,
+                        bindings);
+                }
+
+                break;
+            default:
+                throw new CompilerConversionException(
+                    CompilerDiagnosticCodes.Unsupported,
+                    $"Statement '{statement.GetType().Name}' in an inlined block cannot be lowered to ONNX.");
+        }
+    }
+
+    private static bool TryEvaluateStaticBoolean(CompilerExpression expression, out bool value)
+    {
+        if (expression is CompilerLiteralExpression { Literal: CompilerBooleanLiteral literal })
+        {
+            value = literal.Value;
+            return true;
+        }
+
+        if (expression is CompilerUnaryExpression { Operator: "!", Expression: var operand }
+            && TryEvaluateStaticBoolean(operand, out var operandValue))
+        {
+            value = !operandValue;
+            return true;
+        }
+
+        value = false;
+        return false;
+    }
+
+    private static CompilerValueReference ResolveReference(
+        CompilerExpression expression,
+        IReadOnlyDictionary<string, CompilerExpression> bindings
+    )
+    {
+        if (ResolveExpression(expression, bindings) is not CompilerReferenceExpression reference)
+        {
+            throw new CompilerConversionException(
+                CompilerDiagnosticCodes.Unsupported,
+                "Only helper arguments that reference input values can be lowered to ONNX.");
+        }
+
+        return new CompilerValueReference(reference.Name);
+    }
+
+    private static CompilerExpression ResolveExpression(
+        CompilerExpression expression,
+        IReadOnlyDictionary<string, CompilerExpression> bindings
+    )
+    {
+        if (expression is CompilerReferenceExpression reference
+            && bindings.TryGetValue(reference.Name, out var boundExpression))
+        {
+            if (boundExpression is CompilerReferenceExpression boundReference
+                && string.Equals(boundReference.Name, reference.Name, StringComparison.Ordinal))
+            {
+                return expression;
+            }
+
+            return ResolveExpression(boundExpression, bindings);
+        }
+
+        return expression;
+    }
+
+    private static bool TryGetInvocationName(CompilerExpression expression, out string name)
+    {
+        if (expression is CompilerReferenceExpression reference)
+        {
+            name = reference.Name;
+            return true;
+        }
+
+        name = string.Empty;
+        return false;
     }
 
     private static void AddInitializer(
@@ -1418,7 +1730,7 @@ internal static class OnnxCompilerTypeMap
                 opaque.Denotation),
             _ => throw new CompilerConversionException(
                 CompilerDiagnosticCodes.Unsupported,
-                $"ONNX value type '{type.GetType().Name}' is not supported by the compiler IR."),
+                $"ONNX value type '{type.GetType().Name}' is not supported by the compiler intermediate representation."),
         };
     }
 
@@ -1527,7 +1839,7 @@ internal static class CompilerElementTypeMap
             "Onnxify.Data.Numerics.Int2" => CompilerElementType.Int2,
             _ => throw new CompilerConversionException(
                 CompilerDiagnosticCodes.Unsupported,
-                $"CLR tensor element type '{type.FullName}' is not supported by the compiler IR."),
+                $"CLR tensor element type '{type.FullName}' is not supported by the compiler intermediate representation."),
         };
     }
 

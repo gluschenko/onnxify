@@ -13,7 +13,7 @@ public sealed class RepositoryAssetRoundTripTests
 
     [Theory]
     [MemberData(nameof(RepositoryModels))]
-    public void Repository_asset_round_trips_through_compiler(string fileName)
+    public void RepositoryAssetRoundTripsThroughCompiler(string fileName)
     {
         var sourcePath = Path.Combine(AppContext.BaseDirectory, "Assets", fileName);
         Assert.True(File.Exists(sourcePath), $"Missing compiler round-trip fixture '{sourcePath}'.");

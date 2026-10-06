@@ -106,6 +106,15 @@ public sealed class CompilerTorchSharpChildModuleDescriptor : IEquatable<Compile
         string name,
         string typeName,
         string? blockName = null
+    ) : this(name, typeName, blockName, null)
+    {
+    }
+
+    public CompilerTorchSharpChildModuleDescriptor(
+        string name,
+        string typeName,
+        string? blockName,
+        CompilerTorchSharpModuleDescriptor? module
     )
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -121,6 +130,7 @@ public sealed class CompilerTorchSharpChildModuleDescriptor : IEquatable<Compile
         Name = name;
         TypeName = typeName;
         BlockName = string.IsNullOrWhiteSpace(blockName) ? name : blockName ?? name;
+        Module = module;
     }
 
     public string Name { get; }
@@ -129,18 +139,22 @@ public sealed class CompilerTorchSharpChildModuleDescriptor : IEquatable<Compile
 
     public string BlockName { get; }
 
+    /// <summary>Gets the recursively described child module when runtime inspection supplied it.</summary>
+    public CompilerTorchSharpModuleDescriptor? Module { get; }
+
     public bool Equals(CompilerTorchSharpChildModuleDescriptor? other)
     {
         var result = other is not null
             && string.Equals(Name, other.Name, StringComparison.Ordinal)
             && string.Equals(TypeName, other.TypeName, StringComparison.Ordinal)
-            && string.Equals(BlockName, other.BlockName, StringComparison.Ordinal);
+            && string.Equals(BlockName, other.BlockName, StringComparison.Ordinal)
+            && EqualityComparer<CompilerTorchSharpModuleDescriptor?>.Default.Equals(Module, other.Module);
         return result;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CompilerTorchSharpChildModuleDescriptor);
 
-    public override int GetHashCode() => CompilerStructural.Combine(17, Name, TypeName, BlockName);
+    public override int GetHashCode() => CompilerStructural.Combine(17, Name, TypeName, BlockName, Module);
 }
 
 /// <summary>Describes a helper method that may be emitted as a reusable compiler block.</summary>

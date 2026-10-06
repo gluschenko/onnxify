@@ -9,7 +9,7 @@ namespace Onnxify.Compiler.Tests;
 public sealed class CSharpCompilerTests
 {
     [Fact]
-    public void Source_text_is_scanned_into_immutable_syntax_ir()
+    public void SourceTextIsScannedIntoImmutableSyntaxRepresentation()
     {
         var source = new CSharpTorchSharpSource(
             """
@@ -42,7 +42,7 @@ public sealed class CSharpCompilerTests
     }
 
     [Fact]
-    public void Backend_generates_torchsharp_source_from_syntax_tree()
+    public void BackendGeneratesTorchSharpSourceFromSyntaxTree()
     {
         var treeResult = Compiler.CreateTreeFromTorchSharp(
             new CSharpTorchSharpSource("return input + 1f;"));
@@ -60,11 +60,11 @@ public sealed class CSharpCompilerTests
         Assert.True(generated.IsSuccess, string.Join(Environment.NewLine, generated.Diagnostics.Select(x => x.Message)));
         Assert.Contains("torch.nn.Module", generated.Value);
         Assert.Contains("public override", generated.Value);
-        Assert.Contains("return (input + 1d);", generated.Value);
+        Assert.Contains("return (input + 1f);", generated.Value);
     }
 
     [Fact]
-    public void Torchsharp_relu_lowers_through_shared_mapping_to_onnx()
+    public void TorchSharpReluLowersThroughSharedMappingToOnnx()
     {
         // Source: third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py (nn.functional.relu).
         // Runtime semantics: third_party/onnxruntime/onnxruntime/test/providers/cpu/activation/activation_op_test.cc (Relu).
@@ -116,7 +116,7 @@ public sealed class CSharpCompilerTests
     }
 
     [Fact]
-    public void Unsupported_relu_overload_reports_an_analyze_diagnostic()
+    public void UnsupportedReluOverloadReportsAnAnalyzeDiagnostic()
     {
         var imported = Compiler.CreateTreeFromTorchSharp(
             new CSharpTorchSharpSource("return torch.nn.functional.relu(input, input);"));
@@ -130,7 +130,7 @@ public sealed class CSharpCompilerTests
     }
 
     [Fact]
-    public void Generated_source_is_compilable_csharp()
+    public void GeneratedSourceIsCompilableCSharp()
     {
         var treeResult = Compiler.CreateTreeFromTorchSharp(
             new CSharpTorchSharpSource("return input;"));
@@ -153,7 +153,7 @@ public sealed class CSharpCompilerTests
     }
 
     [Fact]
-    public void Generated_source_reconstructs_a_minimal_executable_module()
+    public void GeneratedSourceReconstructsAMinimalExecutableModule()
     {
         var treeResult = Compiler.CreateTreeFromTorchSharp(
             new CSharpTorchSharpSource("return input;"));
@@ -190,7 +190,7 @@ public sealed class CSharpCompilerTests
     }
 
     [Fact]
-    public void Helper_methods_are_preserved_as_reusable_blocks()
+    public void HelperMethodsLowerToBlocksAndOnnxCalls()
     {
         var result = Compiler.CreateTreeFromTorchSharp(
             new CSharpTorchSharpSource(
@@ -207,17 +207,293 @@ public sealed class CSharpCompilerTests
                 """));
 
         Assert.True(result.IsSuccess, string.Join(Environment.NewLine, result.Diagnostics.Select(x => x.Message)));
-        Assert.Contains(result.Value!.Blocks, x => x.Name == "Project");
+        var tree = Assert.IsType<CompilerComputationTree>(result.Value);
+        var helper = Assert.Single(tree.Blocks);
+        Assert.Equal("Project", helper.Name);
+        var moduleCall = Assert.IsType<CompilerModuleCall>(Assert.Single(tree.Operations));
+        Assert.Equal("Project", moduleCall.TargetBlock);
+        Assert.Null(tree.SyntaxBody);
 
-        var generated = Compiler.GenerateCSharp(result.Value!);
+        var generated = Compiler.GenerateCSharp(tree);
 
         Assert.True(generated.IsSuccess, string.Join(Environment.NewLine, generated.Diagnostics.Select(x => x.Message)));
         Assert.Contains("private global::TorchSharp.torch.Tensor Project", generated.Value);
-        Assert.Contains("return Project(input);", generated.Value);
+        Assert.Contains("var output = Project(input);", generated.Value);
+
+        var emitted = Compiler.GenerateOnnx(tree);
+        Assert.True(emitted.IsSuccess, string.Join(" | ", emitted.Diagnostics.Select(x => x.Message)));
+        Assert.Equal("Identity", Assert.Single(emitted.Value!.Graph.Nodes).OpType);
+
+        var path = Path.Combine(Path.GetTempPath(), $"onnxify-compiler-helper-{Guid.NewGuid():N}.onnx");
+        var inputValues = new[] { -1.5f, 0.25f, 2f };
+        try
+        {
+            emitted.Value.Save(path, overwrite: true);
+            using var session = new global::Microsoft.ML.OnnxRuntime.InferenceSession(path);
+            using var results = session.Run(
+            [
+                global::Microsoft.ML.OnnxRuntime.NamedOnnxValue.CreateFromTensor(
+                    "input",
+                    new global::Microsoft.ML.OnnxRuntime.Tensors.DenseTensor<float>(inputValues, [3])),
+            ]);
+
+            Assert.Equal(inputValues, results.Single().AsTensor<float>().ToArray());
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
     }
 
     [Fact]
-    public void Module_calls_are_emitted_through_reusable_blocks()
+    public void NestedHelperCallsInlineToOnnxAndPreserveMappingSemantics()
+    {
+        // The helper tree is intentionally composed only from the already verified ReLU mapping (OXY-024).
+        var result = Compiler.CreateTreeFromTorchSharp(
+            new CSharpTorchSharpSource(
+                """
+                public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input)
+                {
+                    return Outer(input);
+                }
+
+                private global::TorchSharp.torch.Tensor Outer(global::TorchSharp.torch.Tensor value)
+                {
+                    return Inner(value);
+                }
+
+                private global::TorchSharp.torch.Tensor Inner(global::TorchSharp.torch.Tensor value)
+                {
+                    return torch.nn.functional.relu(value);
+                }
+                """));
+
+        Assert.True(result.IsSuccess, string.Join(" | ", result.Diagnostics.Select(x => x.Message)));
+        var tree = Assert.IsType<CompilerComputationTree>(result.Value);
+        Assert.Equal(["Outer", "Inner"], tree.Blocks.Select(block => block.Name));
+        Assert.Null(tree.SyntaxBody);
+        Assert.Equal("Outer", Assert.IsType<CompilerModuleCall>(Assert.Single(tree.Operations)).TargetBlock);
+
+        var emitted = Compiler.GenerateOnnx(tree);
+        Assert.True(emitted.IsSuccess, string.Join(" | ", emitted.Diagnostics.Select(x => x.Message)));
+        Assert.Equal("Relu", Assert.Single(emitted.Value!.Graph.Nodes).OpType);
+        AssertOnnxOutput(emitted.Value, [-1f, 0.5f, 2f], [0f, 0.5f, 2f]);
+    }
+
+    [Fact]
+    public void HelperScalarArgumentBindsToActivationAttribute()
+    {
+        var result = Compiler.CreateTreeFromTorchSharp(
+            new CSharpTorchSharpSource(
+                """
+                public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input)
+                {
+                    return ApplySlope(input, 0.25f);
+                }
+
+                private global::TorchSharp.torch.Tensor ApplySlope(global::TorchSharp.torch.Tensor value, float slope)
+                {
+                    return torch.nn.functional.leaky_relu(value, slope);
+                }
+                """));
+
+        Assert.True(result.IsSuccess, string.Join(" | ", result.Diagnostics.Select(x => x.Message)));
+        var tree = Assert.IsType<CompilerComputationTree>(result.Value);
+        var moduleCall = Assert.IsType<CompilerModuleCall>(Assert.Single(tree.Operations));
+        Assert.Equal(2, moduleCall.Arguments.Count);
+        Assert.IsType<CompilerLiteralExpression>(moduleCall.Arguments[1]);
+
+        var generated = Compiler.GenerateCSharp(tree);
+        Assert.True(generated.IsSuccess, string.Join(" | ", generated.Diagnostics.Select(x => x.Message)));
+        Assert.Contains("ApplySlope(input, 0.25f)", generated.Value);
+        Assert.Contains("float slope", generated.Value);
+
+        var emitted = Compiler.GenerateOnnx(tree);
+        Assert.True(emitted.IsSuccess, string.Join(" | ", emitted.Diagnostics.Select(x => x.Message)));
+        var node = Assert.Single(emitted.Value!.Graph.Nodes);
+        Assert.Equal("LeakyRelu", node.OpType);
+        Assert.Equal(0.25f, Assert.IsType<OnnxAttribute<float>>(node.Attributes.Single()).Value);
+        AssertOnnxOutput(emitted.Value, [-2f, 0.5f, 2f], [-0.5f, 0.5f, 2f]);
+    }
+
+    [Fact]
+    public void TupleDeconstructionLowersHelperReturnsInOrder()
+    {
+        var result = Compiler.CreateTreeFromTorchSharp(
+            new CSharpTorchSharpSource(
+                """
+                public (global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor) forward(global::TorchSharp.torch.Tensor input)
+                {
+                    var (first, second) = Split(input);
+                    return (first, second);
+                }
+
+                private (global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor) Split(global::TorchSharp.torch.Tensor value)
+                {
+                    return (value, value);
+                }
+                """));
+
+        Assert.True(result.IsSuccess, string.Join(" | ", result.Diagnostics.Select(x => x.Message)));
+        var tree = Assert.IsType<CompilerComputationTree>(result.Value);
+        Assert.Null(tree.SyntaxBody);
+        var call = Assert.IsType<CompilerModuleCall>(Assert.Single(tree.Operations));
+        Assert.Equal("Split", call.TargetBlock);
+        Assert.Equal(["output0", "output1"], call.Outputs.Select(output => output.Name));
+
+        var generated = Compiler.GenerateCSharp(tree);
+        Assert.True(generated.IsSuccess, string.Join(" | ", generated.Diagnostics.Select(x => x.Message)));
+        Assert.Contains("var (output0, output1) = Split(input);", generated.Value);
+
+        var emitted = Compiler.GenerateOnnx(tree);
+        Assert.True(emitted.IsSuccess, string.Join(" | ", emitted.Diagnostics.Select(x => x.Message)));
+        Assert.Equal(["Identity", "Identity"], emitted.Value!.Graph.Nodes.Select(node => node.OpType));
+
+        var path = Path.Combine(Path.GetTempPath(), $"onnxify-compiler-tuple-{Guid.NewGuid():N}.onnx");
+        var inputValues = new[] { -1f, 0.5f, 2f };
+        try
+        {
+            emitted.Value.Save(path, overwrite: true);
+            using var session = new global::Microsoft.ML.OnnxRuntime.InferenceSession(path);
+            using var results = session.Run(
+            [
+                global::Microsoft.ML.OnnxRuntime.NamedOnnxValue.CreateFromTensor(
+                    "input",
+                    new global::Microsoft.ML.OnnxRuntime.Tensors.DenseTensor<float>(inputValues, [inputValues.Length])),
+            ]);
+
+            Assert.Equal(["output0", "output1"], results.Select(output => output.Name).OrderBy(name => name));
+            foreach (var output in results)
+            {
+                Assert.Equal(inputValues, output.AsTensor<float>().ToArray());
+            }
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public void StaticallySelectedIfBranchLowersThroughSharedMapping()
+    {
+        var result = Compiler.CreateTreeFromTorchSharp(
+            new CSharpTorchSharpSource(
+                """
+                public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input)
+                {
+                    if (true)
+                    {
+                        return torch.nn.functional.relu(input);
+                    }
+                    else
+                    {
+                        return torch.nn.functional.tanh(input);
+                    }
+                }
+                """));
+
+        Assert.True(result.IsSuccess, string.Join(" | ", result.Diagnostics.Select(x => x.Message)));
+        var tree = Assert.IsType<CompilerComputationTree>(result.Value);
+        Assert.Null(tree.SyntaxBody);
+        Assert.Equal("Relu", Assert.IsType<CompilerOperation>(Assert.Single(tree.Operations)).Descriptor.Name);
+
+        var emitted = Compiler.GenerateOnnx(tree);
+        Assert.True(emitted.IsSuccess, string.Join(" | ", emitted.Diagnostics.Select(x => x.Message)));
+        Assert.Equal("Relu", Assert.Single(emitted.Value!.Graph.Nodes).OpType);
+        AssertOnnxOutput(emitted.Value, [-1f, 0.5f, 2f], [0f, 0.5f, 2f]);
+    }
+
+    [Fact]
+    public void NoGradScopeIsTransparentWhenLoweringToOnnx()
+    {
+        var result = Compiler.CreateTreeFromTorchSharp(
+            new CSharpTorchSharpSource(
+                """
+                public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input)
+                {
+                    using (torch.no_grad())
+                    {
+                        return torch.nn.functional.relu(input);
+                    }
+                }
+                """));
+
+        Assert.True(result.IsSuccess, string.Join(" | ", result.Diagnostics.Select(x => x.Message)));
+        var tree = Assert.IsType<CompilerComputationTree>(result.Value);
+        Assert.Null(tree.SyntaxBody);
+        Assert.Equal("Relu", Assert.IsType<CompilerOperation>(Assert.Single(tree.Operations)).Descriptor.Name);
+
+        var emitted = Compiler.GenerateOnnx(tree);
+        Assert.True(emitted.IsSuccess, string.Join(" | ", emitted.Diagnostics.Select(x => x.Message)));
+        Assert.Equal("Relu", Assert.Single(emitted.Value!.Graph.Nodes).OpType);
+        AssertOnnxOutput(emitted.Value, [-1f, 0.5f, 2f], [0f, 0.5f, 2f]);
+    }
+
+    [Fact]
+    public void LiteralArrayForeachIsPreservedForTorchSharpGeneration()
+    {
+        var result = Compiler.CreateTreeFromTorchSharp(
+            new CSharpTorchSharpSource(
+                """
+                public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input)
+                {
+                    var values = new[] { 1f, 2f };
+                    var output = input;
+                    foreach (var value in values)
+                    {
+                        output = output + value;
+                    }
+                    return output;
+                }
+                """));
+
+        Assert.True(result.IsSuccess, string.Join(" | ", result.Diagnostics.Select(x => x.Message)));
+        var tree = Assert.IsType<CompilerComputationTree>(result.Value);
+        Assert.Contains(tree.SyntaxBody!.Statements, statement => statement is CompilerStaticForeachStatement);
+
+        var generated = Compiler.GenerateCSharp(tree);
+        Assert.True(generated.IsSuccess, string.Join(" | ", generated.Diagnostics.Select(x => x.Message)));
+        Assert.Contains("foreach (var value in values)", generated.Value);
+    }
+
+    private static void AssertOnnxOutput(
+        OnnxModel model,
+        float[] inputValues,
+        float[] expectedValues
+    )
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"onnxify-compiler-static-{Guid.NewGuid():N}.onnx");
+        try
+        {
+            model.Save(path, overwrite: true);
+            using var session = new global::Microsoft.ML.OnnxRuntime.InferenceSession(path);
+            using var results = session.Run(
+            [
+                global::Microsoft.ML.OnnxRuntime.NamedOnnxValue.CreateFromTensor(
+                    "input",
+                    new global::Microsoft.ML.OnnxRuntime.Tensors.DenseTensor<float>(inputValues, [inputValues.Length])),
+            ]);
+            var actualValues = results.Single().AsTensor<float>().ToArray();
+            Assert.Equal(expectedValues, actualValues);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public void ModuleCallsAreEmittedThroughReusableBlocks()
     {
         var builder = new CompilerComputationTreeBuilder("module-call");
         builder.AddInput(new CompilerValue("input", new CompilerTensorType(CompilerElementType.Float32, null)));
@@ -246,7 +522,7 @@ public sealed class CSharpCompilerTests
     }
 
     [Fact]
-    public void Dynamic_if_is_reported_as_an_analyze_error_with_csharp_span()
+    public void DynamicIfIsReportedAsAnAnalyzeErrorWithCSharpSpan()
     {
         var result = Compiler.CreateTreeFromTorchSharp(
             new CSharpTorchSharpSource(
@@ -271,7 +547,72 @@ public sealed class CSharpCompilerTests
     }
 
     [Fact]
-    public void Compiler_descriptor_is_immutable_and_structurally_comparable()
+    public void DynamicForeachCollectionIsReportedAsAnAnalyzeError()
+    {
+        var result = Compiler.CreateTreeFromTorchSharp(
+            new CSharpTorchSharpSource(
+                """
+                public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input)
+                {
+                    foreach (var item in GetValues(input))
+                    {
+                        input = input;
+                    }
+                    return input;
+                }
+                """));
+
+        Assert.False(result.IsSuccess);
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(CompilerDiagnosticCodes.Unsupported, diagnostic.Code);
+        Assert.Equal(CompilerDiagnosticStage.Analyze, diagnostic.Stage);
+        Assert.Contains("compile-time array", diagnostic.Message);
+        Assert.NotNull(diagnostic.Span);
+    }
+
+    [Fact]
+    public void RecursiveCallsAreReportedWithCallerAndSourceSpan()
+    {
+        var result = Compiler.CreateTreeFromTorchSharp(
+            new CSharpTorchSharpSource(
+                """
+                public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input)
+                {
+                    return forward(input);
+                }
+                """));
+
+        Assert.False(result.IsSuccess);
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(CompilerDiagnosticCodes.Unsupported, diagnostic.Code);
+        Assert.Equal(CompilerDiagnosticStage.Analyze, diagnostic.Stage);
+        Assert.Equal("forward", diagnostic.Context!.Caller);
+        Assert.NotNull(diagnostic.Span);
+    }
+
+    [Fact]
+    public void DynamicModuleForwardDispatchIsReportedExplicitly()
+    {
+        var result = Compiler.CreateTreeFromTorchSharp(
+            new CSharpTorchSharpSource(
+                """
+                public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input)
+                {
+                    return child.forward(input);
+                }
+                """));
+
+        Assert.False(result.IsSuccess);
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(CompilerDiagnosticCodes.Unsupported, diagnostic.Code);
+        Assert.Equal(CompilerDiagnosticStage.Analyze, diagnostic.Stage);
+        Assert.Contains("Dynamic module forward dispatch", diagnostic.Message);
+        Assert.NotNull(diagnostic.Span);
+        Assert.Equal("forward", diagnostic.Context!.Caller);
+    }
+
+    [Fact]
+    public void CompilerDescriptorIsImmutableAndStructurallyComparable()
     {
         var descriptor = new CompilerTorchSharpModuleDescriptor(
             typeof(CSharpCompilerTests).Assembly.Location,
@@ -334,7 +675,7 @@ public sealed class CSharpCompilerTests
     }
 
     [Fact]
-    public void Compiled_module_descriptor_can_be_decompiled_without_torchsharp_in_compiler_api()
+    public void CompiledModuleDescriptorCanBeDecompiledWithoutTorchSharpInCompilerApi()
     {
         var descriptor = new CompilerTorchSharpModuleDescriptor(
             typeof(DescriptorFixture).Assembly.Location,
@@ -362,7 +703,7 @@ public sealed class CSharpCompilerTests
     }
 
     [Fact]
-    public void Torchsharp_adapter_exposes_a_compiler_neutral_descriptor()
+    public void TorchSharpAdapterExposesACompilerNeutralDescriptor()
     {
         using var module = new AdapterFixture();
 
@@ -377,6 +718,36 @@ public sealed class CSharpCompilerTests
 
         Assert.True(result.IsSuccess, string.Join(Environment.NewLine, result.Diagnostics.Select(x => x.Message)));
         Assert.Single(result.Value!.Inputs);
+    }
+
+    [Fact]
+    public void TorchSharpAdapterAndCompilerFlattenNestedUserModules()
+    {
+        using var module = new ParentAdapterFixture();
+
+        var source = TorchSharpCompilerAdapter.CreateSource(module);
+        var child = Assert.Single(source.Module!.ChildModules);
+        Assert.NotNull(child.Module);
+        Assert.Single(child.Module!.ChildModules);
+        Assert.NotNull(child.Module.ChildModules[0].Module);
+
+        var imported = Compiler.CreateTreeFromTorchSharp(source);
+        Assert.True(imported.IsSuccess, string.Join(" | ", imported.Diagnostics.Select(x => x.Message)));
+        var tree = Assert.IsType<CompilerComputationTree>(imported.Value);
+        Assert.Contains(tree.Blocks, block => block.Name == "_child__forward");
+        Assert.Contains(tree.Blocks, block => block.Name == "_child___inner__forward");
+        var childCall = Assert.IsType<CompilerModuleCall>(Assert.Single(tree.Operations));
+        Assert.Equal("_child__forward", childCall.TargetBlock);
+
+        var generated = Compiler.GenerateCSharp(tree);
+        Assert.True(generated.IsSuccess, string.Join(" | ", generated.Diagnostics.Select(x => x.Message)));
+        Assert.Contains("_child__forward(input)", generated.Value);
+        Assert.Contains("_child___inner__forward(input)", generated.Value);
+
+        var emitted = Compiler.GenerateOnnx(tree);
+        Assert.True(emitted.IsSuccess, string.Join(" | ", emitted.Diagnostics.Select(x => x.Message)));
+        Assert.Equal("Relu", Assert.Single(emitted.Value!.Graph.Nodes).OpType);
+        AssertOnnxOutput(emitted.Value, [-1f, 0.5f, 2f], [0f, 0.5f, 2f]);
     }
 
     private sealed class DescriptorFixture
@@ -401,6 +772,68 @@ public sealed class CSharpCompilerTests
             global::TorchSharp.torch.Tensor input)
         {
             return input;
+        }
+    }
+
+    private sealed class ParentAdapterFixture
+        : global::TorchSharp.torch.nn.Module<
+            global::TorchSharp.torch.Tensor,
+            global::TorchSharp.torch.Tensor>
+    {
+        private readonly ChildAdapterFixture _child;
+
+        public ParentAdapterFixture()
+            : base(nameof(ParentAdapterFixture))
+        {
+            _child = new ChildAdapterFixture();
+            RegisterComponents();
+        }
+
+        public override global::TorchSharp.torch.Tensor forward(
+            global::TorchSharp.torch.Tensor input
+        )
+        {
+            return _child.forward(input);
+        }
+    }
+
+    private sealed class ChildAdapterFixture
+        : global::TorchSharp.torch.nn.Module<
+            global::TorchSharp.torch.Tensor,
+            global::TorchSharp.torch.Tensor>
+    {
+        private readonly GrandchildAdapterFixture _inner;
+
+        public ChildAdapterFixture()
+            : base(nameof(ChildAdapterFixture))
+        {
+            _inner = new GrandchildAdapterFixture();
+            RegisterComponents();
+        }
+
+        public override global::TorchSharp.torch.Tensor forward(
+            global::TorchSharp.torch.Tensor input
+        )
+        {
+            return _inner.forward(input);
+        }
+    }
+
+    private sealed class GrandchildAdapterFixture
+        : global::TorchSharp.torch.nn.Module<
+            global::TorchSharp.torch.Tensor,
+            global::TorchSharp.torch.Tensor>
+    {
+        public GrandchildAdapterFixture()
+            : base(nameof(GrandchildAdapterFixture))
+        {
+        }
+
+        public override global::TorchSharp.torch.Tensor forward(
+            global::TorchSharp.torch.Tensor input
+        )
+        {
+            return global::TorchSharp.torch.nn.functional.relu(input);
         }
     }
 

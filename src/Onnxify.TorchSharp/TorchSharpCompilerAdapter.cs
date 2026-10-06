@@ -19,49 +19,78 @@ public static class TorchSharpCompilerAdapter
         ArgumentNullException.ThrowIfNull(module);
         ArgumentException.ThrowIfNullOrWhiteSpace(methodName);
 
-        var moduleType = module.GetType();
-        var method = moduleType
-            .GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
-            .Where(x => string.Equals(x.Name, methodName, StringComparison.Ordinal))
-            .OrderBy(x => x.MetadataToken)
-            .FirstOrDefault()
-            ?? throw new InvalidOperationException(
-                $"Method '{methodName}' was not found on '{moduleType.FullName}'.");
+        var descriptor = CreateDescriptor(
+            module: module,
+            methodName: methodName,
+            document: document,
+            activeModules: new HashSet<global::TorchSharp.torch.nn.Module>(ReferenceEqualityComparer.Instance));
+        return new CSharpTorchSharpSource(descriptor);
+    }
 
-        var assemblyPath = moduleType.Assembly.Location;
-        if (string.IsNullOrWhiteSpace(assemblyPath))
+    private static CompilerTorchSharpModuleDescriptor CreateDescriptor(
+        global::TorchSharp.torch.nn.Module module,
+        string methodName,
+        string? document,
+        HashSet<global::TorchSharp.torch.nn.Module> activeModules
+    )
+    {
+        if (!activeModules.Add(module))
         {
             throw new InvalidOperationException(
-                $"Module type '{moduleType.FullName}' does not have a loadable assembly location.");
+                $"The TorchSharp module hierarchy contains a cycle at '{module.GetType().FullName}'.");
         }
 
-        var inputs = GetInputs(moduleType, method);
-        var outputs = GetOutputs(moduleType, method);
-        var stateMembers = GetStateMembers(module);
-        var childModules = GetChildModules(module);
-        var helpers = moduleType
-            .GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
-            .Where(x => !string.Equals(x.Name, methodName, StringComparison.Ordinal))
-            .Where(x => x.DeclaringType == moduleType)
-            .Where(x => !x.IsSpecialName)
-            .OrderBy(x => x.MetadataToken)
-            .Select(x => new CompilerTorchSharpHelperMethodDescriptor(x.Name))
-            .GroupBy(x => x.Name, StringComparer.Ordinal)
-            .Select(x => x.First())
-            .ToArray();
+        try
+        {
+            var moduleType = module.GetType();
+            var method = moduleType
+                .GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                .Where(x => string.Equals(x.Name, methodName, StringComparison.Ordinal))
+                .OrderBy(x => x.MetadataToken)
+                .FirstOrDefault()
+                ?? throw new InvalidOperationException(
+                    $"Method '{methodName}' was not found on '{moduleType.FullName}'.");
 
-        var descriptor = new CompilerTorchSharpModuleDescriptor(
-            assemblyPath,
-            moduleType.FullName ?? moduleType.Name,
-            methodName,
-            method.MetadataToken,
-            document ?? assemblyPath,
-            inputs,
-            outputs,
-            stateMembers,
-            childModules,
-            helpers);
-        return new CSharpTorchSharpSource(descriptor);
+            var assemblyPath = moduleType.Assembly.Location;
+            if (string.IsNullOrWhiteSpace(assemblyPath))
+            {
+                throw new InvalidOperationException(
+                    $"Module type '{moduleType.FullName}' does not have a loadable assembly location.");
+            }
+
+            var inputs = GetInputs(moduleType, method);
+            var outputs = GetOutputs(moduleType, method);
+            var stateMembers = GetStateMembers(module);
+            var childModules = GetChildModules(module, activeModules);
+            var helpers = moduleType
+                .GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                .Where(x => !string.Equals(x.Name, methodName, StringComparison.Ordinal))
+                .Where(x => x.DeclaringType == moduleType)
+                .Where(x => !x.IsSpecialName)
+                .OrderBy(x => x.MetadataToken)
+                .Select(x => new CompilerTorchSharpHelperMethodDescriptor(x.Name))
+                .GroupBy(x => x.Name, StringComparer.Ordinal)
+                .Select(x => x.First())
+                .ToArray();
+
+            var descriptor = new CompilerTorchSharpModuleDescriptor(
+                assemblyPath,
+                moduleType.FullName ?? moduleType.Name,
+                methodName,
+                method.MetadataToken,
+                document ?? assemblyPath,
+                inputs,
+                outputs,
+                stateMembers,
+                childModules,
+                helpers);
+
+            return descriptor;
+        }
+        finally
+        {
+            activeModules.Remove(module);
+        }
     }
 
     private static IReadOnlyList<CompilerTorchSharpValueDescriptor> GetInputs(
@@ -119,7 +148,9 @@ public static class TorchSharpCompilerAdapter
     )
     {
         var members = new List<CompilerTorchSharpStateMemberDescriptor>();
-        foreach (var field in module.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+        foreach (var field in module.GetType()
+            .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            .Where(field => field.DeclaringType == module.GetType()))
         {
             var value = field.GetValue(module);
             if (value is global::TorchSharp.torch.Tensor tensor)
@@ -152,16 +183,31 @@ public static class TorchSharpCompilerAdapter
     }
 
     private static IReadOnlyList<CompilerTorchSharpChildModuleDescriptor> GetChildModules(
-        global::TorchSharp.torch.nn.Module module
+        global::TorchSharp.torch.nn.Module module,
+        HashSet<global::TorchSharp.torch.nn.Module> activeModules
     )
     {
         return module.GetType()
             .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            .Where(field => field.DeclaringType == module.GetType())
             .Where(x => typeof(global::TorchSharp.torch.nn.Module).IsAssignableFrom(x.FieldType))
             .Select(
-                x => new CompilerTorchSharpChildModuleDescriptor(
-                    x.Name,
-                    x.FieldType.FullName ?? x.FieldType.Name))
+                field =>
+                {
+                    var childModule = field.GetValue(module) as global::TorchSharp.torch.nn.Module;
+                    var childDescriptor = childModule is null
+                        ? null
+                        : CreateDescriptor(
+                            module: childModule,
+                            methodName: "forward",
+                            document: null,
+                            activeModules: activeModules);
+                    return new CompilerTorchSharpChildModuleDescriptor(
+                        name: field.Name,
+                        typeName: field.FieldType.FullName ?? field.FieldType.Name,
+                        blockName: field.Name,
+                        module: childDescriptor);
+                })
             .ToArray();
     }
 

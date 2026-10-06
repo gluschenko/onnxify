@@ -1,6 +1,6 @@
 namespace Onnxify.Compiler;
 
-/// <summary>Scalar element types understood by the compiler IR.</summary>
+/// <summary>Scalar element types understood by the compiler intermediate representation.</summary>
 public enum CompilerElementType
 {
     Unknown = 0,
@@ -32,7 +32,7 @@ public enum CompilerElementType
     Int2 = 26,
 }
 
-/// <summary>Kind of tensor dimension represented by the IR.</summary>
+/// <summary>Kind of tensor dimension represented by the intermediate representation.</summary>
 public enum CompilerDimensionKind
 {
     Unknown = 0,

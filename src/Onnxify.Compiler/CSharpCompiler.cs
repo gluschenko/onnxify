@@ -11,7 +11,7 @@ using RoslynLanguageVersion = Microsoft.CodeAnalysis.CSharp.LanguageVersion;
 
 namespace Onnxify.Compiler;
 
-/// <summary>Сеанс импорта и генерации C# TorchSharp через общее compiler IR.</summary>
+/// <summary>Сеанс импорта и генерации C# TorchSharp через общее промежуточное представление compiler.</summary>
 public sealed class CSharpCompilerSession : ICompilerSession
 {
     public CompilerResult<ICompilerTree> CreateTree(ICompilerSource source)
@@ -83,7 +83,7 @@ public sealed class CSharpCompilerSession : ICompilerSession
 internal static class CSharpCompilerFrontend
 {
     /// <summary>
-    /// Разбирает заданный исходник или декомпилирует указанный метод и преобразует его в IR.
+    /// Разбирает заданный исходник или декомпилирует указанный метод и преобразует его в промежуточное представление.
     /// Ошибки анализа возвращаются как diagnostics, чтобы вызывающая сторона не зависела от Roslyn и ILSpy exceptions.
     /// </summary>
     public static CompilerResult<CompilerComputationTree> Import(CSharpTorchSharpSource source)
@@ -124,8 +124,8 @@ internal static class CSharpCompilerFrontend
     }
 
     /// <summary>
-    /// Декомпилирует только выбранный metadata token и передаёт его текст тому же scanner, что используется для source text.
-    /// Это сохраняет единый путь анализа и не позволяет decompiler AST проникнуть в публичные compiler contracts.
+    /// Декомпилирует выбранный метод и объявленные локальные helpers в общий C# source tree для scanner.
+    /// Отдельная декомпиляция каждого метода сохраняет compiler-owned boundary и доступность helper bodies.
     /// </summary>
     private static CompilerResult<CompilerComputationTree> ImportCompiledModule(
         CompilerTorchSharpModuleDescriptor descriptor
@@ -140,6 +140,24 @@ internal static class CSharpCompilerFrontend
                 span: Span(descriptor.Document, 0, 0));
         }
 
+        var decompiledMethods = new List<MethodDeclarationSyntax>();
+        AppendModuleMethods(
+            descriptor: descriptor,
+            prefix: string.Empty,
+            decompiledMethods: decompiledMethods);
+        var sourceText = $"public sealed class DecompiledTorchSharpModule {{ {string.Join(Environment.NewLine, decompiledMethods)} }}";
+        return ImportSourceText(
+            sourceText,
+            descriptor.Document,
+            new CompilationContext(descriptor));
+    }
+
+    private static void AppendModuleMethods(
+        CompilerTorchSharpModuleDescriptor descriptor,
+        string prefix,
+        List<MethodDeclarationSyntax> decompiledMethods
+    )
+    {
         var assembly = Assembly.LoadFrom(descriptor.AssemblyPath);
         var moduleType = assembly.GetType(descriptor.TypeName, throwOnError: false, ignoreCase: false);
         if (moduleType is null)
@@ -151,35 +169,92 @@ internal static class CSharpCompilerFrontend
                 span: Span(descriptor.Document, 0, 0));
         }
 
-        var method = FindMethod(moduleType, descriptor);
         var settings = new DecompilerSettings(ICSharpCode.Decompiler.CSharp.LanguageVersion.CSharp10_0)
         {
             ThrowOnAssemblyResolveErrors = false,
         };
         var decompiler = new CSharpDecompiler(descriptor.AssemblyPath, settings);
-        var syntaxTree = decompiler.Decompile(
-            MetadataTokenHelpers.EntityHandleOrNil(method.MetadataToken));
-        var decompiledMethod = syntaxTree
-            .Descendants
-            .OfType<ICSharpCode.Decompiler.CSharp.Syntax.MethodDeclaration>()
-            .FirstOrDefault(x => string.Equals(x.Name, method.Name, StringComparison.Ordinal));
-
-        if (decompiledMethod is null)
+        var rootMethod = FindMethod(moduleType, descriptor);
+        AddMethod(rootMethod, GetBlockName(prefix, descriptor.MethodName));
+        foreach (var helperDescriptor in descriptor.HelperMethods)
         {
-            throw new CSharpCompilerDiagnosticException(
-                code: CompilerDiagnosticCodes.InvalidSource,
-                message: $"Method '{descriptor.MethodName}' could not be decompiled.",
-                stage: CompilerDiagnosticStage.Parse,
-                span: Span(descriptor.Document, 0, 0));
+            var helperMethod = moduleType
+                .GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                .Where(candidate => candidate.DeclaringType == moduleType && !candidate.IsSpecialName)
+                .Where(candidate => string.Equals(candidate.Name, helperDescriptor.Name, StringComparison.Ordinal))
+                .OrderBy(candidate => candidate.MetadataToken)
+                .FirstOrDefault();
+            if (helperMethod is not null)
+            {
+                AddMethod(helperMethod, GetBlockName(prefix, helperDescriptor.Name));
+            }
         }
 
-        // The decompiler is intentionally limited to the requested token. Parsing its textual
-        // method representation gives the scanner a stable compiler-owned boundary and prevents
-        // raw decompiler nodes from escaping into the public API.
-        return ImportSourceText(
-            decompiledMethod.ToString(),
-            descriptor.Document,
-            new CompilationContext(descriptor, method));
+        foreach (var childModule in descriptor.ChildModules)
+        {
+            if (childModule.Module is null)
+            {
+                continue;
+            }
+
+            AppendModuleMethods(
+                descriptor: childModule.Module,
+                prefix: GetBlockName(prefix, childModule.BlockName) + "__",
+                decompiledMethods: decompiledMethods);
+        }
+
+        void AddMethod(MethodInfo method, string generatedName)
+        {
+            var syntaxTree = decompiler.Decompile(MetadataTokenHelpers.EntityHandleOrNil(method.MetadataToken));
+            var declaration = syntaxTree
+                .Descendants
+                .OfType<ICSharpCode.Decompiler.CSharp.Syntax.MethodDeclaration>()
+                .FirstOrDefault(candidate => string.Equals(candidate.Name, method.Name, StringComparison.Ordinal));
+            if (declaration is null)
+            {
+                if (ReferenceEquals(method, rootMethod))
+                {
+                    throw new CSharpCompilerDiagnosticException(
+                        code: CompilerDiagnosticCodes.InvalidSource,
+                        message: $"Method '{descriptor.MethodName}' could not be decompiled.",
+                        stage: CompilerDiagnosticStage.Parse,
+                        span: Span(descriptor.Document, 0, 0));
+                }
+
+                return;
+            }
+
+            var methodText = declaration.ToString();
+            var roslynMethod = CSharpSyntaxTree.ParseText(
+                    $"class DecompiledMethod {{ {methodText} }}",
+                    new CSharpParseOptions(RoslynLanguageVersion.Latest))
+                .GetRoot()
+                .DescendantNodes()
+                .OfType<MethodDeclarationSyntax>()
+                .First();
+            var rewriter = new CompiledModuleMethodRewriter(
+                generatedName: generatedName,
+                helperNames: descriptor.HelperMethods.Select(helper => helper.Name),
+                childModules: descriptor.ChildModules,
+                prefix: prefix);
+            if (rewriter.Visit(roslynMethod) is MethodDeclarationSyntax rewrittenMethod)
+            {
+                decompiledMethods.Add(rewrittenMethod);
+            }
+            else
+            {
+                throw new CSharpCompilerDiagnosticException(
+                    code: CompilerDiagnosticCodes.InvalidSource,
+                    message: $"Method '{method.Name}' could not be normalized for compiler scanning.",
+                    stage: CompilerDiagnosticStage.Parse,
+                    span: Span(descriptor.Document, 0, 0));
+            }
+        }
+    }
+
+    internal static string GetBlockName(string prefix, string name)
+    {
+        return string.IsNullOrEmpty(prefix) ? name : $"{prefix}{name}";
     }
 
     private static MethodInfo FindMethod(
@@ -319,16 +394,96 @@ internal static class CSharpCompilerFrontend
     internal sealed class CompilationContext
     {
         public CompilationContext(
-            CompilerTorchSharpModuleDescriptor descriptor,
-            MethodInfo method)
+            CompilerTorchSharpModuleDescriptor descriptor)
         {
             Descriptor = descriptor;
-            Method = method;
         }
 
         public CompilerTorchSharpModuleDescriptor Descriptor { get; }
+    }
+}
 
-        public MethodInfo Method { get; }
+internal sealed class CompiledModuleMethodRewriter : CSharpSyntaxRewriter
+{
+    private readonly string _generatedName;
+    private readonly HashSet<string> _helperNames;
+    private readonly IReadOnlyDictionary<string, string> _childModuleNames;
+    private readonly string _prefix;
+
+    public CompiledModuleMethodRewriter(
+        string generatedName,
+        IEnumerable<string> helperNames,
+        IEnumerable<CompilerTorchSharpChildModuleDescriptor> childModules,
+        string prefix
+    )
+    {
+        _generatedName = generatedName;
+        _prefix = prefix;
+        _helperNames = new HashSet<string>(helperNames, StringComparer.Ordinal);
+        _childModuleNames = childModules.ToDictionary(
+            child => child.Name,
+            child => CSharpCompilerFrontend.GetBlockName(_prefix + child.BlockName + "__", "forward"),
+            StringComparer.Ordinal);
+    }
+
+    public override SyntaxNode? VisitMethodDeclaration(MethodDeclarationSyntax node)
+    {
+        return base.VisitMethodDeclaration(node.WithIdentifier(SyntaxFactory.Identifier(_generatedName)));
+    }
+
+    public override SyntaxNode? VisitInvocationExpression(InvocationExpressionSyntax node)
+    {
+        var expression = node.Expression;
+        if (expression is IdentifierNameSyntax identifier
+            && _helperNames.Contains(identifier.Identifier.ValueText))
+        {
+            expression = SyntaxFactory.IdentifierName(CSharpCompilerFrontend.GetBlockName(_prefix, identifier.Identifier.ValueText));
+        }
+        else if (expression is MemberAccessExpressionSyntax member)
+        {
+            var memberName = member.Name.Identifier.ValueText;
+            if (_helperNames.Contains(memberName)
+                && TryGetMemberPath(member.Expression, out var helperTarget)
+                && helperTarget == "this")
+            {
+                expression = SyntaxFactory.IdentifierName(CSharpCompilerFrontend.GetBlockName(_prefix, memberName));
+            }
+            else if (string.Equals(memberName, "forward", StringComparison.Ordinal)
+                && TryGetMemberPath(member.Expression, out var childPath)
+                && _childModuleNames.TryGetValue(NormalizeChildPath(childPath), out var childMethodName))
+            {
+                expression = SyntaxFactory.IdentifierName(childMethodName);
+            }
+        }
+
+        return base.VisitInvocationExpression(node.WithExpression(expression));
+    }
+
+    private static bool TryGetMemberPath(ExpressionSyntax expression, out string path)
+    {
+        switch (expression)
+        {
+            case ThisExpressionSyntax:
+                path = "this";
+                return true;
+            case IdentifierNameSyntax identifier:
+                path = identifier.Identifier.ValueText;
+                return true;
+            case MemberAccessExpressionSyntax member when TryGetMemberPath(member.Expression, out var prefix):
+                path = $"{prefix}.{member.Name.Identifier.ValueText}";
+                return true;
+            default:
+                path = string.Empty;
+                return false;
+        }
+    }
+
+    private static string NormalizeChildPath(string path)
+    {
+        const string THIS_PREFIX = "this.";
+        return path.StartsWith(THIS_PREFIX, StringComparison.Ordinal)
+            ? path.Substring(THIS_PREFIX.Length)
+            : path;
     }
 }
 
@@ -351,7 +506,7 @@ internal sealed class CSharpSyntaxScanner
     }
 
     /// <summary>
-    /// Сканирует выбранный method body и переносит контракты, state и helper методы в compiler IR.
+    /// Сканирует выбранный method body и переносит контракты, state и helper методы в промежуточное представление compiler.
     /// Decompiler и Roslyn остаются внутри frontend boundary; наружу выходит только immutable tree.
     /// </summary>
     public CompilerResult<CompilerComputationTree> Scan(
@@ -362,6 +517,8 @@ internal sealed class CSharpSyntaxScanner
         var descriptor = _context?.Descriptor;
         var inputs = GetInputs(method, descriptor);
         var outputs = GetOutputs(method, descriptor);
+        ValidateNoRecursiveCall(method);
+        ValidateNoDynamicModuleDispatch(method);
         var builder = CreateBuilder(method, descriptor);
         RegisterValueContracts(builder, inputs, outputs);
         RegisterStateMetadata(builder, descriptor);
@@ -373,9 +530,9 @@ internal sealed class CSharpSyntaxScanner
             inputs: inputs,
             outputs: outputs,
             descriptor: descriptor);
-        AddHelperBlocks(builder, helperMethods);
+        var helperBlocks = AddHelperBlocks(builder, helperMethods);
 
-        if (!TryLowerMappedOperation(method, body, inputs, outputs, builder))
+        if (!TryLowerMappedOperation(method, body, inputs, outputs, helperBlocks, builder))
         {
             builder.SetSyntaxBody(body);
         }
@@ -401,12 +558,41 @@ internal sealed class CSharpSyntaxScanner
         CompilerBlockStatement body,
         IReadOnlyList<ScanValue> inputs,
         IReadOnlyList<ScanValue> outputs,
+        IReadOnlyDictionary<string, CompilerComputationBlock> helperBlocks,
         CompilerComputationTreeBuilder builder
     )
     {
-        if (body.Statements.Count != 1
-            || body.Statements[0] is not CompilerReturnStatement { Expression: CompilerInvocationExpression invocation }
-            || !CompilerOperatorMappingRegistry.TryGetTorchSharpCall(invocation.Target, out var mapping, out var receiver)
+        if (TryGetDeconstructionHelperCall(body, outputs.Count, out var deconstructionCall)
+            && deconstructionCall is not null
+            && TryGetReferenceName(deconstructionCall.Target, out var deconstructionHelperName)
+            && helperBlocks.TryGetValue(deconstructionHelperName, out var deconstructionHelper))
+        {
+            AddHelperCall(
+                method: method,
+                helper: deconstructionHelper,
+                helperName: deconstructionHelperName,
+                invocation: deconstructionCall,
+                inputs: inputs,
+                outputs: outputs,
+                body: body,
+                builder: builder);
+            return true;
+        }
+
+        if (!TryGetStaticReturnExpression(body, out var returnExpression)
+            || returnExpression is not CompilerInvocationExpression invocation)
+        {
+            return false;
+        }
+
+        if (TryGetReferenceName(invocation.Target, out var helperName)
+            && helperBlocks.TryGetValue(helperName, out var helper))
+        {
+            AddHelperCall(method, helper, helperName, invocation, inputs, outputs, body, builder);
+            return true;
+        }
+
+        if (!CompilerOperatorMappingRegistry.TryGetTorchSharpCall(invocation.Target, out var mapping, out var receiver)
             || mapping is null)
         {
             return false;
@@ -478,6 +664,117 @@ internal sealed class CSharpSyntaxScanner
         return true;
     }
 
+    private void AddHelperCall(
+        MethodDeclarationSyntax method,
+        CompilerComputationBlock helper,
+        string helperName,
+        CompilerInvocationExpression invocation,
+        IReadOnlyList<ScanValue> inputs,
+        IReadOnlyList<ScanValue> outputs,
+        CompilerBlockStatement body,
+        CompilerComputationTreeBuilder builder
+    )
+    {
+        var helperArguments = new List<CompilerExpression>();
+        var availableValues = new HashSet<string>(
+            inputs.Select(input => input.Name)
+                .Concat(FindDeclarations(body).Select(declaration => declaration.Name)),
+            StringComparer.Ordinal);
+        foreach (var argument in invocation.Arguments)
+        {
+            if (argument is CompilerReferenceExpression reference
+                && availableValues.Contains(reference.Name))
+            {
+                helperArguments.Add(argument);
+                continue;
+            }
+
+            if (argument is CompilerLiteralExpression { Literal: CompilerSignedIntegerLiteral or CompilerUnsignedIntegerLiteral or CompilerFloatingPointLiteral or CompilerBooleanLiteral })
+            {
+                helperArguments.Add(argument);
+                continue;
+            }
+
+            if (argument is not CompilerReferenceExpression)
+            {
+                throw Unsupported(
+                    method,
+                    $"Helper call '{helperName}' only supports value references and scalar literal arguments.");
+            }
+
+            throw Unsupported(
+                method,
+                $"Helper call '{helperName}' references a value that is not available in the forward scope.");
+        }
+
+        if (helperArguments.Count != helper.Inputs.Count || outputs.Count != helper.Outputs.Count)
+        {
+            throw Unsupported(
+                method,
+                $"Helper call '{helperName}' has incompatible input or output bindings.");
+        }
+
+        builder.AddOperation(CompilerModuleCall.CreateWithArguments(
+            name: $"{helperName}__call0",
+            targetBlock: helper.Name,
+            arguments: helperArguments,
+            outputs: outputs.Select(output => new CompilerValueReference(output.Name)),
+            span: invocation.Span));
+    }
+
+    private static bool TryGetDeconstructionHelperCall(
+        CompilerBlockStatement body,
+        int outputCount,
+        out CompilerInvocationExpression? invocation
+    )
+    {
+        invocation = null;
+        if (body.Statements.Count != 2
+            || body.Statements[0] is not CompilerBlockStatement declarations
+            || declarations.Statements.Count != outputCount
+            || body.Statements[1] is not CompilerReturnStatement { Expression: CompilerTupleExpression returnedTuple }
+            || returnedTuple.Items.Count != outputCount)
+        {
+            return false;
+        }
+
+        var declarationStatements = declarations.Statements.OfType<CompilerDeclarationStatement>().ToArray();
+        if (declarationStatements.Length != outputCount
+            || declarationStatements.Any(declaration => declaration.Initializer is not CompilerMemberAccessExpression
+            {
+                Target: CompilerInvocationExpression,
+            }))
+        {
+            return false;
+        }
+
+        var indexers = declarationStatements
+            .Select(declaration => declaration.Initializer)
+            .OfType<CompilerMemberAccessExpression>()
+            .ToArray();
+        if (indexers.Select((indexer, index) => string.Equals(indexer.MemberName, $"Item{index + 1}", StringComparison.Ordinal))
+            .Any(isExpected => !isExpected))
+        {
+            return false;
+        }
+
+        if (returnedTuple.Items
+            .Select((item, index) => item is CompilerReferenceExpression reference
+                && string.Equals(reference.Name, declarationStatements[index].Name, StringComparison.Ordinal))
+            .Any(isExpected => !isExpected))
+        {
+            return false;
+        }
+
+        if (indexers.Skip(1).Any(indexer => !EqualityComparer<CompilerExpression>.Default.Equals(indexer.Target, indexers[0].Target)))
+        {
+            return false;
+        }
+
+        invocation = (CompilerInvocationExpression)indexers[0].Target;
+        return true;
+    }
+
     private CompilerComputationTreeBuilder CreateBuilder(
         MethodDeclarationSyntax method,
         CompilerTorchSharpModuleDescriptor? descriptor
@@ -543,13 +840,16 @@ internal sealed class CSharpSyntaxScanner
         }
     }
 
-    private void AddHelperBlocks(
+    private IReadOnlyDictionary<string, CompilerComputationBlock> AddHelperBlocks(
         CompilerComputationTreeBuilder builder,
         IEnumerable<MethodDeclarationSyntax>? helperMethods
     )
     {
+        var result = new Dictionary<string, CompilerComputationBlock>(StringComparer.Ordinal);
         foreach (var helper in helperMethods ?? Array.Empty<MethodDeclarationSyntax>())
         {
+            ValidateNoRecursiveCall(helper);
+            ValidateNoDynamicModuleDispatch(helper);
             var helperInputs = GetInputs(helper, descriptor: null);
             var helperOutputs = GetOutputs(helper, descriptor: null);
             var block = new CompilerComputationBlock(
@@ -559,7 +859,139 @@ internal sealed class CSharpSyntaxScanner
                 body: ScanBody(helper),
                 span: Span(helper));
             builder.AddBlock(block);
+            result.Add(block.Name, block);
+            for (var index = 0; index < helperInputs.Count; index++)
+            {
+                builder.AddMetadata(
+                    $"block-signature:{block.Name}:input:{index}",
+                    helperInputs[index].CSharpTypeName ?? CSharpTypeName(helperInputs[index].Type));
+            }
+
+            for (var index = 0; index < helperOutputs.Count; index++)
+            {
+                builder.AddMetadata(
+                    $"block-signature:{block.Name}:output:{index}",
+                    helperOutputs[index].CSharpTypeName ?? CSharpTypeName(helperOutputs[index].Type));
+            }
         }
+
+        return result;
+    }
+
+    private static string CSharpTypeName(CompilerType type)
+    {
+        return type switch
+        {
+            CompilerTensorType => "global::TorchSharp.torch.Tensor",
+            CompilerScalarType scalar => scalar.ElementType switch
+            {
+                CompilerElementType.Boolean => "bool",
+                CompilerElementType.Int32 => "int",
+                CompilerElementType.Int64 => "long",
+                CompilerElementType.Float32 => "float",
+                CompilerElementType.Float64 => "double",
+                _ => "object",
+            },
+            _ => "object",
+        };
+    }
+
+    private static bool TryGetReferenceName(CompilerExpression expression, out string name)
+    {
+        if (expression is CompilerReferenceExpression reference)
+        {
+            name = reference.Name;
+            return true;
+        }
+
+        name = string.Empty;
+        return false;
+    }
+
+    private void ValidateNoRecursiveCall(MethodDeclarationSyntax method)
+    {
+        var methodName = method.Identifier.ValueText;
+        var recursiveCall = method.DescendantNodes()
+            .OfType<InvocationExpressionSyntax>()
+            .FirstOrDefault(invocation => invocation.Expression switch
+            {
+                IdentifierNameSyntax identifier => string.Equals(identifier.Identifier.ValueText, methodName, StringComparison.Ordinal),
+                MemberAccessExpressionSyntax
+                {
+                    Expression: ThisExpressionSyntax,
+                    Name: var name,
+                } => string.Equals(name.Identifier.ValueText, methodName, StringComparison.Ordinal),
+                _ => false,
+            });
+        if (recursiveCall is not null)
+        {
+            throw Unsupported(method, $"Recursive call to '{methodName}' is not supported by the compiler.");
+        }
+    }
+
+    private void ValidateNoDynamicModuleDispatch(MethodDeclarationSyntax method)
+    {
+        var dynamicDispatch = method.DescendantNodes()
+            .OfType<InvocationExpressionSyntax>()
+            .FirstOrDefault(invocation => invocation.Expression is MemberAccessExpressionSyntax member
+                && string.Equals(member.Name.Identifier.ValueText, "forward", StringComparison.Ordinal));
+        if (dynamicDispatch is not null)
+        {
+            throw Unsupported(dynamicDispatch, "Dynamic module forward dispatch is not supported.");
+        }
+    }
+
+    private static string GetInvocationName(ExpressionSyntax expression)
+    {
+        return expression switch
+        {
+            IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
+            MemberAccessExpressionSyntax member => member.Name.Identifier.ValueText,
+            _ => string.Empty,
+        };
+    }
+
+    private static bool TryGetStaticReturnExpression(
+        CompilerStatement statement,
+        out CompilerExpression? expression
+    )
+    {
+        switch (statement)
+        {
+            case CompilerReturnStatement { Expression: not null } returnStatement:
+                expression = returnStatement.Expression;
+                return true;
+            case CompilerBlockStatement block when block.Statements.Count == 1:
+                return TryGetStaticReturnExpression(block.Statements[0], out expression);
+            case CompilerStaticIfStatement conditional
+                when TryEvaluateStaticBoolean(conditional.Condition, out var condition):
+                var selected = condition
+                    ? conditional.WhenTrue
+                    : conditional.WhenFalse ?? new CompilerBlockStatement([]);
+                return TryGetStaticReturnExpression(selected, out expression);
+            default:
+                expression = null;
+                return false;
+        }
+    }
+
+    private static bool TryEvaluateStaticBoolean(CompilerExpression expression, out bool value)
+    {
+        if (expression is CompilerLiteralExpression { Literal: CompilerBooleanLiteral literal })
+        {
+            value = literal.Value;
+            return true;
+        }
+
+        if (expression is CompilerUnaryExpression { Operator: "!", Expression: var operand }
+            && TryEvaluateStaticBoolean(operand, out var operandValue))
+        {
+            value = !operandValue;
+            return true;
+        }
+
+        value = false;
+        return false;
     }
 
     private IReadOnlyList<ScanValue> GetInputs(
@@ -649,6 +1081,14 @@ internal sealed class CSharpSyntaxScanner
             {
                 Expression: AssignmentExpressionSyntax assignment,
             } expressionStatement:
+                if (assignment.Left is DeclarationExpressionSyntax declarationExpression)
+                {
+                    return ScanDeconstructionAssignment(
+                        declarationExpression.Designation,
+                        assignment.Right,
+                        expressionStatement);
+                }
+
                 return new CompilerAssignmentStatement(
                     target: ScanExpression(assignment.Left),
                     value: ScanExpression(assignment.Right),
@@ -680,6 +1120,13 @@ internal sealed class CSharpSyntaxScanner
                     span: Span(ifStatement));
 
             case ForEachStatementSyntax foreachStatement:
+                if (!IsStaticCollection(foreachStatement))
+                {
+                    throw Unsupported(
+                        foreachStatement,
+                        "Only foreach loops over compile-time array literals or local arrays are supported.");
+                }
+
                 return new CompilerStaticForeachStatement(
                     variableName: foreachStatement.Identifier.ValueText,
                     collection: ScanExpression(foreachStatement.Expression),
@@ -697,6 +1144,90 @@ internal sealed class CSharpSyntaxScanner
                     statement,
                     $"C# statement '{statement.Kind()}' is not supported by the compiler frontend.");
         }
+    }
+
+    private CompilerStatement ScanDeconstructionAssignment(
+        VariableDesignationSyntax designation,
+        ExpressionSyntax value,
+        SyntaxNode source
+    )
+    {
+        if (designation is not ParenthesizedVariableDesignationSyntax tupleDesignation)
+        {
+            throw Unsupported(source, "Only tuple deconstruction into named locals is supported.");
+        }
+
+        var statements = new List<CompilerStatement>();
+        for (var index = 0; index < tupleDesignation.Variables.Count; index++)
+        {
+            if (tupleDesignation.Variables[index] is not SingleVariableDesignationSyntax variable
+                || string.IsNullOrWhiteSpace(variable.Identifier.ValueText)
+                || variable.Identifier.ValueText == "_")
+            {
+                continue;
+            }
+
+            statements.Add(new CompilerDeclarationStatement(
+                name: variable.Identifier.ValueText,
+                initializer: new CompilerMemberAccessExpression(
+                    ScanExpression(value),
+                    $"Item{index + 1}",
+                    Span(variable)),
+                span: Span(variable)));
+        }
+
+        return new CompilerBlockStatement(statements, Span(source));
+    }
+
+    private static bool IsStaticCollection(ForEachStatementSyntax foreachStatement)
+    {
+        if (TryGetArrayElements(foreachStatement.Expression, out var elements))
+        {
+            return elements.All(IsCompileTimeLiteral);
+        }
+
+        if (foreachStatement.Expression is not IdentifierNameSyntax identifier)
+        {
+            return false;
+        }
+
+        var method = foreachStatement.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault();
+        var declaration = method?.DescendantNodes()
+            .OfType<VariableDeclaratorSyntax>()
+            .Where(variable => variable.SpanStart < foreachStatement.SpanStart)
+            .Where(variable => string.Equals(variable.Identifier.ValueText, identifier.Identifier.ValueText, StringComparison.Ordinal))
+            .OrderByDescending(variable => variable.SpanStart)
+            .FirstOrDefault();
+        return declaration?.Initializer?.Value is { } initializer
+            && TryGetArrayElements(initializer, out elements)
+            && elements.All(IsCompileTimeLiteral);
+    }
+
+    private static bool TryGetArrayElements(ExpressionSyntax expression, out SeparatedSyntaxList<ExpressionSyntax> elements)
+    {
+        var initializer = expression switch
+        {
+            ArrayCreationExpressionSyntax arrayCreation => arrayCreation.Initializer,
+            ImplicitArrayCreationExpressionSyntax implicitArrayCreation => implicitArrayCreation.Initializer,
+            InitializerExpressionSyntax initializerExpression => initializerExpression,
+            _ => null,
+        };
+        if (initializer is null)
+        {
+            elements = default;
+            return false;
+        }
+
+        elements = initializer.Expressions;
+        return true;
+    }
+
+    private static bool IsCompileTimeLiteral(ExpressionSyntax expression)
+    {
+        return expression is LiteralExpressionSyntax
+            || expression is PrefixUnaryExpressionSyntax prefix
+                && prefix.IsKind(SyntaxKind.UnaryMinusExpression)
+                && prefix.Operand is LiteralExpressionSyntax;
     }
 
     private CompilerStatement ScanUsingStatement(UsingStatementSyntax usingStatement)
@@ -726,7 +1257,10 @@ internal sealed class CSharpSyntaxScanner
 
     private static bool IsNoOpUsingExpression(ExpressionSyntax expression)
     {
-        return expression.ToString().Contains("no_grad", StringComparison.Ordinal);
+        return expression is InvocationExpressionSyntax
+        {
+            Expression: MemberAccessExpressionSyntax member,
+        } && string.Equals(member.Name.Identifier.ValueText, "no_grad", StringComparison.Ordinal);
     }
 
     private CompilerStatement ScanLocalDeclaration(LocalDeclarationStatementSyntax declaration)
@@ -769,12 +1303,9 @@ internal sealed class CSharpSyntaxScanner
                     statements.Add(
                         new CompilerDeclarationStatement(
                             name,
-                            new CompilerIndexerExpression(
+                        new CompilerMemberAccessExpression(
                                 ScanExpression(variable.Initializer.Value),
-                                new CompilerLiteralExpression(
-                                    new CompilerSignedIntegerLiteral(
-                                        CompilerElementType.Int32,
-                                        index)),
+                            $"Item{index + 1}",
                                 Span(variable)),
                             Span(variable)));
                 }
@@ -798,7 +1329,7 @@ internal sealed class CSharpSyntaxScanner
     }
 
     /// <summary>
-    /// Преобразует поддержанные C# expressions в compiler-owned syntax IR с исходными spans.
+    /// Преобразует поддержанные C# expressions в compiler-owned представление C# syntax с исходными spans.
     /// Нераспознанные формы завершаются диагностикой на этапе Analyze, а не теряются при генерации.
     /// </summary>
     private CompilerExpression ScanExpression(ExpressionSyntax expression)
@@ -1066,7 +1597,11 @@ internal sealed class CSharpSyntaxScanner
             stage: CompilerDiagnosticStage.Analyze,
             span: Span(node),
             context: new CompilerDiagnosticContext(
-                caller: _context?.Descriptor.MethodName ?? "forward",
+                caller: node.AncestorsAndSelf()
+                    .OfType<MethodDeclarationSyntax>()
+                    .FirstOrDefault()?.Identifier.ValueText
+                    ?? _context?.Descriptor.MethodName
+                    ?? "forward",
                 callee: node.Kind().ToString()));
     }
 
@@ -1148,7 +1683,7 @@ internal sealed class CSharpCompilerDiagnosticException : Exception
 internal static class CSharpCompilerBackend
 {
     /// <summary>
-    /// Генерирует исходный TorchSharp-класс из syntax IR и возвращает diagnostics для конструкций без C# mapping.
+    /// Генерирует исходный TorchSharp-класс из представления C# syntax и возвращает diagnostics для конструкций без C# mapping.
     /// Проверка до печати не даёт случайно представить ONNX operations как исполняемый C# код.
     /// </summary>
     public static CompilerResult<string> Generate(
@@ -1244,7 +1779,7 @@ internal sealed class CSharpSourcePrinter
     }
 
     /// <summary>
-    /// Собирает C# модуль из compiler-owned IR, сохраняя порядок блоков и инструкций.
+    /// Собирает C# модуль из compiler-owned промежуточного представления, сохраняя порядок блоков и инструкций.
     /// Печать разделена по структуре класса, чтобы каждую часть генерации можно было менять независимо.
     /// </summary>
     public string Print()
@@ -1365,7 +1900,7 @@ internal sealed class CSharpSourcePrinter
                     span: operation.Span);
             }
 
-            var inputs = string.Join(", ", call.Inputs.Where(x => !x.IsEmptyOptional).Select(x => x.Name));
+            var inputs = string.Join(", ", call.Arguments.Select(Expression));
             if (call.Outputs.Count == 1 && !call.Outputs[0].IsEmptyOptional)
             {
                 Line($"var {call.Outputs[0].Name} = {call.TargetBlock}({inputs});");
@@ -1442,10 +1977,15 @@ internal sealed class CSharpSourcePrinter
 
     private void PrintBlock(CompilerComputationBlock block)
     {
+        var outputTypes = block.Outputs
+            .Select((output, index) => BlockValueType(block.Name, "output", index))
+            .ToArray();
         var outputType = block.Outputs.Count == 1
-            ? TORCH_TENSOR_TYPE
-            : $"({string.Join(", ", block.Outputs.Select(x => $"{TORCH_TENSOR_TYPE} {x.Name}"))})";
-        Line($"private {outputType} {block.Name}({string.Join(", ", block.Inputs.Select(x => $"{TORCH_TENSOR_TYPE} {x.Name}"))})");
+            ? outputTypes[0]
+            : $"({string.Join(", ", block.Outputs.Select((output, index) => $"{outputTypes[index]} {output.Name}"))})";
+        var inputParameters = block.Inputs
+            .Select((input, index) => $"{BlockValueType(block.Name, "input", index)} {input.Name}");
+        Line($"private {outputType} {block.Name}({string.Join(", ", inputParameters)})");
         Line("{");
         _indent++;
         PrintStatement(block.Body);
@@ -1456,6 +1996,15 @@ internal sealed class CSharpSourcePrinter
 
         _indent--;
         Line("}");
+    }
+
+    private string BlockValueType(string blockName, string kind, int index)
+    {
+        var metadataKey = $"block-signature:{blockName}:{kind}:{index}";
+        var declaredType = _tree.Metadata
+            .FirstOrDefault(item => string.Equals(item.Key, metadataKey, StringComparison.Ordinal))
+            .Value;
+        return string.IsNullOrWhiteSpace(declaredType) ? TORCH_TENSOR_TYPE : declaredType;
     }
 
     private void PrintStatement(CompilerStatement statement)
@@ -1545,7 +2094,8 @@ internal sealed class CSharpSourcePrinter
             CompilerBooleanLiteral boolean => boolean.Value ? "true" : "false",
             CompilerSignedIntegerLiteral integer => integer.Value.ToString(CultureInfo.InvariantCulture),
             CompilerUnsignedIntegerLiteral integer => integer.Value.ToString(CultureInfo.InvariantCulture) + "UL",
-            CompilerFloatingPointLiteral floating => floating.Value.ToString("R", CultureInfo.InvariantCulture) + "d",
+            CompilerFloatingPointLiteral floating => floating.Value.ToString("R", CultureInfo.InvariantCulture)
+                + (floating.ElementType == CompilerElementType.Float32 ? "f" : "d"),
             CompilerStringLiteral text => $"\"{Escape(text.Value)}\"",
             _ => throw new CSharpCompilerDiagnosticException(
                 code: CompilerDiagnosticCodes.Unsupported,

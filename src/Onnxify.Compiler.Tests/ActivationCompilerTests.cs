@@ -28,7 +28,7 @@ public sealed class ActivationCompilerTests
 
     [Theory]
     [MemberData(nameof(Activations))]
-    public void Activation_mapping_is_bidirectional_and_matches_onnxruntime(
+    public void ActivationMappingIsBidirectionalAndMatchesOnnxRuntime(
         string onnxName,
         string torchCall,
         string expectedCSharp,
@@ -105,7 +105,7 @@ public sealed class ActivationCompilerTests
     }
 
     [Fact]
-    public void Unsupported_activation_attributes_remain_generic_with_diagnostics()
+    public void UnsupportedActivationAttributesRemainGenericWithDiagnostics()
     {
         var model = CreateModel("Sigmoid", 0.25f, null);
 

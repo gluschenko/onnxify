@@ -136,7 +136,7 @@ public sealed class CSharpTorchSharpSource : ICompilerSource
 }
 
 /// <summary>
-/// Represents the opaque compiler tree that later phases will replace with the shared IR.
+/// Represents the opaque compiler tree that later phases will replace with the shared intermediate representation.
 /// </summary>
 public interface ICompilerTree
 {

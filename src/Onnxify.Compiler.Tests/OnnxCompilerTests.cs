@@ -8,7 +8,7 @@ namespace Onnxify.Compiler.Tests;
 public sealed class OnnxCompilerTests
 {
     [Fact]
-    public void Minimal_graph_imports_and_emits_with_ordered_wiring()
+    public void MinimalGraphImportsAndEmitsWithOrderedWiring()
     {
         var model = OnnxModel.Create();
         model.ProducerVersion = "test-version";
@@ -59,7 +59,7 @@ public sealed class OnnxCompilerTests
     }
 
     [Fact]
-    public void Unknown_operator_is_preserved_with_warning_diagnostic()
+    public void UnknownOperatorIsPreservedWithWarningDiagnostic()
     {
         var model = OnnxModel.Create();
         var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([1]));
@@ -94,7 +94,7 @@ public sealed class OnnxCompilerTests
     }
 
     [Fact]
-    public void Relu_uses_shared_mapping_and_matches_torchsharp_runtime()
+    public void ReluUsesSharedMappingAndMatchesTorchSharpRuntime()
     {
         // Source: third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py (nn.functional.relu).
         // Runtime semantics: third_party/onnxruntime/onnxruntime/test/providers/cpu/activation/activation_op_test.cc (Relu).
@@ -150,7 +150,7 @@ public sealed class OnnxCompilerTests
     }
 
     [Fact]
-    public async Task File_and_stream_entry_points_import_the_same_tree()
+    public async Task FileAndStreamEntryPointsImportTheSameTree()
     {
         var model = OnnxModel.Create();
         model.Graph.AddInput("input", OnnxTensorType.Create<float>([1]));
@@ -190,7 +190,7 @@ public sealed class OnnxCompilerTests
     }
 
     [Fact]
-    public void Initializers_and_typed_attributes_round_trip_structurally()
+    public void InitializersAndTypedAttributesRoundTripStructurally()
     {
         var model = OnnxModel.Create();
         var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([1, 2]));
@@ -226,7 +226,7 @@ public sealed class OnnxCompilerTests
     }
 
     [Fact]
-    public void Sparse_initializer_preserves_shape_values_and_indices()
+    public void SparseInitializerPreservesShapeValuesAndIndices()
     {
         var model = OnnxModel.Create();
         model.Graph.AddSparseTensor(
@@ -253,7 +253,7 @@ public sealed class OnnxCompilerTests
     }
 
     [Fact]
-    public void Nested_graph_attribute_preserves_outer_scope_capture()
+    public void NestedGraphAttributePreservesOuterScopeCapture()
     {
         var nestedModel = OnnxModel.Create();
         var nestedOutput = nestedModel.Graph.AddOutput("nested_output", OnnxTensorType.Create<float>([1]));
@@ -294,7 +294,7 @@ public sealed class OnnxCompilerTests
     }
 
     [Fact]
-    public void Compact_numeric_tensor_payload_preserves_encoded_values()
+    public void CompactNumericTensorPayloadPreservesEncodedValues()
     {
         var model = OnnxModel.Create();
         var source = model.Graph.AddTensor(
@@ -314,7 +314,7 @@ public sealed class OnnxCompilerTests
     }
 
     [Fact]
-    public void Emitted_identity_model_can_create_an_onnx_runtime_session()
+    public void EmittedIdentityModelCanCreateAnOnnxRuntimeSession()
     {
         var model = OnnxModel.Create();
         var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([1]));

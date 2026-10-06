@@ -75,7 +75,7 @@ public sealed class CompilerModelEnvelope : IEquatable<CompilerModelEnvelope>
         string? producerName = null,
         string? producerVersion = null,
         long modelVersion = 0,
-        long irVersion = 0,
+        long intermediateRepresentationVersion = 0,
         string? document = null,
         string? domain = null,
         IEnumerable<KeyValuePair<string, string>>? metadata = null,
@@ -85,7 +85,7 @@ public sealed class CompilerModelEnvelope : IEquatable<CompilerModelEnvelope>
         ProducerName = producerName ?? string.Empty;
         ProducerVersion = producerVersion ?? string.Empty;
         ModelVersion = modelVersion;
-        IrVersion = irVersion;
+        IntermediateRepresentationVersion = intermediateRepresentationVersion;
         Document = document ?? string.Empty;
         Domain = domain ?? string.Empty;
         Metadata = CompilerStructural.Copy(
@@ -112,7 +112,7 @@ public sealed class CompilerModelEnvelope : IEquatable<CompilerModelEnvelope>
 
     public long ModelVersion { get; }
 
-    public long IrVersion { get; }
+    public long IntermediateRepresentationVersion { get; }
 
     public string Document { get; }
 
@@ -128,7 +128,7 @@ public sealed class CompilerModelEnvelope : IEquatable<CompilerModelEnvelope>
             && string.Equals(ProducerName, other.ProducerName, StringComparison.Ordinal)
             && string.Equals(ProducerVersion, other.ProducerVersion, StringComparison.Ordinal)
             && ModelVersion == other.ModelVersion
-            && IrVersion == other.IrVersion
+            && IntermediateRepresentationVersion == other.IntermediateRepresentationVersion
             && string.Equals(Document, other.Document, StringComparison.Ordinal)
             && string.Equals(Domain, other.Domain, StringComparison.Ordinal)
             && CompilerStructural.SequenceEqual(Metadata, other.Metadata)
@@ -142,7 +142,7 @@ public sealed class CompilerModelEnvelope : IEquatable<CompilerModelEnvelope>
         ProducerName,
         ProducerVersion,
         ModelVersion,
-        IrVersion,
+        IntermediateRepresentationVersion,
         Document,
         Domain,
         CompilerStructural.GetHashCode(Metadata),

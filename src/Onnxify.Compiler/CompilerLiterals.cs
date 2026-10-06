@@ -468,7 +468,7 @@ public sealed class CompilerTypeLiteral : CompilerLiteral
     protected override int GetHashCodeCore() => Value.GetHashCode();
 }
 
-/// <summary>Normalized operator attribute owned by the compiler IR.</summary>
+/// <summary>Normalized operator attribute owned by the compiler intermediate representation.</summary>
 public sealed class CompilerAttribute : IEquatable<CompilerAttribute>
 {
     public CompilerAttribute(string name, CompilerLiteral value)

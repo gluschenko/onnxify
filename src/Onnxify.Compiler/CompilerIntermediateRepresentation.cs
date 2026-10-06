@@ -302,6 +302,51 @@ public sealed class CompilerModuleCall : CompilerComputationStep
         TargetBlock = targetBlock;
         Inputs = CompilerStructural.Copy(inputs, nameof(inputs));
         Outputs = CompilerStructural.Copy(outputs, nameof(outputs));
+        Arguments = Inputs
+            .Select(input => (CompilerExpression)new CompilerReferenceExpression(input.Name))
+            .ToArray();
+    }
+
+    private CompilerModuleCall(
+        string name,
+        string targetBlock,
+        IEnumerable<CompilerValueReference> inputs,
+        IEnumerable<CompilerValueReference> outputs,
+        IEnumerable<CompilerExpression> arguments,
+        CompilerSourceSpan? span
+    ) : base(name, span)
+    {
+        if (string.IsNullOrWhiteSpace(targetBlock))
+        {
+            throw new ArgumentException("Target block name cannot be empty.", nameof(targetBlock));
+        }
+
+        TargetBlock = targetBlock;
+        Inputs = CompilerStructural.Copy(inputs, nameof(inputs));
+        Outputs = CompilerStructural.Copy(outputs, nameof(outputs));
+        Arguments = CompilerStructural.Copy(arguments, nameof(arguments));
+    }
+
+    public static CompilerModuleCall CreateWithArguments(
+        string name,
+        string targetBlock,
+        IEnumerable<CompilerExpression> arguments,
+        IEnumerable<CompilerValueReference> outputs,
+        CompilerSourceSpan? span = null
+    )
+    {
+        var copiedArguments = CompilerStructural.Copy(arguments, nameof(arguments));
+        var inputs = copiedArguments
+            .OfType<CompilerReferenceExpression>()
+            .Select(reference => new CompilerValueReference(reference.Name));
+        var result = new CompilerModuleCall(
+            name: name,
+            targetBlock: targetBlock,
+            inputs: inputs,
+            outputs: outputs,
+            arguments: copiedArguments,
+            span: span);
+        return result;
     }
 
     public string TargetBlock { get; }
@@ -310,12 +355,16 @@ public sealed class CompilerModuleCall : CompilerComputationStep
 
     public IReadOnlyList<CompilerValueReference> Outputs { get; }
 
+    /// <summary>Gets helper arguments in source order, including compile-time scalar literals.</summary>
+    public IReadOnlyList<CompilerExpression> Arguments { get; }
+
     protected override bool EqualsCore(CompilerComputationStep other)
     {
         var call = (CompilerModuleCall)other;
         var result = string.Equals(TargetBlock, call.TargetBlock, StringComparison.Ordinal)
             && CompilerStructural.SequenceEqual(Inputs, call.Inputs)
-            && CompilerStructural.SequenceEqual(Outputs, call.Outputs);
+            && CompilerStructural.SequenceEqual(Outputs, call.Outputs)
+            && CompilerStructural.SequenceEqual(Arguments, call.Arguments);
         return result;
     }
 
@@ -325,7 +374,8 @@ public sealed class CompilerModuleCall : CompilerComputationStep
             17,
             TargetBlock,
             CompilerStructural.GetHashCode(Inputs),
-            CompilerStructural.GetHashCode(Outputs));
+            CompilerStructural.GetHashCode(Outputs),
+            CompilerStructural.GetHashCode(Arguments));
     }
 }
 

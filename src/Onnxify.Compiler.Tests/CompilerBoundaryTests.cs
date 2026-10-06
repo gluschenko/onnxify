@@ -8,7 +8,7 @@ namespace Onnxify.Compiler.Tests;
 public sealed class CompilerBoundaryTests
 {
     [Fact]
-    public void Onnx_source_preserves_core_model_and_source_kind()
+    public void OnnxSourcePreservesCoreModelAndSourceKind()
     {
         var model = OnnxModel.Create();
         var source = new OnnxCompilerSource(model);
@@ -18,7 +18,7 @@ public sealed class CompilerBoundaryTests
     }
 
     [Fact]
-    public void CSharp_source_preserves_source_text_and_source_kind()
+    public void CSharpSourcePreservesSourceTextAndSourceKind()
     {
         const string sourceText = "return input;";
         var source = new CSharpTorchSharpSource(sourceText);
@@ -28,7 +28,7 @@ public sealed class CompilerBoundaryTests
     }
 
     [Fact]
-    public void Compiler_sinks_report_typed_target_kinds()
+    public void CompilerSinksReportTypedTargetKinds()
     {
         ICompilerSink<OnnxGraph> onnxSink = new OnnxCompilerSink();
         ICompilerSink<OnnxModel> modelSink = new OnnxModelCompilerSink();
@@ -41,7 +41,7 @@ public sealed class CompilerBoundaryTests
     }
 
     [Fact]
-    public void Compiler_session_contract_returns_diagnostic_results()
+    public void CompilerSessionContractReturnsDiagnosticResults()
     {
         ICompilerSession session = new TestCompilerSession();
 
@@ -55,7 +55,7 @@ public sealed class CompilerBoundaryTests
     }
 
     [Fact]
-    public void Compiler_session_contract_supports_onnx_output()
+    public void CompilerSessionContractSupportsOnnxOutput()
     {
         ICompilerSession session = new TestCompilerSession();
 
@@ -67,7 +67,7 @@ public sealed class CompilerBoundaryTests
     }
 
     [Fact]
-    public void Consumer_projects_can_use_the_compiler_boundary()
+    public void ConsumerProjectsCanUseTheCompilerBoundary()
     {
         ICompilerSource onnxSource = new OnnxCompilerSource(OnnxModel.Create());
         ICompilerSource torchSource = new CSharpTorchSharpSource("return input;");
@@ -77,19 +77,19 @@ public sealed class CompilerBoundaryTests
     }
 
     [Fact]
-    public void Onnx_source_rejects_null_model()
+    public void OnnxSourceRejectsNullModel()
     {
         Assert.Throws<ArgumentNullException>(() => new OnnxCompilerSource(null!));
     }
 
     [Fact]
-    public void CSharp_source_rejects_empty_source_text()
+    public void CSharpSourceRejectsEmptySourceText()
     {
         Assert.Throws<ArgumentException>(() => new CSharpTorchSharpSource(string.Empty));
     }
 
     [Fact]
-    public void Representative_computation_tree_has_deep_structural_equality()
+    public void RepresentativeComputationTreeHasDeepStructuralEquality()
     {
         var first = CreateRepresentativeTree();
         var second = CreateRepresentativeTree();
@@ -107,7 +107,7 @@ public sealed class CompilerBoundaryTests
     }
 
     [Fact]
-    public void Compiler_types_and_literals_preserve_supported_shapes()
+    public void CompilerTypesAndLiteralsPreserveSupportedShapes()
     {
         var dimensions = new CompilerDimension[]
         {
@@ -177,7 +177,7 @@ public sealed class CompilerBoundaryTests
     }
 
     [Fact]
-    public void Compiler_syntax_tree_preserves_ordered_statements_and_structural_equality()
+    public void CompilerSyntaxTreePreservesOrderedStatementsAndStructuralEquality()
     {
         var body = CreateSyntaxBody();
         var equivalent = CreateSyntaxBody();
@@ -190,7 +190,7 @@ public sealed class CompilerBoundaryTests
     }
 
     [Fact]
-    public void Operator_descriptors_expose_all_capability_classifications()
+    public void OperatorDescriptorsExposeAllCapabilityClassifications()
     {
         Assert.Equal(0, (int)CompilerOperationCapability.Unsupported);
         Assert.Equal(1, (int)CompilerOperationCapability.Bidirectional);
@@ -200,7 +200,7 @@ public sealed class CompilerBoundaryTests
     }
 
     [Fact]
-    public void Diagnostics_preserve_stage_severity_span_and_context()
+    public void DiagnosticsPreserveStageSeveritySpanAndContext()
     {
         var diagnostic = CreateUnsupportedDiagnostic();
         var copy = CreateUnsupportedDiagnostic();
@@ -214,7 +214,7 @@ public sealed class CompilerBoundaryTests
     }
 
     [Fact]
-    public void Diagnostics_expose_unsupported_ambiguous_and_lossy_mapping_codes()
+    public void DiagnosticsExposeUnsupportedAmbiguousAndLossyMappingCodes()
     {
         var diagnostics = new[]
         {
@@ -233,7 +233,7 @@ public sealed class CompilerBoundaryTests
     }
 
     [Fact]
-    public void Compiler_result_distinguishes_warning_only_from_errors()
+    public void CompilerResultDistinguishesWarningOnlyFromErrors()
     {
         var warning = new CompilerDiagnostic(
             CompilerDiagnosticCodes.Lossy,
@@ -257,7 +257,7 @@ public sealed class CompilerBoundaryTests
     }
 
     [Fact]
-    public void Tree_builder_rejects_duplicate_names_and_unknown_references()
+    public void TreeBuilderRejectsDuplicateNamesAndUnknownReferences()
     {
         var builder = new CompilerComputationTreeBuilder();
         var type = new CompilerTensorType(CompilerElementType.Float32, [new CompilerFixedDimension(1)]);
@@ -272,7 +272,7 @@ public sealed class CompilerBoundaryTests
     }
 
     [Fact]
-    public void Compiler_assembly_has_no_consumer_project_reference()
+    public void CompilerAssemblyHasNoConsumerProjectReference()
     {
         var references = typeof(CompilerComputationTree).Assembly
             .GetReferencedAssemblies()
