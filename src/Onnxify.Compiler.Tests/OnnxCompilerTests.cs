@@ -84,6 +84,69 @@ public sealed class OnnxCompilerTests
         Assert.Equal("<graph>", diagnostic.Context!.Caller);
         Assert.Equal("CustomOp", diagnostic.Context.Callee);
         Assert.Equal(CompilerOperationCapability.Unsupported, ((CompilerOperation)result.Value!.Operations[0]).Descriptor.Capability);
+
+        var emitted = Compiler.GenerateOnnx(result.Value!);
+        Assert.True(emitted.IsSuccess);
+        Assert.Equal("CustomOp", emitted.Value!.Graph.Nodes.Single().OpType);
+        Assert.Contains(emitted.Diagnostics, diagnostic =>
+            diagnostic.Code == CompilerDiagnosticCodes.Unsupported
+            && diagnostic.Severity == CompilerDiagnosticSeverity.Warning);
+    }
+
+    [Fact]
+    public void Relu_uses_shared_mapping_and_matches_torchsharp_runtime()
+    {
+        // Source: third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py (nn.functional.relu).
+        // Runtime semantics: third_party/onnxruntime/onnxruntime/test/providers/cpu/activation/activation_op_test.cc (Relu).
+        var model = OnnxModel.Create();
+        var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([4]));
+        var output = model.Graph.AddOutput("output", OnnxTensorType.Create<float>([4]));
+        model.Graph.AddNode("relu", "Relu", string.Empty, string.Empty, [input], [output], []);
+
+        var imported = Compiler.CreateTreeFromOnnx(model);
+
+        Assert.True(imported.IsSuccess, string.Join(" | ", imported.Diagnostics.Select(x => x.Message)));
+        var operation = Assert.IsType<CompilerOperation>(imported.Value!.Operations.Single());
+        Assert.Equal(CompilerOperationCapability.Bidirectional, operation.Descriptor.Capability);
+        Assert.Equal("Relu", operation.Descriptor.Name);
+        Assert.DoesNotContain(imported.Diagnostics, diagnostic => diagnostic.Code == CompilerDiagnosticCodes.Unsupported);
+
+        var csharp = Compiler.GenerateCSharp(imported.Value);
+        Assert.True(csharp.IsSuccess, string.Join(" | ", csharp.Diagnostics.Select(x => x.Message)));
+        Assert.Contains("torch.nn.functional.relu(input)", csharp.Value);
+
+        var emitted = Compiler.GenerateOnnx(imported.Value);
+        Assert.True(emitted.IsSuccess, string.Join(" | ", emitted.Diagnostics.Select(x => x.Message)));
+        Assert.Equal("Relu", emitted.Value!.Graph.Nodes.Single().OpType);
+
+        var path = Path.Combine(Path.GetTempPath(), $"onnxify-compiler-relu-{Guid.NewGuid():N}.onnx");
+        var inputValues = new[] { -2f, -0.5f, 0f, 3f };
+        try
+        {
+            emitted.Value.Save(path, overwrite: true);
+            using var session = new InferenceSession(path);
+            using var results = session.Run(
+            [
+                global::Microsoft.ML.OnnxRuntime.NamedOnnxValue.CreateFromTensor(
+                    "input",
+                    new global::Microsoft.ML.OnnxRuntime.Tensors.DenseTensor<float>(inputValues, [4])),
+            ]);
+            var runtimeValues = results.Single().AsTensor<float>().ToArray();
+
+            using var torchInput = global::TorchSharp.torch.tensor(
+                inputValues,
+                [4L],
+                dtype: global::TorchSharp.torch.ScalarType.Float32);
+            using var torchOutput = global::TorchSharp.torch.nn.functional.relu(torchInput);
+            Assert.Equal(torchOutput.data<float>().ToArray(), runtimeValues);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
     }
 
     [Fact]

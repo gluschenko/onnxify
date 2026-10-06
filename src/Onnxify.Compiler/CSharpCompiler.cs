@@ -375,7 +375,10 @@ internal sealed class CSharpSyntaxScanner
             descriptor: descriptor);
         AddHelperBlocks(builder, helperMethods);
 
-        builder.SetSyntaxBody(body);
+        if (!TryLowerMappedOperation(method, body, inputs, outputs, builder))
+        {
+            builder.SetSyntaxBody(body);
+        }
 
         try
         {
@@ -391,6 +394,88 @@ internal sealed class CSharpSyntaxScanner
                 stage: CompilerDiagnosticStage.Analyze,
                 span: Span(method));
         }
+    }
+
+    private bool TryLowerMappedOperation(
+        MethodDeclarationSyntax method,
+        CompilerBlockStatement body,
+        IReadOnlyList<ScanValue> inputs,
+        IReadOnlyList<ScanValue> outputs,
+        CompilerComputationTreeBuilder builder
+    )
+    {
+        if (body.Statements.Count != 1
+            || body.Statements[0] is not CompilerReturnStatement { Expression: CompilerInvocationExpression invocation }
+            || !CompilerOperatorMappingRegistry.TryGetTorchSharpCall(invocation.Target, out var mapping, out var receiver)
+            || mapping is null)
+        {
+            return false;
+        }
+
+        var operationInputs = new List<CompilerExpression>();
+        if (receiver is not null)
+        {
+            operationInputs.Add(receiver);
+        }
+
+        var requiredInvocationInputs = mapping.InputCount - operationInputs.Count;
+        if (requiredInvocationInputs < 0
+            || invocation.Arguments.Count < requiredInvocationInputs
+            || invocation.Arguments.Count < requiredInvocationInputs + mapping.FixedTorchSharpArguments.Count
+            || invocation.Arguments.Count > requiredInvocationInputs + mapping.AttributeNames.Count + mapping.FixedTorchSharpArguments.Count
+            || outputs.Count != 1)
+        {
+            throw Unsupported(
+                method,
+                $"TorchSharp mapping '{mapping.TorchSharpNames[0]}' requires {(mapping.InputCount == 1 ? "one tensor input" : $"exactly {mapping.InputCount} tensor inputs")}, one output, and supported literal activation arguments.");
+        }
+
+        operationInputs.AddRange(invocation.Arguments.Take(requiredInvocationInputs));
+        var inputReferences = new List<CompilerReferenceExpression>();
+        foreach (var expression in operationInputs)
+        {
+            if (expression is not CompilerReferenceExpression reference
+                || !inputs.Any(input => string.Equals(input.Name, reference.Name, StringComparison.Ordinal)))
+            {
+                throw Unsupported(method, $"TorchSharp mapping '{mapping.TorchSharpNames[0]}' only supports tensor parameters that reference method inputs.");
+            }
+
+            inputReferences.Add(reference);
+        }
+
+        var attributes = new List<CompilerAttribute>();
+        foreach (var (argument, index) in invocation.Arguments
+            .Skip(requiredInvocationInputs)
+            .Take(mapping.AttributeNames.Count)
+            .Select((argument, index) => (argument, index)))
+        {
+            if (argument is not CompilerLiteralExpression literalExpression)
+            {
+                throw Unsupported(method, $"TorchSharp mapping '{mapping.TorchSharpNames[0]}' requires compile-time literal activation arguments.");
+            }
+
+            attributes.Add(new CompilerAttribute(mapping.AttributeNames[index], literalExpression.Literal));
+        }
+
+        foreach (var (argument, index) in invocation.Arguments
+            .Skip(invocation.Arguments.Count - mapping.FixedTorchSharpArguments.Count)
+            .Select((argument, index) => (argument, index)))
+        {
+            if (argument is not CompilerLiteralExpression { Literal: CompilerFloatingPointLiteral fixedValue }
+                || (float)fixedValue.Value != mapping.FixedTorchSharpArguments[index])
+            {
+                throw Unsupported(method, $"TorchSharp mapping '{mapping.TorchSharpNames[0]}' only supports its fixed trailing arguments.");
+            }
+        }
+
+        builder.AddOperation(new CompilerOperation(
+            name: mapping.OnnxName.ToLowerInvariant(),
+            descriptor: mapping.Descriptor,
+            inputs: inputReferences.Select(reference => new CompilerValueReference(reference.Name)),
+            outputs: [new CompilerValueReference(outputs[0].Name)],
+            attributes: attributes,
+            span: invocation.Span));
+        return true;
     }
 
     private CompilerComputationTreeBuilder CreateBuilder(
@@ -1075,13 +1160,19 @@ internal static class CSharpCompilerBackend
         try
         {
             ValidateOptions(options);
-            if (tree.Operations.OfType<CompilerOperation>().Any())
+            if (tree.Operations.OfType<CompilerOperation>().Any(operation =>
+                !CompilerOperatorMappingRegistry.TryGetOnnx(
+                    operation.Descriptor.Domain,
+                    operation.Descriptor.Name,
+                    out var mapping)
+                || mapping is null
+                || !mapping.Accepts(operation)))
             {
                 return CompilerResult<string>.Failure(
                 [
                     new CompilerDiagnostic(
                         code: CompilerDiagnosticCodes.Unsupported,
-                        message: "ONNX operations do not have C# TorchSharp mappings in OXY-023; operator mappings are implemented by OXY-024.",
+                        message: "The compiler tree contains an operation without a registered TorchSharp import mapping.",
                         stage: CompilerDiagnosticStage.Emit,
                         severity: CompilerDiagnosticSeverity.Error),
                 ]);
@@ -1244,6 +1335,27 @@ internal sealed class CSharpSourcePrinter
     {
         foreach (var operation in _tree.Operations)
         {
+            if (operation is CompilerOperation mappedOperation)
+            {
+                if (!CompilerOperatorMappingRegistry.TryGetOnnx(
+                    mappedOperation.Descriptor.Domain,
+                    mappedOperation.Descriptor.Name,
+                    out var mapping)
+                    || mapping is null
+                    || mapping.Capability is not (CompilerOperationCapability.Bidirectional or CompilerOperationCapability.ImportOnly)
+                    || !mapping.Accepts(mappedOperation))
+                {
+                    throw new CSharpCompilerDiagnosticException(
+                        code: CompilerDiagnosticCodes.Unsupported,
+                        message: $"Operation '{mappedOperation.Name}' has no TorchSharp import mapping.",
+                        stage: CompilerDiagnosticStage.Emit,
+                        span: mappedOperation.Span);
+                }
+
+                Line($"var {mappedOperation.Outputs[0].Name} = {mapping.EmitTorchSharpExpression(mappedOperation)};");
+                continue;
+            }
+
             if (operation is not CompilerModuleCall call)
             {
                 throw new CSharpCompilerDiagnosticException(

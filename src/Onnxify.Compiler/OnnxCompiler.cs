@@ -597,21 +597,33 @@ internal static class OnnxCompilerFrontend
                 }
             }
 
-            var descriptor = new CompilerOperatorDescriptor(
-                name: node.OpType,
-                domain: node.Domain,
-                capability: CompilerOperationCapability.Unsupported,
-                constraints: [string.IsNullOrEmpty(node.Domain) ? "ai.onnx" : node.Domain]);
+            CompilerOperatorMapping? mapping = null;
+            var hasMapping = CompilerOperatorMappingRegistry.TryGetOnnx(
+                    node.Domain,
+                    node.OpType,
+                    out mapping)
+                && mapping is not null
+                && mapping.Accepts(node);
+            var descriptor = mapping is not null && hasMapping
+                ? mapping.Descriptor
+                : new CompilerOperatorDescriptor(
+                    name: node.OpType,
+                    domain: node.Domain,
+                    capability: CompilerOperationCapability.Unsupported,
+                    constraints: [string.IsNullOrEmpty(node.Domain) ? "ai.onnx" : node.Domain]);
 
-            diagnostics.Add(new CompilerDiagnostic(
-                code: CompilerDiagnosticCodes.Unsupported,
-                message: $"No semantic compiler mapping is registered for ONNX operator '{node.Domain}::{node.OpType}'; the generic operation is preserved.",
-                stage: CompilerDiagnosticStage.Analyze,
-                severity: CompilerDiagnosticSeverity.Warning,
-                span: span,
-                context: new CompilerDiagnosticContext(
-                    caller: caller ?? (string.IsNullOrEmpty(graph.Name) ? "<graph>" : graph.Name),
-                    callee: node.OpType)));
+            if (!hasMapping)
+            {
+                diagnostics.Add(new CompilerDiagnostic(
+                    code: CompilerDiagnosticCodes.Unsupported,
+                    message: $"No semantic compiler mapping is registered for ONNX operator '{node.Domain}::{node.OpType}'; the generic operation is preserved.",
+                    stage: CompilerDiagnosticStage.Analyze,
+                    severity: CompilerDiagnosticSeverity.Warning,
+                    span: span,
+                    context: new CompilerDiagnosticContext(
+                        caller: caller ?? (string.IsNullOrEmpty(graph.Name) ? "<graph>" : graph.Name),
+                        callee: node.OpType)));
+            }
 
             var operation = new CompilerOperation(
                 name: nodeName,
@@ -853,6 +865,18 @@ internal static class OnnxCompilerBackend
         CompilerStructural.RequireNotNull(tree, nameof(tree));
         var diagnostics = new List<CompilerDiagnostic>();
 
+        if (tree.SyntaxBody is not null)
+        {
+            return CompilerResult<OnnxModel>.Failure(
+            [
+                new CompilerDiagnostic(
+                    code: CompilerDiagnosticCodes.Unsupported,
+                    message: "The ONNX backend cannot emit an unlowered C# syntax body.",
+                    stage: CompilerDiagnosticStage.Emit,
+                    severity: CompilerDiagnosticSeverity.Error),
+            ]);
+        }
+
         try
         {
             var envelope = tree.ModelEnvelope;
@@ -1079,6 +1103,26 @@ internal static class OnnxCompilerBackend
                     caller: caller,
                     callee: operation.Descriptor.Name)));
         }
+        else if (!CompilerOperatorMappingRegistry.TryGetOnnx(
+            operation.Descriptor.Domain,
+            operation.Descriptor.Name,
+            out _))
+        {
+            diagnostics.Add(new CompilerDiagnostic(
+                code: CompilerDiagnosticCodes.Unsupported,
+                message: $"Operation '{operation.Name}' declares a semantic capability without a registered compiler mapping.",
+                stage: CompilerDiagnosticStage.Emit,
+                severity: CompilerDiagnosticSeverity.Error,
+                span: operation.Span,
+                context: new CompilerDiagnosticContext(caller, operation.Descriptor.Name)));
+            return;
+        }
+
+        if (string.Equals(operation.Descriptor.Name, "Swish", StringComparison.Ordinal))
+        {
+            EmitSwish(graph, operation);
+            return;
+        }
 
         var inputs = operation.Inputs.Select(x => (IOnnxGraphEdge)new OnnxEdge(x.IsEmptyOptional ? string.Empty : x.Name));
         var outputs = operation.Outputs.Select(x => (IOnnxGraphEdge)new OnnxEdge(x.IsEmptyOptional ? string.Empty : x.Name));
@@ -1094,6 +1138,51 @@ internal static class OnnxCompilerBackend
             inputs,
             outputs,
             attributes);
+    }
+
+    private static void EmitSwish(OnnxGraph graph, CompilerOperation operation)
+    {
+        if (operation.Inputs.Count != 1 || operation.Outputs.Count != 1)
+        {
+            throw new CompilerConversionException(
+                CompilerDiagnosticCodes.Unsupported,
+                "Swish requires exactly one input and one output.");
+        }
+
+        var input = operation.Inputs[0].Name;
+        var sigmoidInput = input;
+        var alpha = CompilerOperatorMapping.GetFloatAttribute(operation, "alpha", 1f);
+        if (alpha != 1f)
+        {
+            sigmoidInput = $"{operation.Name}__scaled";
+            var scale = graph.AddTensor($"{operation.Name}__alpha", [], [alpha]);
+            graph.AddNode(
+                name: $"{operation.Name}__scale",
+                opType: "Mul",
+                domain: string.Empty,
+                docString: string.Empty,
+                inputs: [(IOnnxGraphEdge)new OnnxEdge(input), scale],
+                outputs: [(IOnnxGraphEdge)new OnnxEdge(sigmoidInput)],
+                attributes: []);
+        }
+
+        var sigmoidOutput = $"{operation.Name}__sigmoid";
+        graph.AddNode(
+            name: $"{operation.Name}__sigmoid_node",
+            opType: "Sigmoid",
+            domain: string.Empty,
+            docString: string.Empty,
+            inputs: [(IOnnxGraphEdge)new OnnxEdge(sigmoidInput)],
+            outputs: [(IOnnxGraphEdge)new OnnxEdge(sigmoidOutput)],
+            attributes: []);
+        graph.AddNode(
+            name: operation.Name,
+            opType: "Mul",
+            domain: string.Empty,
+            docString: string.Empty,
+            inputs: [(IOnnxGraphEdge)new OnnxEdge(input), (IOnnxGraphEdge)new OnnxEdge(sigmoidOutput)],
+            outputs: [(IOnnxGraphEdge)new OnnxEdge(operation.Outputs[0].Name)],
+            attributes: []);
     }
 
     private static OnnxAttribute CreateOnnxAttribute(

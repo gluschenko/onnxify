@@ -64,6 +64,72 @@ public sealed class CSharpCompilerTests
     }
 
     [Fact]
+    public void Torchsharp_relu_lowers_through_shared_mapping_to_onnx()
+    {
+        // Source: third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py (nn.functional.relu).
+        // Runtime semantics: third_party/onnxruntime/onnxruntime/test/providers/cpu/activation/activation_op_test.cc (Relu).
+        var imported = Compiler.CreateTreeFromTorchSharp(
+            new CSharpTorchSharpSource("return torch.nn.functional.relu(input);"));
+
+        Assert.True(imported.IsSuccess, string.Join(" | ", imported.Diagnostics.Select(x => x.Message)));
+        var operation = Assert.IsType<CompilerOperation>(imported.Value!.Operations.Single());
+        Assert.Equal(CompilerOperationCapability.Bidirectional, operation.Descriptor.Capability);
+        Assert.Equal("Relu", operation.Descriptor.Name);
+        Assert.Null(imported.Value.SyntaxBody);
+
+        var generated = Compiler.GenerateCSharp(imported.Value);
+        Assert.True(generated.IsSuccess, string.Join(" | ", generated.Diagnostics.Select(x => x.Message)));
+        Assert.Contains("torch.nn.functional.relu(input)", generated.Value);
+
+        var emitted = Compiler.GenerateOnnx(imported.Value);
+        Assert.True(emitted.IsSuccess, string.Join(" | ", emitted.Diagnostics.Select(x => x.Message)));
+        Assert.Equal("Relu", emitted.Value!.Graph.Nodes.Single().OpType);
+
+        var path = Path.Combine(Path.GetTempPath(), $"onnxify-compiler-relu-source-{Guid.NewGuid():N}.onnx");
+        var inputValues = new[] { -3f, -1f, 0.25f, 2f };
+        try
+        {
+            emitted.Value.Save(path, overwrite: true);
+            using var session = new global::Microsoft.ML.OnnxRuntime.InferenceSession(path);
+            using var results = session.Run(
+            [
+                global::Microsoft.ML.OnnxRuntime.NamedOnnxValue.CreateFromTensor(
+                    "input",
+                    new global::Microsoft.ML.OnnxRuntime.Tensors.DenseTensor<float>(inputValues, [4])),
+            ]);
+            var runtimeValues = results.Single().AsTensor<float>().ToArray();
+
+            using var torchInput = global::TorchSharp.torch.tensor(
+                inputValues,
+                [4L],
+                dtype: global::TorchSharp.torch.ScalarType.Float32);
+            using var torchOutput = global::TorchSharp.torch.nn.functional.relu(torchInput);
+            Assert.Equal(torchOutput.data<float>().ToArray(), runtimeValues);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public void Unsupported_relu_overload_reports_an_analyze_diagnostic()
+    {
+        var imported = Compiler.CreateTreeFromTorchSharp(
+            new CSharpTorchSharpSource("return torch.nn.functional.relu(input, input);"));
+
+        Assert.False(imported.IsSuccess);
+        var diagnostic = Assert.Single(imported.Diagnostics);
+        Assert.Equal(CompilerDiagnosticCodes.Unsupported, diagnostic.Code);
+        Assert.Equal(CompilerDiagnosticStage.Analyze, diagnostic.Stage);
+        Assert.Equal(CompilerDiagnosticSeverity.Error, diagnostic.Severity);
+        Assert.Contains("one tensor input", diagnostic.Message);
+    }
+
+    [Fact]
     public void Generated_source_is_compilable_csharp()
     {
         var treeResult = Compiler.CreateTreeFromTorchSharp(
