@@ -1,4 +1,4 @@
-namespace Onnxify.Compiler;
+﻿namespace Onnxify.Compiler;
 
 /// <summary>Scalar element types understood by the compiler intermediate representation.</summary>
 public enum CompilerElementType
@@ -57,9 +57,15 @@ public abstract class CompilerType : IEquatable<CompilerType>
             && EqualsCore(other);
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerType);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerType);
+    }
 
-    public override int GetHashCode() => GetHashCodeCore();
+    public override int GetHashCode()
+    {
+        return GetHashCodeCore();
+    }
 
     protected abstract bool EqualsCore(CompilerType other);
 
@@ -86,9 +92,15 @@ public abstract class CompilerDimension : IEquatable<CompilerDimension>
             && EqualsCore(other);
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerDimension);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerDimension);
+    }
 
-    public override int GetHashCode() => GetHashCodeCore();
+    public override int GetHashCode()
+    {
+        return GetHashCodeCore();
+    }
 
     protected abstract bool EqualsCore(CompilerDimension other);
 
@@ -102,7 +114,7 @@ public sealed class CompilerFixedDimension : CompilerDimension
     {
         if (value < 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(value));
+            throw new System.ArgumentOutOfRangeException(nameof(value));
         }
 
         Value = value;
@@ -117,7 +129,10 @@ public sealed class CompilerFixedDimension : CompilerDimension
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Kind, Denotation, Value);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, Kind, Denotation, Value);
+    }
 }
 
 public sealed class CompilerSymbolicDimension : CompilerDimension
@@ -142,7 +157,10 @@ public sealed class CompilerSymbolicDimension : CompilerDimension
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Kind, Denotation, Name);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, Kind, Denotation, Name);
+    }
 }
 
 public sealed class CompilerUnknownDimension : CompilerDimension
@@ -158,7 +176,10 @@ public sealed class CompilerUnknownDimension : CompilerDimension
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Kind, Denotation);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, Kind, Denotation);
+    }
 }
 
 public sealed class CompilerScalarType : CompilerType
@@ -178,7 +199,10 @@ public sealed class CompilerScalarType : CompilerType
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, ElementType, Denotation);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, ElementType, Denotation);
+    }
 }
 
 public sealed class CompilerTensorType : CompilerType
@@ -233,7 +257,10 @@ public sealed class CompilerOptionalType : CompilerType
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, ElementType, Denotation);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, ElementType, Denotation);
+    }
 }
 
 public sealed class CompilerSequenceType : CompilerType
@@ -254,7 +281,10 @@ public sealed class CompilerSequenceType : CompilerType
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, ElementType, Denotation);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, ElementType, Denotation);
+    }
 }
 
 public sealed class CompilerTupleType : CompilerType
@@ -275,7 +305,10 @@ public sealed class CompilerTupleType : CompilerType
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Denotation, CompilerStructural.GetHashCode(ElementTypes));
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, Denotation, CompilerStructural.GetHashCode(ElementTypes));
+    }
 }
 
 public sealed class CompilerMapType : CompilerType
@@ -301,7 +334,10 @@ public sealed class CompilerMapType : CompilerType
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, KeyType, ValueType, Denotation);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, KeyType, ValueType, Denotation);
+    }
 }
 
 public sealed class CompilerSparseTensorType : CompilerType
@@ -357,5 +393,8 @@ public sealed class CompilerOpaqueType : CompilerType
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Domain, Name, Denotation);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, Domain, Name, Denotation);
+    }
 }

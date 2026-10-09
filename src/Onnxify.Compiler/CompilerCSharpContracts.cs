@@ -1,4 +1,4 @@
-namespace Onnxify.Compiler;
+﻿namespace Onnxify.Compiler;
 
 /// <summary>Describes a compiler-visible C# method value without referencing TorchSharp.</summary>
 public sealed class CompilerTorchSharpValueDescriptor : IEquatable<CompilerTorchSharpValueDescriptor>
@@ -37,9 +37,15 @@ public sealed class CompilerTorchSharpValueDescriptor : IEquatable<CompilerTorch
         return result;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerTorchSharpValueDescriptor);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerTorchSharpValueDescriptor);
+    }
 
-    public override int GetHashCode() => CompilerStructural.Combine(17, Name, Type, CSharpTypeName);
+    public override int GetHashCode()
+    {
+        return CompilerStructural.Combine(17, Name, Type, CSharpTypeName);
+    }
 }
 
 /// <summary>Describes a compiler-visible state member without a runtime object.</summary>
@@ -61,7 +67,7 @@ public sealed class CompilerTorchSharpStateMemberDescriptor : IEquatable<Compile
         CompilerStructural.RequireNotNull(type, nameof(type));
         if (kind == CompilerStateMemberKind.Initializer && value is null)
         {
-            throw new ArgumentNullException(nameof(value), "Initializers require a literal value.");
+            throw new System.ArgumentNullException(nameof(value), "Initializers require a literal value.");
         }
 
         Name = name;
@@ -94,9 +100,15 @@ public sealed class CompilerTorchSharpStateMemberDescriptor : IEquatable<Compile
         return result;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerTorchSharpStateMemberDescriptor);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerTorchSharpStateMemberDescriptor);
+    }
 
-    public override int GetHashCode() => CompilerStructural.Combine(17, Name, Kind, Type, Value, CSharpTypeName);
+    public override int GetHashCode()
+    {
+        return CompilerStructural.Combine(17, Name, Kind, Type, Value, CSharpTypeName);
+    }
 }
 
 /// <summary>Describes a child module or reusable block in a compiler-neutral way.</summary>
@@ -152,9 +164,15 @@ public sealed class CompilerTorchSharpChildModuleDescriptor : IEquatable<Compile
         return result;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerTorchSharpChildModuleDescriptor);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerTorchSharpChildModuleDescriptor);
+    }
 
-    public override int GetHashCode() => CompilerStructural.Combine(17, Name, TypeName, BlockName, Module);
+    public override int GetHashCode()
+    {
+        return CompilerStructural.Combine(17, Name, TypeName, BlockName, Module);
+    }
 }
 
 /// <summary>Describes a helper method that may be emitted as a reusable compiler block.</summary>
@@ -191,13 +209,20 @@ public sealed class CompilerTorchSharpHelperMethodDescriptor : IEquatable<Compil
         return result;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerTorchSharpHelperMethodDescriptor);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerTorchSharpHelperMethodDescriptor);
+    }
 
-    public override int GetHashCode() => CompilerStructural.Combine(
-        17,
-        Name,
-        CompilerStructural.GetHashCode(Inputs),
-        CompilerStructural.GetHashCode(Outputs));
+    public override int GetHashCode()
+    {
+        var result = CompilerStructural.Combine(
+            17,
+            Name,
+            CompilerStructural.GetHashCode(Inputs),
+            CompilerStructural.GetHashCode(Outputs));
+        return result;
+    }
 }
 
 /// <summary>
@@ -282,20 +307,27 @@ public sealed class CompilerTorchSharpModuleDescriptor : IEquatable<CompilerTorc
         return result;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerTorchSharpModuleDescriptor);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerTorchSharpModuleDescriptor);
+    }
 
-    public override int GetHashCode() => CompilerStructural.Combine(
-        17,
-        AssemblyPath,
-        TypeName,
-        MethodName,
-        MethodMetadataToken,
-        Document,
-        CompilerStructural.GetHashCode(Inputs),
-        CompilerStructural.GetHashCode(Outputs),
-        CompilerStructural.GetHashCode(StateMembers),
-        CompilerStructural.GetHashCode(ChildModules),
-        CompilerStructural.GetHashCode(HelperMethods));
+    public override int GetHashCode()
+    {
+        var result = CompilerStructural.Combine(
+            17,
+            AssemblyPath,
+            TypeName,
+            MethodName,
+            MethodMetadataToken,
+            Document,
+            CompilerStructural.GetHashCode(Inputs),
+            CompilerStructural.GetHashCode(Outputs),
+            CompilerStructural.GetHashCode(StateMembers),
+            CompilerStructural.GetHashCode(ChildModules),
+            CompilerStructural.GetHashCode(HelperMethods));
+        return result;
+    }
 }
 
 /// <summary>Options controlling generated C# TorchSharp source.</summary>

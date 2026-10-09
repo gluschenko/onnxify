@@ -1,4 +1,4 @@
-namespace Onnxify.Compiler;
+﻿namespace Onnxify.Compiler;
 
 /// <summary>Controls how compiler extension failures are handled.</summary>
 public enum CompilerErrorMode
@@ -92,7 +92,10 @@ public sealed class CompilerExtensionCollection
         _extensions.Add(extension);
     }
 
-    public bool Remove(ICompilerExtension extension) => _extensions.Remove(extension);
+    public bool Remove(ICompilerExtension extension)
+    {
+        return _extensions.Remove(extension);
+    }
 
     public IReadOnlyList<T> Get<T>() where T : class, ICompilerExtension
     {

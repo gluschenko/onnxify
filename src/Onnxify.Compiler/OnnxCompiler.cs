@@ -1,6 +1,7 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Reflection;
 using Onnxify;
+using Onnxify.Compiler.Operators;
 using Onnxify.Data.Numerics;
 
 namespace Onnxify.Compiler;
@@ -643,8 +644,8 @@ internal sealed class CompilerConversionException : Exception
 internal static class OnnxCompilerFrontend
 {
     /// <summary>
-    /// Преобразует ONNX model envelope и граф в immutable промежуточное представление compiler.
-    /// Ошибки нормализации собираются в diagnostics и не оставляют частично построенное дерево успешным результатом.
+    /// Converts the ONNX model envelope and graph into the compiler computation tree.
+    /// Normalization errors are collected as diagnostics and prevent a partially built tree from being returned as a successful result.
     /// </summary>
     public static CompilerResult<CompilerComputationTree> Import(
         OnnxModel model,
@@ -715,8 +716,8 @@ internal static class OnnxCompilerFrontend
     }
 
     /// <summary>
-    /// Преобразует граф ONNX в единое дерево промежуточного представления, включая captured values и рекурсивные атрибуты-графы.
-    /// Сначала регистрируются типы и state, затем узлы, чтобы ссылки оставались корректными при любом порядке wire metadata.
+    /// Converts an ONNX graph into a unified intermediate-representation tree, including captured values and recursively nested graph attributes.
+    /// Types and state are registered before nodes so references remain valid regardless of wire metadata order.
     /// </summary>
     private static CompilerComputationTree ImportGraph(
         OnnxGraph graph,
@@ -872,8 +873,8 @@ internal static class OnnxCompilerFrontend
     }
 
     /// <summary>
-    /// Импортирует узлы в исходном порядке и нормализует атрибуты по имени для стабильного промежуточного представления.
-    /// Неизвестные ONNX operators остаются generic operations и получают warning для последующих backend этапов.
+    /// Imports nodes in source order and normalizes attributes by name for a stable intermediate representation.
+    /// Unknown ONNX operators remain generic operations and produce a warning for later backend stages.
     /// </summary>
     private static void ImportNodes(
         OnnxGraph graph,
@@ -935,41 +936,23 @@ internal static class OnnxCompilerFrontend
                 }
             }
 
-            CompilerOperatorMapping? mapping = null;
-            var hasMapping = CompilerOperatorMappingRegistry.TryGetOnnx(
-                    node.Domain,
-                    node.OpType,
-                    out mapping)
-                && mapping is not null
-                && mapping.Accepts(node);
-            if (hasMapping
-                && mapping!.SupportsMultidirectionalBroadcast
-                && HasKnownIncompatibleBroadcast(node, knownTypes))
+            var hasIdentityMapping = CompilerOperatorRegistry.TryGetOnnx(node.Domain, node.OpType, out var mapping);
+            var hasMapping = CompilerOperatorRegistry.TryGetOnnx(node, out var typedMapping)
+                && typedMapping is not null
+                && typedMapping.Accepts(node);
+            if (hasIdentityMapping && mapping is not null && !hasMapping)
             {
                 diagnostics.Add(new CompilerDiagnostic(
                     code: CompilerDiagnosticCodes.Unsupported,
-                    message: $"ONNX operator '{node.OpType}' has input shapes that cannot be broadcast together.",
+                    message: $"ONNX operator '{node.Domain}::{node.OpType}' cannot be represented as generated node type '{mapping.NodeType.Name}' with its current inputs, outputs, and attributes.",
                     stage: CompilerDiagnosticStage.Analyze,
                     severity: CompilerDiagnosticSeverity.Error,
                     span: span,
                     context: new CompilerDiagnosticContext(caller, node.OpType)));
             }
 
-            if (hasMapping
-                && mapping!.OnnxName is "MatMul" or "Gemm"
-                && TryGetMatrixSemanticError(node, mapping.OnnxName, attributes, knownTypes, out var matrixError))
-            {
-                diagnostics.Add(new CompilerDiagnostic(
-                    code: CompilerDiagnosticCodes.Unsupported,
-                    message: matrixError,
-                    stage: CompilerDiagnosticStage.Analyze,
-                    severity: CompilerDiagnosticSeverity.Error,
-                    span: span,
-                    context: new CompilerDiagnosticContext(caller, node.OpType)));
-            }
-
-            var descriptor = mapping is not null && hasMapping
-                ? mapping.Descriptor
+            var descriptor = typedMapping is not null && hasMapping
+                ? typedMapping.Descriptor
                 : new CompilerOperatorDescriptor(
                     name: node.OpType,
                     domain: node.Domain,
@@ -989,249 +972,47 @@ internal static class OnnxCompilerFrontend
                         callee: node.OpType)));
             }
 
-            var operation = new CompilerOperation(
-                name: nodeName,
-                descriptor: descriptor,
-                inputs: node.Inputs.Select(ToReference),
-                outputs: node.Outputs.Select(ToReference),
-                attributes: attributes,
-                span: span);
+            CompilerOnnxStep operation;
+            try
+            {
+                operation = hasMapping && typedMapping is not null
+                    ? typedMapping.ScanOnnx(node, nodeName, span)
+                    : new CompilerOnnxStep(node, descriptor, span, nodeName);
+            }
+            catch (CompilerConversionException exception)
+            {
+                diagnostics.Add(new CompilerDiagnostic(
+                    code: exception.Code,
+                    message: exception.Message,
+                    stage: CompilerDiagnosticStage.Analyze,
+                    severity: CompilerDiagnosticSeverity.Error,
+                    span: span,
+                    context: new CompilerDiagnosticContext(caller, node.OpType)));
+                operation = new CompilerOnnxStep(
+                    node,
+                    new CompilerOperatorDescriptor(
+                        node.OpType,
+                        node.Domain,
+                        CompilerOperationCapability.Unsupported),
+                    span,
+                    nodeName);
+            }
+
+            if (hasMapping
+                && typedMapping is not null
+                && typedMapping.ValidateOnnxNode(operation.Node, knownTypes) is { } validationMessage)
+            {
+                diagnostics.Add(new CompilerDiagnostic(
+                    code: CompilerDiagnosticCodes.Unsupported,
+                    message: validationMessage,
+                    stage: CompilerDiagnosticStage.Analyze,
+                    severity: CompilerDiagnosticSeverity.Error,
+                    span: span,
+                    context: new CompilerDiagnosticContext(caller, node.OpType)));
+            }
+
             builder.AddOperation(operation);
         }
-    }
-
-    private static bool TryGetMatrixSemanticError(
-        OnnxNode node,
-        string operatorName,
-        IReadOnlyList<CompilerAttribute> attributes,
-        IReadOnlyDictionary<string, CompilerType> knownTypes,
-        out string message
-    )
-    {
-        message = string.Empty;
-        if (operatorName == "Gemm")
-        {
-            foreach (var flagName in new[] { "transA", "transB" })
-            {
-                var flag = GetMatrixIntegerAttribute(attributes, flagName, 0);
-                if (flag is not (0 or 1))
-                {
-                    message = $"ONNX Gemm attribute '{flagName}' must be 0 or 1.";
-                    return true;
-                }
-            }
-
-            foreach (var scaleName in new[] { "alpha", "beta" })
-            {
-                var scale = attributes.FirstOrDefault(attribute => attribute.Name == scaleName)?.Value;
-                if (scale is not null && scale is not (CompilerFloatingPointLiteral or CompilerSignedIntegerLiteral or CompilerUnsignedIntegerLiteral))
-                {
-                    message = $"ONNX Gemm attribute '{scaleName}' must be numeric.";
-                    return true;
-                }
-            }
-        }
-
-        var tensors = node.Inputs
-            .Where(static input => !string.IsNullOrEmpty(input.Name))
-            .Select(input => knownTypes.TryGetValue(input.Name, out var type) ? type as CompilerTensorType : null)
-            .ToArray();
-        if (tensors.Length < 2 || tensors.Take(2).Any(static tensor => tensor is null))
-        {
-            return false;
-        }
-
-        var left = tensors[0]!;
-        var right = tensors[1]!;
-        if (left.ElementType != right.ElementType)
-        {
-            message = $"ONNX {operatorName} requires both matrix operands to have the same element type.";
-            return true;
-        }
-
-        var isGemm = operatorName == "Gemm";
-        if (!IsSupportedMatrixElementType(left.ElementType, isGemm))
-        {
-            message = $"ONNX {operatorName} does not have a registered runtime-verified mapping for element type '{left.ElementType}'.";
-            return true;
-        }
-
-        if (isGemm && tensors.Length > 2 && tensors[2] is { } biasType && biasType.ElementType != left.ElementType)
-        {
-            message = "ONNX Gemm requires bias input C to have the same element type as A and B.";
-            return true;
-        }
-
-        if (left.Dimensions is null || right.Dimensions is null
-            || left.Dimensions.Any(static dimension => dimension is not CompilerFixedDimension)
-            || right.Dimensions.Any(static dimension => dimension is not CompilerFixedDimension))
-        {
-            return false;
-        }
-
-        var leftDimensions = left.Dimensions.Cast<CompilerFixedDimension>().Select(static dimension => dimension.Value).ToArray();
-        var rightDimensions = right.Dimensions.Cast<CompilerFixedDimension>().Select(static dimension => dimension.Value).ToArray();
-        if (isGemm)
-        {
-            if (leftDimensions.Length != 2 || rightDimensions.Length != 2)
-            {
-                message = "ONNX Gemm requires rank-2 A and B inputs.";
-                return true;
-            }
-
-            var transA = GetMatrixIntegerAttribute(attributes, "transA", 0) == 1;
-            var transB = GetMatrixIntegerAttribute(attributes, "transB", 0) == 1;
-            var aRows = leftDimensions[transA ? 1 : 0];
-            var aColumns = leftDimensions[transA ? 0 : 1];
-            var bRows = rightDimensions[transB ? 1 : 0];
-            var bColumns = rightDimensions[transB ? 0 : 1];
-            if (aColumns != bRows)
-            {
-                message = $"ONNX Gemm inner dimensions are incompatible ({aColumns} and {bRows}).";
-                return true;
-            }
-
-            if (tensors.Length > 2 && tensors[2]?.Dimensions is { } biasDimensions
-                && biasDimensions.All(static dimension => dimension is CompilerFixedDimension))
-            {
-                if (biasDimensions.Count > 2)
-                {
-                    message = "ONNX Gemm bias input C must have rank at most 2.";
-                    return true;
-                }
-
-                var biasShape = biasDimensions.Cast<CompilerFixedDimension>().Select(static dimension => dimension.Value).ToArray();
-                if (!CanBroadcastTo(biasShape, [aRows, bColumns]))
-                {
-                    message = "ONNX Gemm bias input C cannot be broadcast to the matrix output shape.";
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        if (leftDimensions.Length == 0 || rightDimensions.Length == 0)
-        {
-            message = "ONNX MatMul requires both inputs to have rank at least 1.";
-            return true;
-        }
-
-        var leftContract = leftDimensions[leftDimensions.Length - 1];
-        var rightContract = rightDimensions.Length == 1 ? rightDimensions[0] : rightDimensions[rightDimensions.Length - 2];
-        if (leftContract != rightContract)
-        {
-            message = $"ONNX MatMul inner dimensions are incompatible ({leftContract} and {rightContract}).";
-            return true;
-        }
-
-        var leftBatch = leftDimensions.Take(Math.Max(0, leftDimensions.Length - 2)).ToArray();
-        var rightBatch = rightDimensions.Take(Math.Max(0, rightDimensions.Length - 2)).ToArray();
-        if (leftDimensions.Length == 1)
-        {
-            leftBatch = [];
-        }
-
-        if (rightDimensions.Length == 1)
-        {
-            rightBatch = [];
-        }
-
-        if (!CanMultidirectionallyBroadcast(leftBatch, rightBatch))
-        {
-            message = "ONNX MatMul batch dimensions cannot be broadcast together.";
-            return true;
-        }
-
-        return false;
-    }
-
-    private static bool IsSupportedMatrixElementType(CompilerElementType elementType, bool isGemm)
-    {
-        return isGemm
-            ? elementType is CompilerElementType.Float32 or CompilerElementType.Float64
-            : elementType is CompilerElementType.Float32 or CompilerElementType.Float64
-                or CompilerElementType.Int32 or CompilerElementType.Int64;
-    }
-
-    private static long GetMatrixIntegerAttribute(IReadOnlyList<CompilerAttribute> attributes, string name, long defaultValue)
-    {
-        return attributes.FirstOrDefault(attribute => attribute.Name == name)?.Value switch
-        {
-            null => defaultValue,
-            CompilerSignedIntegerLiteral signed => signed.Value,
-            CompilerUnsignedIntegerLiteral unsigned => checked((long)unsigned.Value),
-            _ => defaultValue,
-        };
-    }
-
-    private static bool CanMultidirectionallyBroadcast(long[] left, long[] right)
-    {
-        var rank = Math.Max(left.Length, right.Length);
-        for (var offset = 1; offset <= rank; offset++)
-        {
-            var leftDimension = offset <= left.Length ? left[left.Length - offset] : 1;
-            var rightDimension = offset <= right.Length ? right[right.Length - offset] : 1;
-            if (leftDimension != rightDimension && leftDimension != 1 && rightDimension != 1)
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static bool CanBroadcastTo(long[] source, long[] target)
-    {
-        var rank = Math.Max(source.Length, target.Length);
-        for (var offset = 1; offset <= rank; offset++)
-        {
-            var sourceDimension = offset <= source.Length ? source[source.Length - offset] : 1;
-            var targetDimension = offset <= target.Length ? target[target.Length - offset] : 1;
-            if (sourceDimension != targetDimension && sourceDimension != 1)
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static bool HasKnownIncompatibleBroadcast(
-        OnnxNode node,
-        IReadOnlyDictionary<string, CompilerType> knownTypes
-    )
-    {
-        var shapes = node.Inputs
-            .Select(input => input.Name)
-            .Select(name => knownTypes.TryGetValue(name, out var type) ? type as CompilerTensorType : null)
-            .ToArray();
-        if (shapes.Length < 2
-            || shapes.Any(shape => shape?.Dimensions is null
-                || shape.Dimensions.Any(dimension => dimension is not CompilerFixedDimension)))
-        {
-            return false;
-        }
-
-        var dimensions = shapes
-            .Select(shape => shape!.Dimensions!.Cast<CompilerFixedDimension>().Select(dimension => dimension.Value).ToArray())
-            .ToArray();
-        var rank = dimensions.Max(shape => shape.Length);
-        for (var offset = 1; offset <= rank; offset++)
-        {
-            var alignedDimensions = dimensions
-                .Select(shape => offset <= shape.Length ? shape[shape.Length - offset] : 1)
-                .Where(dimension => dimension != 1)
-                .Distinct()
-                .Take(2)
-                .Count();
-            if (alignedDimensions > 1)
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private static void AddValue(
@@ -1452,8 +1233,8 @@ internal static class OnnxCompilerFrontend
 internal static class OnnxCompilerBackend
 {
     /// <summary>
-    /// Эмитирует полную ONNX-модель из промежуточного представления compiler и проверяет её повторной загрузкой после сериализации.
-    /// Валидация охватывает не только структуру промежуточного представления, но и фактическую protobuf границу core API.
+    /// Emits a complete ONNX model from the compiler intermediate representation and validates it by reloading the serialized model.
+    /// Validation covers both the intermediate-representation structure and the actual protobuf boundary of the core API.
     /// </summary>
     public static CompilerResult<OnnxModel> EmitModel(
         CompilerComputationTree tree,
@@ -1546,8 +1327,8 @@ internal static class OnnxCompilerBackend
     }
 
     /// <summary>
-    /// Создаёт graph values, state и узлы в порядке промежуточного представления перед сериализацией модели.
-    /// Отдельный graph-проход сохраняет ONNX порядок и даёт вложенным graph literals тот же backend путь.
+    /// Creates graph values, state, and nodes in intermediate-representation order before serializing the model.
+    /// A separate graph pass preserves ONNX ordering and gives nested graph literals the same backend path.
     /// </summary>
     private static void EmitGraph(
         CompilerComputationTree tree,
@@ -1627,10 +1408,10 @@ internal static class OnnxCompilerBackend
         {
             switch (operation)
             {
-                case CompilerOperation compilerOperation:
-                    EmitOperation(
+                case CompilerOnnxStep compilerOnnxNode:
+                    EmitOnnxNode(
                         graph: graph,
-                        operation: compilerOperation,
+                        operation: compilerOnnxNode,
                         diagnostics: diagnostics,
                         caller: caller);
                     break;
@@ -1699,14 +1480,13 @@ internal static class OnnxCompilerBackend
             var expression = ResolveExpression(returns[index], bindings);
             if (expression is CompilerReferenceExpression reference)
             {
-                graph.AddNode(
+                graph.Identity(
                     name: $"{moduleCall.Name}__identity{index}",
-                    opType: "Identity",
-                    domain: string.Empty,
-                    docString: string.Empty,
-                    inputs: [(IOnnxGraphEdge)new OnnxEdge(reference.Name)],
-                    outputs: [(IOnnxGraphEdge)new OnnxEdge(output.Name)],
-                    attributes: []);
+                    options: new IdentityInputOutputOptions
+                    {
+                        Input = new OnnxEdge(reference.Name),
+                        Output = new OnnxEdge(output.Name),
+                    });
                 continue;
             }
 
@@ -1717,7 +1497,7 @@ internal static class OnnxCompilerBackend
                     $"Block '{block.Name}' returns an expression that cannot be lowered to ONNX.");
             }
 
-            if (CompilerOperatorMappingRegistry.TryGetTorchSharpCall(invocation.Target, out var mapping, out var receiver)
+            if (CompilerOperatorRegistry.TryGetTorchSharpCall(invocation.Target, out var mapping, out var receiver)
                 && mapping is not null)
             {
                 EmitMappedInvocation(
@@ -1765,7 +1545,7 @@ internal static class OnnxCompilerBackend
         string name,
         CompilerValueReference output,
         CompilerInvocationExpression invocation,
-        CompilerOperatorMapping mapping,
+        CompilerOperator mapping,
         CompilerExpression? receiver,
         IReadOnlyDictionary<string, CompilerExpression> bindings,
         List<CompilerDiagnostic> diagnostics,
@@ -1823,9 +1603,8 @@ internal static class OnnxCompilerBackend
             }
         }
 
-        var operation = new CompilerOperation(
+        var operation = mapping.CreateNode(
             name: name,
-            descriptor: mapping.Descriptor,
             inputs: inputs,
             outputs: [output],
             attributes: attributes,
@@ -1837,7 +1616,7 @@ internal static class OnnxCompilerBackend
                 $"Call to '{mapping.TorchSharpNames[0]}' has an unsupported ONNX signature.");
         }
 
-        EmitOperation(graph, operation, diagnostics, caller);
+        EmitOnnxNode(graph, operation, diagnostics, caller);
     }
 
     private static IReadOnlyList<CompilerExpression> FindReturns(
@@ -1994,13 +1773,14 @@ internal static class OnnxCompilerBackend
         return onnxValue;
     }
 
-    private static void EmitOperation(
+    private static void EmitOnnxNode(
         OnnxGraph graph,
-        CompilerOperation operation,
+        CompilerOnnxStep operation,
         List<CompilerDiagnostic> diagnostics,
         string? caller
     )
     {
+        var hasMapping = CompilerOperatorRegistry.TryGetOnnx(operation.Node, out var compilerOperator);
         if (operation.Descriptor.Capability == CompilerOperationCapability.Unsupported)
         {
             diagnostics.Add(new CompilerDiagnostic(
@@ -2013,10 +1793,7 @@ internal static class OnnxCompilerBackend
                     caller: caller,
                     callee: operation.Descriptor.Name)));
         }
-        else if (!CompilerOperatorMappingRegistry.TryGetOnnx(
-            operation.Descriptor.Domain,
-            operation.Descriptor.Name,
-            out _))
+        else if (!hasMapping || compilerOperator is null)
         {
             diagnostics.Add(new CompilerDiagnostic(
                 code: CompilerDiagnosticCodes.Unsupported,
@@ -2028,74 +1805,15 @@ internal static class OnnxCompilerBackend
             return;
         }
 
-        if (string.Equals(operation.Descriptor.Name, "Swish", StringComparison.Ordinal))
+        if (hasMapping && compilerOperator is not null)
         {
-            EmitSwish(graph, operation);
+            compilerOperator.PrintOnnx(graph, operation);
             return;
         }
-
-        var inputs = operation.Inputs.Select(x => (IOnnxGraphEdge)new OnnxEdge(x.IsEmptyOptional ? string.Empty : x.Name));
-        var outputs = operation.Outputs.Select(x => (IOnnxGraphEdge)new OnnxEdge(x.IsEmptyOptional ? string.Empty : x.Name));
-        var attributes = operation.Attributes
-            .Select(attribute => CreateOnnxAttribute(attribute, diagnostics, caller))
-            .ToArray();
-
-        graph.AddNode(
-            operation.Name,
-            operation.Descriptor.Name,
-            operation.Descriptor.Domain,
-            string.Empty,
-            inputs,
-            outputs,
-            attributes);
+        graph.AddNode(operation.Node);
     }
 
-    private static void EmitSwish(OnnxGraph graph, CompilerOperation operation)
-    {
-        if (operation.Inputs.Count != 1 || operation.Outputs.Count != 1)
-        {
-            throw new CompilerConversionException(
-                CompilerDiagnosticCodes.Unsupported,
-                "Swish requires exactly one input and one output.");
-        }
-
-        var input = operation.Inputs[0].Name;
-        var sigmoidInput = input;
-        var alpha = CompilerOperatorMapping.GetFloatAttribute(operation, "alpha", 1f);
-        if (alpha != 1f)
-        {
-            sigmoidInput = $"{operation.Name}__scaled";
-            var scale = graph.AddTensor($"{operation.Name}__alpha", [], [alpha]);
-            graph.AddNode(
-                name: $"{operation.Name}__scale",
-                opType: "Mul",
-                domain: string.Empty,
-                docString: string.Empty,
-                inputs: [(IOnnxGraphEdge)new OnnxEdge(input), scale],
-                outputs: [(IOnnxGraphEdge)new OnnxEdge(sigmoidInput)],
-                attributes: []);
-        }
-
-        var sigmoidOutput = $"{operation.Name}__sigmoid";
-        graph.AddNode(
-            name: $"{operation.Name}__sigmoid_node",
-            opType: "Sigmoid",
-            domain: string.Empty,
-            docString: string.Empty,
-            inputs: [(IOnnxGraphEdge)new OnnxEdge(sigmoidInput)],
-            outputs: [(IOnnxGraphEdge)new OnnxEdge(sigmoidOutput)],
-            attributes: []);
-        graph.AddNode(
-            name: operation.Name,
-            opType: "Mul",
-            domain: string.Empty,
-            docString: string.Empty,
-            inputs: [(IOnnxGraphEdge)new OnnxEdge(input), (IOnnxGraphEdge)new OnnxEdge(sigmoidOutput)],
-            outputs: [(IOnnxGraphEdge)new OnnxEdge(operation.Outputs[0].Name)],
-            attributes: []);
-    }
-
-    private static OnnxAttribute CreateOnnxAttribute(
+    internal static OnnxAttribute CreateOnnxAttribute(
         CompilerAttribute attribute,
         List<CompilerDiagnostic> diagnostics,
         string? caller

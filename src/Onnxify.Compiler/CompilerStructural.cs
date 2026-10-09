@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 
 namespace Onnxify.Compiler;
 
@@ -8,7 +8,7 @@ internal static class CompilerStructural
     {
         if (value is null)
         {
-            throw new ArgumentNullException(parameterName);
+            throw new System.ArgumentNullException(parameterName);
         }
     }
 

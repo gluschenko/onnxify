@@ -1,3 +1,5 @@
+﻿using Onnxify;
+
 namespace Onnxify.Compiler;
 
 /// <summary>Identifies a compiler state member.</summary>
@@ -43,9 +45,15 @@ public sealed class CompilerValueReference : IEquatable<CompilerValueReference>
         return result;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerValueReference);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerValueReference);
+    }
 
-    public override int GetHashCode() => CompilerStructural.Combine(17, Name, IsEmptyOptional);
+    public override int GetHashCode()
+    {
+        return CompilerStructural.Combine(17, Name, IsEmptyOptional);
+    }
 }
 
 /// <summary>Named graph value definition used by inputs, outputs, and intermediate values.</summary>
@@ -83,9 +91,15 @@ public sealed class CompilerValue : IEquatable<CompilerValue>
         return result;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerValue);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerValue);
+    }
 
-    public override int GetHashCode() => CompilerStructural.Combine(17, Name, Type, Span);
+    public override int GetHashCode()
+    {
+        return CompilerStructural.Combine(17, Name, Type, Span);
+    }
 }
 
 /// <summary>Compiler-owned parameter, buffer, or initializer metadata.</summary>
@@ -107,7 +121,7 @@ public sealed class CompilerStateMember : IEquatable<CompilerStateMember>
         CompilerStructural.RequireNotNull(type, nameof(type));
         if (kind == CompilerStateMemberKind.Initializer && value is null)
         {
-            throw new ArgumentNullException(nameof(value), "Initializers require a literal value.");
+            throw new System.ArgumentNullException(nameof(value), "Initializers require a literal value.");
         }
 
         Name = name;
@@ -138,9 +152,15 @@ public sealed class CompilerStateMember : IEquatable<CompilerStateMember>
         return result;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerStateMember);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerStateMember);
+    }
 
-    public override int GetHashCode() => CompilerStructural.Combine(17, Name, Kind, Type, Value, Span);
+    public override int GetHashCode()
+    {
+        return CompilerStructural.Combine(17, Name, Kind, Type, Value, Span);
+    }
 }
 
 /// <summary>Shared operator identity and normalized mapping metadata.</summary>
@@ -182,9 +202,15 @@ public sealed class CompilerOperatorDescriptor : IEquatable<CompilerOperatorDesc
         return result;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerOperatorDescriptor);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerOperatorDescriptor);
+    }
 
-    public override int GetHashCode() => CompilerStructural.Combine(17, Name, Domain, Capability, CompilerStructural.GetHashCode(Constraints));
+    public override int GetHashCode()
+    {
+        return CompilerStructural.Combine(17, Name, Domain, Capability, CompilerStructural.GetHashCode(Constraints));
+    }
 }
 
 /// <summary>Base class for ordered computation-tree steps.</summary>
@@ -215,50 +241,63 @@ public abstract class CompilerComputationStep : IEquatable<CompilerComputationSt
         return result;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerComputationStep);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerComputationStep);
+    }
 
-    public override int GetHashCode() => CompilerStructural.Combine(17, Name, Span, GetHashCodeCore());
+    public override int GetHashCode()
+    {
+        return CompilerStructural.Combine(17, Name, Span, GetHashCodeCore());
+    }
 
     protected abstract bool EqualsCore(CompilerComputationStep other);
 
     protected abstract int GetHashCodeCore();
 }
 
-public sealed class CompilerOperation : CompilerComputationStep
+/// <summary>
+/// Represents an ONNX computation step while retaining its typed node and source location.
+/// </summary>
+/// <remarks>
+/// Mapped operations use generated <see cref="OnnxNode"/> subclasses; unknown operations retain the generic node.
+/// This replaces the former untyped <c>CompilerOperation</c> payload.
+/// </remarks>
+public sealed class CompilerOnnxStep : CompilerComputationStep
 {
-    public CompilerOperation(
-        string name,
+    public CompilerOnnxStep(
+        OnnxNode node,
         CompilerOperatorDescriptor descriptor,
-        IEnumerable<CompilerValueReference> inputs,
-        IEnumerable<CompilerValueReference> outputs,
-        IEnumerable<CompilerAttribute>? attributes = null,
-        CompilerSourceSpan? span = null
-    ) : base(name, span)
+        CompilerSourceSpan? span = null,
+        string? name = null
+    ) : base(name ?? node?.Name ?? string.Empty, span)
     {
+        CompilerStructural.RequireNotNull(node, nameof(node));
         CompilerStructural.RequireNotNull(descriptor, nameof(descriptor));
+        Node = node ?? throw new System.ArgumentNullException(nameof(node));
         Descriptor = descriptor;
-        Inputs = CompilerStructural.Copy(inputs, nameof(inputs));
-        Outputs = CompilerStructural.Copy(outputs, nameof(outputs));
-        Attributes = CompilerStructural.Copy(attributes ?? Array.Empty<CompilerAttribute>(), nameof(attributes));
-        EnsureUniqueAttributes(Attributes);
     }
+
+    public OnnxNode Node { get; }
 
     public CompilerOperatorDescriptor Descriptor { get; }
 
-    public IReadOnlyList<CompilerValueReference> Inputs { get; }
+    public IReadOnlyList<CompilerValueReference> Inputs => Node.Inputs.Select(ToReference).ToArray();
 
-    public IReadOnlyList<CompilerValueReference> Outputs { get; }
-
-    public IReadOnlyList<CompilerAttribute> Attributes { get; }
+    public IReadOnlyList<CompilerValueReference> Outputs => Node.Outputs.Select(ToReference).ToArray();
 
     protected override bool EqualsCore(CompilerComputationStep other)
     {
-        var operation = (CompilerOperation)other;
-        var result = EqualityComparer<CompilerOperatorDescriptor>.Default.Equals(Descriptor, operation.Descriptor)
+        var operation = (CompilerOnnxStep)other;
+        return EqualityComparer<CompilerOperatorDescriptor>.Default.Equals(Descriptor, operation.Descriptor)
+            && string.Equals(Node.GetType().FullName, operation.Node.GetType().FullName, StringComparison.Ordinal)
+            && string.Equals(Node.Domain, operation.Node.Domain, StringComparison.Ordinal)
+            && string.Equals(Node.OpType, operation.Node.OpType, StringComparison.Ordinal)
             && CompilerStructural.SequenceEqual(Inputs, operation.Inputs)
             && CompilerStructural.SequenceEqual(Outputs, operation.Outputs)
-            && CompilerStructural.SequenceEqual(Attributes, operation.Attributes);
-        return result;
+            && Node.Attributes.Select(static attribute => attribute.Name).SequenceEqual(
+                operation.Node.Attributes.Select(static attribute => attribute.Name),
+                StringComparer.Ordinal);
     }
 
     protected override int GetHashCodeCore()
@@ -266,21 +305,19 @@ public sealed class CompilerOperation : CompilerComputationStep
         return CompilerStructural.Combine(
             17,
             Descriptor,
+            Node.GetType().FullName,
+            Node.Domain,
+            Node.OpType,
             CompilerStructural.GetHashCode(Inputs),
             CompilerStructural.GetHashCode(Outputs),
-            CompilerStructural.GetHashCode(Attributes));
+            string.Join("|", Node.Attributes.Select(static attribute => attribute.Name)));
     }
 
-    private static void EnsureUniqueAttributes(IReadOnlyList<CompilerAttribute> attributes)
+    private static CompilerValueReference ToReference(IOnnxGraphEdge edge)
     {
-        var names = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var attribute in attributes)
-        {
-            if (!names.Add(attribute.Name))
-            {
-                throw new ArgumentException($"Duplicate operation attribute '{attribute.Name}'.", nameof(attributes));
-            }
-        }
+        return string.IsNullOrEmpty(edge.Name)
+            ? new CompilerValueReference(string.Empty, isEmptyOptional: true)
+            : new CompilerValueReference(edge.Name);
     }
 }
 
@@ -425,9 +462,15 @@ public sealed class CompilerComputationBlock : IEquatable<CompilerComputationBlo
         return result;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerComputationBlock);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerComputationBlock);
+    }
 
-    public override int GetHashCode() => CompilerStructural.Combine(17, Name, CompilerStructural.GetHashCode(Inputs), CompilerStructural.GetHashCode(Outputs), Body, Span);
+    public override int GetHashCode()
+    {
+        return CompilerStructural.Combine(17, Name, CompilerStructural.GetHashCode(Inputs), CompilerStructural.GetHashCode(Outputs), Body, Span);
+    }
 
     private static void EnsureUniqueReferences(IReadOnlyList<CompilerValueReference> references, string parameterName)
     {
@@ -443,7 +486,7 @@ public sealed class CompilerComputationBlock : IEquatable<CompilerComputationBlo
     }
 }
 
-/// <summary>Immutable compiler-owned computation tree consumed by future frontends and backends.</summary>
+/// <summary>Compiler-owned computation tree consumed by frontends and backends.</summary>
 public sealed class CompilerComputationTree : ICompilerTree, IEquatable<CompilerComputationTree>
 {
     public CompilerComputationTree(
@@ -540,7 +583,10 @@ public sealed class CompilerComputationTree : ICompilerTree, IEquatable<Compiler
         return result;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerComputationTree);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerComputationTree);
+    }
 
     public override int GetHashCode()
     {
@@ -630,7 +676,7 @@ public sealed class CompilerComputationTree : ICompilerTree, IEquatable<Compiler
     {
         return operation switch
         {
-            CompilerOperation node => node.Inputs.Concat(node.Outputs),
+            CompilerOnnxStep node => node.Inputs.Concat(node.Outputs),
             CompilerModuleCall call => call.Inputs.Concat(call.Outputs),
             _ => Array.Empty<CompilerValueReference>(),
         };

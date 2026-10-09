@@ -1,4 +1,4 @@
-namespace Onnxify.Compiler;
+﻿namespace Onnxify.Compiler;
 
 /// <summary>Base class for typed compiler literals.</summary>
 public abstract class CompilerLiteral : IEquatable<CompilerLiteral>
@@ -11,9 +11,15 @@ public abstract class CompilerLiteral : IEquatable<CompilerLiteral>
         return result;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerLiteral);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerLiteral);
+    }
 
-    public override int GetHashCode() => GetHashCodeCore();
+    public override int GetHashCode()
+    {
+        return GetHashCodeCore();
+    }
 
     protected abstract bool EqualsCore(CompilerLiteral other);
 
@@ -23,9 +29,15 @@ public abstract class CompilerLiteral : IEquatable<CompilerLiteral>
 /// <summary>Represents the C# <c>null</c> literal without a runtime object.</summary>
 public sealed class CompilerNullLiteral : CompilerLiteral
 {
-    protected override bool EqualsCore(CompilerLiteral other) => other is CompilerNullLiteral;
+    protected override bool EqualsCore(CompilerLiteral other)
+    {
+        return other is CompilerNullLiteral;
+    }
 
-    protected override int GetHashCodeCore() => 17;
+    protected override int GetHashCodeCore()
+    {
+        return 17;
+    }
 }
 
 /// <summary>Base class for scalar literals with an explicit element type.</summary>
@@ -55,7 +67,10 @@ public sealed class CompilerBooleanLiteral : CompilerScalarLiteral
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, ElementType, Value);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, ElementType, Value);
+    }
 }
 
 public sealed class CompilerSignedIntegerLiteral : CompilerScalarLiteral
@@ -84,7 +99,10 @@ public sealed class CompilerSignedIntegerLiteral : CompilerScalarLiteral
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, ElementType, Value);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, ElementType, Value);
+    }
 }
 
 public sealed class CompilerUnsignedIntegerLiteral : CompilerScalarLiteral
@@ -113,7 +131,10 @@ public sealed class CompilerUnsignedIntegerLiteral : CompilerScalarLiteral
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, ElementType, Value);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, ElementType, Value);
+    }
 }
 
 public sealed class CompilerFloatingPointLiteral : CompilerScalarLiteral
@@ -142,7 +163,10 @@ public sealed class CompilerFloatingPointLiteral : CompilerScalarLiteral
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, ElementType, Value);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, ElementType, Value);
+    }
 }
 
 public sealed class CompilerComplexLiteral : CompilerScalarLiteral
@@ -172,7 +196,10 @@ public sealed class CompilerComplexLiteral : CompilerScalarLiteral
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, ElementType, Real, Imaginary);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, ElementType, Real, Imaginary);
+    }
 }
 
 public sealed class CompilerStringLiteral : CompilerScalarLiteral
@@ -180,7 +207,7 @@ public sealed class CompilerStringLiteral : CompilerScalarLiteral
     public CompilerStringLiteral(string value)
         : base(CompilerElementType.String)
     {
-        Value = value ?? throw new ArgumentNullException(nameof(value));
+        Value = value ?? throw new System.ArgumentNullException(nameof(value));
     }
 
     public string Value { get; }
@@ -191,7 +218,10 @@ public sealed class CompilerStringLiteral : CompilerScalarLiteral
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, ElementType, Value);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, ElementType, Value);
+    }
 }
 
 /// <summary>
@@ -230,7 +260,10 @@ public sealed class CompilerPackedScalarLiteral : CompilerScalarLiteral
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, ElementType, EncodedValue);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, ElementType, EncodedValue);
+    }
 }
 
 /// <summary>Describes an external tensor payload without depending on ONNX protobuf types.</summary>
@@ -250,12 +283,12 @@ public sealed class CompilerExternalTensorData : IEquatable<CompilerExternalTens
 
         if (offset < 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(offset));
+            throw new System.ArgumentOutOfRangeException(nameof(offset));
         }
 
         if (length < 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(length));
+            throw new System.ArgumentOutOfRangeException(nameof(length));
         }
 
         Location = location;
@@ -282,9 +315,15 @@ public sealed class CompilerExternalTensorData : IEquatable<CompilerExternalTens
         return result;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerExternalTensorData);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerExternalTensorData);
+    }
 
-    public override int GetHashCode() => CompilerStructural.Combine(17, Location, Offset, Length, Checksum);
+    public override int GetHashCode()
+    {
+        return CompilerStructural.Combine(17, Location, Offset, Length, Checksum);
+    }
 }
 
 /// <summary>Tensor literal or initializer payload represented as typed scalar values.</summary>
@@ -364,10 +403,14 @@ public sealed class CompilerArrayLiteral : CompilerLiteral
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(
-        17,
-        CompilerStructural.GetHashCode(Items),
-        ItemType);
+    protected override int GetHashCodeCore()
+    {
+        var result = CompilerStructural.Combine(
+            17,
+            CompilerStructural.GetHashCode(Items),
+            ItemType);
+        return result;
+    }
 }
 
 public sealed class CompilerTupleLiteral : CompilerLiteral
@@ -385,7 +428,10 @@ public sealed class CompilerTupleLiteral : CompilerLiteral
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.GetHashCode(Items);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.GetHashCode(Items);
+    }
 }
 
 /// <summary>Compiler-owned graph-valued ONNX attribute.</summary>
@@ -407,7 +453,10 @@ public sealed class CompilerGraphLiteral : CompilerLiteral
         return result;
     }
 
-    protected override int GetHashCodeCore() => Graph.GetHashCode();
+    protected override int GetHashCodeCore()
+    {
+        return Graph.GetHashCode();
+    }
 }
 
 /// <summary>Compiler-owned sparse tensor attribute or initializer payload.</summary>
@@ -441,11 +490,15 @@ public sealed class CompilerSparseTensorLiteral : CompilerLiteral
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(
-        17,
-        CompilerStructural.GetHashCode(Dimensions),
-        Values,
-        Indices);
+    protected override int GetHashCodeCore()
+    {
+        var result = CompilerStructural.Combine(
+            17,
+            CompilerStructural.GetHashCode(Dimensions),
+            Values,
+            Indices);
+        return result;
+    }
 }
 
 /// <summary>Compiler-owned ONNX TypeProto attribute payload.</summary>
@@ -465,7 +518,10 @@ public sealed class CompilerTypeLiteral : CompilerLiteral
         return result;
     }
 
-    protected override int GetHashCodeCore() => Value.GetHashCode();
+    protected override int GetHashCodeCore()
+    {
+        return Value.GetHashCode();
+    }
 }
 
 /// <summary>Normalized operator attribute owned by the compiler intermediate representation.</summary>
@@ -495,7 +551,13 @@ public sealed class CompilerAttribute : IEquatable<CompilerAttribute>
         return result;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerAttribute);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerAttribute);
+    }
 
-    public override int GetHashCode() => CompilerStructural.Combine(17, Name, Value);
+    public override int GetHashCode()
+    {
+        return CompilerStructural.Combine(17, Name, Value);
+    }
 }

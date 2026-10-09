@@ -1,4 +1,4 @@
-namespace Onnxify.Compiler;
+﻿namespace Onnxify.Compiler;
 
 /// <summary>Base class for compiler-owned C# expressions.</summary>
 public abstract class CompilerExpression : IEquatable<CompilerExpression>
@@ -19,9 +19,15 @@ public abstract class CompilerExpression : IEquatable<CompilerExpression>
         return result;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerExpression);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerExpression);
+    }
 
-    public override int GetHashCode() => CompilerStructural.Combine(17, Span, GetHashCodeCore());
+    public override int GetHashCode()
+    {
+        return CompilerStructural.Combine(17, Span, GetHashCodeCore());
+    }
 
     protected abstract bool EqualsCore(CompilerExpression other);
 
@@ -49,7 +55,10 @@ public sealed class CompilerReferenceExpression : CompilerExpression
         return result;
     }
 
-    protected override int GetHashCodeCore() => Name.GetHashCode();
+    protected override int GetHashCodeCore()
+    {
+        return Name.GetHashCode();
+    }
 }
 
 public sealed class CompilerLiteralExpression : CompilerExpression
@@ -69,7 +78,10 @@ public sealed class CompilerLiteralExpression : CompilerExpression
         return result;
     }
 
-    protected override int GetHashCodeCore() => Literal.GetHashCode();
+    protected override int GetHashCodeCore()
+    {
+        return Literal.GetHashCode();
+    }
 }
 
 public sealed class CompilerArrayExpression : CompilerExpression
@@ -88,7 +100,10 @@ public sealed class CompilerArrayExpression : CompilerExpression
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.GetHashCode(Items);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.GetHashCode(Items);
+    }
 }
 
 public sealed class CompilerTupleExpression : CompilerExpression
@@ -107,7 +122,10 @@ public sealed class CompilerTupleExpression : CompilerExpression
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.GetHashCode(Items);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.GetHashCode(Items);
+    }
 }
 
 public sealed class CompilerIndexerExpression : CompilerExpression
@@ -136,7 +154,10 @@ public sealed class CompilerIndexerExpression : CompilerExpression
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Target, Index);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, Target, Index);
+    }
 }
 
 public sealed class CompilerInvocationExpression : CompilerExpression
@@ -164,7 +185,10 @@ public sealed class CompilerInvocationExpression : CompilerExpression
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Target, CompilerStructural.GetHashCode(Arguments));
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, Target, CompilerStructural.GetHashCode(Arguments));
+    }
 }
 
 /// <summary>Represents member access such as <c>module.forward</c> or <c>torch.Tensor</c>.</summary>
@@ -198,7 +222,10 @@ public sealed class CompilerMemberAccessExpression : CompilerExpression
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Target, MemberName);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, Target, MemberName);
+    }
 }
 
 /// <summary>Represents a C# binary operator while retaining its source spelling.</summary>
@@ -238,7 +265,10 @@ public sealed class CompilerBinaryExpression : CompilerExpression
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Left, Operator, Right);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, Left, Operator, Right);
+    }
 }
 
 /// <summary>Represents a C# unary operator while retaining its source spelling.</summary>
@@ -272,7 +302,10 @@ public sealed class CompilerUnaryExpression : CompilerExpression
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Operator, Expression);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, Operator, Expression);
+    }
 }
 
 /// <summary>Base class for ordered compiler-owned C# statements.</summary>
@@ -294,9 +327,15 @@ public abstract class CompilerStatement : IEquatable<CompilerStatement>
         return result;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerStatement);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerStatement);
+    }
 
-    public override int GetHashCode() => CompilerStructural.Combine(17, Span, GetHashCodeCore());
+    public override int GetHashCode()
+    {
+        return CompilerStructural.Combine(17, Span, GetHashCodeCore());
+    }
 
     protected abstract bool EqualsCore(CompilerStatement other);
 
@@ -319,7 +358,10 @@ public sealed class CompilerBlockStatement : CompilerStatement
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.GetHashCode(Statements);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.GetHashCode(Statements);
+    }
 }
 
 public sealed class CompilerDeclarationStatement : CompilerStatement
@@ -351,7 +393,10 @@ public sealed class CompilerDeclarationStatement : CompilerStatement
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Name, Initializer);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, Name, Initializer);
+    }
 }
 
 public sealed class CompilerAssignmentStatement : CompilerStatement
@@ -390,7 +435,10 @@ public sealed class CompilerAssignmentStatement : CompilerStatement
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Target, Value, Operator);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, Target, Value, Operator);
+    }
 }
 
 public sealed class CompilerReturnStatement : CompilerStatement
@@ -409,7 +457,10 @@ public sealed class CompilerReturnStatement : CompilerStatement
         return result;
     }
 
-    protected override int GetHashCodeCore() => Expression?.GetHashCode() ?? 0;
+    protected override int GetHashCodeCore()
+    {
+        return Expression?.GetHashCode() ?? 0;
+    }
 }
 
 public sealed class CompilerExpressionStatement : CompilerStatement
@@ -429,7 +480,10 @@ public sealed class CompilerExpressionStatement : CompilerStatement
         return result;
     }
 
-    protected override int GetHashCodeCore() => Expression.GetHashCode();
+    protected override int GetHashCodeCore()
+    {
+        return Expression.GetHashCode();
+    }
 }
 
 public sealed class CompilerStaticIfStatement : CompilerStatement
@@ -463,7 +517,10 @@ public sealed class CompilerStaticIfStatement : CompilerStatement
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Condition, WhenTrue, WhenFalse);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, Condition, WhenTrue, WhenFalse);
+    }
 }
 
 public sealed class CompilerStaticForeachStatement : CompilerStatement
@@ -502,5 +559,8 @@ public sealed class CompilerStaticForeachStatement : CompilerStatement
         return result;
     }
 
-    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, VariableName, Collection, Body);
+    protected override int GetHashCodeCore()
+    {
+        return CompilerStructural.Combine(17, VariableName, Collection, Body);
+    }
 }

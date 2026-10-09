@@ -1,4 +1,4 @@
-namespace Onnxify.Compiler;
+﻿namespace Onnxify.Compiler;
 
 /// <summary>
 /// Internal mutable construction helper used by future frontends and by compiler tests.
@@ -29,17 +29,35 @@ internal sealed class CompilerComputationTreeBuilder
 
     public string Name { get; }
 
-    public void AddInput(CompilerValue value) => AddUniqueValue(_inputs, value, "input");
+    public void AddInput(CompilerValue value)
+    {
+        AddUniqueValue(_inputs, value, "input");
+    }
 
-    public void AddOutput(CompilerValue value) => AddUniqueValue(_outputs, value, "output");
+    public void AddOutput(CompilerValue value)
+    {
+        AddUniqueValue(_outputs, value, "output");
+    }
 
-    public bool HasInput(string name) => _inputs.Any(x => string.Equals(x.Name, name, StringComparison.Ordinal));
+    public bool HasInput(string name)
+    {
+        return _inputs.Any(x => string.Equals(x.Name, name, StringComparison.Ordinal));
+    }
 
-    public bool HasOutput(string name) => _outputs.Any(x => string.Equals(x.Name, name, StringComparison.Ordinal));
+    public bool HasOutput(string name)
+    {
+        return _outputs.Any(x => string.Equals(x.Name, name, StringComparison.Ordinal));
+    }
 
-    public void AddIntermediateValue(CompilerValue value) => AddUniqueValue(_intermediateValues, value, "intermediate value");
+    public void AddIntermediateValue(CompilerValue value)
+    {
+        AddUniqueValue(_intermediateValues, value, "intermediate value");
+    }
 
-    public void AddCapture(CompilerValue value) => AddUniqueValue(_captures, value, "capture");
+    public void AddCapture(CompilerValue value)
+    {
+        AddUniqueValue(_captures, value, "capture");
+    }
 
     public void SetModelEnvelope(CompilerModelEnvelope envelope)
     {
@@ -72,7 +90,7 @@ internal sealed class CompilerComputationTreeBuilder
             CompilerStateMemberKind.Parameter => _parameters,
             CompilerStateMemberKind.Buffer => _buffers,
             CompilerStateMemberKind.Initializer => _initializers,
-            _ => throw new ArgumentOutOfRangeException(nameof(member)),
+            _ => throw new System.ArgumentOutOfRangeException(nameof(member)),
         };
 
         if (target.Any(x => string.Equals(x.Name, member.Name, StringComparison.Ordinal)))
@@ -177,7 +195,7 @@ internal sealed class CompilerComputationTreeBuilder
     {
         return operation switch
         {
-            CompilerOperation node => node.Inputs.Concat(node.Outputs),
+            CompilerOnnxStep node => node.Inputs.Concat(node.Outputs),
             CompilerModuleCall call => call.Inputs.Concat(call.Outputs),
             _ => Array.Empty<CompilerValueReference>(),
         };

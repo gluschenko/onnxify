@@ -1,4 +1,4 @@
-using Onnxify;
+﻿using Onnxify;
 
 namespace Onnxify.Compiler;
 
@@ -63,7 +63,7 @@ public sealed class OnnxCompilerSource : ICompilerSource
     {
         if (model is null)
         {
-            throw new ArgumentNullException(nameof(model));
+            throw new System.ArgumentNullException(nameof(model));
         }
 
         Model = model;
@@ -97,7 +97,7 @@ public sealed class CSharpTorchSharpSource : ICompilerSource
     {
         if (sourceText is null)
         {
-            throw new ArgumentNullException(nameof(sourceText));
+            throw new System.ArgumentNullException(nameof(sourceText));
         }
 
         if (sourceText.Length == 0)

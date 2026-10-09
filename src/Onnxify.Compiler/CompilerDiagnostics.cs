@@ -1,4 +1,4 @@
-namespace Onnxify.Compiler;
+﻿namespace Onnxify.Compiler;
 
 /// <summary>Identifies the phase that produced a compiler diagnostic.</summary>
 public enum CompilerDiagnosticStage
@@ -58,17 +58,17 @@ public sealed class CompilerSourceSpan : IEquatable<CompilerSourceSpan>
     {
         if (start < 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(start));
+            throw new System.ArgumentOutOfRangeException(nameof(start));
         }
 
         if (length < 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(length));
+            throw new System.ArgumentOutOfRangeException(nameof(length));
         }
 
         if (startLine < 0 || startColumn < 0 || endLine < 0 || endColumn < 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(startLine), "Line and column values cannot be negative.");
+            throw new System.ArgumentOutOfRangeException(nameof(startLine), "Line and column values cannot be negative.");
         }
 
         Kind = kind;
@@ -119,7 +119,10 @@ public sealed class CompilerSourceSpan : IEquatable<CompilerSourceSpan>
         return result;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerSourceSpan);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerSourceSpan);
+    }
 
     public override int GetHashCode()
     {
@@ -159,9 +162,15 @@ public sealed class CompilerDiagnosticContext : IEquatable<CompilerDiagnosticCon
         return result;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerDiagnosticContext);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerDiagnosticContext);
+    }
 
-    public override int GetHashCode() => CompilerStructural.Combine(17, Caller, Callee);
+    public override int GetHashCode()
+    {
+        return CompilerStructural.Combine(17, Caller, Callee);
+    }
 }
 
 /// <summary>One structured compiler diagnostic.</summary>
@@ -218,9 +227,15 @@ public sealed class CompilerDiagnostic : IEquatable<CompilerDiagnostic>
         return result;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerDiagnostic);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerDiagnostic);
+    }
 
-    public override int GetHashCode() => CompilerStructural.Combine(17, Code, Message, Stage, Severity, Span, Context);
+    public override int GetHashCode()
+    {
+        return CompilerStructural.Combine(17, Code, Message, Stage, Severity, Span, Context);
+    }
 }
 
 /// <summary>Immutable value-plus-diagnostics result returned by compiler operations.</summary>

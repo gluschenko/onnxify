@@ -7,11 +7,12 @@ using ICSharpCode.Decompiler.Metadata;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Onnxify.Compiler.Operators;
 using RoslynLanguageVersion = Microsoft.CodeAnalysis.CSharp.LanguageVersion;
 
 namespace Onnxify.Compiler;
 
-/// <summary>Сеанс импорта и генерации C# TorchSharp через общее промежуточное представление compiler.</summary>
+/// <summary>A session for importing and generating C# TorchSharp through the shared compiler intermediate representation.</summary>
 public sealed class CSharpCompilerSession : ICompilerSession
 {
     public CompilerResult<ICompilerTree> CreateTree(ICompilerSource source)
@@ -83,8 +84,8 @@ public sealed class CSharpCompilerSession : ICompilerSession
 internal static class CSharpCompilerFrontend
 {
     /// <summary>
-    /// Разбирает заданный исходник или декомпилирует указанный метод и преобразует его в промежуточное представление.
-    /// Ошибки анализа возвращаются как diagnostics, чтобы вызывающая сторона не зависела от Roslyn и ILSpy exceptions.
+    /// Parses the supplied source or decompiles the selected method and converts it to the compiler intermediate representation.
+    /// Analysis errors are returned as diagnostics so callers do not depend on Roslyn or ILSpy exceptions.
     /// </summary>
     public static CompilerResult<CompilerComputationTree> Import(CSharpTorchSharpSource source)
     {
@@ -124,8 +125,8 @@ internal static class CSharpCompilerFrontend
     }
 
     /// <summary>
-    /// Декомпилирует выбранный метод и объявленные локальные helpers в общий C# source tree для scanner.
-    /// Отдельная декомпиляция каждого метода сохраняет compiler-owned boundary и доступность helper bodies.
+    /// Decompiles the selected method and its declared local helpers into a shared C# source tree for the scanner.
+    /// Decompiling each method separately preserves the compiler-owned boundary and makes helper bodies available.
     /// </summary>
     private static CompilerResult<CompilerComputationTree> ImportCompiledModule(
         CompilerTorchSharpModuleDescriptor descriptor
@@ -506,8 +507,8 @@ internal sealed class CSharpSyntaxScanner
     }
 
     /// <summary>
-    /// Сканирует выбранный method body и переносит контракты, state и helper методы в промежуточное представление compiler.
-    /// Decompiler и Roslyn остаются внутри frontend boundary; наружу выходит только immutable tree.
+    /// Scans the selected method body and transfers its contracts, state, and helper methods into the compiler intermediate representation.
+    /// The decompiler and Roslyn remain inside the frontend boundary; only the compiler tree is exposed.
     /// </summary>
     public CompilerResult<CompilerComputationTree> Scan(
         MethodDeclarationSyntax method,
@@ -557,8 +558,8 @@ internal sealed class CSharpSyntaxScanner
     private bool TryLowerMappedOperation(
         MethodDeclarationSyntax method,
         CompilerBlockStatement body,
-        IReadOnlyList<ScanValue> inputs,
-        IReadOnlyList<ScanValue> outputs,
+        IReadOnlyList<CompilerScanValue> inputs,
+        IReadOnlyList<CompilerScanValue> outputs,
         IReadOnlyDictionary<string, CompilerComputationBlock> helperBlocks,
         CompilerComputationTreeBuilder builder
     )
@@ -585,426 +586,53 @@ internal sealed class CSharpSyntaxScanner
             return false;
         }
 
-        if (returnExpression is CompilerBinaryExpression binaryExpression
-            && CompilerOperatorMappingRegistry.TryGetTorchSharpBinaryOperator(
-                binaryExpression.Operator,
-                out var binaryMapping)
-            && binaryMapping is not null)
-        {
-            AddBinaryOperation(
-                method,
-                binaryExpression,
-                binaryMapping,
-                inputs,
-                outputs,
-                builder);
-            return true;
-        }
-
-        if (returnExpression is CompilerUnaryExpression unaryExpression
-            && CompilerOperatorMappingRegistry.TryGetTorchSharpUnaryOperator(
-                unaryExpression.Operator,
-                out var unaryMapping)
-            && unaryMapping is not null)
-        {
-            AddUnaryOperation(method, unaryExpression, unaryMapping, inputs, outputs, builder);
-            return true;
-        }
-
-        if (returnExpression is not CompilerInvocationExpression invocation)
+        if (returnExpression is null)
         {
             return false;
         }
 
-        if (TryGetReferenceName(invocation.Target, out var helperName)
+        CompilerOperator? compilerOperator = returnExpression switch
+        {
+            CompilerBinaryExpression binary when CompilerOperatorRegistry.TryGetTorchSharpBinaryOperator(binary.Operator, out var selected) => selected,
+            CompilerUnaryExpression unary when CompilerOperatorRegistry.TryGetTorchSharpUnaryOperator(unary.Operator, out var selected) => selected,
+            CompilerInvocationExpression invocation when CompilerOperatorRegistry.TryGetTorchSharpCall(invocation.Target, out var selected, out _) => selected,
+            _ => null,
+        };
+
+        if (compilerOperator is null && returnExpression is CompilerInvocationExpression helperInvocation
+            && TryGetReferenceName(helperInvocation.Target, out var helperName)
             && helperBlocks.TryGetValue(helperName, out var helper))
         {
-            AddHelperCall(method, helper, helperName, invocation, inputs, outputs, body, builder);
+            AddHelperCall(method, helper, helperName, helperInvocation, inputs, outputs, body, builder);
             return true;
         }
 
-        if (!CompilerOperatorMappingRegistry.TryGetTorchSharpCall(invocation.Target, out var mapping, out var receiver)
-            || mapping is null)
+        if (compilerOperator is null)
         {
             return false;
         }
 
-        if (mapping.OnnxName is "MatMul" or "Gemm")
-        {
-            AddMatrixOperation(method, invocation, mapping, receiver, inputs, outputs, builder);
-            return true;
-        }
-
-        var operationInputs = new List<CompilerExpression>();
-        if (receiver is not null)
-        {
-            operationInputs.Add(receiver);
-        }
-
-        var requiredInvocationInputs = mapping.InputCount - operationInputs.Count;
-        if (requiredInvocationInputs < 0
-            || invocation.Arguments.Count < requiredInvocationInputs
-            || invocation.Arguments.Count < requiredInvocationInputs + mapping.FixedTorchSharpArguments.Count
-            || invocation.Arguments.Count > requiredInvocationInputs + mapping.AttributeNames.Count + mapping.FixedTorchSharpArguments.Count
-            || outputs.Count != 1)
-        {
-            throw Unsupported(
-                method,
-                $"TorchSharp mapping '{mapping.TorchSharpNames[0]}' requires {(mapping.InputCount == 1 ? "one tensor input" : $"exactly {mapping.InputCount} tensor inputs")}, one output, and supported literal activation arguments.");
-        }
-
-        operationInputs.AddRange(invocation.Arguments.Take(requiredInvocationInputs));
-        var operationInputReferences = new List<CompilerValueReference>();
-        for (var index = 0; index < operationInputs.Count; index++)
-        {
-            var expression = operationInputs[index];
-            if (expression is CompilerReferenceExpression reference
-                && inputs.Any(input => string.Equals(input.Name, reference.Name, StringComparison.Ordinal)))
-            {
-                operationInputReferences.Add(new CompilerValueReference(reference.Name));
-                continue;
-            }
-
-            if (TryAddScalarInitializer(
-                method,
-                mapping,
-                index,
-                expression,
-                inputs,
-                builder,
-                out var initializerReference))
-            {
-                operationInputReferences.Add(initializerReference);
-                continue;
-            }
-
-            throw Unsupported(method, $"TorchSharp mapping '{mapping.TorchSharpNames[0]}' requires tensor inputs or scalar literal operands.");
-        }
-
-        var attributes = new List<CompilerAttribute>();
-        foreach (var (argument, index) in invocation.Arguments
-            .Skip(requiredInvocationInputs)
-            .Take(mapping.AttributeNames.Count)
-            .Select((argument, index) => (argument, index)))
-        {
-            if (mapping.OnnxName == "Cast"
-                && TryGetMemberPath(argument, out var castTypeName)
-                && TryGetCastType(castTypeName, out var onnxCastType))
-            {
-                attributes.Add(new CompilerAttribute(
-                    mapping.AttributeNames[index],
-                    new CompilerSignedIntegerLiteral(CompilerElementType.Int64, onnxCastType)));
-                continue;
-            }
-
-            if (argument is not CompilerLiteralExpression literalExpression)
-            {
-                throw Unsupported(method, $"TorchSharp mapping '{mapping.TorchSharpNames[0]}' requires compile-time literal activation arguments.");
-            }
-
-            attributes.Add(new CompilerAttribute(mapping.AttributeNames[index], literalExpression.Literal));
-        }
-
-        foreach (var (argument, index) in invocation.Arguments
-            .Skip(invocation.Arguments.Count - mapping.FixedTorchSharpArguments.Count)
-            .Select((argument, index) => (argument, index)))
-        {
-            if (argument is not CompilerLiteralExpression { Literal: CompilerFloatingPointLiteral fixedValue }
-                || (float)fixedValue.Value != mapping.FixedTorchSharpArguments[index])
-            {
-                throw Unsupported(method, $"TorchSharp mapping '{mapping.TorchSharpNames[0]}' only supports its fixed trailing arguments.");
-            }
-        }
-
-        builder.AddOperation(new CompilerOperation(
-            name: mapping.OnnxName.ToLowerInvariant(),
-            descriptor: mapping.Descriptor,
-            inputs: operationInputReferences,
-            outputs: [new CompilerValueReference(outputs[0].Name)],
-            attributes: attributes,
-            span: invocation.Span));
-        return true;
+        var invocationTarget = (returnExpression as CompilerInvocationExpression)?.Target;
+        var receiver = invocationTarget is not null
+            && CompilerOperatorRegistry.TryGetTorchSharpCall(invocationTarget, out _, out var callReceiver)
+                ? callReceiver
+                : null;
+        var callName = returnExpression is CompilerInvocationExpression namedInvocation
+            ? CompilerOperatorRegistry.GetTorchSharpCallName(namedInvocation.Target, receiver)
+            : string.Empty;
+        var context = new TorchSharpOperatorScanContext(
+            _document, method, inputs, outputs, builder,
+            returnExpression as CompilerInvocationExpression, receiver, callName);
+        return compilerOperator.TryScanTorchSharp(context, returnExpression);
     }
-
-    private void AddMatrixOperation(
-        MethodDeclarationSyntax method,
-        CompilerInvocationExpression invocation,
-        CompilerOperatorMapping mapping,
-        CompilerExpression? receiver,
-        IReadOnlyList<ScanValue> inputs,
-        IReadOnlyList<ScanValue> outputs,
-        CompilerComputationTreeBuilder builder
-    )
-    {
-        if (outputs.Count != 1)
-        {
-            throw Unsupported(method, $"TorchSharp mapping '{mapping.OnnxName}' requires exactly one output.");
-        }
-
-        var callName = CompilerOperatorMappingRegistry.GetTorchSharpCallName(invocation.Target, receiver);
-        var operationInputs = new List<CompilerValueReference>();
-        var attributes = new List<CompilerAttribute>();
-        if (mapping.OnnxName == "MatMul")
-        {
-            var operands = new List<CompilerExpression>();
-            if (receiver is not null)
-            {
-                operands.Add(receiver);
-            }
-
-            operands.AddRange(invocation.Arguments);
-            if (operands.Count != 2)
-            {
-                throw Unsupported(method, $"TorchSharp call '{callName}' requires exactly two tensor operands.");
-            }
-
-            operationInputs.AddRange(operands.Select(operand => RequireMatrixTensorReference(method, operand, inputs, callName)));
-        }
-        else if (callName == "torch.nn.functional.linear")
-        {
-            if (receiver is not null || invocation.Arguments.Count is < 2 or > 3)
-            {
-                throw Unsupported(method, "torch.nn.functional.linear requires input, weight, and an optional bias tensor.");
-            }
-
-            operationInputs.Add(RequireMatrixTensorReference(method, invocation.Arguments[0], inputs, callName));
-            operationInputs.Add(RequireMatrixTensorReference(method, invocation.Arguments[1], inputs, callName));
-            if (invocation.Arguments.Count == 3)
-            {
-                operationInputs.Add(RequireMatrixTensorReference(method, invocation.Arguments[2], inputs, callName));
-            }
-
-            attributes.Add(IntegerAttribute("transB", 1));
-        }
-        else
-        {
-            var arguments = new List<CompilerExpression>();
-            if (receiver is not null)
-            {
-                arguments.Add(receiver);
-            }
-
-            arguments.AddRange(invocation.Arguments);
-            if (arguments.Count is < 3 or > 5)
-            {
-                throw Unsupported(method, "torch.addmm requires input, mat1, mat2, and optional constant beta and alpha values.");
-            }
-
-            var c = RequireMatrixTensorReference(method, arguments[0], inputs, callName);
-            var a = RequireMatrixTensorReference(method, arguments[1], inputs, callName);
-            var b = RequireMatrixTensorReference(method, arguments[2], inputs, callName);
-            operationInputs.Add(a);
-            operationInputs.Add(b);
-            operationInputs.Add(c);
-            var beta = arguments.Count >= 4 ? RequireNumericLiteral(method, arguments[3], "beta") : 1f;
-            var alpha = arguments.Count >= 5 ? RequireNumericLiteral(method, arguments[4], "alpha") : 1f;
-            attributes.Add(FloatAttribute("alpha", alpha));
-            attributes.Add(FloatAttribute("beta", beta));
-        }
-
-        builder.AddOperation(new CompilerOperation(
-            name: mapping.OnnxName.ToLowerInvariant(),
-            descriptor: mapping.Descriptor,
-            inputs: operationInputs,
-            outputs: [new CompilerValueReference(outputs[0].Name)],
-            attributes: attributes,
-            span: invocation.Span));
-    }
-
-    private CompilerValueReference RequireMatrixTensorReference(
-        MethodDeclarationSyntax method,
-        CompilerExpression expression,
-        IReadOnlyList<ScanValue> inputs,
-        string callName
-    )
-    {
-        if (expression is CompilerReferenceExpression reference
-            && inputs.Any(input => string.Equals(input.Name, reference.Name, StringComparison.Ordinal)))
-        {
-            return new CompilerValueReference(reference.Name);
-        }
-
-        throw Unsupported(method, $"TorchSharp call '{callName}' requires tensor parameters for its matrix operands.");
-    }
-
-    private float RequireNumericLiteral(MethodDeclarationSyntax method, CompilerExpression expression, string parameterName)
-    {
-        if (expression is CompilerLiteralExpression literal)
-        {
-            return literal.Literal switch
-            {
-                CompilerFloatingPointLiteral floatingPoint => (float)floatingPoint.Value,
-                CompilerSignedIntegerLiteral integer => integer.Value,
-                CompilerUnsignedIntegerLiteral integer => integer.Value,
-                _ => throw Unsupported(method, $"Gemm parameter '{parameterName}' must be a numeric compile-time constant."),
-            };
-        }
-
-        throw Unsupported(method, $"Gemm parameter '{parameterName}' must be a numeric compile-time constant.");
-    }
-
-    private static CompilerAttribute FloatAttribute(string name, float value) => new(
-        name,
-        new CompilerFloatingPointLiteral(CompilerElementType.Float32, value));
-
-    private static CompilerAttribute IntegerAttribute(string name, long value) => new(
-        name,
-        new CompilerSignedIntegerLiteral(CompilerElementType.Int64, value));
-
-    private void AddBinaryOperation(
-        MethodDeclarationSyntax method,
-        CompilerBinaryExpression expression,
-        CompilerOperatorMapping mapping,
-        IReadOnlyList<ScanValue> inputs,
-        IReadOnlyList<ScanValue> outputs,
-        CompilerComputationTreeBuilder builder
-    )
-    {
-        if (mapping.InputCount != 2 || outputs.Count != 1)
-        {
-            throw Unsupported(method, $"TorchSharp operator mapping '{mapping.OnnxName}' requires two inputs and one output.");
-        }
-
-        var inputExpressions = new[] { expression.Left, expression.Right };
-        var references = new List<CompilerValueReference>();
-        foreach (var (inputExpression, index) in inputExpressions.Select((value, index) => (value, index)))
-        {
-            if (inputExpression is CompilerReferenceExpression reference
-                && inputs.Any(input => string.Equals(input.Name, reference.Name, StringComparison.Ordinal)))
-            {
-                references.Add(new CompilerValueReference(reference.Name));
-                continue;
-            }
-
-            if (TryAddScalarInitializer(method, mapping, index, inputExpression, inputs, builder, out var initializerReference))
-            {
-                references.Add(initializerReference);
-                continue;
-            }
-
-            throw Unsupported(method, $"TorchSharp operator mapping '{mapping.OnnxName}' requires tensor inputs or a scalar literal paired with a tensor input.");
-        }
-
-        if (references.Count != 2)
-        {
-            throw Unsupported(method, $"TorchSharp operator mapping '{mapping.OnnxName}' requires at least one tensor input.");
-        }
-
-        builder.AddOperation(new CompilerOperation(
-            name: mapping.OnnxName.ToLowerInvariant(),
-            descriptor: mapping.Descriptor,
-            inputs: references,
-            outputs: [new CompilerValueReference(outputs[0].Name)],
-            span: expression.Span));
-    }
-
-    private void AddUnaryOperation(
-        MethodDeclarationSyntax method,
-        CompilerUnaryExpression expression,
-        CompilerOperatorMapping mapping,
-        IReadOnlyList<ScanValue> inputs,
-        IReadOnlyList<ScanValue> outputs,
-        CompilerComputationTreeBuilder builder
-    )
-    {
-        if (mapping.InputCount != 1
-            || outputs.Count != 1
-            || expression.Expression is not CompilerReferenceExpression reference
-            || !inputs.Any(input => string.Equals(input.Name, reference.Name, StringComparison.Ordinal)))
-        {
-            throw Unsupported(method, $"TorchSharp operator mapping '{mapping.OnnxName}' requires one tensor input and one output.");
-        }
-
-        builder.AddOperation(new CompilerOperation(
-            name: mapping.OnnxName.ToLowerInvariant(),
-            descriptor: mapping.Descriptor,
-            inputs: [new CompilerValueReference(reference.Name)],
-            outputs: [new CompilerValueReference(outputs[0].Name)],
-            span: expression.Span));
-    }
-
-    private bool TryAddScalarInitializer(
-        MethodDeclarationSyntax method,
-        CompilerOperatorMapping mapping,
-        int index,
-        CompilerExpression expression,
-        IReadOnlyList<ScanValue> inputs,
-        CompilerComputationTreeBuilder builder,
-        out CompilerValueReference reference
-    )
-    {
-        if (expression is CompilerLiteralExpression { Literal: CompilerScalarLiteral scalarLiteral })
-        {
-            var elementType = inputs
-                .Select(input => input.Type)
-                .OfType<CompilerTensorType>()
-                .Select(tensorType => (CompilerElementType?)tensorType.ElementType)
-                .FirstOrDefault();
-            if (elementType is null)
-            {
-                throw Unsupported(method, $"TorchSharp mapping '{mapping.OnnxName}' cannot infer scalar dtype without a tensor parameter.");
-            }
-
-            var name = $"__{mapping.OnnxName.ToLowerInvariant()}_scalar{index}";
-            var value = ConvertScalarLiteral(scalarLiteral, elementType.Value, method);
-            var tensorLiteral = new CompilerTensorLiteral(
-                elementType.Value,
-                Array.Empty<CompilerDimension>(),
-                [value]);
-            builder.AddStateMember(new CompilerStateMember(
-                name,
-                CompilerStateMemberKind.Initializer,
-                new CompilerTensorType(elementType.Value, Array.Empty<CompilerDimension>()),
-                tensorLiteral));
-            reference = new CompilerValueReference(name);
-            return true;
-        }
-
-        reference = null!;
-        return false;
-    }
-
-    private CompilerScalarLiteral ConvertScalarLiteral(
-        CompilerScalarLiteral literal,
-        CompilerElementType targetType,
-        SyntaxNode source
-    )
-    {
-        try
-        {
-            return targetType switch
-            {
-                CompilerElementType.Float16 or CompilerElementType.BFloat16 or CompilerElementType.Float32 or CompilerElementType.Float64
-                    => new CompilerFloatingPointLiteral(targetType, Convert.ToDouble(ScalarValue(literal), CultureInfo.InvariantCulture)),
-                CompilerElementType.Int8 or CompilerElementType.Int16 or CompilerElementType.Int32 or CompilerElementType.Int64
-                    => new CompilerSignedIntegerLiteral(targetType, Convert.ToInt64(ScalarValue(literal), CultureInfo.InvariantCulture)),
-                CompilerElementType.UInt8 or CompilerElementType.UInt16 or CompilerElementType.UInt32 or CompilerElementType.UInt64
-                    => new CompilerUnsignedIntegerLiteral(targetType, Convert.ToUInt64(ScalarValue(literal), CultureInfo.InvariantCulture)),
-                _ => throw Unsupported(source, $"Scalar operands are unsupported for tensor element type '{targetType}'."),
-            };
-        }
-        catch (Exception exception) when (exception is FormatException or InvalidCastException or OverflowException)
-        {
-            throw Unsupported(source, $"Scalar operand cannot be represented as '{targetType}'.");
-        }
-    }
-
-    private static object ScalarValue(CompilerScalarLiteral literal) => literal switch
-    {
-        CompilerBooleanLiteral boolean => boolean.Value,
-        CompilerSignedIntegerLiteral integer => integer.Value,
-        CompilerUnsignedIntegerLiteral integer => integer.Value,
-        CompilerFloatingPointLiteral floating => floating.Value,
-        _ => throw new InvalidCastException(),
-    };
 
     private void AddHelperCall(
         MethodDeclarationSyntax method,
         CompilerComputationBlock helper,
         string helperName,
         CompilerInvocationExpression invocation,
-        IReadOnlyList<ScanValue> inputs,
-        IReadOnlyList<ScanValue> outputs,
+        IReadOnlyList<CompilerScanValue> inputs,
+        IReadOnlyList<CompilerScanValue> outputs,
         CompilerBlockStatement body,
         CompilerComputationTreeBuilder builder
     )
@@ -1122,8 +750,8 @@ internal sealed class CSharpSyntaxScanner
 
     private void RegisterValueContracts(
         CompilerComputationTreeBuilder builder,
-        IReadOnlyList<ScanValue> inputs,
-        IReadOnlyList<ScanValue> outputs
+        IReadOnlyList<CompilerScanValue> inputs,
+        IReadOnlyList<CompilerScanValue> outputs
     )
     {
         foreach (var input in inputs)
@@ -1212,15 +840,15 @@ internal sealed class CSharpSyntaxScanner
         return result;
     }
 
-    private static (IReadOnlyList<ScanValue> Inputs, IReadOnlyList<ScanValue> Outputs) ApplyOperatorTypeContracts(
+    private static (IReadOnlyList<CompilerScanValue> Inputs, IReadOnlyList<CompilerScanValue> Outputs) ApplyOperatorTypeContracts(
         CompilerBlockStatement body,
-        IReadOnlyList<ScanValue> inputs,
-        IReadOnlyList<ScanValue> outputs
+        IReadOnlyList<CompilerScanValue> inputs,
+        IReadOnlyList<CompilerScanValue> outputs
     )
     {
         if (!TryGetStaticReturnExpression(body, out var returnExpression)
             || returnExpression is not CompilerInvocationExpression invocation
-            || !CompilerOperatorMappingRegistry.TryGetTorchSharpCall(invocation.Target, out var mapping, out var receiver)
+            || !CompilerOperatorRegistry.TryGetTorchSharpCall(invocation.Target, out var mapping, out var receiver)
             || mapping is null)
         {
             return (inputs, outputs);
@@ -1244,22 +872,16 @@ internal sealed class CSharpSyntaxScanner
                 continue;
             }
 
-            typedInputs[reference.Name] = new ScanValue(
+            typedInputs[reference.Name] = new CompilerScanValue(
                 input.Name,
                 new CompilerTensorType(elementType, tensorType.Dimensions, tensorType.Denotation),
                 input.NameNode,
                 input.CSharpTypeName);
         }
 
-        var castOutputType = mapping.OnnxName == "Cast"
-            && invocation.Arguments.Count == 1
-            && TryGetMemberPath(invocation.Arguments[0], out var targetTypeName)
-            && TryGetCastType(targetTypeName, out var castTypeCode)
-                ? CompilerElementTypeFromOnnxCastCode(castTypeCode)
-                : (CompilerElementType?)null;
-        var outputElementType = castOutputType ?? mapping.OutputElementType;
+        var outputElementType = mapping.GetTorchSharpOutputElementType(invocation);
         var typedOutputs = outputElementType is { } outputType && outputs.Count == 1
-            ? [new ScanValue(
+            ? [new CompilerScanValue(
                 outputs[0].Name,
                 new CompilerTensorType(
                     outputType,
@@ -1268,29 +890,6 @@ internal sealed class CSharpSyntaxScanner
                 outputs[0].CSharpTypeName)]
             : outputs;
         return (inputs.Select(input => typedInputs[input.Name]).ToArray(), typedOutputs);
-    }
-
-    private static bool TryGetCastType(string memberPath, out long onnxType)
-    {
-        var typeName = memberPath.Split('.').Last();
-        (onnxType, _) = typeName switch
-        {
-            "Float32" or "Float" => (1L, true),
-            "UInt8" or "Byte" => (2L, true),
-            "Int8" or "SByte" => (3L, true),
-            "UInt16" => (4L, true),
-            "Int16" or "Short" => (5L, true),
-            "Int32" or "Int" => (6L, true),
-            "Int64" or "Long" => (7L, true),
-            "Bool" or "Boolean" => (9L, true),
-            "Float16" or "Half" => (10L, true),
-            "Float64" or "Double" => (11L, true),
-            "UInt32" => (12L, true),
-            "UInt64" => (13L, true),
-            "BFloat16" => (16L, true),
-            _ => (0L, false),
-        };
-        return onnxType != 0;
     }
 
     private static bool TryGetMemberPath(CompilerExpression expression, out string path)
@@ -1309,23 +908,27 @@ internal sealed class CSharpSyntaxScanner
         }
     }
 
-    private static CompilerElementType CompilerElementTypeFromOnnxCastCode(long onnxType) => onnxType switch
+    private static CompilerElementType CompilerElementTypeFromOnnxCastCode(long onnxType)
     {
-        1 => CompilerElementType.Float32,
-        2 => CompilerElementType.UInt8,
-        3 => CompilerElementType.Int8,
-        4 => CompilerElementType.UInt16,
-        5 => CompilerElementType.Int16,
-        6 => CompilerElementType.Int32,
-        7 => CompilerElementType.Int64,
-        9 => CompilerElementType.Boolean,
-        10 => CompilerElementType.Float16,
-        11 => CompilerElementType.Float64,
-        12 => CompilerElementType.UInt32,
-        13 => CompilerElementType.UInt64,
-        16 => CompilerElementType.BFloat16,
-        _ => CompilerElementType.Unknown,
-    };
+        var result = onnxType switch
+        {
+            1 => CompilerElementType.Float32,
+            2 => CompilerElementType.UInt8,
+            3 => CompilerElementType.Int8,
+            4 => CompilerElementType.UInt16,
+            5 => CompilerElementType.Int16,
+            6 => CompilerElementType.Int32,
+            7 => CompilerElementType.Int64,
+            9 => CompilerElementType.Boolean,
+            10 => CompilerElementType.Float16,
+            11 => CompilerElementType.Float64,
+            12 => CompilerElementType.UInt32,
+            13 => CompilerElementType.UInt64,
+            16 => CompilerElementType.BFloat16,
+            _ => CompilerElementType.Unknown,
+        };
+        return result;
+    }
 
     private static string CSharpTypeName(CompilerType type)
     {
@@ -1443,7 +1046,7 @@ internal sealed class CSharpSyntaxScanner
         return false;
     }
 
-    private IReadOnlyList<ScanValue> GetInputs(
+    private IReadOnlyList<CompilerScanValue> GetInputs(
         MethodDeclarationSyntax method,
         CompilerTorchSharpModuleDescriptor? descriptor
     )
@@ -1454,7 +1057,7 @@ internal sealed class CSharpSyntaxScanner
                 (parameter, index) =>
                 {
                     var contract = index < contracts.Count ? contracts[index] : null;
-                    return new ScanValue(
+                    return new CompilerScanValue(
                         parameter.Identifier.ValueText,
                         contract?.Type ?? InferType(parameter.Type?.ToString()),
                         parameter,
@@ -1464,7 +1067,7 @@ internal sealed class CSharpSyntaxScanner
         return result;
     }
 
-    private IReadOnlyList<ScanValue> GetOutputs(
+    private IReadOnlyList<CompilerScanValue> GetOutputs(
         MethodDeclarationSyntax method,
         CompilerTorchSharpModuleDescriptor? descriptor
     )
@@ -1472,7 +1075,7 @@ internal sealed class CSharpSyntaxScanner
         if (descriptor?.Outputs is { Count: > 0 })
         {
             return descriptor.Outputs
-                .Select(x => new ScanValue(x.Name, x.Type, null, x.CSharpTypeName))
+                .Select(x => new CompilerScanValue(x.Name, x.Type, null, x.CSharpTypeName))
                 .ToArray();
         }
 
@@ -1485,11 +1088,11 @@ internal sealed class CSharpSyntaxScanner
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .ToArray();
             return Enumerable.Range(0, parts.Length)
-                .Select(index => new ScanValue($"output{index}", InferType(parts[index]), null, parts[index]))
+                .Select(index => new CompilerScanValue($"output{index}", InferType(parts[index]), null, parts[index]))
                 .ToArray();
         }
 
-        return [new ScanValue("output", InferType(returnType), null, returnType)];
+        return [new CompilerScanValue("output", InferType(returnType), null, returnType)];
     }
 
     private CompilerBlockStatement ScanBody(MethodDeclarationSyntax method)
@@ -1513,8 +1116,8 @@ internal sealed class CSharpSyntaxScanner
     }
 
     /// <summary>
-    /// Преобразует C# statement наиболее конкретным syntax-путём и сразу отклоняет динамические конструкции.
-    /// Такое dispatch сохраняет порядок statements и не маскирует неподдерживаемый код как opaque node.
+    /// Converts a C# statement through the most specific syntax path and immediately rejects dynamic constructs.
+    /// This dispatch preserves statement order and does not disguise unsupported code as an opaque node.
     /// </summary>
     private CompilerStatement ScanStatement(StatementSyntax statement)
     {
@@ -1778,8 +1381,8 @@ internal sealed class CSharpSyntaxScanner
     }
 
     /// <summary>
-    /// Преобразует поддержанные C# expressions в compiler-owned представление C# syntax с исходными spans.
-    /// Нераспознанные формы завершаются диагностикой на этапе Analyze, а не теряются при генерации.
+    /// Converts supported C# expressions into a compiler-owned representation of C# syntax with source spans.
+    /// Unrecognized forms produce an Analyze diagnostic instead of being lost during generation.
     /// </summary>
     private CompilerExpression ScanExpression(ExpressionSyntax expression)
     {
@@ -1891,7 +1494,8 @@ internal sealed class CSharpSyntaxScanner
         var named = arguments
             .Where(static argument => argument.NameColon is not null)
             .ToDictionary(
-                static argument => argument.NameColon!.Name.Identifier.ValueText,
+                argument => argument.NameColon?.Name.Identifier.ValueText
+                    ?? throw Unsupported(argument, "Named Gemm arguments must have a name."),
                 argument => ScanExpression(argument.Expression),
                 StringComparer.Ordinal);
         if (positional.Length < tensorArgumentCount
@@ -1918,8 +1522,12 @@ internal sealed class CSharpSyntaxScanner
         return normalized;
     }
 
-    private static CompilerExpression FloatLiteral(float value) => new CompilerLiteralExpression(
-        new CompilerFloatingPointLiteral(CompilerElementType.Float32, value));
+    private static CompilerExpression FloatLiteral(float value)
+    {
+        var result = new CompilerLiteralExpression(
+            new CompilerFloatingPointLiteral(CompilerElementType.Float32, value));
+        return result;
+    }
 
     private static bool TryGetSyntaxMemberPath(ExpressionSyntax expression, out string path)
     {
@@ -2043,8 +1651,8 @@ internal sealed class CSharpSyntaxScanner
     private void AddDeclaredValues(
         CompilerComputationTreeBuilder builder,
         CompilerBlockStatement body,
-        IReadOnlyList<ScanValue> inputs,
-        IReadOnlyList<ScanValue> outputs,
+        IReadOnlyList<CompilerScanValue> inputs,
+        IReadOnlyList<CompilerScanValue> outputs,
         CompilerTorchSharpModuleDescriptor? descriptor
     )
     {
@@ -2102,7 +1710,10 @@ internal sealed class CSharpSyntaxScanner
         }
     }
 
-    private CompilerSourceSpan Span(SyntaxNode node) => CSharpCompilerFrontend.Span(_document, node.GetLocation());
+    private CompilerSourceSpan Span(SyntaxNode node)
+    {
+        return CSharpCompilerFrontend.Span(_document, node.GetLocation());
+    }
 
     private CSharpCompilerDiagnosticException Unsupported(SyntaxNode node, string message)
     {
@@ -2146,9 +1757,9 @@ internal sealed class CSharpSyntaxScanner
         };
     }
 
-    private sealed class ScanValue
+    internal sealed class CompilerScanValue
     {
-        public ScanValue(
+        public CompilerScanValue(
             string name,
             CompilerType type,
             SyntaxNode? nameNode,
@@ -2198,8 +1809,8 @@ internal sealed class CSharpCompilerDiagnosticException : Exception
 internal static class CSharpCompilerBackend
 {
     /// <summary>
-    /// Генерирует исходный TorchSharp-класс из представления C# syntax и возвращает diagnostics для конструкций без C# mapping.
-    /// Проверка до печати не даёт случайно представить ONNX operations как исполняемый C# код.
+    /// Generates a TorchSharp class from the C# syntax representation and returns diagnostics for constructs without a C# mapping.
+    /// Validation before printing prevents ONNX operations from being accidentally emitted as executable C# code.
     /// </summary>
     public static CompilerResult<string> Generate(
         CompilerComputationTree tree,
@@ -2210,11 +1821,8 @@ internal static class CSharpCompilerBackend
         try
         {
             ValidateOptions(options);
-            if (tree.Operations.OfType<CompilerOperation>().Any(operation =>
-                !CompilerOperatorMappingRegistry.TryGetOnnx(
-                    operation.Descriptor.Domain,
-                    operation.Descriptor.Name,
-                    out var mapping)
+            if (tree.Operations.OfType<CompilerOnnxStep>().Any(operation =>
+                !CompilerOperatorRegistry.TryGetOnnx(operation.Node, out var mapping)
                 || mapping is null
                 || !mapping.Accepts(operation)))
             {
@@ -2294,8 +1902,8 @@ internal sealed class CSharpSourcePrinter
     }
 
     /// <summary>
-    /// Собирает C# модуль из compiler-owned промежуточного представления, сохраняя порядок блоков и инструкций.
-    /// Печать разделена по структуре класса, чтобы каждую часть генерации можно было менять независимо.
+    /// Builds a C# module from the compiler-owned intermediate representation while preserving block and instruction order.
+    /// Printing follows the class structure so each part of code generation can be changed independently.
     /// </summary>
     public string Print()
     {
@@ -2336,7 +1944,7 @@ internal sealed class CSharpSourcePrinter
         {
             var memberType = TypeName(member.Type);
             var memberValue = member.Value is null ? "default" : Literal(member.Value);
-            Line($"private {memberType} {member.Name} = {memberValue};");
+            Line($"private {memberType} {CompilerCSharpNaming.Identifier(member.Name)} = {memberValue};");
         }
 
         foreach (var child in _tree.Metadata.Where(x => x.Key.StartsWith("child:", StringComparison.Ordinal)))
@@ -2385,12 +1993,9 @@ internal sealed class CSharpSourcePrinter
     {
         foreach (var operation in _tree.Operations)
         {
-            if (operation is CompilerOperation mappedOperation)
+            if (operation is CompilerOnnxStep mappedOperation)
             {
-                if (!CompilerOperatorMappingRegistry.TryGetOnnx(
-                    mappedOperation.Descriptor.Domain,
-                    mappedOperation.Descriptor.Name,
-                    out var mapping)
+                if (!CompilerOperatorRegistry.TryGetOnnx(mappedOperation.Node, out var mapping)
                     || mapping is null
                     || mapping.Capability is not (CompilerOperationCapability.Bidirectional or CompilerOperationCapability.ImportOnly)
                     || !mapping.Accepts(mappedOperation))
@@ -2402,7 +2007,7 @@ internal sealed class CSharpSourcePrinter
                         span: mappedOperation.Span);
                 }
 
-                Line($"var {mappedOperation.Outputs[0].Name} = {mapping.EmitTorchSharpExpression(mappedOperation)};");
+                Line($"var {CompilerCSharpNaming.Identifier(mappedOperation.Outputs[0].Name)} = {mapping.PrintTorchSharp(mappedOperation)};");
                 continue;
             }
 
@@ -2418,12 +2023,12 @@ internal sealed class CSharpSourcePrinter
             var inputs = string.Join(", ", call.Arguments.Select(Expression));
             if (call.Outputs.Count == 1 && !call.Outputs[0].IsEmptyOptional)
             {
-                Line($"var {call.Outputs[0].Name} = {call.TargetBlock}({inputs});");
+                Line($"var {CompilerCSharpNaming.Identifier(call.Outputs[0].Name)} = {CompilerCSharpNaming.Identifier(call.TargetBlock)}({inputs});");
             }
             else
             {
-                var outputNames = string.Join(", ", call.Outputs.Where(x => !x.IsEmptyOptional).Select(x => x.Name));
-                Line($"var ({outputNames}) = {call.TargetBlock}({inputs});");
+                var outputNames = string.Join(", ", call.Outputs.Where(x => !x.IsEmptyOptional).Select(x => CompilerCSharpNaming.Identifier(x.Name)));
+                Line($"var ({outputNames}) = {CompilerCSharpNaming.Identifier(call.TargetBlock)}({inputs});");
             }
         }
 
@@ -2434,8 +2039,8 @@ internal sealed class CSharpSourcePrinter
         }
 
         var returnValue = finalOutputs.Length == 1
-            ? finalOutputs[0]
-            : $"({string.Join(", ", finalOutputs)})";
+            ? CompilerCSharpNaming.Identifier(finalOutputs[0])
+            : $"({string.Join(", ", finalOutputs.Select(CompilerCSharpNaming.Identifier))})";
         Line($"return {returnValue};");
 
         return true;
@@ -2449,7 +2054,7 @@ internal sealed class CSharpSourcePrinter
 
     private string InputParameters()
     {
-        var result = string.Join(", ", _tree.Inputs.Select(x => $"{TORCH_TENSOR_TYPE} {x.Name}"));
+        var result = string.Join(", ", _tree.Inputs.Select(x => $"{TORCH_TENSOR_TYPE} {CompilerCSharpNaming.Identifier(x.Name)}"));
         return result;
     }
 
@@ -2460,7 +2065,7 @@ internal sealed class CSharpSourcePrinter
             return TypeName(_tree.Outputs[0].Type);
         }
 
-        var result = $"({string.Join(", ", _tree.Outputs.Select(x => $"{TypeName(x.Type)} {x.Name}"))})";
+        var result = $"({string.Join(", ", _tree.Outputs.Select(x => $"{TypeName(x.Type)} {CompilerCSharpNaming.Identifier(x.Name)}"))})";
         return result;
     }
 
@@ -2497,10 +2102,10 @@ internal sealed class CSharpSourcePrinter
             .ToArray();
         var outputType = block.Outputs.Count == 1
             ? outputTypes[0]
-            : $"({string.Join(", ", block.Outputs.Select((output, index) => $"{outputTypes[index]} {output.Name}"))})";
+            : $"({string.Join(", ", block.Outputs.Select((output, index) => $"{outputTypes[index]} {CompilerCSharpNaming.Identifier(output.Name)}"))})";
         var inputParameters = block.Inputs
-            .Select((input, index) => $"{BlockValueType(block.Name, "input", index)} {input.Name}");
-        Line($"private {outputType} {block.Name}({string.Join(", ", inputParameters)})");
+            .Select((input, index) => $"{BlockValueType(block.Name, "input", index)} {CompilerCSharpNaming.Identifier(input.Name)}");
+        Line($"private {outputType} {CompilerCSharpNaming.Identifier(block.Name)}({string.Join(", ", inputParameters)})");
         Line("{");
         _indent++;
         PrintStatement(block.Body);
@@ -2584,7 +2189,7 @@ internal sealed class CSharpSourcePrinter
     {
         return expression switch
         {
-            CompilerReferenceExpression reference => reference.Name,
+            CompilerReferenceExpression reference => CompilerCSharpNaming.Identifier(reference.Name),
             CompilerLiteralExpression literal => Literal(literal.Literal),
             CompilerArrayExpression array => $"new[] {{ {string.Join(", ", array.Items.Select(Expression))} }}",
             CompilerTupleExpression tuple => $"({string.Join(", ", tuple.Items.Select(Expression))})",
@@ -2693,5 +2298,8 @@ internal sealed class CSharpSourcePrinter
         _builder.AppendLine(value);
     }
 
-    private static string Escape(string value) => value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+    private static string Escape(string value)
+    {
+        return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+    }
 }

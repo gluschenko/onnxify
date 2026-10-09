@@ -1,4 +1,4 @@
-namespace Onnxify.Compiler;
+﻿namespace Onnxify.Compiler;
 
 /// <summary>Immutable ONNX operator-set import metadata.</summary>
 public sealed class CompilerOpsetImport : IEquatable<CompilerOpsetImport>
@@ -20,9 +20,15 @@ public sealed class CompilerOpsetImport : IEquatable<CompilerOpsetImport>
             && Version == other.Version;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerOpsetImport);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerOpsetImport);
+    }
 
-    public override int GetHashCode() => CompilerStructural.Combine(17, Domain, Version);
+    public override int GetHashCode()
+    {
+        return CompilerStructural.Combine(17, Domain, Version);
+    }
 }
 
 /// <summary>Immutable graph quantization annotation metadata.</summary>
@@ -60,12 +66,19 @@ public sealed class CompilerQuantizationAnnotation : IEquatable<CompilerQuantiza
             && CompilerStructural.SequenceEqual(ParameterTensorNames, other.ParameterTensorNames);
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerQuantizationAnnotation);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerQuantizationAnnotation);
+    }
 
-    public override int GetHashCode() => CompilerStructural.Combine(
-        17,
-        TensorName,
-        CompilerStructural.GetHashCode(ParameterTensorNames));
+    public override int GetHashCode()
+    {
+        var result = CompilerStructural.Combine(
+            17,
+            TensorName,
+            CompilerStructural.GetHashCode(ParameterTensorNames));
+        return result;
+    }
 }
 
 /// <summary>Immutable model-level metadata carried alongside the main compiler graph.</summary>
@@ -135,16 +148,23 @@ public sealed class CompilerModelEnvelope : IEquatable<CompilerModelEnvelope>
             && CompilerStructural.SequenceEqual(OpsetImports, other.OpsetImports);
     }
 
-    public override bool Equals(object? obj) => Equals(obj as CompilerModelEnvelope);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as CompilerModelEnvelope);
+    }
 
-    public override int GetHashCode() => CompilerStructural.Combine(
-        17,
-        ProducerName,
-        ProducerVersion,
-        ModelVersion,
-        IntermediateRepresentationVersion,
-        Document,
-        Domain,
-        CompilerStructural.GetHashCode(Metadata),
-        CompilerStructural.GetHashCode(OpsetImports));
+    public override int GetHashCode()
+    {
+        var result = CompilerStructural.Combine(
+            17,
+            ProducerName,
+            ProducerVersion,
+            ModelVersion,
+            IntermediateRepresentationVersion,
+            Document,
+            Domain,
+            CompilerStructural.GetHashCode(Metadata),
+            CompilerStructural.GetHashCode(OpsetImports));
+        return result;
+    }
 }
