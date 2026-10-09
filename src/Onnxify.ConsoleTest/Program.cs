@@ -1,7 +1,11 @@
 ﻿using System.Globalization;
+using System.Runtime.Loader;
 using System.Text;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Onnxify.Compiler;
 using Onnxify.HuggingFace;
 using Onnxify.ProjectGenerator;
 using Onnxify.Safetensors;
@@ -38,6 +42,194 @@ namespace Onnxify.ConsoleTest
             {
                 Console.WriteLine("Press any key to pay respect...");
                 Console.ReadKey();
+            }
+        }
+
+        private static void RunCompilerMobileNetRoundTrip()
+        {
+            var sourcePath = Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory,
+                "Assets",
+                "mobilenet_v2_1.4_224.onnx");
+            if (!File.Exists(sourcePath))
+            {
+                throw new FileNotFoundException("MobileNet compiler fixture was not copied to output.", sourcePath);
+            }
+
+            var imported = global::Onnxify.Compiler.Compiler.CreateTreeFromOnnx(sourcePath);
+            if (!imported.IsSuccess || imported.Value is not CompilerComputationTree tree)
+            {
+                throw new InvalidOperationException(FormatCompilerDiagnostics(imported.Diagnostics));
+            }
+
+            var steps = tree.Operations.OfType<CompilerOnnxStep>().ToArray();
+            if (steps.Length != 100
+                || steps.Count(static step => step.Node is global::Onnxify.Conv) != 52
+                || steps.Count(static step => step.Node is global::Onnxify.Clip) != 35
+                || steps.Count(static step => step.Node is global::Onnxify.GlobalAveragePool) != 1)
+            {
+                throw new InvalidOperationException($"Unexpected compiler mapping counts for {sourcePath}.");
+            }
+
+            var generated = global::Onnxify.Compiler.Compiler.GenerateCSharp(tree, new CompilerCSharpGenerationOptions
+            {
+                Namespace = "Onnxify.ConsoleTest.GeneratedMobileNet",
+                ClassName = "GeneratedMobileNetModule",
+                ModuleName = "generated-mobilenet",
+            });
+            if (!generated.IsSuccess || generated.Value is null)
+            {
+                throw new InvalidOperationException(FormatCompilerDiagnostics(generated.Diagnostics));
+            }
+
+            var generatedModule = CompileGeneratedModule(generated.Value);
+            var inputValues = Enumerable.Range(0, 3 * 224 * 224)
+                .Select(static index => (float)(Math.Sin(index * 0.017) * 0.75))
+                .ToArray();
+
+            try
+            {
+                var generatedValues = ExecuteGeneratedModule(generatedModule, inputValues);
+                var originalValues = ExecuteOnnx(sourcePath, inputValues);
+                AssertOutputsClose("source ONNX", originalValues, generatedValues);
+
+                Console.WriteLine($"Compiler imported {steps.Length} typed ONNX nodes.");
+                Console.WriteLine($"Generated TorchSharp output count: {generatedValues.Length}");
+                Console.WriteLine("Generated TorchSharp output matches the source model.");
+            }
+            finally
+            {
+                generatedModule.Dispose();
+            }
+
+            RunCompilerTorchSharpSourceRoundTrip();
+        }
+
+        private static void RunCompilerTorchSharpSourceRoundTrip()
+        {
+            var source = new CSharpTorchSharpSource(
+                """
+                public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input)
+                {
+                    return torch.nn.functional.relu(input);
+                }
+                """);
+            var imported = global::Onnxify.Compiler.Compiler.CreateTreeFromTorchSharp(source);
+            if (!imported.IsSuccess || imported.Value is not CompilerComputationTree tree)
+            {
+                throw new InvalidOperationException(FormatCompilerDiagnostics(imported.Diagnostics));
+            }
+
+            var steps = tree.Operations.OfType<CompilerOnnxStep>().ToArray();
+            if (steps.Length != 1 || steps[0].Node is not global::Onnxify.Relu)
+            {
+                throw new InvalidOperationException("TorchSharp source did not lower to the expected typed Relu node.");
+            }
+
+            var emitted = global::Onnxify.Compiler.Compiler.GenerateOnnx(tree);
+            if (!emitted.IsSuccess || emitted.Value is null)
+            {
+                throw new InvalidOperationException(FormatCompilerDiagnostics(emitted.Diagnostics));
+            }
+
+            var modelPath = Path.Combine(Path.GetTempPath(), $"onnxify-console-torchsharp-{Guid.NewGuid():N}.onnx");
+            float[] inputValues = [-3f, -1f, 0.25f, 2f];
+            try
+            {
+                emitted.Value.Save(modelPath, overwrite: true);
+                var onnxValues = ExecuteOnnx(modelPath, inputValues, "input", [4]);
+                using var torchInput = torch.tensor(inputValues, [4L], dtype: ScalarType.Float32);
+                using var torchOutput = torch.nn.functional.relu(torchInput);
+                AssertOutputsClose("TorchSharp source export", torchOutput.data<float>().ToArray(), onnxValues);
+                Console.WriteLine("TorchSharp C# source -> compiler tree -> ONNX Runtime round-trip passed.");
+            }
+            finally
+            {
+                if (File.Exists(modelPath))
+                {
+                    File.Delete(modelPath);
+                }
+            }
+        }
+
+        private static string FormatCompilerDiagnostics(IReadOnlyList<CompilerDiagnostic> diagnostics)
+        {
+            return string.Join(
+                Environment.NewLine,
+                diagnostics.Select(static diagnostic =>
+                    $"{diagnostic.Severity} {diagnostic.Code}: {diagnostic.Message}"));
+        }
+
+        private static IDisposable CompileGeneratedModule(string source)
+        {
+            var references = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))!
+                .Split(Path.PathSeparator)
+                .Select(static path => MetadataReference.CreateFromFile(path))
+                .Append(MetadataReference.CreateFromFile(typeof(torch.Tensor).Assembly.Location));
+            var compilation = CSharpCompilation.Create(
+                $"Onnxify.ConsoleTest.MobileNet.{Guid.NewGuid():N}",
+                [CSharpSyntaxTree.ParseText(source)],
+                references,
+                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            using var assemblyBytes = new MemoryStream();
+            var emit = compilation.Emit(assemblyBytes);
+            if (!emit.Success)
+            {
+                throw new InvalidOperationException(string.Join(
+                    Environment.NewLine,
+                    emit.Diagnostics.Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)));
+            }
+
+            assemblyBytes.Position = 0;
+            var assembly = AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
+            var moduleType = assembly.GetTypes().Single(static type => type.Name == "GeneratedMobileNetModule");
+            return (IDisposable)Activator.CreateInstance(moduleType, "generated-mobilenet")!;
+        }
+
+        private static float[] ExecuteGeneratedModule(IDisposable module, float[] inputValues)
+        {
+            using var input = torch.tensor(
+                inputValues,
+                [1L, 3L, 224L, 224L],
+                dtype: ScalarType.Float32);
+            using var output = (torch.Tensor)module.GetType()
+                .GetMethod("forward")!
+                .Invoke(module, [input])!;
+            return output.data<float>().ToArray();
+        }
+
+        private static float[] ExecuteOnnx(
+            string modelPath,
+            float[] inputValues,
+            string inputName = "pixel_values",
+            int[]? inputShape = null)
+        {
+            using var session = new InferenceSession(modelPath);
+            using var results = session.Run(
+            [
+                NamedOnnxValue.CreateFromTensor(
+                    inputName,
+                    new DenseTensor<float>(inputValues, inputShape ?? [1, 3, 224, 224])),
+            ]);
+            return results.Single().AsTensor<float>().ToArray();
+        }
+
+        private static void AssertOutputsClose(string label, IReadOnlyList<float> expected, IReadOnlyList<float> actual)
+        {
+            if (expected.Count != actual.Count)
+            {
+                throw new InvalidOperationException(
+                    $"{label} output count differed: expected {expected.Count}, got {actual.Count}.");
+            }
+
+            for (var index = 0; index < expected.Count; index++)
+            {
+                var tolerance = 0.001f + Math.Abs(expected[index]) * 0.0001f;
+                if (Math.Abs(expected[index] - actual[index]) > tolerance)
+                {
+                    throw new InvalidOperationException(
+                        $"{label} output element {index} differed: expected {expected[index]}, got {actual[index]}, tolerance {tolerance}.");
+                }
             }
         }
 
