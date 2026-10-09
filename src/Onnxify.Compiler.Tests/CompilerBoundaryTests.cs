@@ -264,11 +264,11 @@ public sealed class CompilerBoundaryTests
         builder.AddInput(new CompilerValue("input", type));
 
         Assert.Throws<ArgumentException>(() => builder.AddInput(new CompilerValue("input", type)));
-        Assert.Throws<ArgumentException>(() => builder.AddOperation(new CompilerOperation(
-            "add",
+        Assert.Throws<ArgumentException>(() => builder.AddOperation(new CompilerOnnxStep(
+            new OnnxNode("add", "Add", string.Empty, string.Empty,
+                [new OnnxEdge("missing")], [new OnnxEdge("input")], []),
             new CompilerOperatorDescriptor("Add", capability: CompilerOperationCapability.Bidirectional),
-            [new CompilerValueReference("missing")],
-            [new CompilerValueReference("input")])));
+            name: "add")));
     }
 
     [Fact]
@@ -330,17 +330,14 @@ public sealed class CompilerBoundaryTests
             [
                 new CompilerReturnStatement(new CompilerReferenceExpression("block_input")),
             ])));
-        builder.AddOperation(new CompilerOperation(
-            "add",
+        builder.AddOperation(new CompilerOnnxStep(
+            new OnnxNode("add", "Add", string.Empty, string.Empty,
+                [new OnnxEdge("input"), new OnnxEdge("weights")], [new OnnxEdge("hidden")], []),
             new CompilerOperatorDescriptor(
                 "Add",
                 capability: CompilerOperationCapability.Bidirectional,
                 constraints: ["broadcasting"]),
-            [new CompilerValueReference("input"), new CompilerValueReference("weights")],
-            [new CompilerValueReference("hidden")],
-            [new CompilerAttribute(
-                "alpha",
-                new CompilerFloatingPointLiteral(CompilerElementType.Float32, 1))]));
+            name: "add"));
         builder.AddOperation(new CompilerModuleCall(
             "identity",
             "identity_block",

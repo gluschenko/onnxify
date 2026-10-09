@@ -26,7 +26,7 @@ public sealed class MatrixMultiplicationCompilerTests
         var model = CreateMatMulModel(leftShape, rightShape);
         var imported = Compiler.CreateTreeFromOnnx(model);
         Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
-        var onnxOperation = Assert.IsType<CompilerOperation>(Assert.Single(imported.Value!.Operations));
+        var onnxOperation = Assert.IsType<CompilerOnnxStep>(Assert.Single(imported.Value!.Operations));
         Assert.Equal("MatMul", onnxOperation.Descriptor.Name);
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxOperation.Descriptor.Capability);
         var generated = Compiler.GenerateCSharp(imported.Value);
@@ -38,7 +38,7 @@ public sealed class MatrixMultiplicationCompilerTests
         var torchSource = $"public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor left, global::TorchSharp.torch.Tensor right) {{ return left.{methodName}(right); }}";
         var sourceTree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(torchSource));
         Assert.True(sourceTree.IsSuccess, FormatDiagnostics(sourceTree.Diagnostics));
-        var torchOperation = Assert.IsType<CompilerOperation>(Assert.Single(sourceTree.Value!.Operations));
+        var torchOperation = Assert.IsType<CompilerOnnxStep>(Assert.Single(sourceTree.Value!.Operations));
         Assert.Equal(onnxOperation.Descriptor, torchOperation.Descriptor);
         var emitted = Compiler.GenerateOnnx(sourceTree.Value);
         Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
@@ -54,11 +54,12 @@ public sealed class MatrixMultiplicationCompilerTests
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor bias, global::TorchSharp.torch.Tensor input, global::TorchSharp.torch.Tensor weight) { return torch.addmm(bias, input, weight, alpha: 0.5f, beta: 2f); }";
         var sourceTree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
         Assert.True(sourceTree.IsSuccess, FormatDiagnostics(sourceTree.Diagnostics));
-        var torchOperation = Assert.IsType<CompilerOperation>(Assert.Single(sourceTree.Value!.Operations));
+        var torchOperation = Assert.IsType<CompilerOnnxStep>(Assert.Single(sourceTree.Value!.Operations));
         Assert.Equal("Gemm", torchOperation.Descriptor.Name);
         Assert.Equal(["input", "weight", "bias"], torchOperation.Inputs.Select(static reference => reference.Name));
-        Assert.Equal(0.5f, Assert.IsType<CompilerFloatingPointLiteral>(torchOperation.Attributes.Single(static attribute => attribute.Name == "alpha").Value).Value);
-        Assert.Equal(2f, Assert.IsType<CompilerFloatingPointLiteral>(torchOperation.Attributes.Single(static attribute => attribute.Name == "beta").Value).Value);
+        var torchGemm = Assert.IsType<Onnxify.Gemm>(torchOperation.Node);
+        Assert.Equal(0.5f, torchGemm.Alpha);
+        Assert.Equal(2f, torchGemm.Beta);
         var emitted = Compiler.GenerateOnnx(sourceTree.Value);
         Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
         Assert.Equal("Gemm", Assert.Single(emitted.Value!.Graph.Nodes).OpType);
@@ -69,7 +70,7 @@ public sealed class MatrixMultiplicationCompilerTests
         var onnxModel = CreateGemmModel();
         var imported = Compiler.CreateTreeFromOnnx(onnxModel);
         Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
-        var importedOperation = Assert.IsType<CompilerOperation>(Assert.Single(imported.Value!.Operations));
+        var importedOperation = Assert.IsType<CompilerOnnxStep>(Assert.Single(imported.Value!.Operations));
         Assert.Equal("Gemm", importedOperation.Descriptor.Name);
         var generated = Compiler.GenerateCSharp(imported.Value);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
@@ -91,11 +92,10 @@ public sealed class MatrixMultiplicationCompilerTests
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input, global::TorchSharp.torch.Tensor weight, global::TorchSharp.torch.Tensor bias) { return torch.nn.functional.linear(input, weight, bias); }";
         var result = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
         Assert.True(result.IsSuccess, FormatDiagnostics(result.Diagnostics));
-        var operation = Assert.IsType<CompilerOperation>(Assert.Single(result.Value!.Operations));
+        var operation = Assert.IsType<CompilerOnnxStep>(Assert.Single(result.Value!.Operations));
         Assert.Equal("Gemm", operation.Descriptor.Name);
         Assert.Equal(["input", "weight", "bias"], operation.Inputs.Select(static reference => reference.Name));
-        Assert.Equal(1L, Assert.IsType<CompilerSignedIntegerLiteral>(Assert.Single(operation.Attributes).Value).Value);
-        Assert.Equal("transB", Assert.Single(operation.Attributes).Name);
+        Assert.Equal(1L, Assert.IsType<Onnxify.Gemm>(operation.Node).TransB);
         var emitted = Compiler.GenerateOnnx(result.Value);
         Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
         Assert.Equal("Gemm", Assert.Single(emitted.Value!.Graph.Nodes).OpType);
@@ -118,10 +118,10 @@ public sealed class MatrixMultiplicationCompilerTests
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input, global::TorchSharp.torch.Tensor weight) { return torch.nn.functional.linear(input, weight); }";
         var tree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
         Assert.True(tree.IsSuccess, FormatDiagnostics(tree.Diagnostics));
-        var operation = Assert.IsType<CompilerOperation>(Assert.Single(tree.Value!.Operations));
+        var operation = Assert.IsType<CompilerOnnxStep>(Assert.Single(tree.Value!.Operations));
         Assert.Equal("Gemm", operation.Descriptor.Name);
         Assert.Equal(2, operation.Inputs.Count);
-        Assert.Single(operation.Attributes);
+        Assert.Single(Assert.IsType<Onnxify.Gemm>(operation.Node).Attributes);
         var onnx = Compiler.GenerateOnnx(tree.Value);
         Assert.True(onnx.IsSuccess, FormatDiagnostics(onnx.Diagnostics));
         var node = Assert.Single(onnx.Value!.Graph.Nodes);
@@ -172,7 +172,7 @@ public sealed class MatrixMultiplicationCompilerTests
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor left, global::TorchSharp.torch.Tensor right) { return torch.matmul(left, right); }";
         var result = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
         Assert.True(result.IsSuccess, FormatDiagnostics(result.Diagnostics));
-        var operation = Assert.IsType<CompilerOperation>(Assert.Single(result.Value!.Operations));
+        var operation = Assert.IsType<CompilerOnnxStep>(Assert.Single(result.Value!.Operations));
         Assert.Equal("MatMul", operation.Descriptor.Name);
         Assert.Equal(CompilerOperationCapability.Bidirectional, operation.Descriptor.Capability);
         Assert.True(Compiler.GenerateOnnx(result.Value).IsSuccess);
@@ -195,6 +195,42 @@ public sealed class MatrixMultiplicationCompilerTests
         Assert.False(result.IsSuccess);
         Assert.Contains(result.Diagnostics, static diagnostic => diagnostic.Severity == CompilerDiagnosticSeverity.Error
             && diagnostic.Message.Contains("transA", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GemmRejectsInvalidRankAndNonBroadcastableBias()
+    {
+        var invalidRank = Compiler.CreateTreeFromOnnx(CreateGemmModel(inputShape: [2, 3, 4]));
+        Assert.False(invalidRank.IsSuccess);
+        Assert.Contains(invalidRank.Diagnostics, static diagnostic => diagnostic.Severity == CompilerDiagnosticSeverity.Error
+            && diagnostic.Message.Contains("rank-2", StringComparison.Ordinal));
+
+        var invalidBias = Compiler.CreateTreeFromOnnx(CreateGemmModel(biasShape: [3, 5]));
+        Assert.False(invalidBias.IsSuccess);
+        Assert.Contains(invalidBias.Diagnostics, static diagnostic => diagnostic.Severity == CompilerDiagnosticSeverity.Error
+            && diagnostic.Message.Contains("cannot be broadcast", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GemmFloat64MatchesOnnxRuntimeAndGeneratedTorchSharp()
+    {
+        // ONNX Runtime upstream: third_party/onnxruntime/onnxruntime/test/providers/cpu/math/gemm_test.cc (GemmOpTest double-precision cases).
+        var model = CreateDoubleGemmModel();
+        var imported = Compiler.CreateTreeFromOnnx(model);
+        Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
+        var generated = Compiler.GenerateCSharp(imported.Value!);
+        Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
+
+        var inputValues = new[] { 1d, 2d, 3d, 4d, 5d, 6d };
+        var weightValues = new[] { 1d, 0d, 1d, 0d, 1d, 0d, 0d, 1d, 0d, 1d, 0d, 1d };
+        var biasValues = new[] { 0.25d, -0.5d, 1d, 2d };
+        var expected = ExecuteOnnxDouble(model, inputValues, [2, 3], weightValues, [4, 3], biasValues, [4]);
+        using var module = CompileModule(generated.Value!, "gemm-double");
+        using var input = global::TorchSharp.torch.tensor(inputValues, [2L, 3L], dtype: global::TorchSharp.torch.ScalarType.Float64);
+        using var weight = global::TorchSharp.torch.tensor(weightValues, [4L, 3L], dtype: global::TorchSharp.torch.ScalarType.Float64);
+        using var bias = global::TorchSharp.torch.tensor(biasValues, [4L], dtype: global::TorchSharp.torch.ScalarType.Float64);
+        using var output = (global::TorchSharp.torch.Tensor)module.Type.GetMethod("forward")!.Invoke(module.Instance, [input, weight, bias])!;
+        AssertDoubleClose(expected, output.data<double>().ToArray());
     }
 
     [Fact]
@@ -316,18 +352,38 @@ public sealed class MatrixMultiplicationCompilerTests
         }
     }
 
-    private static OnnxModel CreateGemmModel(long transA = 1)
+    private static OnnxModel CreateGemmModel(
+        long transA = 1,
+        long[]? inputShape = null,
+        long[]? weightShape = null,
+        long[]? biasShape = null)
     {
         var model = OnnxModel.Create(new OnnxModelCreationOptions { Opset = 25 });
-        var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([new OnnxDimension<long>(3), new OnnxDimension<long>(2)]));
-        var weight = model.Graph.AddInput("weight", OnnxTensorType.Create<float>([new OnnxDimension<long>(4), new OnnxDimension<long>(3)]));
-        var bias = model.Graph.AddInput("bias", OnnxTensorType.Create<float>([new OnnxDimension<long>(1), new OnnxDimension<long>(4)]));
+        var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>((inputShape ?? [3, 2]).Select(static dimension => new OnnxDimension<long>(dimension))));
+        var weight = model.Graph.AddInput("weight", OnnxTensorType.Create<float>((weightShape ?? [4, 3]).Select(static dimension => new OnnxDimension<long>(dimension))));
+        var bias = model.Graph.AddInput("bias", OnnxTensorType.Create<float>((biasShape ?? [1, 4]).Select(static dimension => new OnnxDimension<long>(dimension))));
         var output = model.Graph.AddOutput("output", OnnxTensorType.Create<float>([new OnnxDimension<long>(2), new OnnxDimension<long>(4)]));
         model.Graph.AddNode("gemm", "Gemm", string.Empty, string.Empty, [input, weight, bias], [output],
         [
             new OnnxAttribute<float>("alpha", 0.5f),
             new OnnxAttribute<float>("beta", 2f),
             new OnnxAttribute<long>("transA", transA),
+            new OnnxAttribute<long>("transB", 1),
+        ]);
+        return model;
+    }
+
+    private static OnnxModel CreateDoubleGemmModel()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions { Opset = 25 });
+        var input = model.Graph.AddInput("input", OnnxTensorType.Create<double>([new OnnxDimension<long>(2), new OnnxDimension<long>(3)]));
+        var weight = model.Graph.AddInput("weight", OnnxTensorType.Create<double>([new OnnxDimension<long>(4), new OnnxDimension<long>(3)]));
+        var bias = model.Graph.AddInput("bias", OnnxTensorType.Create<double>([new OnnxDimension<long>(4)]));
+        var output = model.Graph.AddOutput("output", OnnxTensorType.Create<double>([new OnnxDimension<long>(2), new OnnxDimension<long>(4)]));
+        model.Graph.AddNode("gemm-double", "Gemm", string.Empty, string.Empty, [input, weight, bias], [output],
+        [
+            new OnnxAttribute<float>("alpha", 0.5f),
+            new OnnxAttribute<float>("beta", 2f),
             new OnnxAttribute<long>("transB", 1),
         ]);
         return model;
@@ -438,6 +494,30 @@ public sealed class MatrixMultiplicationCompilerTests
         }
     }
 
+    private static double[] ExecuteOnnxDouble(OnnxModel model, double[] inputValues, long[] inputShape, double[] weightValues, long[] weightShape, double[] biasValues, long[] biasShape)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"onnxify-gemm-double-{Guid.NewGuid():N}.onnx");
+        try
+        {
+            model.Save(path, overwrite: true);
+            using var session = new InferenceSession(path);
+            using var results = session.Run(
+            [
+                NamedOnnxValue.CreateFromTensor("input", new DenseTensor<double>(inputValues, inputShape.Select(static dimension => (int)dimension).ToArray())),
+                NamedOnnxValue.CreateFromTensor("weight", new DenseTensor<double>(weightValues, weightShape.Select(static dimension => (int)dimension).ToArray())),
+                NamedOnnxValue.CreateFromTensor("bias", new DenseTensor<double>(biasValues, biasShape.Select(static dimension => (int)dimension).ToArray())),
+            ]);
+            return results.Single().AsTensor<double>().ToArray();
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
     private static IEnumerable<MetadataReference> CompilationReferences()
     {
         var paths = (string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
@@ -461,6 +541,15 @@ public sealed class MatrixMultiplicationCompilerTests
         for (var index = 0; index < expected.Length; index++)
         {
             Assert.InRange(MathF.Abs(expected[index] - actual[index]), 0f, 1e-5f * MathF.Max(1f, MathF.Abs(expected[index])));
+        }
+    }
+
+    private static void AssertDoubleClose(double[] expected, double[] actual)
+    {
+        Assert.Equal(expected.Length, actual.Length);
+        for (var index = 0; index < expected.Length; index++)
+        {
+            Assert.InRange(Math.Abs(expected[index] - actual[index]), 0d, 1e-10d * Math.Max(1d, Math.Abs(expected[index])));
         }
     }
 

@@ -24,7 +24,7 @@ public sealed class CompilerRoundTripTests
             """;
         var imported = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(sourceText));
         Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
-        var sourceOperation = Assert.IsType<CompilerOperation>(Assert.Single(imported.Value!.Operations));
+        var sourceOperation = Assert.IsType<CompilerOnnxStep>(Assert.Single(imported.Value!.Operations));
         Assert.Equal(CompilerOperationCapability.Bidirectional, sourceOperation.Descriptor.Capability);
 
         var emitted = Compiler.GenerateOnnx(imported.Value);
@@ -32,7 +32,7 @@ public sealed class CompilerRoundTripTests
         Assert.Equal("Relu", Assert.Single(emitted.Value!.Graph.Nodes).OpType);
         var onnxImported = Compiler.CreateTreeFromOnnx(emitted.Value);
         Assert.True(onnxImported.IsSuccess, FormatDiagnostics(onnxImported.Diagnostics));
-        var onnxOperation = Assert.IsType<CompilerOperation>(Assert.Single(onnxImported.Value!.Operations));
+        var onnxOperation = Assert.IsType<CompilerOnnxStep>(Assert.Single(onnxImported.Value!.Operations));
         Assert.Equal(sourceOperation.Descriptor, onnxOperation.Descriptor);
 
         var generatedSource = GenerateCSharp(onnxImported.Value);

@@ -48,7 +48,7 @@ public sealed class CSharpCompilerTests
             new CSharpTorchSharpSource("return input + 1f;"));
 
         Assert.True(treeResult.IsSuccess);
-        Assert.Equal("Add", Assert.IsType<CompilerOperation>(Assert.Single(treeResult.Value!.Operations)).Descriptor.Name);
+        Assert.Equal("Add", Assert.IsType<CompilerOnnxStep>(Assert.Single(treeResult.Value!.Operations)).Descriptor.Name);
         var generated = Compiler.GenerateCSharp(
             treeResult.Value,
             new CompilerCSharpGenerationOptions
@@ -73,7 +73,7 @@ public sealed class CSharpCompilerTests
             new CSharpTorchSharpSource("return torch.nn.functional.relu(input);"));
 
         Assert.True(imported.IsSuccess, string.Join(" | ", imported.Diagnostics.Select(x => x.Message)));
-        var operation = Assert.IsType<CompilerOperation>(imported.Value!.Operations.Single());
+        var operation = Assert.IsType<CompilerOnnxStep>(imported.Value!.Operations.Single());
         Assert.Equal(CompilerOperationCapability.Bidirectional, operation.Descriptor.Capability);
         Assert.Equal("Relu", operation.Descriptor.Name);
         Assert.Null(imported.Value.SyntaxBody);
@@ -403,7 +403,7 @@ public sealed class CSharpCompilerTests
         Assert.True(result.IsSuccess, string.Join(" | ", result.Diagnostics.Select(x => x.Message)));
         var tree = Assert.IsType<CompilerComputationTree>(result.Value);
         Assert.Null(tree.SyntaxBody);
-        Assert.Equal("Relu", Assert.IsType<CompilerOperation>(Assert.Single(tree.Operations)).Descriptor.Name);
+        Assert.Equal("Relu", Assert.IsType<CompilerOnnxStep>(Assert.Single(tree.Operations)).Descriptor.Name);
 
         var emitted = Compiler.GenerateOnnx(tree);
         Assert.True(emitted.IsSuccess, string.Join(" | ", emitted.Diagnostics.Select(x => x.Message)));
@@ -429,7 +429,7 @@ public sealed class CSharpCompilerTests
         Assert.True(result.IsSuccess, string.Join(" | ", result.Diagnostics.Select(x => x.Message)));
         var tree = Assert.IsType<CompilerComputationTree>(result.Value);
         Assert.Null(tree.SyntaxBody);
-        Assert.Equal("Relu", Assert.IsType<CompilerOperation>(Assert.Single(tree.Operations)).Descriptor.Name);
+        Assert.Equal("Relu", Assert.IsType<CompilerOnnxStep>(Assert.Single(tree.Operations)).Descriptor.Name);
 
         var emitted = Compiler.GenerateOnnx(tree);
         Assert.True(emitted.IsSuccess, string.Join(" | ", emitted.Diagnostics.Select(x => x.Message)));

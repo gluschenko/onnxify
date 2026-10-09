@@ -44,7 +44,7 @@ public sealed class ActivationCompilerTests
         Assert.True(onnxTree.IsSuccess, FormatDiagnostics(onnxTree.Diagnostics));
 
         var onnxComputationTree = Assert.IsType<CompilerComputationTree>(onnxTree.Value);
-        var onnxOperation = Assert.IsType<CompilerOperation>(onnxComputationTree.Operations.Single());
+        var onnxOperation = Assert.IsType<CompilerOnnxStep>(onnxComputationTree.Operations.Single());
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxOperation.Descriptor.Capability);
         Assert.Equal(onnxName, onnxOperation.Descriptor.Name);
 
@@ -63,7 +63,7 @@ public sealed class ActivationCompilerTests
         var torchTree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
         Assert.True(torchTree.IsSuccess, FormatDiagnostics(torchTree.Diagnostics));
         var torchComputationTree = Assert.IsType<CompilerComputationTree>(torchTree.Value);
-        var torchOperation = Assert.IsType<CompilerOperation>(torchComputationTree.Operations.Single());
+        var torchOperation = Assert.IsType<CompilerOnnxStep>(torchComputationTree.Operations.Single());
         Assert.Equal(onnxOperation.Descriptor, torchOperation.Descriptor);
 
         var emitted = Compiler.GenerateOnnx(torchComputationTree);
@@ -111,10 +111,8 @@ public sealed class ActivationCompilerTests
 
         var imported = Compiler.CreateTreeFromOnnx(model);
 
-        Assert.True(imported.IsSuccess);
-        var computationTree = Assert.IsType<CompilerComputationTree>(imported.Value);
-        var operation = Assert.IsType<CompilerOperation>(computationTree.Operations.Single());
-        Assert.Equal(CompilerOperationCapability.Unsupported, operation.Descriptor.Capability);
+        Assert.False(imported.IsSuccess);
+        Assert.Null(imported.Value);
         Assert.Contains(imported.Diagnostics, diagnostic => diagnostic.Code == CompilerDiagnosticCodes.Unsupported);
     }
 

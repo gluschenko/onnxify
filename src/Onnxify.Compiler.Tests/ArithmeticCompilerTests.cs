@@ -1,4 +1,4 @@
-using System.Runtime.Loader;
+﻿using System.Runtime.Loader;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.ML.OnnxRuntime;
@@ -17,6 +17,8 @@ public sealed class ArithmeticCompilerTests
         ["Mul", "*", (Func<float, float, float>)((left, right) => left * right)],
         ["Div", "/", (Func<float, float, float>)((left, right) => left / right)],
         ["Pow", "pow", (Func<float, float, float>)MathF.Pow],
+        ["Max", "maximum", (Func<float, float, float>)MathF.Max],
+        ["Min", "minimum", (Func<float, float, float>)MathF.Min],
     ];
 
     public static IEnumerable<object[]> UnaryPointwiseCases =>
@@ -39,6 +41,10 @@ public sealed class ArithmeticCompilerTests
         ["Asinh", "asinh", (Func<float, float>)MathF.Asinh],
         ["Acosh", "acosh", (Func<float, float>)MathF.Acosh],
         ["Atanh", "atanh", (Func<float, float>)MathF.Atanh],
+        ["Erf", "erf", (Func<float, float>)ErrorFunction],
+        ["Reciprocal", "reciprocal", (Func<float, float>)(value => 1f / value)],
+        ["Round", "round", (Func<float, float>)(value => MathF.Round(value, MidpointRounding.ToEven))],
+        ["Sign", "sign", (Func<float, float>)(value => MathF.Sign(value))],
     ];
 
     [Theory]
@@ -49,8 +55,8 @@ public sealed class ArithmeticCompilerTests
         Func<float, float, float> expected
     )
     {
-        // Torch converter cases: third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py (aten_add, aten_sub, aten_mul, aten_div, aten_pow).
-        // ONNX runtime cases: third_party/onnxruntime/onnxruntime/test/providers/cpu/math/element_wise_ops_test.cc (MathOpTest operator cases and Add_Broadcast_MultidirectionalAB).
+        // Torch converter cases: third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py (aten_add, aten_sub, aten_mul, aten_div, aten_pow, aten_maximum, aten_minimum).
+        // ONNX Runtime cases: third_party/onnxruntime/onnxruntime/test/providers/cpu/math/element_wise_ops_test.cc (Add_Broadcast_MultidirectionalAB, Max_12_Float, Min_12_Float).
         var leftValues = new[] { 2f, 4f, 6f, 8f, 10f, 12f };
         var rightValues = new[] { 2f, 2f, 3f };
         var expectedValues = new float[6];
@@ -65,28 +71,34 @@ public sealed class ArithmeticCompilerTests
         var onnxModel = CreateBinaryModel(onnxName, [2, 3], [3]);
         var onnxTree = Compiler.CreateTreeFromOnnx(onnxModel);
         Assert.True(onnxTree.IsSuccess, FormatDiagnostics(onnxTree.Diagnostics));
-        var onnxOperation = Assert.IsType<CompilerOperation>(Assert.Single(onnxTree.Value!.Operations));
+        var onnxOperation = Assert.IsType<CompilerOnnxStep>(Assert.Single(onnxTree.Value!.Operations));
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxOperation.Descriptor.Capability);
         Assert.Equal(onnxName, onnxOperation.Descriptor.Name);
         var generatedCSharp = Compiler.GenerateCSharp(onnxTree.Value);
         Assert.True(generatedCSharp.IsSuccess, FormatDiagnostics(generatedCSharp.Diagnostics));
-        Assert.Contains(onnxName switch
+        var expectedGeneratedForm = onnxName switch
         {
             "Add" => " + ",
             "Sub" => " - ",
             "Mul" => " * ",
             "Div" => " / ",
-            _ => ".pow(",
-        }, generatedCSharp.Value);
+            "Pow" => ".pow(",
+            "Max" => ".maximum(",
+            _ => ".minimum(",
+        };
+        Assert.Contains(expectedGeneratedForm, generatedCSharp.Value);
         AssertClose(expectedValues, ExecuteGeneratedModule(generatedCSharp.Value!, leftValues, rightValues));
 
-        var torchSource = onnxName == "Pow"
-            ? "return left.pow(right);"
-            : $"return left {csharpOperator} right;";
+        var torchSource = onnxName switch
+        {
+            "Pow" => "return left.pow(right);",
+            "Max" or "Min" => $"return left.{csharpOperator}(right);",
+            _ => $"return left {csharpOperator} right;",
+        };
         var torchTree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(
             $"public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor left, global::TorchSharp.torch.Tensor right) {{ {torchSource} }}"));
         Assert.True(torchTree.IsSuccess, FormatDiagnostics(torchTree.Diagnostics));
-        var torchOperation = Assert.IsType<CompilerOperation>(Assert.Single(torchTree.Value!.Operations));
+        var torchOperation = Assert.IsType<CompilerOnnxStep>(Assert.Single(torchTree.Value!.Operations));
         Assert.Equal(onnxOperation.Descriptor, torchOperation.Descriptor);
         var emitted = Compiler.GenerateOnnx(torchTree.Value);
         Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
@@ -120,12 +132,22 @@ public sealed class ArithmeticCompilerTests
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.add(2f); }";
         var imported = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
         Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
-        var operation = Assert.IsType<CompilerOperation>(Assert.Single(imported.Value!.Operations));
+        var operation = Assert.IsType<CompilerOnnxStep>(Assert.Single(imported.Value!.Operations));
         Assert.Equal("Add", operation.Descriptor.Name);
         Assert.Single(imported.Value.Initializers);
         var emitted = Compiler.GenerateOnnx(imported.Value);
         Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
         AssertClose([3f, 4f, 5f], ExecuteOnnxScalar(emitted.Value!, [1f, 2f, 3f]));
+    }
+
+    [Fact]
+    public void DynamicScalarArithmeticIsRejectedWithACompilerDiagnostic()
+    {
+        const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input, float scale) { return input * scale; }";
+        var result = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
+        Assert.False(result.IsSuccess);
+        Assert.Contains(result.Diagnostics, static diagnostic => diagnostic.Severity == CompilerDiagnosticSeverity.Error
+            && diagnostic.Code == CompilerDiagnosticCodes.Unsupported);
     }
 
     [Fact]
@@ -141,6 +163,87 @@ public sealed class ArithmeticCompilerTests
     }
 
     [Fact]
+    public void TruncMappingLowersToRuntimeSupportedOnnxAndDeclaresItsDirection()
+    {
+        // Torch converter case: third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py (trunc), exercised by ops_test.py::test_output_match_opinfo_.
+        // ONNX Runtime semantics: third_party/onnxruntime/onnxruntime/test/providers/cpu/math/element_wise_ops_test.cc (ModOpTest.Fmod_float_mixed_sign).
+        const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.trunc(); }";
+        var tree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
+        Assert.True(tree.IsSuccess, FormatDiagnostics(tree.Diagnostics));
+        var operation = Assert.IsType<CompilerOnnxStep>(Assert.Single(tree.Value!.Operations));
+        Assert.Equal("Trunc", operation.Descriptor.Name);
+        Assert.Equal(CompilerOperationCapability.ExportOnly, operation.Descriptor.Capability);
+
+        var unsupportedImport = Compiler.GenerateCSharp(tree.Value);
+        Assert.False(unsupportedImport.IsSuccess);
+        Assert.Contains(unsupportedImport.Diagnostics, static diagnostic => diagnostic.Code == CompilerDiagnosticCodes.Unsupported);
+
+        var emitted = Compiler.GenerateOnnx(tree.Value);
+        Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
+        Assert.Equal(["Mod", "Sub"], emitted.Value!.Graph.Nodes.Select(static node => node.OpType));
+        AssertClose([-1f, 0f, 2f], ExecuteOnnxUnary(emitted.Value, [-1.9f, 0.5f, 2.1f]));
+    }
+
+    [Fact]
+    public void RemainderMappingLowersToRuntimeSupportedOnnxAndMatchesTorchSharp()
+    {
+        // Torch converter case: third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py (TorchLibOpInfo("remainder", core_ops.aten_remainder)).
+        // ONNX Runtime cases: third_party/onnxruntime/onnxruntime/test/providers/cpu/math/element_wise_ops_test.cc (ModOpTest.Int32_mixed_sign and ModOpTest.Int32_mod_bcast).
+        const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor left, global::TorchSharp.torch.Tensor right) { return left.remainder(right); }";
+        var imported = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
+        Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
+        var operation = Assert.IsType<CompilerOnnxStep>(Assert.Single(imported.Value!.Operations));
+        Assert.Equal("Mod", operation.Descriptor.Name);
+        Assert.Equal(CompilerOperationCapability.Bidirectional, operation.Descriptor.Capability);
+
+        var emitted = Compiler.GenerateOnnx(imported.Value);
+        Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
+        Assert.Equal(["Div", "Floor", "Mul", "Sub"], emitted.Value!.Graph.Nodes.Select(static node => node.OpType));
+
+        var leftValues = new[] { -5.5f, 5.5f, -5.5f, 5.5f, -2.5f, 2.5f };
+        var rightValues = new[] { 2f, -2f, 3f };
+        var expected = new[] { 0.5f, -0.5f, 0.5f, 1.5f, -0.5f, 2.5f };
+        AssertClose(expected, ExecuteOnnx(emitted.Value, leftValues, [2, 3], rightValues, [3]));
+
+        var generated = Compiler.GenerateCSharp(imported.Value);
+        Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
+        AssertClose(expected, ExecuteGeneratedModule(generated.Value!, leftValues, rightValues));
+    }
+
+    [Fact]
+    public void RemainderImportPreservesTorchSemanticsAndRejectsFmod()
+    {
+        var model = CreateModModel(fmod: 0);
+        var imported = Compiler.CreateTreeFromOnnx(model);
+        Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
+        var operation = Assert.IsType<CompilerOnnxStep>(Assert.Single(imported.Value!.Operations));
+        Assert.Equal("Mod", operation.Descriptor.Name);
+        Assert.Equal(CompilerOperationCapability.Bidirectional, operation.Descriptor.Capability);
+        var generated = Compiler.GenerateCSharp(imported.Value);
+        Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
+        Assert.Contains("left.remainder(right)", generated.Value);
+
+        var fmodModel = CreateModModel(fmod: 1);
+        var unsupported = Compiler.CreateTreeFromOnnx(fmodModel);
+        Assert.False(unsupported.IsSuccess);
+        Assert.Contains(unsupported.Diagnostics, static diagnostic => diagnostic.Severity == CompilerDiagnosticSeverity.Error
+            && diagnostic.Message.Contains("fmod=1", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void IntegerRemainderKeepsNativeOnnxModAndBroadcasts()
+    {
+        // ONNX Runtime cases: third_party/onnxruntime/onnxruntime/test/providers/cpu/math/element_wise_ops_test.cc (ModOpTest.Int32_mixed_sign, ModOpTest.Int32_mod_bcast).
+        var model = CreateInt32ModModel();
+        var imported = Compiler.CreateTreeFromOnnx(model);
+        Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
+        var emitted = Compiler.GenerateOnnx(imported.Value!);
+        Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
+        Assert.Equal("Mod", Assert.Single(emitted.Value!.Graph.Nodes).OpType);
+        Assert.Equal([1, -1, 1, 1, 0, 2], ExecuteOnnxInt32(emitted.Value!));
+    }
+
+    [Fact]
     public void PointwiseWhereMappingBroadcastsConditionAndValuesInBothDirections()
     {
         // Torch converter case: third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py (aten_where).
@@ -148,7 +251,7 @@ public sealed class ArithmeticCompilerTests
         var model = CreateWhereModel();
         var imported = Compiler.CreateTreeFromOnnx(model);
         Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
-        var operation = Assert.IsType<CompilerOperation>(Assert.Single(imported.Value!.Operations));
+        var operation = Assert.IsType<CompilerOnnxStep>(Assert.Single(imported.Value!.Operations));
         Assert.Equal("Where", operation.Descriptor.Name);
         Assert.Equal(CompilerOperationCapability.Bidirectional, operation.Descriptor.Capability);
         var source = Compiler.GenerateCSharp(imported.Value);
@@ -164,7 +267,7 @@ public sealed class ArithmeticCompilerTests
         const string torchSource = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor condition, global::TorchSharp.torch.Tensor left, global::TorchSharp.torch.Tensor right) { return torch.where(condition, left, right); }";
         var torchTree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(torchSource));
         Assert.True(torchTree.IsSuccess, FormatDiagnostics(torchTree.Diagnostics));
-        var torchOperation = Assert.IsType<CompilerOperation>(Assert.Single(torchTree.Value!.Operations));
+        var torchOperation = Assert.IsType<CompilerOnnxStep>(Assert.Single(torchTree.Value!.Operations));
         Assert.Equal(operation.Descriptor, torchOperation.Descriptor);
         var emitted = Compiler.GenerateOnnx(torchTree.Value);
         Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
@@ -184,7 +287,7 @@ public sealed class ArithmeticCompilerTests
 
         var onnxTree = Compiler.CreateTreeFromOnnx(model);
         Assert.True(onnxTree.IsSuccess, FormatDiagnostics(onnxTree.Diagnostics));
-        var onnxOperation = Assert.IsType<CompilerOperation>(Assert.Single(onnxTree.Value!.Operations));
+        var onnxOperation = Assert.IsType<CompilerOnnxStep>(Assert.Single(onnxTree.Value!.Operations));
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxOperation.Descriptor.Capability);
         var generated = Compiler.GenerateCSharp(onnxTree.Value);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
@@ -194,11 +297,11 @@ public sealed class ArithmeticCompilerTests
         const string torchSource = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.to_type(torch.ScalarType.Int64); }";
         var torchTree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(torchSource));
         Assert.True(torchTree.IsSuccess, FormatDiagnostics(torchTree.Diagnostics));
-        var torchOperation = Assert.IsType<CompilerOperation>(Assert.Single(torchTree.Value!.Operations));
+        var torchOperation = Assert.IsType<CompilerOnnxStep>(Assert.Single(torchTree.Value!.Operations));
         Assert.Equal(onnxOperation.Descriptor, torchOperation.Descriptor);
         var emitted = Compiler.GenerateOnnx(torchTree.Value);
         Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
-        Assert.Equal(7L, Assert.IsType<CompilerSignedIntegerLiteral>(Assert.Single(torchOperation.Attributes).Value).Value);
+        Assert.Equal(7L, Assert.IsType<Onnxify.Cast>(torchOperation.Node).To);
         Assert.Equal([1L, -2L, 3L], ExecuteOnnxCast(emitted.Value!, [1.9f, -2.2f, 3.8f]));
     }
 
@@ -210,8 +313,8 @@ public sealed class ArithmeticCompilerTests
         Func<float, float> expected
     )
     {
-        // Torch converter cases: third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py (aten_{operator}).
-        // ONNX Runtime semantics: third_party/onnxruntime/onnxruntime/test/providers/cpu/math/element_wise_ops_test.cc (MathOpTest {operator}).
+        // Torch converter cases: third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py (the matching aten_{operator} entry).
+        // ONNX Runtime semantics: third_party/onnxruntime/onnxruntime/test/providers/cpu/math/element_wise_ops_test.cc (the corresponding MathOpTest case; Erf is covered by MathOpTest.Erf).
         var inputValues = onnxName switch
         {
             "Abs" or "Neg" => new[] { -2f, -0.5f, 3f },
@@ -222,13 +325,15 @@ public sealed class ArithmeticCompilerTests
             "Atan" or "Sinh" or "Cosh" or "Asinh" => new[] { -1f, 0f, 1f },
             "Acosh" => new[] { 1f, 1.5f, 3f },
             "Atanh" => new[] { -0.5f, 0f, 0.5f },
+            "Reciprocal" => new[] { -2f, 0.5f, 2f },
+            "Round" => new[] { -1.5f, 0.5f, 2.1f },
             _ => new[] { -1f, 0f, 1f },
         };
         var expectedValues = inputValues.Select(expected).ToArray();
         var model = CreateUnaryModel(onnxName);
         var onnxTree = Compiler.CreateTreeFromOnnx(model);
         Assert.True(onnxTree.IsSuccess, FormatDiagnostics(onnxTree.Diagnostics));
-        var onnxOperation = Assert.IsType<CompilerOperation>(Assert.Single(onnxTree.Value!.Operations));
+        var onnxOperation = Assert.IsType<CompilerOnnxStep>(Assert.Single(onnxTree.Value!.Operations));
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxOperation.Descriptor.Capability);
         Assert.Equal(onnxName, onnxOperation.Descriptor.Name);
         var generated = Compiler.GenerateCSharp(onnxTree.Value);
@@ -239,7 +344,7 @@ public sealed class ArithmeticCompilerTests
         var torchTree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(
             $"public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) {{ return {expression}; }}"));
         Assert.True(torchTree.IsSuccess, FormatDiagnostics(torchTree.Diagnostics));
-        var torchOperation = Assert.IsType<CompilerOperation>(Assert.Single(torchTree.Value!.Operations));
+        var torchOperation = Assert.IsType<CompilerOnnxStep>(Assert.Single(torchTree.Value!.Operations));
         Assert.Equal(onnxOperation.Descriptor, torchOperation.Descriptor);
         var emitted = Compiler.GenerateOnnx(torchTree.Value);
         Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
@@ -263,6 +368,43 @@ public sealed class ArithmeticCompilerTests
         var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([new OnnxDimension<long>(3)]));
         var output = model.Graph.AddOutput("output", OnnxTensorType.Create<float>([new OnnxDimension<long>(3)]));
         model.Graph.AddNode(opType.ToLowerInvariant(), opType, string.Empty, string.Empty, [input], [output], []);
+        return model;
+    }
+
+    private static OnnxModel CreateModModel(long fmod)
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions { Opset = 25 });
+        var dimensions = new[] { new OnnxDimension<long>(2), new OnnxDimension<long>(3) };
+        var left = model.Graph.AddInput("left", OnnxTensorType.Create<float>(dimensions));
+        var right = model.Graph.AddInput("right", OnnxTensorType.Create<float>([new OnnxDimension<long>(3)]));
+        var output = model.Graph.AddOutput("output", OnnxTensorType.Create<float>(dimensions));
+        model.Graph.AddNode(new Onnxify.Mod(
+            "mod",
+            new Onnxify.ModInputOutputOptions
+            {
+                A = left,
+                B = right,
+                Fmod = fmod,
+                C = output,
+            }));
+        return model;
+    }
+
+    private static OnnxModel CreateInt32ModModel()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions { Opset = 25 });
+        var left = model.Graph.AddInput("left", OnnxTensorType.Create<int>([2, 3]));
+        var right = model.Graph.AddInput("right", OnnxTensorType.Create<int>([3]));
+        var output = model.Graph.AddOutput("output", OnnxTensorType.Create<int>([2, 3]));
+        model.Graph.AddNode(new Onnxify.Mod(
+            "mod",
+            new Onnxify.ModInputOutputOptions
+            {
+                A = left,
+                B = right,
+                Fmod = 0,
+                C = output,
+            }));
         return model;
     }
 
@@ -389,6 +531,29 @@ public sealed class ArithmeticCompilerTests
         }
     }
 
+    private static int[] ExecuteOnnxInt32(OnnxModel model)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"onnxify-mod-int32-{Guid.NewGuid():N}.onnx");
+        try
+        {
+            model.Save(path, overwrite: true);
+            using var session = new InferenceSession(path);
+            using var results = session.Run(
+            [
+                NamedOnnxValue.CreateFromTensor("left", new DenseTensor<int>(new[] { -5, 5, -5, 5, -2, 2 }, new[] { 2, 3 })),
+                NamedOnnxValue.CreateFromTensor("right", new DenseTensor<int>(new[] { 2, -2, 3 }, new[] { 3 })),
+            ]);
+            return results.Single().AsTensor<int>().ToArray();
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
     private static float[] ExecuteWhereModule(string source, bool[] conditions, float[] leftValues, float[] rightValues)
     {
         var compilation = CSharpCompilation.Create(
@@ -497,5 +662,19 @@ public sealed class ArithmeticCompilerTests
         {
             Assert.InRange(MathF.Abs(expected[index] - actual[index]), 0f, 1e-5f * MathF.Max(1f, MathF.Abs(expected[index])));
         }
+    }
+
+    private static float ErrorFunction(float value)
+    {
+        var term = value;
+        var sum = value;
+        for (var index = 1; index <= 24; index++)
+        {
+            term *= -(value * value) / index;
+            sum += term / ((2 * index) + 1);
+        }
+
+        var result = (2f / MathF.Sqrt(MathF.PI)) * sum;
+        return result;
     }
 }

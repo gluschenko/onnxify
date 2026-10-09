@@ -1,5 +1,6 @@
 using Onnxify;
 using Onnxify.Compiler;
+using Onnxify.Compiler.Operators;
 using Microsoft.ML.OnnxRuntime;
 using CompilerBFloat16 = Onnxify.Data.Numerics.BFloat16;
 
@@ -45,7 +46,8 @@ public sealed class OnnxCompilerTests
             : -1);
         Assert.Single(tree.Operations);
         Assert.Equal("identity", tree.Operations[0].Name);
-        Assert.Equal("Identity", ((CompilerOperation)tree.Operations[0]).Descriptor.Name);
+        Assert.Equal("Identity", ((CompilerOnnxStep)tree.Operations[0]).Descriptor.Name);
+        Assert.Equal(typeof(OnnxNode), ((CompilerOnnxStep)tree.Operations[0]).Node.GetType());
 
         var emitted = Compiler.GenerateOnnx(imported.Value!);
 
@@ -83,7 +85,8 @@ public sealed class OnnxCompilerTests
         Assert.Equal(CompilerSourceSpanKind.Onnx, diagnostic.Span!.Kind);
         Assert.Equal("<graph>", diagnostic.Context!.Caller);
         Assert.Equal("CustomOp", diagnostic.Context.Callee);
-        Assert.Equal(CompilerOperationCapability.Unsupported, ((CompilerOperation)result.Value!.Operations[0]).Descriptor.Capability);
+        Assert.Equal(CompilerOperationCapability.Unsupported, ((CompilerOnnxStep)result.Value!.Operations[0]).Descriptor.Capability);
+        Assert.Equal(typeof(OnnxNode), ((CompilerOnnxStep)result.Value.Operations[0]).Node.GetType());
 
         var emitted = Compiler.GenerateOnnx(result.Value!);
         Assert.True(emitted.IsSuccess);
@@ -91,6 +94,54 @@ public sealed class OnnxCompilerTests
         Assert.Contains(emitted.Diagnostics, diagnostic =>
             diagnostic.Code == CompilerDiagnosticCodes.Unsupported
             && diagnostic.Severity == CompilerDiagnosticSeverity.Warning);
+    }
+
+    [Fact]
+    public void MappedOperatorRejectsAnUnexpectedGeneratedNodeType()
+    {
+        var model = OnnxModel.Create();
+        var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([1]));
+        var output = model.Graph.AddOutput("output", OnnxTensorType.Create<float>([1]));
+        var wrongNode = CompilerTypedNodeFactory.Create<Onnxify.Relu>(
+            "wrong",
+            [new OnnxEdge(input.Name)],
+            [new OnnxEdge(output.Name)],
+            []);
+        wrongNode.OpType = "Add";
+        model.Graph.AddNode(wrongNode);
+
+        var result = Compiler.CreateTreeFromOnnx(model);
+
+        Assert.False(result.IsSuccess, string.Join(" | ", result.Diagnostics.Select(static diagnostic => diagnostic.Message)));
+        Assert.Null(result.Value);
+        Assert.Contains(result.Diagnostics, diagnostic =>
+            diagnostic.Code == CompilerDiagnosticCodes.Unsupported
+            && diagnostic.Message.Contains("cannot be represented as generated node type", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void MappedOperatorReportsInvalidTypedAttributeAsDiagnostic()
+    {
+        var model = OnnxModel.Create();
+        var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([1]));
+        var output = model.Graph.AddOutput("output", OnnxTensorType.Create<float>([1]));
+        model.Graph.AddNode(
+            "leaky_relu",
+            "LeakyRelu",
+            string.Empty,
+            string.Empty,
+            [input],
+            [output],
+            [new OnnxAttribute<string>("alpha", "invalid")]);
+
+        var result = Compiler.CreateTreeFromOnnx(model);
+
+        Assert.False(result.IsSuccess, string.Join(" | ", result.Diagnostics.Select(static diagnostic => diagnostic.Message)));
+        Assert.Null(result.Value);
+        Assert.True(result.Diagnostics.Any(diagnostic =>
+            diagnostic.Code == CompilerDiagnosticCodes.Unsupported
+            && diagnostic.Message.Contains("cannot be represented by generated node type", StringComparison.Ordinal)),
+            string.Join(" | ", result.Diagnostics.Select(static diagnostic => diagnostic.Message)));
     }
 
     [Fact]
@@ -106,9 +157,10 @@ public sealed class OnnxCompilerTests
         var imported = Compiler.CreateTreeFromOnnx(model);
 
         Assert.True(imported.IsSuccess, string.Join(" | ", imported.Diagnostics.Select(x => x.Message)));
-        var operation = Assert.IsType<CompilerOperation>(imported.Value!.Operations.Single());
+        var operation = Assert.IsType<CompilerOnnxStep>(imported.Value!.Operations.Single());
         Assert.Equal(CompilerOperationCapability.Bidirectional, operation.Descriptor.Capability);
         Assert.Equal("Relu", operation.Descriptor.Name);
+        Assert.IsType<Onnxify.Relu>(operation.Node);
         Assert.DoesNotContain(imported.Diagnostics, diagnostic => diagnostic.Code == CompilerDiagnosticCodes.Unsupported);
 
         var csharp = Compiler.GenerateCSharp(imported.Value);
@@ -190,7 +242,7 @@ public sealed class OnnxCompilerTests
     }
 
     [Fact]
-    public void InitializersAndTypedAttributesRoundTripStructurally()
+    public void InitializersAndUnknownOperatorAttributesRoundTripStructurally()
     {
         var model = OnnxModel.Create();
         var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([1, 2]));
@@ -201,7 +253,7 @@ public sealed class OnnxCompilerTests
 
         model.Graph.AddNode(
             "add",
-            "Add",
+            "CustomAdd",
             string.Empty,
             string.Empty,
             [input, weights],
@@ -216,8 +268,8 @@ public sealed class OnnxCompilerTests
 
         Assert.True(imported.IsSuccess);
         Assert.Single(imported.Value!.Initializers);
-        var operation = Assert.IsType<CompilerOperation>(imported.Value.Operations.Single());
-        Assert.Equal(["alpha", "scales", "tensor"], operation.Attributes.Select(x => x.Name));
+        var operation = Assert.IsType<CompilerOnnxStep>(imported.Value.Operations.Single());
+        Assert.Equal(["alpha", "scales", "tensor"], operation.Node.Attributes.Select(x => x.Name));
         var emitted = Compiler.GenerateOnnx(imported.Value);
 
         Assert.True(emitted.IsSuccess);
@@ -281,10 +333,9 @@ public sealed class OnnxCompilerTests
         var imported = Compiler.CreateTreeFromOnnx(model);
 
         Assert.True(imported.IsSuccess);
-        var graphLiteral = Assert.IsType<CompilerGraphLiteral>(
-            Assert.IsType<CompilerOperation>(imported.Value!.Operations.Single()).Attributes.Single().Value);
-        Assert.Single(graphLiteral.Graph.Captures);
-        Assert.Equal("outer", graphLiteral.Graph.Captures[0].Name);
+        var graphLiteral = Assert.IsType<OnnxGraph>(
+            Assert.IsType<CompilerOnnxStep>(imported.Value!.Operations.Single()).Node.Attributes.Single().GetValue());
+        Assert.Equal("outer", graphLiteral.Nodes.Single().Inputs.Single().Name);
 
         var emitted = Compiler.GenerateOnnx(imported.Value);
 
