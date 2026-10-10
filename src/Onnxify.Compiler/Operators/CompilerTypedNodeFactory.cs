@@ -2,8 +2,15 @@
 {
     internal static class CompilerTypedNodeFactory
     {
-        private static readonly IReadOnlyDictionary<Type, Func<string, IReadOnlyList<IOnnxGraphEdge?>, IReadOnlyList<IOnnxGraphEdge?>, IReadOnlyList<OnnxAttribute>, OnnxNode>> FACTORIES =
-            new Dictionary<Type, Func<string, IReadOnlyList<IOnnxGraphEdge?>, IReadOnlyList<IOnnxGraphEdge?>, IReadOnlyList<OnnxAttribute>, OnnxNode>>
+        private delegate OnnxNode CompilerNodeFactory(
+            string name,
+            IReadOnlyList<IOnnxGraphEdge?> inputs,
+            IReadOnlyList<IOnnxGraphEdge?> outputs,
+            IReadOnlyList<OnnxAttribute> attributes
+        );
+
+        private static readonly IReadOnlyDictionary<Type, CompilerNodeFactory> _factories =
+            new Dictionary<Type, CompilerNodeFactory>
             {
                 [typeof(Onnxify.Abs)] = static (name, inputs, outputs, onnxAttributes) =>
                 {
@@ -829,7 +836,7 @@
             IReadOnlyList<OnnxAttribute> onnxAttributes
         ) where TNode : OnnxNode
         {
-            if (!FACTORIES.TryGetValue(typeof(TNode), out var factory))
+            if (!_factories.TryGetValue(typeof(TNode), out var factory))
             {
                 throw new InvalidOperationException($"No generated ONNX factory is registered for node type '{typeof(TNode).FullName}'.");
             }

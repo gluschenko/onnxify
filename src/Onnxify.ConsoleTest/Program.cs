@@ -28,6 +28,12 @@ namespace Onnxify.ConsoleTest
             Console.InputEncoding = Encoding.UTF8;
             Console.OutputEncoding = Encoding.UTF8;
 
+            if (args.Contains("--compiler-mobilenet-roundtrip", StringComparer.Ordinal))
+            {
+                RunCompilerMobileNetRoundTrip();
+                return;
+            }
+
             Test0();
             Test1();
             Test2();

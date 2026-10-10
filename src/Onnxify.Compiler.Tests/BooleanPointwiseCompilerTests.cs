@@ -239,6 +239,7 @@ public sealed class BooleanPointwiseCompilerTests
         {
             result[index] = operation(left[index], right[index % right.Length]);
         }
+
         return result;
     }
 

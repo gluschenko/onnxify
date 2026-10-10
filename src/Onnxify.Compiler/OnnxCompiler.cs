@@ -140,6 +140,7 @@ public static class Compiler
                         result = CompilerResult<CompilerComputationTree>.Failure([diagnostic]);
                         break;
                     }
+
                     options.Report([diagnostic]);
                 }
             }
@@ -345,6 +346,7 @@ public static class Compiler
                 {
                     return CompilerResult<CompilerComputationTree>.Failure([diagnostic]);
                 }
+
                 options.Report([diagnostic]);
             }
         }
@@ -374,6 +376,7 @@ public static class Compiler
             {
                 return CompilerResult<object>.Failure([diagnostic]);
             }
+
             options.Report([diagnostic]);
             return null;
         }
@@ -395,6 +398,7 @@ public static class Compiler
                 {
                     return CompilerResult<object>.Failure([diagnostic]);
                 }
+
                 options.Report([diagnostic]);
             }
         }
@@ -411,6 +415,7 @@ public static class Compiler
         {
             return CompilerResult<CompilerComputationTree>.Failure([diagnostic]);
         }
+
         options.Report([diagnostic]);
         return null;
     }
@@ -1646,6 +1651,7 @@ internal static class OnnxCompilerBackend
                 {
                     results.Add(returnStatement.Expression);
                 }
+
                 break;
             case CompilerBlockStatement block:
                 foreach (var child in block.Statements)
@@ -1810,6 +1816,7 @@ internal static class OnnxCompilerBackend
             compilerOperator.PrintOnnx(graph, operation);
             return;
         }
+
         graph.AddNode(operation.Node);
     }
 

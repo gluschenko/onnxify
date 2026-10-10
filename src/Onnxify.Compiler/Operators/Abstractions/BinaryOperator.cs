@@ -38,6 +38,7 @@ internal abstract class BinaryOperator<TNode> : BroadcastOperator<TNode>
     {
         return $"({CompilerCSharpNaming.Identifier(node.Inputs[0].Name)} {OperatorToken} {CompilerCSharpNaming.Identifier(node.Inputs[1].Name)})";
     }
+
     private string OperatorTokenValue { get; }
     protected virtual string OperatorToken => OperatorTokenValue;
 
@@ -68,15 +69,18 @@ internal abstract class BinaryOperator<TNode> : BroadcastOperator<TNode>
                 references.Add(new CompilerValueReference(reference.Name));
                 continue;
             }
+
             if (context.TryAddScalarInitializer(this, index, operands[index], out var scalar))
             {
                 references.Add(scalar);
                 continue;
             }
+
             throw context.Unsupported(
                 operands[index],
                 $"TorchSharp operator '{OnnxName}' requires tensor inputs or a scalar literal paired with a tensor input.");
         }
+
         context.AddOperation(this, references, span: expression.Span);
         return true;
     }

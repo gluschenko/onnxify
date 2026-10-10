@@ -57,6 +57,7 @@ internal abstract class ActivationOperator<TNode> : CompilerOperator<TNode>
 
             attributes.Add(new CompilerAttribute(AttributeNames[index], literal.Literal));
         }
+
         var fixedValues = values.Skip(values.Length - FixedTorchSharpArguments.Count).ToArray();
         for (var index = 0; index < fixedValues.Length; index++)
         {
@@ -66,9 +67,11 @@ internal abstract class ActivationOperator<TNode> : CompilerOperator<TNode>
                 throw context.Unsupported(fixedValues[index], $"TorchSharp activation '{OnnxName}' only supports its fixed trailing arguments.");
             }
         }
+
         context.AddOperation(this, inputs, attributes, expression.Span);
         return true;
     }
+
     protected static string Input(TNode node)
     {
         return CompilerCSharpNaming.Identifier(node.Inputs[0].Name);

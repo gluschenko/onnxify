@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Reflection;
 using System.Text;
 using ICSharpCode.Decompiler;
@@ -490,7 +490,7 @@ internal sealed class CompiledModuleMethodRewriter : CSharpSyntaxRewriter
 
 internal sealed class CSharpSyntaxScanner
 {
-    private static readonly CompilerType DEFAULT_TENSOR_TYPE = new CompilerTensorType(
+    private static readonly CompilerType _defaultTensorType = new CompilerTensorType(
         CompilerElementType.Float32,
         dimensions: null);
 
@@ -1666,7 +1666,7 @@ internal sealed class CSharpSyntaxScanner
         {
             if (existing.Add(declaration.Name))
             {
-                builder.AddIntermediateValue(new CompilerValue(declaration.Name, DEFAULT_TENSOR_TYPE, declaration.Span));
+                builder.AddIntermediateValue(new CompilerValue(declaration.Name, _defaultTensorType, declaration.Span));
             }
         }
     }
@@ -1736,7 +1736,7 @@ internal sealed class CSharpSyntaxScanner
         if (string.IsNullOrWhiteSpace(csharpTypeName)
             || csharpTypeName.Contains("Tensor", StringComparison.Ordinal))
         {
-            return DEFAULT_TENSOR_TYPE;
+            return _defaultTensorType;
         }
 
         return csharpTypeName switch

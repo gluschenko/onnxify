@@ -13,6 +13,7 @@ internal sealed class WhereOperator() : BroadcastOperator<Onnxify.Where>(Compile
     {
         return $"torch.where({string.Join(", ", node.Inputs.Select(static input => input.Name))})";
     }
+
     public override bool TryScanTorchSharp(TorchSharpOperatorScanContext context, CompilerExpression expression)
     {
         if (expression is not CompilerInvocationExpression invocation || invocation.Arguments.Count != 3)

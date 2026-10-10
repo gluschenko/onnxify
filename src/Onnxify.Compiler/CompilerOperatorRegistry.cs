@@ -4,7 +4,7 @@ namespace Onnxify.Compiler;
 
 internal static class CompilerOperatorRegistry
 {
-    private static readonly CompilerOperator[] OPERATORS =
+    private static readonly CompilerOperator[] _operators =
     [
         new AbsOperator(),
         new AddOperator(),
@@ -73,21 +73,21 @@ internal static class CompilerOperatorRegistry
         new ThresholdedReluOperator(),
     ];
 
-    private static readonly IReadOnlyDictionary<CompilerOperatorIdentity, CompilerOperator> ONNX = BuildOnnxIndex(OPERATORS);
-    private static readonly IReadOnlyDictionary<Type, CompilerOperator> NODE_TYPES = BuildNodeTypeIndex(OPERATORS);
-    private static readonly IReadOnlyDictionary<string, CompilerOperator> CALLS = BuildCallIndex();
-    private static readonly IReadOnlyDictionary<string, CompilerOperator> BINARY = BuildFormIndex(CompilerTorchSharpFormKind.Binary);
-    private static readonly IReadOnlyDictionary<string, CompilerOperator> UNARY = BuildFormIndex(CompilerTorchSharpFormKind.Unary);
+    private static readonly IReadOnlyDictionary<CompilerOperatorIdentity, CompilerOperator> _onnx = BuildOnnxIndex(_operators);
+    private static readonly IReadOnlyDictionary<Type, CompilerOperator> _nodeTypes = BuildNodeTypeIndex(_operators);
+    private static readonly IReadOnlyDictionary<string, CompilerOperator> _calls = BuildCallIndex();
+    private static readonly IReadOnlyDictionary<string, CompilerOperator> _binary = BuildFormIndex(CompilerTorchSharpFormKind.Binary);
+    private static readonly IReadOnlyDictionary<string, CompilerOperator> _unary = BuildFormIndex(CompilerTorchSharpFormKind.Unary);
 
     public static bool TryGetOnnx(string domain, string name, out CompilerOperator? compilerOperator)
     {
-        return ONNX.TryGetValue(CompilerOperatorIdentity.Onnx(name, NormalizeDomain(domain)), out compilerOperator);
+        return _onnx.TryGetValue(CompilerOperatorIdentity.Onnx(name, NormalizeDomain(domain)), out compilerOperator);
     }
 
     public static bool TryGetOnnx(OnnxNode node, out CompilerOperator? compilerOperator)
     {
         var identity = CompilerOperatorIdentity.Onnx(node.OpType, NormalizeDomain(node.Domain));
-        if (NODE_TYPES.TryGetValue(node.GetType(), out compilerOperator)
+        if (_nodeTypes.TryGetValue(node.GetType(), out compilerOperator)
             && compilerOperator.Identity.Equals(identity)
             && compilerOperator.Accepts(node))
         {
@@ -107,17 +107,17 @@ internal static class CompilerOperatorRegistry
 
     public static bool TryGetTorchSharp(string name, out CompilerOperator? compilerOperator)
     {
-        return CALLS.TryGetValue(name, out compilerOperator);
+        return _calls.TryGetValue(name, out compilerOperator);
     }
 
     public static bool TryGetTorchSharpBinaryOperator(string token, out CompilerOperator? compilerOperator)
     {
-        return BINARY.TryGetValue(token, out compilerOperator);
+        return _binary.TryGetValue(token, out compilerOperator);
     }
 
     public static bool TryGetTorchSharpUnaryOperator(string token, out CompilerOperator? compilerOperator)
     {
-        return UNARY.TryGetValue(token, out compilerOperator);
+        return _unary.TryGetValue(token, out compilerOperator);
     }
 
     public static bool TryGetTorchSharpCall(CompilerExpression target, out CompilerOperator? compilerOperator, out CompilerExpression? receiver)
@@ -136,6 +136,7 @@ internal static class CompilerOperatorRegistry
             receiver = member.Target;
             return true;
         }
+
         return false;
     }
 
@@ -174,7 +175,7 @@ internal static class CompilerOperatorRegistry
 
     internal static IReadOnlyDictionary<string, CompilerOperator> BuildFormIndex(CompilerTorchSharpFormKind kind)
     {
-        return BuildFormIndex(OPERATORS, kind);
+        return BuildFormIndex(_operators, kind);
     }
 
     internal static IReadOnlyDictionary<string, CompilerOperator> BuildFormIndex(IEnumerable<CompilerOperator> operators, CompilerTorchSharpFormKind kind)
@@ -188,9 +189,11 @@ internal static class CompilerOperatorRegistry
                 {
                     throw new InvalidOperationException($"Duplicate compiler operator {kind} '{form.Name}'.");
                 }
+
                 index.Add(form.Name, compilerOperator);
             }
         }
+
         return index;
     }
 
@@ -208,8 +211,10 @@ internal static class CompilerOperatorRegistry
             {
                 throw new InvalidOperationException($"Duplicate compiler operator {keyDescription} '{key}'.");
             }
+
             index.Add(key, compilerOperator);
         }
+
         return index;
     }
 
@@ -225,11 +230,13 @@ internal static class CompilerOperatorRegistry
             name = reference.Name;
             return true;
         }
+
         if (expression is CompilerMemberAccessExpression member && TryGetMemberPath(member.Target, out var prefix))
         {
             name = $"{prefix}.{member.MemberName}";
             return true;
         }
+
         name = string.Empty;
         return false;
     }

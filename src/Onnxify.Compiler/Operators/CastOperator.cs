@@ -77,6 +77,7 @@ internal sealed class CastOperator() : UnaryOperator<Onnxify.Cast>("Cast", "to_t
             _ => null,
         };
     }
+
     protected override string PrintTorchSharp(Onnxify.Cast node, CompilerSourceSpan? span)
     {
         var typeName = node.To switch

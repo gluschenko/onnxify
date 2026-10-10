@@ -34,6 +34,7 @@ internal abstract class CompilerOperator
     {
         return OutputElementType;
     }
+
     protected virtual bool AllowsEmptyOptionalInputs => false;
     public virtual IReadOnlyCollection<string> Constraints =>
     [

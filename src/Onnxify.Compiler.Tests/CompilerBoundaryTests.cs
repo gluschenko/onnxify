@@ -1,4 +1,4 @@
-using Onnxify;
+﻿using Onnxify;
 using Onnxify.Compiler;
 using Onnxify.ModelGenerator;
 using Onnxify.TorchSharp;
@@ -414,6 +414,7 @@ public sealed class CompilerBoundaryTests
             {
                 throw new ArgumentNullException(nameof(source));
             }
+
             return CompilerResult<ICompilerTree>.Success(new TestCompilerTree(source));
         }
 
