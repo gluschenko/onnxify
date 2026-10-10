@@ -14,12 +14,8 @@ internal sealed class FlattenOperator() : CompilerOperator<Onnxify.Flatten>(Comp
 
     protected override string PrintTorchSharp(Onnxify.Flatten node, CompilerSourceSpan? span)
     {
-        if (node.Axis is not (null or 1))
-        {
-            throw Unsupported(span, "Compiler Flatten currently supports ONNX axis 1 only.");
-        }
-
-        return $"torch.flatten({CompilerCSharpNaming.Identifier(node.Input.Name)}, start_dim: 1)";
+        var axis = node.Axis ?? 1;
+        return $"torch.flatten({CompilerCSharpNaming.Identifier(node.Input.Name)}, start_dim: {axis})";
     }
 
     public override string? ValidateOnnxNode(
@@ -31,9 +27,16 @@ internal sealed class FlattenOperator() : CompilerOperator<Onnxify.Flatten>(Comp
             return $"Flatten requires the generated node type '{nameof(Onnxify.Flatten)}'.";
         }
 
-        return flatten.Axis is null or 1
+        if (flatten.Axis is not { } axis
+            || !knownTypes.TryGetValue(flatten.Input.Name, out var inputType)
+            || inputType is not CompilerTensorType { Dimensions: not null } tensorType)
+        {
+            return null;
+        }
+
+        return axis >= -tensorType.Dimensions.Count && axis <= tensorType.Dimensions.Count
             ? null
-            : "Compiler Flatten currently supports ONNX axis 1 only.";
+            : "Flatten axis must be within the input tensor rank.";
     }
 
     public override bool TryScanTorchSharp(TorchSharpOperatorScanContext context, CompilerExpression expression)
@@ -59,11 +62,11 @@ internal sealed class FlattenOperator() : CompilerOperator<Onnxify.Flatten>(Comp
         var endDimension = invocation.Arguments.Count > endIndex
             ? RequireInteger(invocation.Arguments[endIndex], context, "end_dim")
             : -1;
-        if (startDimension != 1 || endDimension != -1)
+        if (endDimension != -1)
         {
             throw context.Unsupported(
                 expression,
-                "TorchSharp flatten maps to ONNX Flatten only when start_dim is 1 and end_dim is -1.");
+                "TorchSharp flatten maps to ONNX Flatten only when end_dim is -1.");
         }
 
         if (invocation.Arguments.Count > endIndex + 1)
@@ -72,12 +75,21 @@ internal sealed class FlattenOperator() : CompilerOperator<Onnxify.Flatten>(Comp
         }
 
         var input = context.RequireTensorReference(inputExpression, OnnxName);
+        var inputType = context.Inputs
+            .FirstOrDefault(value => string.Equals(value.Name, input.Name, StringComparison.Ordinal))
+            ?.Type as CompilerTensorType;
+        if (inputType?.Dimensions is { } dimensions
+            && (startDimension < -dimensions.Count || startDimension > dimensions.Count))
+        {
+            throw context.Unsupported(expression, "TorchSharp flatten start_dim must be within the input tensor rank.");
+        }
+
         var node = new Onnxify.Flatten(
             OnnxName.ToLowerInvariant(),
             new Onnxify.FlattenInputOutputOptions
             {
                 Input = new OnnxEdge(input.Name),
-                Axis = 1,
+                Axis = startDimension,
                 Output = context.RequireSingleOutputEdge(this),
             });
         context.AddOperation(this, node, expression.Span);
@@ -89,6 +101,12 @@ internal sealed class FlattenOperator() : CompilerOperator<Onnxify.Flatten>(Comp
         TorchSharpOperatorScanContext context,
         string parameterName)
     {
+        if (expression is CompilerUnaryExpression { Operator: "-", Expression: CompilerLiteralExpression { Literal: CompilerSignedIntegerLiteral signedMagnitude } }
+            && signedMagnitude.Value != long.MinValue)
+        {
+            return -signedMagnitude.Value;
+        }
+
         if (expression is CompilerLiteralExpression { Literal: CompilerSignedIntegerLiteral signed })
         {
             return signed.Value;

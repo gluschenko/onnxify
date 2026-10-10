@@ -163,6 +163,77 @@ public sealed class ArithmeticCompilerTests
     }
 
     [Fact]
+    public void BinaryMappingsSupportMultidirectionalBroadcastingAcrossSeveralRanks()
+    {
+        // Torch converter case: third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py (TorchLibOpInfo("add", core_ops.aten_add)).
+        // ONNX Runtime cases: third_party/onnxruntime/onnxruntime/test/providers/cpu/math/element_wise_ops_test.cc (MathOpTest.Add_Broadcast_2x1x4_1x3x1 and MathOpTest.Add_Invalid_Broadcast).
+        var leftShape = new long[] { 2, 1, 4 };
+        var rightShape = new long[] { 1, 3, 1 };
+        var outputShape = new long[] { 2, 3, 4 };
+        var leftValues = new[] { 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f };
+        var rightValues = new[] { 10f, 20f, 30f };
+        var expected = new float[24];
+        for (var batch = 0; batch < 2; batch++)
+        {
+            for (var row = 0; row < 3; row++)
+            {
+                for (var column = 0; column < 4; column++)
+                {
+                    expected[(batch * 3 + row) * 4 + column] = leftValues[batch * 4 + column] + rightValues[row];
+                }
+            }
+        }
+
+        var onnxModel = CreateBinaryModel("Add", leftShape, rightShape, outputShape);
+        var onnxTree = Compiler.CreateTreeFromOnnx(onnxModel);
+        Assert.True(onnxTree.IsSuccess, FormatDiagnostics(onnxTree.Diagnostics));
+        var generated = Compiler.GenerateCSharp(onnxTree.Value!);
+        Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
+        Assert.Equal(expected, ExecuteGeneratedBroadcastModule(generated.Value!, leftValues, leftShape, rightValues, rightShape));
+        Assert.Equal(expected, ExecuteOnnx(onnxModel, leftValues, leftShape, rightValues, rightShape));
+
+        const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor left, global::TorchSharp.torch.Tensor right) { return left + right; }";
+        var torchTree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
+        Assert.True(torchTree.IsSuccess, FormatDiagnostics(torchTree.Diagnostics));
+        Assert.Equal(
+            Assert.IsType<CompilerOnnxStep>(onnxTree.Value!.Operations.Single()).Descriptor,
+            Assert.IsType<CompilerOnnxStep>(torchTree.Value!.Operations.Single()).Descriptor);
+        var emitted = Compiler.GenerateOnnx(torchTree.Value);
+        Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
+        Assert.Equal(expected, ExecuteOnnx(emitted.Value!, leftValues, leftShape, rightValues, rightShape));
+    }
+
+    [Fact]
+    public void PointwiseAdditionPreservesFloat64DtypeFromOnnxThroughGeneratedTorchSharp()
+    {
+        // ONNX Runtime case: third_party/onnxruntime/onnxruntime/test/providers/cpu/math/element_wise_ops_test.cc (MathOpTest.Add_double).
+        // Torch converter case: third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py (TorchLibOpInfo("add", core_ops.aten_add));
+        var model = OnnxModel.Create(new OnnxModelCreationOptions { Opset = 25 });
+        var left = model.Graph.AddInput("left", OnnxTensorType.Create<double>([2, 1]));
+        var right = model.Graph.AddInput("right", OnnxTensorType.Create<double>([1, 2]));
+        var output = model.Graph.AddOutput("output", OnnxTensorType.Create<double>([2, 2]));
+        model.Graph.AddNode(new Onnxify.Add(
+            "add",
+            new Onnxify.AddInputOutputOptions
+            {
+                A = left,
+                B = right,
+                C = output,
+            }));
+
+        var imported = Compiler.CreateTreeFromOnnx(model);
+        Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
+        var generated = Compiler.GenerateCSharp(imported.Value!);
+        Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
+
+        var leftValues = new[] { 1d, 2d };
+        var rightValues = new[] { 10d, 20d };
+        var expected = new[] { 11d, 21d, 12d, 22d };
+        Assert.Equal(expected, ExecuteGeneratedDoubleBroadcastModule(generated.Value!, leftValues, rightValues));
+        Assert.Equal(expected, ExecuteOnnxDouble(model, leftValues, rightValues));
+    }
+
+    [Fact]
     public void TruncMappingLowersToRuntimeSupportedOnnxAndDeclaresItsDirection()
     {
         // Torch converter case: third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py (trunc), exercised by ops_test.py::test_output_match_opinfo_.
@@ -352,12 +423,14 @@ public sealed class ArithmeticCompilerTests
         AssertClose(expectedValues, ExecuteOnnxUnary(emitted.Value!, inputValues));
     }
 
-    private static OnnxModel CreateBinaryModel(string opType, long[] leftShape, long[] rightShape)
+    private static OnnxModel CreateBinaryModel(string opType, long[] leftShape, long[] rightShape, long[]? outputShape = null)
     {
         var model = OnnxModel.Create(new OnnxModelCreationOptions { Opset = 25 });
         var left = model.Graph.AddInput("left", OnnxTensorType.Create<float>(leftShape.Select(static dimension => new OnnxDimension<long>(dimension))));
         var right = model.Graph.AddInput("right", OnnxTensorType.Create<float>(rightShape.Select(static dimension => new OnnxDimension<long>(dimension))));
-        var output = model.Graph.AddOutput("output", OnnxTensorType.Create<float>([2, 3]));
+        var output = model.Graph.AddOutput(
+            "output",
+            OnnxTensorType.Create<float>((outputShape ?? [2, 3]).Select(static dimension => new OnnxDimension<long>(dimension))));
         model.Graph.AddNode(opType.ToLowerInvariant(), opType, string.Empty, string.Empty, [left, right], [output], []);
         return model;
     }
@@ -443,6 +516,74 @@ public sealed class ArithmeticCompilerTests
             module,
             right is null ? [left] : [left, right])!;
         return output.data<float>().ToArray();
+    }
+
+    private static float[] ExecuteGeneratedBroadcastModule(
+        string source,
+        float[] leftValues,
+        long[] leftShape,
+        float[] rightValues,
+        long[] rightShape)
+    {
+        var compilation = CSharpCompilation.Create(
+            $"Onnxify.Broadcast{Guid.NewGuid():N}",
+            [CSharpSyntaxTree.ParseText(source)],
+            CompilationReferences(),
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        using var assemblyBytes = new MemoryStream();
+        var emit = compilation.Emit(assemblyBytes);
+        Assert.True(emit.Success, string.Join(Environment.NewLine, emit.Diagnostics.Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)));
+        assemblyBytes.Position = 0;
+        var assembly = AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
+        var moduleType = assembly.GetTypes().Single(static type => type.Name.Contains("TorchModule", StringComparison.Ordinal));
+        using var module = (IDisposable)Activator.CreateInstance(moduleType, "broadcast")!;
+        using var left = global::TorchSharp.torch.tensor(leftValues, leftShape, dtype: global::TorchSharp.torch.ScalarType.Float32);
+        using var right = global::TorchSharp.torch.tensor(rightValues, rightShape, dtype: global::TorchSharp.torch.ScalarType.Float32);
+        using var output = (global::TorchSharp.torch.Tensor)moduleType.GetMethod("forward")!.Invoke(module, [left, right])!;
+        return output.data<float>().ToArray();
+    }
+
+    private static double[] ExecuteGeneratedDoubleBroadcastModule(string source, double[] leftValues, double[] rightValues)
+    {
+        var compilation = CSharpCompilation.Create(
+            $"Onnxify.DoubleBroadcast{Guid.NewGuid():N}",
+            [CSharpSyntaxTree.ParseText(source)],
+            CompilationReferences(),
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        using var assemblyBytes = new MemoryStream();
+        var emit = compilation.Emit(assemblyBytes);
+        Assert.True(emit.Success, string.Join(Environment.NewLine, emit.Diagnostics.Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)));
+        assemblyBytes.Position = 0;
+        var assembly = AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
+        var moduleType = assembly.GetTypes().Single(static type => type.Name.Contains("TorchModule", StringComparison.Ordinal));
+        using var module = (IDisposable)Activator.CreateInstance(moduleType, "double_broadcast")!;
+        using var left = global::TorchSharp.torch.tensor(leftValues, [2L, 1L], dtype: global::TorchSharp.torch.ScalarType.Float64);
+        using var right = global::TorchSharp.torch.tensor(rightValues, [1L, 2L], dtype: global::TorchSharp.torch.ScalarType.Float64);
+        using var output = (global::TorchSharp.torch.Tensor)moduleType.GetMethod("forward")!.Invoke(module, [left, right])!;
+        return output.data<double>().ToArray();
+    }
+
+    private static double[] ExecuteOnnxDouble(OnnxModel model, double[] leftValues, double[] rightValues)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"onnxify-arithmetic-double-{Guid.NewGuid():N}.onnx");
+        try
+        {
+            model.Save(path, overwrite: true);
+            using var session = new InferenceSession(path);
+            using var results = session.Run(
+            [
+                NamedOnnxValue.CreateFromTensor("left", new DenseTensor<double>(leftValues, [2, 1])),
+                NamedOnnxValue.CreateFromTensor("right", new DenseTensor<double>(rightValues, [1, 2])),
+            ]);
+            return results.Single().AsTensor<double>().ToArray();
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
     }
 
     private static float[] ExecuteOnnx(OnnxModel model, float[] leftValues, long[] leftShape, float[] rightValues, long[] rightShape)

@@ -69,6 +69,7 @@ internal static class CompilerOperatorRegistry
         new SoftplusOperator(),
         new SoftsignOperator(),
         new SwishOperator(),
+        new TransposeOperator(),
         new TanhOperator(),
         new ThresholdedReluOperator(),
     ];

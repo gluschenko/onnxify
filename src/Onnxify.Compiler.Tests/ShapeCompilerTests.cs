@@ -45,11 +45,11 @@ public sealed class ShapeCompilerTests
     [Fact]
     public void FlattenRejectsUnsupportedAxisAndDynamicTorchSharpArguments()
     {
-        var invalidModel = CreateFlattenModel(axis: 2);
+        var invalidModel = CreateFlattenModel(axis: 4);
         var imported = Compiler.CreateTreeFromOnnx(invalidModel);
         Assert.False(imported.IsSuccess);
         Assert.Contains(imported.Diagnostics, static diagnostic => diagnostic.Severity == CompilerDiagnosticSeverity.Error
-            && diagnostic.Message.Contains("axis 1", StringComparison.Ordinal));
+            && diagnostic.Message.Contains("rank", StringComparison.Ordinal));
 
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input, int start) { return input.flatten(start); }";
         var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
@@ -57,11 +57,103 @@ public sealed class ShapeCompilerTests
         Assert.Contains(scanned.Diagnostics, static diagnostic => diagnostic.Severity == CompilerDiagnosticSeverity.Error);
     }
 
+    [Fact]
+    public void FlattenSupportsAdditionalStaticAxesInBothDirections()
+    {
+        foreach (var axis in new long[] { 0, 2, -1 })
+        {
+            var model = CreateFlattenModel(axis);
+            var imported = Compiler.CreateTreeFromOnnx(model);
+            Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
+            var generated = Compiler.GenerateCSharp(imported.Value!);
+            Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
+
+            var values = Enumerable.Range(0, 24).Select(static value => (float)value).ToArray();
+            var expected = ExecuteOnnx(model, values);
+            Assert.Equal(expected, ExecuteGenerated(generated.Value!, values));
+
+            var source = $"public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) {{ return input.flatten({axis}); }}";
+            var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
+            Assert.True(scanned.IsSuccess, FormatDiagnostics(scanned.Diagnostics));
+            var torchStep = Assert.IsType<CompilerOnnxStep>(Assert.Single(scanned.Value!.Operations));
+            Assert.Equal((long?)axis, Assert.IsType<Onnxify.Flatten>(torchStep.Node).Axis);
+            var emitted = Compiler.GenerateOnnx(scanned.Value);
+            Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
+            Assert.Equal(expected, ExecuteOnnx(emitted.Value!, values));
+        }
+    }
+
+    [Fact]
+    public void TransposePermutationRoundTripsAndPreservesRuntimeValues()
+    {
+        // ONNXScript source: third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py (aten_permute).
+        // ONNX Runtime case: third_party/onnxruntime/onnxruntime/test/providers/cpu/tensor/transpose_test.cc (TransposeOpTest.TwoDim).
+        var model = CreateTransposeModel([1, 2, 0]);
+        var imported = Compiler.CreateTreeFromOnnx(model);
+        Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
+        var onnxStep = Assert.IsType<CompilerOnnxStep>(Assert.Single(imported.Value!.Operations));
+        Assert.IsType<Onnxify.Transpose>(onnxStep.Node);
+        Assert.Equal(CompilerOperationCapability.Bidirectional, onnxStep.Descriptor.Capability);
+
+        var generated = Compiler.GenerateCSharp(imported.Value);
+        Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
+        Assert.Contains("input.permute(new long[] { 1, 2, 0 })", generated.Value);
+
+        var values = Enumerable.Range(0, 24).Select(static value => (float)value).ToArray();
+        var expected = ExecuteOnnx(model, values);
+        Assert.Equal(expected, ExecuteGenerated(generated.Value!, values));
+
+        const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.permute(new long[] { 1, 2, 0 }); }";
+        var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
+        Assert.True(scanned.IsSuccess, FormatDiagnostics(scanned.Diagnostics));
+        var torchStep = Assert.IsType<CompilerOnnxStep>(Assert.Single(scanned.Value!.Operations));
+        Assert.IsType<Onnxify.Transpose>(torchStep.Node);
+        Assert.Equal(onnxStep.Descriptor, torchStep.Descriptor);
+        var emitted = Compiler.GenerateOnnx(scanned.Value);
+        Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
+        Assert.IsType<Onnxify.Transpose>(Assert.Single(emitted.Value!.Graph.Nodes));
+        Assert.Equal(expected, ExecuteOnnx(emitted.Value, values));
+    }
+
+    [Fact]
+    public void TransposeRejectsInvalidOrDynamicPermutations()
+    {
+        var invalidModel = CreateTransposeModel([0, 0, 2]);
+        var imported = Compiler.CreateTreeFromOnnx(invalidModel);
+        Assert.False(imported.IsSuccess);
+        Assert.Contains(imported.Diagnostics, static diagnostic => diagnostic.Severity == CompilerDiagnosticSeverity.Error);
+
+        var rankMismatch = Compiler.CreateTreeFromOnnx(CreateTransposeModel([1, 0]));
+        Assert.False(rankMismatch.IsSuccess);
+        Assert.Contains(rankMismatch.Diagnostics, static diagnostic => diagnostic.Message.Contains("input tensor rank", StringComparison.Ordinal));
+
+        const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input, long axis) { return input.permute(new long[] { 0, axis, 2 }); }";
+        var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
+        Assert.False(scanned.IsSuccess);
+        Assert.Contains(scanned.Diagnostics, static diagnostic => diagnostic.Severity == CompilerDiagnosticSeverity.Error);
+    }
+
     private static OnnxModel CreateFlattenModel(long? axis = null)
     {
+        var normalizedAxis = axis ?? 1;
+        if (normalizedAxis < 0)
+        {
+            normalizedAxis += 3;
+        }
+
+        var dimensions = new long[] { 2, 3, 4 };
+        var outputShape = normalizedAxis is >= 0 and <= 3
+            ? new long[]
+            {
+                dimensions.Take((int)normalizedAxis).Aggregate(1L, static (product, dimension) => product * dimension),
+                dimensions.Skip((int)normalizedAxis).Aggregate(1L, static (product, dimension) => product * dimension),
+            }
+            : new long[] { 2, 12 };
         var model = OnnxModel.Create(new OnnxModelCreationOptions { Opset = 25 });
         var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([2, 3, 4]));
-        var output = model.Graph.AddOutput("output", OnnxTensorType.Create<float>([2, axis == 2 ? 3 : 12]));
+        var output = model.Graph.AddOutput(
+            "output",
+            OnnxTensorType.Create<float>(outputShape.Select(static dimension => new OnnxDimension<long>(dimension))));
         model.Graph.AddNode(new Onnxify.Flatten(
             "flatten",
             new Onnxify.FlattenInputOutputOptions
@@ -69,6 +161,22 @@ public sealed class ShapeCompilerTests
                 Input = input,
                 Axis = axis,
                 Output = output,
+            }));
+        return model;
+    }
+
+    private static OnnxModel CreateTransposeModel(long[] permutation)
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions { Opset = 25 });
+        var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([2, 3, 4]));
+        var output = model.Graph.AddOutput("output", OnnxTensorType.Create<float>([3, 4, 2]));
+        model.Graph.AddNode(new Onnxify.Transpose(
+            "transpose",
+            new Onnxify.TransposeInputOutputOptions
+            {
+                Data = input,
+                Perm = permutation,
+                Transposed = output,
             }));
         return model;
     }

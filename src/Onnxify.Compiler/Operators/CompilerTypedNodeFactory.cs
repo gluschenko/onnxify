@@ -814,6 +814,19 @@
                         }
                     );
                 },
+                [typeof(Onnxify.Transpose)] = static (name, inputs, outputs, onnxAttributes) =>
+                {
+                    var attributes = onnxAttributes.ToDictionary(attribute => attribute.Name, attribute => attribute.GetValue(), StringComparer.Ordinal);
+                    return new Onnxify.Transpose(
+                        name,
+                        new Onnxify.TransposeInputOutputOptions
+                        {
+                            Data = inputs[0] ?? throw new InvalidOperationException("Missing required input 'data'"),
+                            Perm = attributes.TryGetValue("perm", out var permutation) ? (long[]?)permutation : null,
+                            Transposed = outputs[0] ?? throw new InvalidOperationException("Missing required output 'transposed'"),
+                        }
+                    );
+                },
                 [typeof(Onnxify.Xor)] = static (name, inputs, outputs, onnxAttributes) =>
                 {
                     var attributes = onnxAttributes.ToDictionary(attribute => attribute.Name, attribute => attribute.GetValue(), StringComparer.Ordinal);
