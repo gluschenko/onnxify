@@ -75,6 +75,10 @@ internal static partial class Program
         new(ReplaceFrom: "sampler", ReplaceTo: "sample"),
         new(Prepend: "to", YieldOnly: true),
         new(RemoveTrailingDigit: true),
+        new(ExactName: "col2im", ReplacementName: "fold"),
+        new(ExactName: "im2col", ReplacementName: "unfold"),
+        new(ExactName: "liftfreshcopy", ReplacementName: "tensor"),
+        new(ExactName: "deviceput", ReplacementName: "to"),
     ];
     private static readonly IReadOnlyDictionary<string, ModuleNamePrefix> _moduleNamePrefixes =
         new Dictionary<string, ModuleNamePrefix>(StringComparer.Ordinal)
@@ -520,57 +524,75 @@ internal static partial class Program
         const BindingFlags PUBLIC_STATIC = BindingFlags.Public | BindingFlags.Static;
         const BindingFlags PUBLIC_INSTANCE = BindingFlags.Public | BindingFlags.Instance;
 
-        var assembly = typeof(global::TorchSharp.torch).Assembly;
         var candidates = new Dictionary<string, TorchSharpCandidate>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var type in assembly.GetExportedTypes())
+        var assemblies = new[]
         {
-            if (!type.FullName?.StartsWith("TorchSharp.", StringComparison.Ordinal) ?? true)
-            {
-                continue;
-            }
+            typeof(global::TorchSharp.torch).Assembly,
+            typeof(global::TorchSharp.torchvision).Assembly,
+        }.Distinct();
 
-            foreach (var method in type.GetMethods(PUBLIC_STATIC))
+        foreach (var assembly in assemblies)
+        {
+            foreach (var type in assembly.GetExportedTypes())
             {
-                if (method.IsSpecialName)
+                string? typeName = type.FullName;
+                if (typeName is null || !typeName.StartsWith("TorchSharp.", StringComparison.Ordinal))
                 {
                     continue;
                 }
 
-                AddCandidate(candidates, NormalizeTorchSharpName(method.Name), $"{type.FullName}.{method.Name}");
-            }
-
-            if (IsModuleType(type))
-            {
-                if (type.FullName is not null)
+                if (typeName.Contains("+transforms", StringComparison.Ordinal))
                 {
-                    AddCandidate(candidates, NormalizeTorchSharpName(type.Name), type.FullName);
-                }
-            }
-
-            AddPropertyCandidates(type, PUBLIC_STATIC, candidates);
-
-            foreach (var nested in type.GetNestedTypes(BindingFlags.Public))
-            {
-                if (IsModuleType(nested))
-                {
-                    AddCandidate(candidates, NormalizeTorchSharpName(nested.Name), $"{type.FullName}.{nested.Name}");
+                    continue;
                 }
 
-                foreach (var method in nested.GetMethods(PUBLIC_STATIC | PUBLIC_INSTANCE))
+                foreach (var method in type.GetMethods(PUBLIC_STATIC))
                 {
                     if (method.IsSpecialName)
                     {
                         continue;
                     }
 
-                    if (nested.FullName is not null)
+                    AddCandidate(candidates, NormalizeTorchSharpName(method.Name), $"{type.FullName}.{method.Name}");
+                }
+
+                if (IsModuleType(type))
+                {
+                    if (type.FullName is not null)
                     {
-                        AddCandidate(candidates, NormalizeTorchSharpName(method.Name), $"{nested.FullName}.{method.Name}");
+                        AddCandidate(candidates, NormalizeTorchSharpName(type.Name), type.FullName);
                     }
                 }
 
-                AddPropertyCandidates(nested, PUBLIC_STATIC | PUBLIC_INSTANCE, candidates);
+                AddPropertyCandidates(type, PUBLIC_STATIC, candidates);
+
+                foreach (var nested in type.GetNestedTypes(BindingFlags.Public))
+                {
+                    if (nested.FullName?.Contains("+transforms", StringComparison.Ordinal) == true)
+                    {
+                        continue;
+                    }
+
+                    if (IsModuleType(nested))
+                    {
+                        AddCandidate(candidates, NormalizeTorchSharpName(nested.Name), $"{type.FullName}.{nested.Name}");
+                    }
+
+                    foreach (var method in nested.GetMethods(PUBLIC_STATIC | PUBLIC_INSTANCE))
+                    {
+                        if (method.IsSpecialName)
+                        {
+                            continue;
+                        }
+
+                        if (nested.FullName is not null)
+                        {
+                            AddCandidate(candidates, NormalizeTorchSharpName(method.Name), $"{nested.FullName}.{method.Name}");
+                        }
+                    }
+
+                    AddPropertyCandidates(nested, PUBLIC_STATIC | PUBLIC_INSTANCE, candidates);
+                }
             }
         }
 
@@ -1279,6 +1301,16 @@ internal static partial class Program
         builder.AppendLine($"* Importable (compiler): {FormatPercentage(compilerImportableCount, total)} ({compilerImportableCount}/{total})");
         builder.AppendLine($"* Exportable (compiler): {FormatPercentage(compilerExportableCount, total)} ({compilerExportableCount}/{total})");
         builder.AppendLine();
+        AppendCoverageCharts(
+            builder,
+            total,
+            foundCount,
+            legacyImportableCount,
+            legacyExportableCount,
+            compilerImportableCount,
+            compilerExportableCount
+        );
+
         builder.AppendLine("## Package Versions");
         builder.AppendLine();
         builder.AppendLine("Current versions and direct dependencies are read from the publishable `Onnxify.*` project files under `src/`.");
@@ -1299,7 +1331,7 @@ internal static partial class Program
         builder.AppendLine();
         builder.AppendLine("## Coverage Columns");
         builder.AppendLine();
-        builder.AppendLine("* `Found` means the observer found a likely matching public TorchSharp API or module for the ONNXScript Torch operator name. This is a discovery signal, not an Onnxify implementation guarantee.");
+        builder.AppendLine("* `Found` means reflection found a likely matching public TorchSharp or TorchVision API or module for the ONNXScript Torch operator name. This is a discovery signal, not an Onnxify implementation guarantee.");
         builder.AppendLine("* `Exportable (legacy)` means the exact ONNXScript Torch operator is registered in the actual `Onnxify.TorchSharp` deep-export coverage set through `[TorchOp(...)]`.");
         builder.AppendLine("* `Importable (legacy)` means the observer can map the ONNXScript Torch operator to expected ONNX `OpType` nodes and every mapped `OpType` is registered in the actual `Onnxify.ModelGenerator` TorchModule deep-import registries.");
         builder.AppendLine("* `Importable (compiler)` means a compiler mapping can import the ONNX operator and print it as TorchSharp C# (`Bidirectional` or `ImportOnly`).");
@@ -1333,6 +1365,37 @@ internal static partial class Program
         }
 
         return builder.ToString();
+    }
+
+    private static void AppendCoverageCharts(
+        StringBuilder builder,
+        int total,
+        int foundCount,
+        int legacyImportableCount,
+        int legacyExportableCount,
+        int compilerImportableCount,
+        int compilerExportableCount
+    )
+    {
+        builder.AppendLine("## Coverage Charts");
+        builder.AppendLine();
+        builder.AppendLine("The discovery chart shows whether a matching public API was found. The support chart compares independent coverage flags; an operator can be supported by both implementations.");
+        builder.AppendLine();
+        builder.AppendLine("```mermaid");
+        builder.AppendLine("pie showData");
+        builder.AppendLine("    title Public API discovery");
+        builder.AppendLine($"    \"Found\" : {foundCount}");
+        builder.AppendLine($"    \"Not found\" : {total - foundCount}");
+        builder.AppendLine("```");
+        builder.AppendLine();
+        builder.AppendLine("```mermaid");
+        builder.AppendLine("xychart-beta");
+        builder.AppendLine("    title \"Supported operator overloads\"");
+        builder.AppendLine("    x-axis [\"Legacy import\", \"Compiler import\", \"Legacy export\", \"Compiler export\"]");
+        builder.AppendLine($"    y-axis \"Operators (of {total})\" 0 --> {Math.Max(total, 1)}");
+        builder.AppendLine($"    bar [{legacyImportableCount}, {compilerImportableCount}, {legacyExportableCount}, {compilerExportableCount}]");
+        builder.AppendLine("```");
+        builder.AppendLine();
     }
 
     private static void AppendOnnxifyPackageDependencies(StringBuilder builder, IReadOnlyList<string> packageIds)
@@ -1412,6 +1475,8 @@ internal static partial class Program
     private sealed record ModuleNamePrefix(string Prefix, string? ExcludedOperatorSubstring = null);
 
     private sealed record NameAdaptationRule(
+        string? ExactName = null,
+        string? ReplacementName = null,
         string? StripPrefix = null,
         string? StripSuffix = null,
         string? RequiredPrefix = null,
@@ -1428,6 +1493,17 @@ internal static partial class Program
         public bool TryApply(string input, out string result)
         {
             result = input;
+
+            if (ExactName is not null)
+            {
+                if (!string.Equals(input, ExactName, StringComparison.Ordinal))
+                {
+                    return false;
+                }
+
+                result = ReplacementName ?? string.Empty;
+                return result.Length > 0 && !string.Equals(input, result, StringComparison.Ordinal);
+            }
 
             if (RequiredPrefix is not null && !result.StartsWith(RequiredPrefix, StringComparison.Ordinal))
             {

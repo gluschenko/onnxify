@@ -1,10 +1,29 @@
 # TorchSharp operator coverage
 
-* Found: 97.79% (487/498)
+* Found: 98.80% (492/498)
 * Importable (legacy): 56.02% (279/498)
 * Exportable (legacy): 83.53% (416/498)
 * Importable (compiler): 20.08% (100/498)
 * Exportable (compiler): 19.68% (98/498)
+
+## Coverage Charts
+
+The discovery chart shows whether a matching public API was found. The support chart compares independent coverage flags; an operator can be supported by both implementations.
+
+```mermaid
+pie showData
+    title Public API discovery
+    "Found" : 492
+    "Not found" : 6
+```
+
+```mermaid
+xychart-beta
+    title "Supported operator overloads"
+    x-axis ["Legacy import", "Compiler import", "Legacy export", "Compiler export"]
+    y-axis "Operators (of 498)" 0 --> 498
+    bar [279, 100, 416, 98]
+```
 
 ## Package Versions
 
@@ -113,7 +132,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 
 ## Coverage Columns
 
-* `Found` means the observer found a likely matching public TorchSharp API or module for the ONNXScript Torch operator name. This is a discovery signal, not an Onnxify implementation guarantee.
+* `Found` means reflection found a likely matching public TorchSharp or TorchVision API or module for the ONNXScript Torch operator name. This is a discovery signal, not an Onnxify implementation guarantee.
 * `Exportable (legacy)` means the exact ONNXScript Torch operator is registered in the actual `Onnxify.TorchSharp` deep-export coverage set through `[TorchOp(...)]`.
 * `Importable (legacy)` means the observer can map the ONNXScript Torch operator to expected ONNX `OpType` nodes and every mapped `OpType` is registered in the actual `Onnxify.ModelGenerator` TorchModule deep-import registries.
 * `Importable (compiler)` means a compiler mapping can import the ONNX operator and print it as TorchSharp C# (`Bidirectional` or `ImportOnly`).
@@ -247,7 +266,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::clamp_min` | `TorchSharp.torch.clamp_min` | ✅ | ✅ | ✅ | ❌ | ❌ | 10 |
 | `aten::clamp_min.Tensor` | `TorchSharp.torch.clamp_min` | ✅ | ✅ | ✅ | ❌ | ❌ | 10 |
 | `aten::clone` | `TorchSharp.torch.clone` | ✅ | ✅ | ✅ | ❌ | ❌ | 1 |
-| `aten::col2im` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 0 |
+| `aten::col2im` | `TorchSharp.Modules.Fold` | ✅ | ❌ | ❌ | ❌ | ❌ | 1 |
 | `aten::complex` | `TorchSharp.torch.complex` | ✅ | ❌ | ❌ | ❌ | ❌ | 1 |
 | `aten::concat` | `TorchSharp.torch.concat` | ✅ | ✅ | ✅ | ❌ | ❌ | 3 |
 | `aten::concatenate` | `TorchSharp.torch.concatenate` | ✅ | ✅ | ✅ | ❌ | ❌ | 0 |
@@ -333,7 +352,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::hardtanh_backward` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 0 |
 | `aten::heaviside` | `TorchSharp.torch.heaviside` | ✅ | ❌ | ✅ | ❌ | ❌ | 2 |
 | `aten::histc` | `TorchSharp.torch.histc` | ✅ | ❌ | ❌ | ❌ | ❌ | 0 |
-| `aten::im2col` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 0 |
+| `aten::im2col` | `TorchSharp.torch+Tensor.unfold` | ✅ | ❌ | ❌ | ❌ | ❌ | 0 |
 | `aten::index.Tensor` | `TorchSharp.torch+Tensor.index` | ✅ | ❌ | ❌ | ❌ | ❌ | 5 |
 | `aten::index_put` | `TorchSharp.torch+Tensor.index_put_` | ✅ | ❌ | ❌ | ❌ | ❌ | 5 |
 | `aten::index_select` | `TorchSharp.torch.index_select` | ✅ | ❌ | ✅ | ❌ | ❌ | 14 |
@@ -353,7 +372,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::lerp.Tensor` | `TorchSharp.torch.lerp` | ✅ | ❌ | ✅ | ❌ | ❌ | 3 |
 | `aten::less.Tensor` | `TorchSharp.torch.less` | ✅ | ✅ | ✅ | ✅ | ✅ | 4 |
 | `aten::less_equal.Tensor` | `TorchSharp.torch.less_equal` | ✅ | ✅ | ✅ | ✅ | ✅ | 8 |
-| `aten::lift_fresh_copy` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 2 |
+| `aten::lift_fresh_copy` | `TorchSharp.torch.tensor` | ✅ | ❌ | ❌ | ❌ | ❌ | 52 |
 | `aten::linalg_cross` | `TorchSharp.torch.cross` | ✅ | ❌ | ❌ | ❌ | ❌ | 2 |
 | `aten::linalg_det` | `TorchSharp.torch.det` | ✅ | ✅ | ✅ | ❌ | ❌ | 3 |
 | `aten::linalg_vector_norm` | `TorchSharp.torch+linalg.vector_norm` | ✅ | ❌ | ✅ | ❌ | ❌ | 9 |
@@ -583,7 +602,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `prims::convert_element_type` | `TorchSharp.torch+Tensor.to_type` | ✅ | ❌ | ❌ | ❌ | ❌ | 44 |
 | `prims::cos` | `TorchSharp.torch.cos` | ✅ | ✅ | ✅ | ❌ | ❌ | 4 |
 | `prims::cosh` | `TorchSharp.torch.cosh` | ✅ | ✅ | ✅ | ❌ | ❌ | 3 |
-| `prims::device_put` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 0 |
+| `prims::device_put` | `TorchSharp.torch+Tensor.to` | ✅ | ❌ | ❌ | ❌ | ❌ | 14 |
 | `prims::div` | `TorchSharp.torch.div` | ✅ | ✅ | ✅ | ❌ | ❌ | 5 |
 | `prims::eq` | `TorchSharp.torch.eq` | ✅ | ✅ | ✅ | ❌ | ❌ | 4 |
 | `prims::erf` | `TorchSharp.torch.erf` | ✅ | ✅ | ✅ | ❌ | ❌ | 5 |
@@ -618,6 +637,6 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `quantized_decomposed::quantize_per_tensor` | `TorchSharp.torch.quantize_per_tensor` | ✅ | ❌ | ❌ | ❌ | ❌ | 5 |
 | `quantized_decomposed::quantize_per_tensor.tensor` | `TorchSharp.torch.quantize_per_tensor` | ✅ | ❌ | ❌ | ❌ | ❌ | 5 |
 | `quantized_decomposed::quantize_per_tensor.tensor2` | `TorchSharp.torch.quantize_per_tensor` | ✅ | ❌ | ❌ | ❌ | ❌ | 5 |
-| `torchvision::nms` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 0 |
+| `torchvision::nms` | `TorchSharp.torchvision+ops.nms` | ✅ | ❌ | ❌ | ❌ | ❌ | 0 |
 | `torchvision::roi_align` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 3 |
 | `torchvision::roi_pool` |  | ❌ | ❌ | ❌ | ❌ | ❌ | 3 |
