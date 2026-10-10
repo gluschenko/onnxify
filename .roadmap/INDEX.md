@@ -20,13 +20,19 @@
 | [OXY-016](OXY-016.md) | ModelGenerator Jinja Chat Template Serializer | TODO | 96 human-hours | 2026-07-07 | 2026-07-07 |
 | [OXY-017](OXY-017.md) | ModelGenerator Hugging Face Artifact Zoo | TODO | 40 human-hours | 2026-07-07 | 2026-07-07 |
 | [OXY-018](OXY-018.md) | CUDA Version Matrix For Generated ONNX Model Validation | TODO | 40 human-hours | 2026-07-10 | 2026-07-10 |
-| [OXY-019](OXY-019.md) | Onnxify.Compiler — Unified Bidirectional C# ONNX Compiler | TODO | 164 human-hours | 2026-07-21 | 2026-09-05 |
-| [OXY-020](OXY-020.md) | Establish Compiler Project Boundary And Contracts | TODO | 12 human-hours | 2026-09-05 | 2026-09-05 |
-| [OXY-021](OXY-021.md) | Define Compiler IR And Diagnostics | TODO | 20 human-hours | 2026-09-05 | 2026-09-05 |
-| [OXY-022](OXY-022.md) | Implement ONNX Tree Frontend And Backend | TODO | 20 human-hours | 2026-09-05 | 2026-09-05 |
-| [OXY-023](OXY-023.md) | Implement C# TorchSharp Frontend And Backend | TODO | 24 human-hours | 2026-09-05 | 2026-09-05 |
-| [OXY-024](OXY-024.md) | Migrate Shared Operator Mappings And Verification | TODO | 32 human-hours | 2026-09-05 | 2026-09-05 |
-| [OXY-025](OXY-025.md) | Migrate Helpers, Modules, And Static Control Flow | TODO | 24 human-hours | 2026-09-05 | 2026-09-05 |
-| [OXY-026](OXY-026.md) | Add Compatibility Facades And Extensibility | TODO | 16 human-hours | 2026-09-05 | 2026-09-05 |
-| [OXY-027](OXY-027.md) | Complete Roundtrip Validation, Documentation, And Cleanup | TODO | 16 human-hours | 2026-09-05 | 2026-09-05 |
+| [OXY-019](OXY-019.md) | Onnxify.Compiler — Unified Bidirectional C# ONNX Compiler | TODO | 164 human-hours | 2026-07-21 | 2026-10-07 |
+| [OXY-020](OXY-020.md) | Establish Compiler Project Boundary And Contracts | DONE | 12 human-hours | 2026-09-05 | 2026-10-04 |
+| [OXY-021](OXY-021.md) | Define Compiler IR And Diagnostics | DONE | 20 human-hours | 2026-09-05 | 2026-10-04 |
+| [OXY-022](OXY-022.md) | Implement ONNX Tree Frontend And Backend | DONE | 40 human-hours | 2026-09-05 | 2026-10-04 |
+| [OXY-023](OXY-023.md) | Implement C# TorchSharp Frontend And Backend | DONE | 24 human-hours | 2026-09-05 | 2026-10-05 |
+| [OXY-024](OXY-024.md) | Migrate Shared Operator Mappings And Verification | DONE | 32 human-hours | 2026-09-05 | 2026-10-06 |
+| [OXY-025](OXY-025.md) | Migrate Helpers, Modules, And Static Control Flow | DONE | 24 human-hours | 2026-09-05 | 2026-10-06 |
+| [OXY-026](OXY-026.md) | Add Compatibility Facades And Extensibility | DONE | 16 human-hours | 2026-09-05 | 2026-10-07 |
+| [OXY-027](OXY-027.md) | Complete Roundtrip Validation, Documentation, And Cleanup | TODO | 16 human-hours | 2026-09-05 | 2026-10-07 |
 | [OXY-028](OXY-028.md) | OnnxGraph Stale Value And Dead Node Cleanup | DONE | 24 human-hours | 2026-09-05 | 2026-09-05 |
+| [OXY-029](OXY-029.md) | Compiler Operator Mappings: Pointwise Operations And Broadcasting | TODO | 64 human-hours | 2026-10-06 | 2026-10-07 |
+| [OXY-030](OXY-030.md) | Compiler Operator Mappings: Matrix Multiplication | DONE | 16 human-hours | 2026-10-06 | 2026-10-07 |
+| [OXY-031](OXY-031.md) | Compiler Operator Mappings: Shape Operations And Factories | TODO | 24 human-hours | 2026-10-06 | 2026-10-07 |
+| [OXY-032](OXY-032.md) | Compiler Operator Mappings: Activations Beyond ReLU | DONE | 24 human-hours | 2026-10-06 | 2026-10-06 |
+| [OXY-033](OXY-033.md) | Compiler Operator Mappings: Reductions And Non-Pointwise Selection | TODO | 32 human-hours | 2026-10-06 | 2026-10-07 |
+| [OXY-034](OXY-034.md) | Polymorphic Compiler Operator Architecture | DONE | 56 human-hours | 2026-10-07 | 2026-10-07 |

@@ -1,3 +1,8 @@
+## 0.4.0
+
+- Updated the package version for the coordinated Onnxify 0.4.0 release.
+- Added the shared `Onnxify.Compiler` package dependency as the compiler boundary for future bidirectional ONNX and TorchSharp generation.
+
 ## 0.3.11
 
 - Updated the package version for the coordinated Onnxify 0.3.11 release.

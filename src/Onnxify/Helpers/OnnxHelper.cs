@@ -562,7 +562,7 @@ public static class OnnxHelper
         if (type == typeof(TensorProto) || typeof(OnnxTensor).IsAssignableFrom(type))
             return AttributeProto.Types.AttributeType.Tensor;
 
-        if (type == typeof(GraphProto))
+        if (type == typeof(GraphProto) || typeof(OnnxGraph).IsAssignableFrom(type))
             return AttributeProto.Types.AttributeType.Graph;
 
         if (type == typeof(SparseTensorProto))
@@ -585,7 +585,7 @@ public static class OnnxHelper
         if (elementType == typeof(TensorProto) || elementType is not null && typeof(OnnxTensor).IsAssignableFrom(elementType))
             return AttributeProto.Types.AttributeType.Tensors;
 
-        if (elementType == typeof(GraphProto))
+        if (elementType == typeof(GraphProto) || elementType is not null && typeof(OnnxGraph).IsAssignableFrom(elementType))
             return AttributeProto.Types.AttributeType.Graphs;
 
         if (elementType == typeof(SparseTensorProto))

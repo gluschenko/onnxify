@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.3.11</Version>
+    <Version>0.4.0</Version>
     <RepositoryUrl>https://github.com/gluschenko/onnxify</RepositoryUrl>
     <Authors>Alexander Gluschenko</Authors>
     <Copyright>© 2026 Alexander Gluschenko</Copyright>
@@ -50,6 +50,7 @@
   </Target>
 
   <ItemGroup>
+    <ProjectReference Include="..\Onnxify.Compiler\Onnxify.Compiler.csproj" />
     <ProjectReference Include="..\Onnxify\Onnxify.csproj" PrivateAssets="all" />
   </ItemGroup>
 
@@ -59,6 +60,7 @@
     <PackageReference Include="Grpc.Tools" Version="2.78.0" PrivateAssets="all" />
     <PackageReference Include="Google.Protobuf" Version="3.34.0" PrivateAssets="all" GeneratePathProperty="true" />
     <PackageReference Include="System.Collections.Immutable" Version="9.0.0" PrivateAssets="all" GeneratePathProperty="true" />
+    <PackageReference Include="ICSharpCode.Decompiler" Version="10.0.1.8346" PrivateAssets="all" GeneratePathProperty="true" />
   </ItemGroup>
 
   <ItemGroup Condition="Exists('$(ProtoOnnxMLSourcePath)')">
@@ -82,6 +84,12 @@
       <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.dll" Condition="Exists('$(TargetDir)Onnxify.dll')" />
       <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.pdb" Condition="Exists('$(TargetDir)Onnxify.pdb')" />
       <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.xml" Condition="Exists('$(TargetDir)Onnxify.xml')" />
+      <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.Compiler.dll" Condition="Exists('$(TargetDir)Onnxify.Compiler.dll')" />
+      <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.Compiler.pdb" Condition="Exists('$(TargetDir)Onnxify.Compiler.pdb')" />
+      <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.Compiler.xml" Condition="Exists('$(TargetDir)Onnxify.Compiler.xml')" />
+      <AnalyzerRuntimeDependency Include="$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.dll" Condition="Exists('$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.dll')" />
+      <AnalyzerRuntimeDependency Include="$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.pdb" Condition="Exists('$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.pdb')" />
+      <AnalyzerRuntimeDependency Include="$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.xml" Condition="Exists('$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.xml')" />
     </ItemGroup>
 
     <Copy
@@ -110,6 +118,12 @@
       <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.dll')" />
       <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.pdb" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.pdb')" />
       <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.xml" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.xml')" />
+      <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.Compiler.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.Compiler.dll')" />
+      <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.Compiler.pdb" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.Compiler.pdb')" />
+      <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.Compiler.xml" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.Compiler.xml')" />
+      <TfmSpecificPackageFile Include="$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.dll')" />
+      <TfmSpecificPackageFile Include="$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.pdb" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.pdb')" />
+      <TfmSpecificPackageFile Include="$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.xml" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.xml')" />
       <TfmSpecificPackageFile Include="$(TargetDir)Google.Protobuf.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Google.Protobuf.dll')" />
       <TfmSpecificPackageFile Include="$(TargetDir)Google.Protobuf.pdb" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Google.Protobuf.pdb')" />
       <TfmSpecificPackageFile Include="$(TargetDir)Google.Protobuf.xml" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Google.Protobuf.xml')" />

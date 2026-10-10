@@ -25,6 +25,22 @@ public abstract class OnnxSparseTensor : IOnnxGraphEdge
     /// Gets the dense value tensor that stores non-zero sparse values.
     /// </summary>
     public abstract OnnxTensor Value { get; }
+
+    /// <summary>
+    /// Gets the dense shape represented by the sparse tensor.
+    /// </summary>
+    public abstract long[] Shape { get; }
+
+    /// <summary>
+    /// Gets the tensor containing sparse coordinates.
+    /// </summary>
+    public abstract OnnxTensor Indices { get; }
+
+    /// <summary>
+    /// Gets sparse values as immutable boxed values.
+    /// </summary>
+    public IReadOnlyList<object?> Values => Value.Values;
+
     internal abstract SparseTensorProto ToProto();
 }
 
@@ -54,17 +70,27 @@ public class OnnxSparseTensor<T> : OnnxSparseTensor
 
     private readonly SparseTensorProto _tensor;
     private readonly OnnxTensor<T> _value;
+    private readonly OnnxTensor _indices;
+
+    /// <inheritdoc />
+    public override long[] Shape => _tensor.Dims.ToArray();
+
+    /// <inheritdoc />
+    public override OnnxTensor Indices => _indices;
 
     internal OnnxSparseTensor(SparseTensorProto tensor, OnnxModelBaseOptions options)
     {
         _tensor = tensor;
         _value = (OnnxTensor<T>)OnnxHelper.FromProto(tensor.Values, options);
+        _indices = OnnxHelper.FromProto(tensor.Indices, options);
     }
 
     internal override SparseTensorProto ToProto()
     {
         var newTensor = _tensor.Clone();
         newTensor.Values = _value.ToProto();
+        newTensor.Indices = _indices.ToProto();
+        newTensor.Dims.Set(Shape);
 
         return newTensor;
     }

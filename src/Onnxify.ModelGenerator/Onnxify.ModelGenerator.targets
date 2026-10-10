@@ -4,6 +4,14 @@
     <Analyzer Include="$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\Onnxify.dll" />
   </ItemGroup>
 
+  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\Onnxify.Compiler.dll')">
+    <Analyzer Include="$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\Onnxify.Compiler.dll" />
+  </ItemGroup>
+
+  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\ICSharpCode.Decompiler.dll')">
+    <Analyzer Include="$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\ICSharpCode.Decompiler.dll" />
+  </ItemGroup>
+
   <ItemGroup Condition="'@(OnnxModel)' != ''">
     <CompilerVisibleItemMetadata Include="AdditionalFiles"
                                  MetadataName="OnnxifyModelClassName" />
