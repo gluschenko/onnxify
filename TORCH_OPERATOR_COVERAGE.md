@@ -6,25 +6,6 @@
 * Importable (compiler): 20.08% (100/498)
 * Exportable (compiler): 19.68% (98/498)
 
-## Coverage Charts
-
-The discovery chart shows whether a matching public API was found. The support chart compares independent coverage flags; an operator can be supported by both implementations.
-
-```mermaid
-pie showData
-    title Public API discovery
-    "Found" : 492
-    "Not found" : 6
-```
-
-```mermaid
-xychart-beta
-    title "Supported operator overloads"
-    x-axis ["Legacy import", "Compiler import", "Legacy export", "Compiler export"]
-    y-axis "Operators (of 498)" 0 --> 498
-    bar [279, 100, 416, 98]
-```
-
 ## Package Versions
 
 Current versions and direct dependencies are read from the publishable `Onnxify.*` project files under `src/`.

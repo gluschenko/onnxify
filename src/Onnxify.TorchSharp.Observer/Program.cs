@@ -1301,15 +1301,6 @@ internal static partial class Program
         builder.AppendLine($"* Importable (compiler): {FormatPercentage(compilerImportableCount, total)} ({compilerImportableCount}/{total})");
         builder.AppendLine($"* Exportable (compiler): {FormatPercentage(compilerExportableCount, total)} ({compilerExportableCount}/{total})");
         builder.AppendLine();
-        AppendCoverageCharts(
-            builder,
-            total,
-            foundCount,
-            legacyImportableCount,
-            legacyExportableCount,
-            compilerImportableCount,
-            compilerExportableCount
-        );
 
         builder.AppendLine("## Package Versions");
         builder.AppendLine();
@@ -1365,37 +1356,6 @@ internal static partial class Program
         }
 
         return builder.ToString();
-    }
-
-    private static void AppendCoverageCharts(
-        StringBuilder builder,
-        int total,
-        int foundCount,
-        int legacyImportableCount,
-        int legacyExportableCount,
-        int compilerImportableCount,
-        int compilerExportableCount
-    )
-    {
-        builder.AppendLine("## Coverage Charts");
-        builder.AppendLine();
-        builder.AppendLine("The discovery chart shows whether a matching public API was found. The support chart compares independent coverage flags; an operator can be supported by both implementations.");
-        builder.AppendLine();
-        builder.AppendLine("```mermaid");
-        builder.AppendLine("pie showData");
-        builder.AppendLine("    title Public API discovery");
-        builder.AppendLine($"    \"Found\" : {foundCount}");
-        builder.AppendLine($"    \"Not found\" : {total - foundCount}");
-        builder.AppendLine("```");
-        builder.AppendLine();
-        builder.AppendLine("```mermaid");
-        builder.AppendLine("xychart-beta");
-        builder.AppendLine("    title \"Supported operator overloads\"");
-        builder.AppendLine("    x-axis [\"Legacy import\", \"Compiler import\", \"Legacy export\", \"Compiler export\"]");
-        builder.AppendLine($"    y-axis \"Operators (of {total})\" 0 --> {Math.Max(total, 1)}");
-        builder.AppendLine($"    bar [{legacyImportableCount}, {compilerImportableCount}, {legacyExportableCount}, {compilerExportableCount}]");
-        builder.AppendLine("```");
-        builder.AppendLine();
     }
 
     private static void AppendOnnxifyPackageDependencies(StringBuilder builder, IReadOnlyList<string> packageIds)
