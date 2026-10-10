@@ -42,6 +42,48 @@ internal static partial class Program
         "self",
         "tensor",
     };
+    private static readonly NameAdaptationRule[] _nameAdaptationRules =
+    [
+        new(StripPrefix: "unsafe"),
+        new(StripPrefix: "sym"),
+        new(StripPrefix: "linalg"),
+        new(StripPrefix: "fft"),
+        new(StripPrefix: "special"),
+        new(StripPrefix: "constant"),
+        new(StripPrefix: "new"),
+        new(StripPrefix: "local"),
+        new(StripSuffix: "forwardonly"),
+        new(StripSuffix: "functional"),
+        new(StripSuffix: "forward"),
+        new(StripSuffix: "kernel"),
+        new(StripSuffix: "copy"),
+        new(StripSuffix: "forcpu"),
+        new(StripSuffix: "pertensor"),
+        new(StripSuffix: "indim", Append: "to"),
+        new(StripSuffix: "dim"),
+        new(StripSuffix: "dense"),
+        new(StripSuffix: "1d"),
+        new(StripSuffix: "2d"),
+        new(StripSuffix: "3d"),
+        new(StripSuffix: "nd"),
+        new(StripPrefix: "scalar", RequiredSuffix: "tensor", PreserveSuffix: true),
+        new(StripPrefix: "convertelement", Prepend: "to"),
+        new(RequiredPrefix: "scaleddotproduct", RemoveOccurrences: ["flash", "efficient", "cpu"]),
+        new(StripSuffix: "c2c"),
+        new(StripSuffix: "c2r"),
+        new(StripSuffix: "r2c"),
+        new(ReplaceFrom: "sampler", ReplaceTo: "sample"),
+        new(Prepend: "to", YieldOnly: true),
+        new(RemoveTrailingDigit: true),
+    ];
+    private static readonly IReadOnlyDictionary<string, ModuleNamePrefix> _moduleNamePrefixes =
+        new Dictionary<string, ModuleNamePrefix>(StringComparer.Ordinal)
+        {
+            ["fft"] = new("fft_", "::_fft_"),
+            ["linalg"] = new("linalg_"),
+            ["special"] = new("special_"),
+        };
+    private static readonly string[] _operatorNamespacePrefixes = ["aten_", "torchvision_", "prims_"];
     private static readonly OperatorMapping[] _operatorMappings =
     [
         new()
@@ -506,15 +548,7 @@ internal static partial class Program
                 }
             }
 
-            foreach (var property in type.GetProperties(PUBLIC_STATIC))
-            {
-                if (property.GetMethod is null || property.GetMethod.IsSpecialName)
-                {
-                    continue;
-                }
-
-                AddCandidate(candidates, NormalizeTorchSharpName(property.Name), $"{type.FullName}.{property.Name}");
-            }
+            AddPropertyCandidates(type, PUBLIC_STATIC, candidates);
 
             foreach (var nested in type.GetNestedTypes(BindingFlags.Public))
             {
@@ -535,10 +569,41 @@ internal static partial class Program
                         AddCandidate(candidates, NormalizeTorchSharpName(method.Name), $"{nested.FullName}.{method.Name}");
                     }
                 }
+
+                AddPropertyCandidates(nested, PUBLIC_STATIC | PUBLIC_INSTANCE, candidates);
             }
         }
 
         return candidates.Values.ToArray();
+    }
+
+    private static void AddPropertyCandidates(
+        Type type,
+        BindingFlags bindingFlags,
+        IDictionary<string, TorchSharpCandidate> candidates
+    )
+    {
+        foreach (var property in type.GetProperties(bindingFlags))
+        {
+            if (property.GetMethod?.IsPublic != true)
+            {
+                continue;
+            }
+
+            string path = $"{type.FullName}.{property.Name}";
+            if (property.GetIndexParameters().Length > 0)
+            {
+                if (typeof(global::TorchSharp.torch.Tensor).IsAssignableFrom(type))
+                {
+                    AddCandidate(candidates, "getitem", $"{path}[indexer]", priority: 1);
+                }
+
+                continue;
+            }
+
+            int priority = typeof(global::TorchSharp.torch.Tensor).IsAssignableFrom(type) ? 1 : 3;
+            AddCandidate(candidates, NormalizeTorchSharpName(property.Name), path, priority);
+        }
     }
 
     private static IReadOnlySet<string> LoadTorchSharpCoveredOperators()
@@ -642,17 +707,33 @@ internal static partial class Program
         return false;
     }
 
-    private static void AddCandidate(IDictionary<string, TorchSharpCandidate> candidates, string normalizedName, string path)
+    private static void AddCandidate(
+        IDictionary<string, TorchSharpCandidate> candidates,
+        string normalizedName,
+        string path,
+        int priority = -1
+    )
     {
         if (string.IsNullOrWhiteSpace(normalizedName))
         {
             return;
         }
 
-        if (!candidates.TryGetValue(normalizedName, out TorchSharpCandidate? existing) ||
-            string.CompareOrdinal(path, existing.Path) < 0)
+        if (priority < 0)
         {
-            candidates[normalizedName] = new TorchSharpCandidate(normalizedName, path);
+            priority = path.StartsWith("TorchSharp.torch.", StringComparison.Ordinal)
+                ? 0
+                : path.Contains("+Tensor.", StringComparison.Ordinal)
+                    ? 1
+                    : 2;
+        }
+
+        var candidate = new TorchSharpCandidate(normalizedName, path, priority);
+        if (!candidates.TryGetValue(normalizedName, out TorchSharpCandidate? existing) ||
+            candidate.Priority < existing.Priority ||
+            (candidate.Priority == existing.Priority && string.CompareOrdinal(path, existing.Path) < 0))
+        {
+            candidates[normalizedName] = candidate;
         }
     }
 
@@ -665,8 +746,19 @@ internal static partial class Program
         IReadOnlyList<TestMethodRecord> testMethods)
     {
         string normalizedOperator = NormalizeOperatorName(op.Name, op.SourceModule);
-        TorchSharpCandidate? match = FindTorchSharpCandidate(op, normalizedOperator, candidates);
-        var deepImportSupported = IsDeepImportSupported(op, normalizedOperator, match, deepImportSupportedOnnxOps);
+        TorchSharpCandidate? exactMatch = FindTorchSharpCandidate(
+            op,
+            normalizedOperator,
+            candidates,
+            includeConventionalVariants: false
+        );
+        TorchSharpCandidate? match = exactMatch ?? FindTorchSharpCandidate(
+            op,
+            normalizedOperator,
+            candidates,
+            includeConventionalVariants: true
+        );
+        var deepImportSupported = IsDeepImportSupported(op, normalizedOperator, exactMatch, deepImportSupportedOnnxOps);
         compilerCoverage.TryGetValue(op.Name, out var compilerSupport);
 
         return new ReportRow(
@@ -705,13 +797,14 @@ internal static partial class Program
     private static TorchSharpCandidate? FindTorchSharpCandidate(
         OperatorRecord op,
         string normalizedOperator,
-        IReadOnlyList<TorchSharpCandidate> candidates)
+        IReadOnlyList<TorchSharpCandidate> candidates,
+        bool includeConventionalVariants)
     {
-        foreach (var candidateName in GetTorchSharpCandidateNames(op, normalizedOperator))
+        foreach (var candidateName in GetTorchSharpCandidateNames(op, normalizedOperator, includeConventionalVariants))
         {
             var normalizedCandidateName = NormalizeTorchSharpName(candidateName);
             var match = candidates.FirstOrDefault(candidate =>
-                string.Equals(candidate.NormalizedName, normalizedCandidateName, StringComparison.OrdinalIgnoreCase));
+                NamesMatch(candidate.NormalizedName, normalizedCandidateName));
 
             if (match is not null)
             {
@@ -722,13 +815,54 @@ internal static partial class Program
         return null;
     }
 
-    private static IEnumerable<string> GetTorchSharpCandidateNames(OperatorRecord op, string normalizedOperator)
+    private static bool NamesMatch(string candidateName, string operatorName)
+    {
+        return string.Equals(candidateName, operatorName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static IEnumerable<string> GetTorchSharpCandidateNames(
+        OperatorRecord op,
+        string normalizedOperator,
+        bool includeConventionalVariants)
     {
         yield return normalizedOperator;
+
+        if (includeConventionalVariants)
+        {
+            foreach (var variant in GetConventionalOperatorNameVariants(normalizedOperator))
+            {
+                yield return variant;
+            }
+        }
 
         foreach (var alias in GetTorchSharpAliases(op.Name, normalizedOperator))
         {
             yield return alias;
+        }
+    }
+
+    private static IEnumerable<string> GetConventionalOperatorNameVariants(string normalizedName)
+    {
+        var pending = new Queue<string>();
+        var discovered = new HashSet<string>(StringComparer.Ordinal) { normalizedName };
+        pending.Enqueue(normalizedName);
+
+        while (pending.TryDequeue(out var current))
+        {
+            foreach (var rule in _nameAdaptationRules)
+            {
+                if (!rule.TryApply(current, out string variant) || !discovered.Add(variant))
+                {
+                    continue;
+                }
+
+                if (!rule.YieldOnly)
+                {
+                    pending.Enqueue(variant);
+                }
+
+                yield return variant;
+            }
         }
     }
 
@@ -790,27 +924,21 @@ internal static partial class Program
             name = name[1..];
         }
 
-        name = sourceModule switch
+        if (_moduleNamePrefixes.TryGetValue(sourceModule, out ModuleNamePrefix? modulePrefix)
+            && name.StartsWith(modulePrefix.Prefix, StringComparison.Ordinal)
+            && (modulePrefix.ExcludedOperatorSubstring is null
+                || !operatorName.Contains(modulePrefix.ExcludedOperatorSubstring, StringComparison.Ordinal)))
         {
-            "fft" when name.StartsWith("fft_", StringComparison.Ordinal) => name["fft_".Length..],
-            "linalg" when name.StartsWith("linalg_", StringComparison.Ordinal) => name["linalg_".Length..],
-            "special" when name.StartsWith("special_", StringComparison.Ordinal) => name["special_".Length..],
-            _ => name
-        };
-
-        if (name.StartsWith("aten_", StringComparison.Ordinal))
-        {
-            name = name["aten_".Length..];
+            name = name[modulePrefix.Prefix.Length..];
         }
 
-        if (name.StartsWith("torchvision_", StringComparison.Ordinal))
+        foreach (var prefix in _operatorNamespacePrefixes)
         {
-            name = name["torchvision_".Length..];
-        }
-
-        if (name.StartsWith("prims_", StringComparison.Ordinal))
-        {
-            name = name["prims_".Length..];
+            if (name.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                name = name[prefix.Length..];
+                break;
+            }
         }
 
         return NormalizeTorchSharpName(name);
@@ -914,7 +1042,11 @@ internal static partial class Program
             }
         }
 
-        foreach (var candidateName in GetTorchSharpCandidateNames(op, normalizedOperator))
+        foreach (var candidateName in GetTorchSharpCandidateNames(
+            op,
+            normalizedOperator,
+            includeConventionalVariants: true
+        ))
         {
             foreach (var term in CreateCoverageTerms(candidateName, allowBodySubstring: false))
             {
@@ -1275,7 +1407,106 @@ internal static partial class Program
 
     private sealed record CompilerCoverage(bool Importable, bool Exportable);
 
-    private sealed record TorchSharpCandidate(string NormalizedName, string Path);
+    private sealed record TorchSharpCandidate(string NormalizedName, string Path, int Priority);
+
+    private sealed record ModuleNamePrefix(string Prefix, string? ExcludedOperatorSubstring = null);
+
+    private sealed record NameAdaptationRule(
+        string? StripPrefix = null,
+        string? StripSuffix = null,
+        string? RequiredPrefix = null,
+        string? RequiredSuffix = null,
+        string? ReplaceFrom = null,
+        string? ReplaceTo = null,
+        string[]? RemoveOccurrences = null,
+        string? Prepend = null,
+        string? Append = null,
+        bool PreserveSuffix = false,
+        bool RemoveTrailingDigit = false,
+        bool YieldOnly = false)
+    {
+        public bool TryApply(string input, out string result)
+        {
+            result = input;
+
+            if (RequiredPrefix is not null && !result.StartsWith(RequiredPrefix, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (RequiredSuffix is not null && !result.EndsWith(RequiredSuffix, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (StripPrefix is not null)
+            {
+                if (!result.StartsWith(StripPrefix, StringComparison.Ordinal))
+                {
+                    return false;
+                }
+
+                result = result[StripPrefix.Length..];
+            }
+
+            if (StripSuffix is not null)
+            {
+                if (!result.EndsWith(StripSuffix, StringComparison.Ordinal))
+                {
+                    return false;
+                }
+
+                result = result[..^StripSuffix.Length];
+            }
+            else if (RequiredSuffix is not null && !PreserveSuffix)
+            {
+                result = result[..^RequiredSuffix.Length];
+            }
+
+            if (RemoveTrailingDigit)
+            {
+                if (result.Length == 0 || !char.IsDigit(result[^1]))
+                {
+                    return false;
+                }
+
+                result = result[..^1];
+            }
+
+            if (ReplaceFrom is not null)
+            {
+                if (!result.Contains(ReplaceFrom, StringComparison.Ordinal))
+                {
+                    return false;
+                }
+
+                result = result.Replace(ReplaceFrom, ReplaceTo ?? string.Empty, StringComparison.Ordinal);
+            }
+
+            if (RemoveOccurrences is not null)
+            {
+                bool removedOccurrence = false;
+                foreach (var occurrence in RemoveOccurrences)
+                {
+                    if (!result.Contains(occurrence, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    result = result.Replace(occurrence, string.Empty, StringComparison.Ordinal);
+                    removedOccurrence = true;
+                }
+
+                if (!removedOccurrence)
+                {
+                    return false;
+                }
+            }
+
+            result = (Prepend ?? string.Empty) + result + (Append ?? string.Empty);
+            return result.Length > 0 && !string.Equals(input, result, StringComparison.Ordinal);
+        }
+    }
 
     private sealed record ProjectMetadata(
         string Path,
