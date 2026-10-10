@@ -1,7 +1,10 @@
-﻿using Onnxify;
+using Onnxify;
 
 namespace Onnxify.Compiler.Operators;
 
+[CompilerTorchOperator("aten::remainder.Tensor")]
+[CompilerTorchOperator("aten::remainder.Scalar")]
+[CompilerTorchOperator("aten::remainder.Scalar_Tensor")]
 internal sealed class ModOperator() : BinaryMethodOperator<Onnxify.Mod>("Mod", "remainder")
 {
     public override IReadOnlyList<string> AttributeNames { get; } = ["fmod"];

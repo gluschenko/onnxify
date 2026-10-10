@@ -2,6 +2,7 @@ using Onnxify;
 
 namespace Onnxify.Compiler.Operators;
 
+[CompilerTorchOperator("aten::permute")]
 internal sealed class TransposeOperator() : CompilerOperator<Onnxify.Transpose>(CompilerOperatorIdentity.Onnx("Transpose"))
 {
     public override IReadOnlyCollection<CompilerTorchSharpForm> TorchSharpForms { get; } =

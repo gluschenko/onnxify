@@ -14,6 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Onnxify.Compiler\Onnxify.Compiler.csproj" />
     <ProjectReference Include="..\Onnxify.ModelGenerator\Onnxify.ModelGenerator.csproj" />
     <ProjectReference Include="..\Onnxify.TorchSharp\Onnxify.TorchSharp.csproj" />
   </ItemGroup>

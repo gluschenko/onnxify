@@ -1,7 +1,9 @@
-﻿using Onnxify;
+using Onnxify;
 
 namespace Onnxify.Compiler.Operators;
 
+[CompilerTorchOperator("aten::clamp")]
+[CompilerTorchOperator("aten::clamp.Tensor")]
 internal sealed class ClipOperator() : CompilerOperator<Onnxify.Clip>(CompilerOperatorIdentity.Onnx("Clip"))
 {
     public override CompilerOperationCapability Capability => CompilerOperationCapability.ImportOnly;

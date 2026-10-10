@@ -1,8 +1,9 @@
-﻿using System.Globalization;
+using System.Globalization;
 using Onnxify;
 
 namespace Onnxify.Compiler.Operators;
 
+[CompilerTorchOperator("aten::conv2d")]
 internal sealed class ConvOperator() : CompilerOperator<Onnxify.Conv>(CompilerOperatorIdentity.Onnx("Conv"))
 {
     public override CompilerOperationCapability Capability => CompilerOperationCapability.ImportOnly;

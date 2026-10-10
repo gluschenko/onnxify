@@ -1,7 +1,9 @@
-﻿using Onnxify;
+using Onnxify;
 
 namespace Onnxify.Compiler.Operators;
 
+[CompilerTorchOperator("aten::addmm")]
+[CompilerTorchOperator("aten::linear")]
 internal sealed class GemmOperator() : MatrixMultiplicationOperator<Onnxify.Gemm>("Gemm")
 {
     protected override bool AllowsEmptyOptionalInputs => true;

@@ -1,7 +1,8 @@
-﻿using Onnxify;
+using Onnxify;
 
 namespace Onnxify.Compiler.Operators;
 
+[CompilerTorchOperator("aten::gelu")]
 internal sealed class GeluOperator() : ActivationOperator<Onnxify.Gelu>("Gelu", "torch.nn.functional.gelu", ["approximate"])
 {
     protected override string PrintTorchSharp(Onnxify.Gelu node, CompilerSourceSpan? span)

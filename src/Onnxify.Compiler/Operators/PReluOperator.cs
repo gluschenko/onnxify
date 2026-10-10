@@ -1,7 +1,8 @@
-﻿using Onnxify;
+using Onnxify;
 
 namespace Onnxify.Compiler.Operators;
 
+[CompilerTorchOperator("aten::prelu")]
 internal sealed class PReluOperator() : ActivationOperator<Onnxify.PRelu>("PRelu", "torch.nn.functional.prelu", inputCount: 2)
 {
     protected override string PrintTorchSharp(Onnxify.PRelu node, CompilerSourceSpan? span)

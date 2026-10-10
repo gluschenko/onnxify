@@ -1,7 +1,8 @@
-﻿using Onnxify;
+using Onnxify;
 
 namespace Onnxify.Compiler.Operators;
 
+[CompilerTorchOperator("aten::flatten.using_ints")]
 internal sealed class FlattenOperator() : CompilerOperator<Onnxify.Flatten>(CompilerOperatorIdentity.Onnx("Flatten"))
 {
     public override IReadOnlyCollection<CompilerTorchSharpForm> TorchSharpForms { get; } =

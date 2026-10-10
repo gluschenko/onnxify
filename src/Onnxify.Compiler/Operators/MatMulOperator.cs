@@ -1,7 +1,10 @@
-﻿using Onnxify;
+using Onnxify;
 
 namespace Onnxify.Compiler.Operators;
 
+[CompilerTorchOperator("aten::matmul")]
+[CompilerTorchOperator("aten::mm")]
+[CompilerTorchOperator("aten::bmm")]
 internal sealed class MatMulOperator() : MatrixMultiplicationOperator<Onnxify.MatMul>("MatMul")
 {
     public override IReadOnlyCollection<CompilerTorchSharpForm> TorchSharpForms { get; } =

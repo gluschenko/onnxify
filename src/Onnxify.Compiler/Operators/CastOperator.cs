@@ -1,7 +1,9 @@
-﻿using Onnxify;
+using Onnxify;
 
 namespace Onnxify.Compiler.Operators;
 
+[CompilerTorchOperator("aten::_to_copy")]
+[CompilerTorchOperator("aten::type_as")]
 internal sealed class CastOperator() : UnaryOperator<Onnxify.Cast>("Cast", "to_type", ["Tensor.to_type"])
 {
     public override IReadOnlyList<string> AttributeNames { get; } = ["to"];

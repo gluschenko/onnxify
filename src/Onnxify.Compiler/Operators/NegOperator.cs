@@ -1,7 +1,8 @@
-﻿using Onnxify;
+using Onnxify;
 
 namespace Onnxify.Compiler.Operators;
 
+[CompilerTorchOperator("aten::neg")]
 internal sealed class NegOperator() : UnaryOperator<Onnxify.Neg>("Neg", "neg", ["torch.neg", "Tensor.neg"])
 {
     public override IReadOnlyCollection<CompilerTorchSharpForm> TorchSharpForms { get; } =

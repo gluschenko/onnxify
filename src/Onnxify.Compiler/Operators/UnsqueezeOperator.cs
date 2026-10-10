@@ -2,6 +2,7 @@ using Onnxify;
 
 namespace Onnxify.Compiler.Operators;
 
+[CompilerTorchOperator("aten::unsqueeze")]
 internal sealed class UnsqueezeOperator() : CompilerOperator<Onnxify.Unsqueeze>(CompilerOperatorIdentity.Onnx("Unsqueeze"))
 {
     public override IReadOnlyCollection<CompilerTorchSharpForm> TorchSharpForms { get; } =

@@ -1,7 +1,8 @@
-﻿using Onnxify;
+using Onnxify;
 
 namespace Onnxify.Compiler.Operators;
 
+[CompilerTorchOperator("aten::leaky_relu")]
 internal sealed class LeakyReluOperator() : ActivationOperator<Onnxify.LeakyRelu>("LeakyRelu", "torch.nn.functional.leaky_relu", ["alpha"])
 {
     protected override string PrintTorchSharp(Onnxify.LeakyRelu node, CompilerSourceSpan? span)

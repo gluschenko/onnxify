@@ -1,7 +1,8 @@
-﻿using Onnxify;
+using Onnxify;
 
 namespace Onnxify.Compiler.Operators;
 
+[CompilerTorchOperator("aten::trunc")]
 internal sealed class TruncOperator : CompilerOperator
 {
     public TruncOperator()

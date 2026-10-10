@@ -1,7 +1,8 @@
-﻿using Onnxify;
+using Onnxify;
 
 namespace Onnxify.Compiler.Operators;
 
+[CompilerTorchOperator("aten::silu")]
 internal sealed class SwishOperator() : ActivationOperator<Onnxify.Swish>("Swish", "torch.nn.functional.silu", ["alpha"])
 {
     protected override string PrintTorchSharp(Onnxify.Swish node, CompilerSourceSpan? span)

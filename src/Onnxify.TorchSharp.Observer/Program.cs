@@ -332,9 +332,9 @@ internal static partial class Program
         var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "..", "TORCH_OPERATOR_COVERAGE.md");
 
         var operators = LoadOperators(opsDirectory);
+        var compilerCoverage = LoadCompilerCoverage(operators, typeof(global::Onnxify.Compiler.Compiler).Assembly);
         var candidates = LoadTorchSharpCandidates();
         var torchSharpCoveredOperators = LoadTorchSharpCoveredOperators();
-        var modelGeneratorCoveredOperators = LoadModelGeneratorCoveredOperators();
         var deepImportSupportedOnnxOps = LoadDeepImportSupportedOnnxOps();
         var testMethods = LoadOnnxifyTestMethods(repoRoot);
         var packageReferences = LoadOnnxifyPackageReferences(repoRoot);
@@ -344,8 +344,8 @@ internal static partial class Program
                 op,
                 candidates,
                 torchSharpCoveredOperators,
-                modelGeneratorCoveredOperators,
                 deepImportSupportedOnnxOps,
+                compilerCoverage,
                 testMethods
             ))
             .OrderBy(row => row.Operator, StringComparer.Ordinal)
@@ -361,6 +361,61 @@ internal static partial class Program
         Console.WriteLine($"Generated {rows.Length} rows.");
         Console.WriteLine(outputPath);
         return 0;
+    }
+
+    private static IReadOnlyDictionary<string, CompilerCoverage> LoadCompilerCoverage(
+        IReadOnlyList<OperatorRecord> operators,
+        Assembly compilerAssembly)
+    {
+        var operatorNames = operators
+            .Select(static op => op.Name)
+            .ToHashSet(StringComparer.Ordinal);
+        var registryType = compilerAssembly.GetType(
+            "Onnxify.Compiler.CompilerOperatorRegistry",
+            throwOnError: true)!;
+        var operatorField = registryType.GetField(
+            "_operators",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("Compiler operator registry field '_operators' was not found.");
+        var registeredOperators = operatorField.GetValue(null) as IEnumerable<object>
+            ?? throw new InvalidOperationException("Compiler operator registry did not expose its operator instances.");
+        var coverage = new Dictionary<string, CompilerCoverage>(StringComparer.Ordinal);
+
+        foreach (var compilerOperator in registeredOperators)
+        {
+            var capability = compilerOperator
+                .GetType()
+                .GetProperty("Capability")
+                ?.GetValue(compilerOperator)
+                ?.ToString()
+                ?? throw new InvalidOperationException($"Compiler operator '{compilerOperator.GetType().Name}' has no capability.");
+            var attributes = compilerOperator.GetType().GetCustomAttributesData()
+                .Where(static attribute => attribute.AttributeType.FullName == "Onnxify.Compiler.Operators.CompilerTorchOperatorAttribute");
+
+            foreach (var attribute in attributes)
+            {
+                var name = attribute.ConstructorArguments.FirstOrDefault().Value as string;
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    throw new InvalidOperationException($"Compiler operator '{compilerOperator.GetType().Name}' has an empty Torch operator annotation.");
+                }
+
+                if (!operatorNames.Contains(name))
+                {
+                    throw new InvalidOperationException($"Compiler operator '{compilerOperator.GetType().Name}' annotates unknown ONNXScript operator '{name}'.");
+                }
+
+                if (!coverage.TryAdd(name, new CompilerCoverage(
+                    Importable: capability is "Bidirectional" or "ImportOnly",
+                    Exportable: capability is "Bidirectional" or "ExportOnly"
+                )))
+                {
+                    throw new InvalidOperationException($"ONNXScript operator '{name}' is annotated by more than one compiler operator.");
+                }
+            }
+        }
+
+        return coverage;
     }
 
     private static string? FindRepositoryRoot(string? currentDirectory)
@@ -524,38 +579,6 @@ internal static partial class Program
         return coveredOperators;
     }
 
-    private static IReadOnlySet<string> LoadModelGeneratorCoveredOperators()
-    {
-        const BindingFlags ALL_MEMBERS =
-            BindingFlags.Public |
-            BindingFlags.NonPublic |
-            BindingFlags.Static |
-            BindingFlags.Instance;
-
-        var assembly = typeof(global::Onnxify.ModelGenerator.TorchSharpOpAttribute).Assembly;
-        var coveredOperators = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var type in GetLoadableTypes(assembly))
-        {
-            foreach (global::Onnxify.ModelGenerator.TorchSharpOpAttribute attribute in
-                type.GetCustomAttributes<global::Onnxify.ModelGenerator.TorchSharpOpAttribute>(inherit: false))
-            {
-                AddModelGeneratorCoverage(coveredOperators, attribute.Name);
-            }
-
-            foreach (var method in type.GetMethods(ALL_MEMBERS))
-            {
-                foreach (global::Onnxify.ModelGenerator.TorchSharpOpAttribute attribute in
-                    method.GetCustomAttributes<global::Onnxify.ModelGenerator.TorchSharpOpAttribute>(inherit: false))
-                {
-                    AddModelGeneratorCoverage(coveredOperators, attribute.Name);
-                }
-            }
-        }
-
-        return coveredOperators;
-    }
-
     private static IReadOnlySet<string> LoadDeepImportSupportedOnnxOps()
     {
         var supportedOps = new HashSet<string>(StringComparer.Ordinal);
@@ -606,29 +629,6 @@ internal static partial class Program
         }
     }
 
-    private static IEnumerable<Type> GetLoadableTypes(Assembly assembly)
-    {
-        try
-        {
-            return assembly.GetTypes();
-        }
-        catch (ReflectionTypeLoadException ex)
-        {
-            return ex.Types.Where(static type => type is not null)!;
-        }
-    }
-
-    private static void AddModelGeneratorCoverage(ISet<string> coveredOperators, string name)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            return;
-        }
-
-        coveredOperators.Add(name);
-        coveredOperators.Add(NormalizeTorchSharpName(name));
-    }
-
     private static bool IsModuleType(Type type)
     {
         for (var current = type; current is not null; current = current.BaseType)
@@ -660,53 +660,24 @@ internal static partial class Program
         OperatorRecord op,
         IReadOnlyList<TorchSharpCandidate> candidates,
         IReadOnlySet<string> torchSharpCoveredOperators,
-        IReadOnlySet<string> modelGeneratorCoveredOperators,
         IReadOnlySet<string> deepImportSupportedOnnxOps,
+        IReadOnlyDictionary<string, CompilerCoverage> compilerCoverage,
         IReadOnlyList<TestMethodRecord> testMethods)
     {
         string normalizedOperator = NormalizeOperatorName(op.Name, op.SourceModule);
         TorchSharpCandidate? match = FindTorchSharpCandidate(op, normalizedOperator, candidates);
         var deepImportSupported = IsDeepImportSupported(op, normalizedOperator, match, deepImportSupportedOnnxOps);
-        var modelGeneratorCovered = IsModelGeneratorCovered(
-            op,
-            normalizedOperator,
-            match,
-            modelGeneratorCoveredOperators,
-            deepImportSupported);
+        compilerCoverage.TryGetValue(op.Name, out var compilerSupport);
 
         return new ReportRow(
             op.Name,
             match?.Path ?? string.Empty,
             match is not null,
             torchSharpCoveredOperators.Contains(op.Name),
-            IsDeepExportSupported(op, torchSharpCoveredOperators),
-            modelGeneratorCovered,
             deepImportSupported,
+            compilerSupport?.Importable ?? false,
+            compilerSupport?.Exportable ?? false,
             CountCoveringTests(op, normalizedOperator, match, testMethods));
-    }
-
-    private static bool IsModelGeneratorCovered(
-        OperatorRecord op,
-        string normalizedOperator,
-        TorchSharpCandidate? match,
-        IReadOnlySet<string> modelGeneratorCoveredOperators,
-        bool deepImportSupported
-    )
-    {
-        return deepImportSupported
-            || modelGeneratorCoveredOperators.Contains(op.Name)
-            || modelGeneratorCoveredOperators.Contains(normalizedOperator)
-            || GetTorchSharpAliases(op.Name, normalizedOperator).Any(modelGeneratorCoveredOperators.Contains)
-            || GetExpectedDeepImportOnnxOps(op, normalizedOperator, match).Any(modelGeneratorCoveredOperators.Contains)
-            || (match is not null && modelGeneratorCoveredOperators.Contains(match.NormalizedName));
-    }
-
-    private static bool IsDeepExportSupported(
-        OperatorRecord op,
-        IReadOnlySet<string> torchSharpCoveredOperators
-    )
-    {
-        return torchSharpCoveredOperators.Contains(op.Name);
     }
 
     private static bool IsDeepImportSupported(
@@ -1162,19 +1133,19 @@ internal static partial class Program
         ReportRow[] rowArray = rows.ToArray();
         int total = rowArray.Length;
         int foundCount = rowArray.Count(static row => row.Found);
-        int torchSharpCoveredCount = rowArray.Count(static row => row.TorchSharpCovered);
-        int modelGeneratorCoveredCount = rowArray.Count(static row => row.ModelGeneratorCovered);
-        int deepExportSupportedCount = rowArray.Count(static row => row.DeepExportSupported);
-        int deepImportSupportedCount = rowArray.Count(static row => row.DeepImportSupported);
+        int legacyExportableCount = rowArray.Count(static row => row.LegacyExportable);
+        int legacyImportableCount = rowArray.Count(static row => row.LegacyImportable);
+        int compilerImportableCount = rowArray.Count(static row => row.CompilerImportable);
+        int compilerExportableCount = rowArray.Count(static row => row.CompilerExportable);
 
         var builder = new StringBuilder();
         builder.AppendLine("# TorchSharp operator coverage");
         builder.AppendLine();
         builder.AppendLine($"* Found: {FormatPercentage(foundCount, total)} ({foundCount}/{total})");
-        builder.AppendLine($"* Onnxify.TorchSharp coverage: {FormatPercentage(torchSharpCoveredCount, total)} ({torchSharpCoveredCount}/{total})");
-        builder.AppendLine($"* Onnxify.ModelGenerator coverage: {FormatPercentage(modelGeneratorCoveredCount, total)} ({modelGeneratorCoveredCount}/{total})");
-        builder.AppendLine($"* Deep export support: {FormatPercentage(deepExportSupportedCount, total)} ({deepExportSupportedCount}/{total})");
-        builder.AppendLine($"* Deep import support: {FormatPercentage(deepImportSupportedCount, total)} ({deepImportSupportedCount}/{total})");
+        builder.AppendLine($"* Importable (legacy): {FormatPercentage(legacyImportableCount, total)} ({legacyImportableCount}/{total})");
+        builder.AppendLine($"* Exportable (legacy): {FormatPercentage(legacyExportableCount, total)} ({legacyExportableCount}/{total})");
+        builder.AppendLine($"* Importable (compiler): {FormatPercentage(compilerImportableCount, total)} ({compilerImportableCount}/{total})");
+        builder.AppendLine($"* Exportable (compiler): {FormatPercentage(compilerExportableCount, total)} ({compilerExportableCount}/{total})");
         builder.AppendLine();
         builder.AppendLine("## Package Versions");
         builder.AppendLine();
@@ -1197,14 +1168,14 @@ internal static partial class Program
         builder.AppendLine("## Coverage Columns");
         builder.AppendLine();
         builder.AppendLine("* `Found` means the observer found a likely matching public TorchSharp API or module for the ONNXScript Torch operator name. This is a discovery signal, not an Onnxify implementation guarantee.");
-        builder.AppendLine("* `Onnxify.TorchSharp coverage` means `Onnxify.TorchSharp` declares exporter support for that Torch operator through `[TorchOp(...)]`, so TorchSharp code can be exported to ONNX through that converter path.");
-        builder.AppendLine("* `Onnxify.ModelGenerator coverage` means `Onnxify.ModelGenerator` declares reverse TorchModule reconstruction support through `[TorchSharpOp(...)]` or the shared canonical ONNX mapping resolves to actual deep-import registry support for that operator family.");
-        builder.AppendLine("* `Deep export support` means the exact ONNXScript Torch operator is registered in the actual `Onnxify.TorchSharp` deep-export coverage set through `[TorchOp(...)]`.");
-        builder.AppendLine("* `Deep import support` means the observer can map the ONNXScript Torch operator to expected ONNX `OpType` nodes and every mapped `OpType` is registered in the actual `Onnxify.ModelGenerator` TorchModule deep-import registries.");
+        builder.AppendLine("* `Exportable (legacy)` means the exact ONNXScript Torch operator is registered in the actual `Onnxify.TorchSharp` deep-export coverage set through `[TorchOp(...)]`.");
+        builder.AppendLine("* `Importable (legacy)` means the observer can map the ONNXScript Torch operator to expected ONNX `OpType` nodes and every mapped `OpType` is registered in the actual `Onnxify.ModelGenerator` TorchModule deep-import registries.");
+        builder.AppendLine("* `Importable (compiler)` means a compiler mapping can import the ONNX operator and print it as TorchSharp C# (`Bidirectional` or `ImportOnly`).");
+        builder.AppendLine("* `Exportable (compiler)` means a compiler mapping can scan the TorchSharp operator and emit ONNX (`Bidirectional` or `ExportOnly`).");
         builder.AppendLine("* `Onnxify.Tests tests` is the number of `[Fact]` / `[Theory]` test methods in `src/Onnxify.Tests` whose name or body mentions the ONNXScript operator, normalized TorchSharp API name, or a known operator alias.");
         builder.AppendLine("* `✅` means the category is covered/found. `❌` means it is not covered/found.");
         builder.AppendLine();
-        builder.AppendLine("| ONNXScript operator | TorchSharp module | Found | Onnxify.TorchSharp coverage | Onnxify.ModelGenerator coverage | Deep export support | Deep import support | Onnxify.Tests tests |");
+        builder.AppendLine("| ONNXScript operator | TorchSharp module | Found | Importable (legacy) | Exportable (legacy) | Importable (compiler) | Exportable (compiler) | Onnxify.Tests tests |");
         builder.AppendLine("| --- | --- | --- | --- | --- | --- | --- | --- |");
 
         foreach (ReportRow row in rowArray)
@@ -1217,13 +1188,13 @@ internal static partial class Program
                 .Append(" | ")
                 .Append(FormatMarker(row.Found))
                 .Append(" | ")
-                .Append(FormatMarker(row.TorchSharpCovered))
+                .Append(FormatMarker(row.LegacyImportable))
                 .Append(" | ")
-                .Append(FormatMarker(row.ModelGeneratorCovered))
+                .Append(FormatMarker(row.LegacyExportable))
                 .Append(" | ")
-                .Append(FormatMarker(row.DeepExportSupported))
+                .Append(FormatMarker(row.CompilerImportable))
                 .Append(" | ")
-                .Append(FormatMarker(row.DeepImportSupported))
+                .Append(FormatMarker(row.CompilerExportable))
                 .Append(" | ")
                 .Append(row.OnnxifyTestsCount.ToString(CultureInfo.InvariantCulture))
                 .AppendLine(" |");
@@ -1302,6 +1273,8 @@ internal static partial class Program
 
     private sealed record OperatorRecord(string Name, string SourceModule);
 
+    private sealed record CompilerCoverage(bool Importable, bool Exportable);
+
     private sealed record TorchSharpCandidate(string NormalizedName, string Path);
 
     private sealed record ProjectMetadata(
@@ -1368,10 +1341,10 @@ internal static partial class Program
         string Operator,
         string TorchSharpModule,
         bool Found,
-        bool TorchSharpCovered,
-        bool DeepExportSupported,
-        bool ModelGeneratorCovered,
-        bool DeepImportSupported,
+        bool LegacyExportable,
+        bool LegacyImportable,
+        bool CompilerImportable,
+        bool CompilerExportable,
         int OnnxifyTestsCount
     );
 }

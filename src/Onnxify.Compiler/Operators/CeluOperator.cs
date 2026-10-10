@@ -1,7 +1,8 @@
-﻿using Onnxify;
+using Onnxify;
 
 namespace Onnxify.Compiler.Operators;
 
+[CompilerTorchOperator("aten::celu")]
 internal sealed class CeluOperator() : ActivationOperator<Onnxify.Celu>("Celu", "torch.nn.functional.celu", ["alpha"])
 {
     protected override string PrintTorchSharp(Onnxify.Celu node, CompilerSourceSpan? span)

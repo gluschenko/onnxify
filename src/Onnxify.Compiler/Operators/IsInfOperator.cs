@@ -3,6 +3,7 @@ using Onnxify.Compiler;
 
 namespace Onnxify.Compiler.Operators;
 
+[CompilerTorchOperator("aten::isinf")]
 internal sealed class IsInfOperator() : UnaryMethodOperator<Onnxify.IsInf>("IsInf", "isinf", CompilerElementType.Boolean)
 {
     public override IReadOnlyCollection<CompilerTorchSharpForm> TorchSharpForms { get; } =

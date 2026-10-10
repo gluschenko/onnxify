@@ -3,6 +3,8 @@ using Onnxify;
 
 namespace Onnxify.Compiler.Operators;
 
+[CompilerTorchOperator("aten::reshape")]
+[CompilerTorchOperator("aten::view")]
 internal sealed class ReshapeOperator() : CompilerOperator<Onnxify.Reshape>(CompilerOperatorIdentity.Onnx("Reshape"))
 {
     public override IReadOnlyCollection<CompilerTorchSharpForm> TorchSharpForms { get; } =

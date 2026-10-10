@@ -1,7 +1,11 @@
-﻿using Onnxify;
+using Onnxify;
 
 namespace Onnxify.Compiler.Operators;
 
+[CompilerTorchOperator("aten::where.self")]
+[CompilerTorchOperator("aten::where.Scalar")]
+[CompilerTorchOperator("aten::where.ScalarSelf")]
+[CompilerTorchOperator("aten::where.ScalarOther")]
 internal sealed class WhereOperator() : BroadcastOperator<Onnxify.Where>(CompilerOperatorIdentity.Onnx("Where"))
 {
     public override IReadOnlyCollection<CompilerTorchSharpForm> TorchSharpForms { get; } = [CompilerTorchSharpForm.Call("torch.where")];

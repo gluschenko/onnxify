@@ -1,7 +1,8 @@
-﻿using Onnxify;
+using Onnxify;
 
 namespace Onnxify.Compiler.Operators;
 
+[CompilerTorchOperator("aten::selu")]
 internal sealed class SeluOperator() : ActivationOperator<Onnxify.Selu>("Selu", "torch.nn.functional.selu", ["alpha", "gamma"])
 {
     private const float DEFAULT_ALPHA = 1.6732631921768188f;
