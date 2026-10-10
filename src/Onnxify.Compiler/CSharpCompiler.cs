@@ -2007,7 +2007,21 @@ internal sealed class CSharpSourcePrinter
                         span: mappedOperation.Span);
                 }
 
-                Line($"var {CompilerCSharpNaming.Identifier(mappedOperation.Outputs[0].Name)} = {mapping.PrintTorchSharp(mappedOperation, new CompilerTorchSharpPrintContext(_tree))};");
+                var expression = mapping.PrintTorchSharp(mappedOperation, new CompilerTorchSharpPrintContext(_tree));
+                if (mappedOperation.Outputs.Count == 1)
+                {
+                    Line($"var {CompilerCSharpNaming.Identifier(mappedOperation.Outputs[0].Name)} = {expression};");
+                }
+                else
+                {
+                    var resultsName = CompilerCSharpNaming.Identifier($"__{mappedOperation.Outputs[0].Name}_outputs");
+                    Line($"var {resultsName} = {expression};");
+                    for (var index = 0; index < mappedOperation.Outputs.Count; index++)
+                    {
+                        Line($"var {CompilerCSharpNaming.Identifier(mappedOperation.Outputs[index].Name)} = {resultsName}[{index}];");
+                    }
+                }
+
                 continue;
             }
 

@@ -102,7 +102,8 @@ internal sealed class TorchSharpOperatorScanContext
 
     public OnnxEdge RequireSingleOutputEdge(CompilerOperator compilerOperator)
     {
-        if (Outputs.Count != 1)
+        if (Outputs.Count < compilerOperator.MinimumOutputCount
+            || Outputs.Count > compilerOperator.MaximumOutputCount)
         {
             throw Unsupported(
                 Method,
@@ -118,7 +119,8 @@ internal sealed class TorchSharpOperatorScanContext
         IEnumerable<CompilerAttribute>? attributes = null,
         CompilerSourceSpan? span = null)
     {
-        if (Outputs.Count != 1)
+        if (Outputs.Count < compilerOperator.MinimumOutputCount
+            || Outputs.Count > compilerOperator.MaximumOutputCount)
         {
             throw Unsupported(
                 Method,
@@ -141,15 +143,16 @@ internal sealed class TorchSharpOperatorScanContext
         CompilerSourceSpan? span = null)
         where TNode : OnnxNode
     {
-        if (Outputs.Count != 1)
+        if (Outputs.Count < compilerOperator.MinimumOutputCount
+            || Outputs.Count > compilerOperator.MaximumOutputCount)
         {
             throw Unsupported(
                 Method,
                 $"TorchSharp operator '{compilerOperator.OnnxName}' requires exactly one output.");
         }
 
-        if (node.Outputs.Count != 1
-            || !string.Equals(node.Outputs[0].Name, Outputs[0].Name, StringComparison.Ordinal))
+        if (node.Outputs.Count != Outputs.Count
+            || node.Outputs.Where((output, index) => !string.Equals(output.Name, Outputs[index].Name, StringComparison.Ordinal)).Any())
         {
             throw Unsupported(
                 Method,

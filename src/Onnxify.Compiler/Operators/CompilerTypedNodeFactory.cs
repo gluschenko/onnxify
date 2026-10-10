@@ -150,6 +150,19 @@
                         }
                     );
                 },
+                [typeof(Onnxify.Concat)] = static (name, inputs, outputs, onnxAttributes) =>
+                {
+                    var attributes = onnxAttributes.ToDictionary(attribute => attribute.Name, attribute => attribute.GetValue(), StringComparer.Ordinal);
+                    return new Onnxify.Concat(
+                        name,
+                        new Onnxify.ConcatInputOutputOptions
+                        {
+                            In = inputs.Select(input => input ?? throw new InvalidOperationException("Missing required variadic input 'in'")).ToArray(),
+                            Axis = (long)(attributes.GetValueOrDefault("axis") ?? throw new InvalidOperationException("Missing required attribute 'axis'")),
+                            ConcatResult = outputs[0] ?? throw new InvalidOperationException("Missing required output 'concat_result'"),
+                        }
+                    );
+                },
                 [typeof(Onnxify.Ceil)] = static (name, inputs, outputs, onnxAttributes) =>
                 {
                     var attributes = onnxAttributes.ToDictionary(attribute => attribute.Name, attribute => attribute.GetValue(), StringComparer.Ordinal);
@@ -739,6 +752,21 @@
                         }
                     );
                 },
+                [typeof(Onnxify.Split)] = static (name, inputs, outputs, onnxAttributes) =>
+                {
+                    var attributes = onnxAttributes.ToDictionary(attribute => attribute.Name, attribute => attribute.GetValue(), StringComparer.Ordinal);
+                    return new Onnxify.Split(
+                        name,
+                        new Onnxify.SplitInputOutputOptions
+                        {
+                            Input = inputs[0] ?? throw new InvalidOperationException("Missing required input 'input'"),
+                            InputSplit = inputs.Count > 1 && !string.IsNullOrEmpty(inputs[1]?.Name) ? inputs[1] : null,
+                            Axis = (long?)attributes.GetValueOrDefault("axis"),
+                            NumOutputs = (long?)attributes.GetValueOrDefault("num_outputs"),
+                            Out = outputs.Select(output => output ?? throw new InvalidOperationException("Missing required output 'outputs'")).ToArray(),
+                        }
+                    );
+                },
                 [typeof(Onnxify.Sqrt)] = static (name, inputs, outputs, onnxAttributes) =>
                 {
                     var attributes = onnxAttributes.ToDictionary(attribute => attribute.Name, attribute => attribute.GetValue(), StringComparer.Ordinal);
@@ -864,6 +892,57 @@
                             Data = inputs[0] ?? throw new InvalidOperationException("Missing required input 'data'"),
                             Axes = inputs[1] ?? throw new InvalidOperationException("Missing required input 'axes'"),
                             Expanded = outputs[0] ?? throw new InvalidOperationException("Missing required output 'expanded'"),
+                        }
+                    );
+                },
+                [typeof(Onnxify.Expand)] = static (name, inputs, outputs, onnxAttributes) =>
+                {
+                    return new Onnxify.Expand(
+                        name,
+                        new Onnxify.ExpandInputOutputOptions
+                        {
+                            Input = inputs[0] ?? throw new InvalidOperationException("Missing required input 'input'"),
+                            Shape = inputs[1] ?? throw new InvalidOperationException("Missing required input 'shape'"),
+                            Output = outputs[0] ?? throw new InvalidOperationException("Missing required output 'output'"),
+                        }
+                    );
+                },
+                [typeof(Onnxify.Tile)] = static (name, inputs, outputs, onnxAttributes) =>
+                {
+                    return new Onnxify.Tile(
+                        name,
+                        new Onnxify.TileInputOutputOptions
+                        {
+                            Input = inputs[0] ?? throw new InvalidOperationException("Missing required input 'input'"),
+                            Repeats = inputs[1] ?? throw new InvalidOperationException("Missing required input 'repeats'"),
+                            Output = outputs[0] ?? throw new InvalidOperationException("Missing required output 'output'"),
+                        }
+                    );
+                },
+                [typeof(Onnxify.Squeeze)] = static (name, inputs, outputs, onnxAttributes) =>
+                {
+                    return new Onnxify.Squeeze(
+                        name,
+                        new Onnxify.SqueezeInputOutputOptions
+                        {
+                            Data = inputs[0] ?? throw new InvalidOperationException("Missing required input 'data'"),
+                            Axes = inputs[1],
+                            Squeezed = outputs[0] ?? throw new InvalidOperationException("Missing required output 'squeezed'"),
+                        }
+                    );
+                },
+                [typeof(Onnxify.Slice)] = static (name, inputs, outputs, onnxAttributes) =>
+                {
+                    return new Onnxify.Slice(
+                        name,
+                        new Onnxify.SliceInputOutputOptions
+                        {
+                            Data = inputs[0] ?? throw new InvalidOperationException("Missing required input 'data'"),
+                            Starts = inputs[1] ?? throw new InvalidOperationException("Missing required input 'starts'"),
+                            Ends = inputs[2] ?? throw new InvalidOperationException("Missing required input 'ends'"),
+                            Axes = inputs.Count > 3 ? inputs[3] : null,
+                            Steps = inputs.Count > 4 ? inputs[4] : null,
+                            Output = outputs[0] ?? throw new InvalidOperationException("Missing required output 'output'"),
                         }
                     );
                 },

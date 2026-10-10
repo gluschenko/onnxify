@@ -3,8 +3,8 @@
 * Found: 98.80% (492/498)
 * Importable (legacy): 56.02% (279/498)
 * Exportable (legacy): 83.53% (416/498)
-* Importable (compiler): 20.08% (100/498)
-* Exportable (compiler): 19.68% (98/498)
+* Importable (compiler): 22.89% (114/498)
+* Exportable (compiler): 22.49% (112/498)
 
 ## Package Versions
 
@@ -235,11 +235,11 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::bitwise_xor.Tensor` | `TorchSharp.torch.bitwise_xor` | ✅ | ✅ | ✅ | ❌ | ❌ | 8 |
 | `aten::blackman_window` | `TorchSharp.torch.blackman_window` | ✅ | ❌ | ✅ | ❌ | ❌ | 2 |
 | `aten::bmm` | `TorchSharp.torch.bmm` | ✅ | ✅ | ✅ | ✅ | ✅ | 7 |
-| `aten::broadcast_to` | `TorchSharp.torch.broadcast_to` | ✅ | ✅ | ✅ | ❌ | ❌ | 15 |
-| `aten::cat` | `TorchSharp.torch.cat` | ✅ | ✅ | ✅ | ❌ | ❌ | 2 |
+| `aten::broadcast_to` | `TorchSharp.torch.broadcast_to` | ✅ | ✅ | ✅ | ✅ | ✅ | 15 |
+| `aten::cat` | `TorchSharp.torch.cat` | ✅ | ✅ | ✅ | ✅ | ✅ | 2 |
 | `aten::ceil` | `TorchSharp.torch.ceil` | ✅ | ✅ | ✅ | ✅ | ✅ | 2 |
 | `aten::celu` | `TorchSharp.torch+Tensor.celu` | ✅ | ✅ | ✅ | ✅ | ✅ | 0 |
-| `aten::chunk` | `TorchSharp.torch.chunk` | ✅ | ❌ | ✅ | ❌ | ❌ | 3 |
+| `aten::chunk` | `TorchSharp.torch.chunk` | ✅ | ❌ | ✅ | ✅ | ✅ | 3 |
 | `aten::clamp` | `TorchSharp.torch.clamp` | ✅ | ✅ | ✅ | ✅ | ❌ | 5 |
 | `aten::clamp.Tensor` | `TorchSharp.torch.clamp` | ✅ | ✅ | ✅ | ✅ | ❌ | 5 |
 | `aten::clamp_max` | `TorchSharp.torch.clamp_max` | ✅ | ✅ | ✅ | ❌ | ❌ | 12 |
@@ -249,8 +249,8 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::clone` | `TorchSharp.torch.clone` | ✅ | ✅ | ✅ | ❌ | ❌ | 1 |
 | `aten::col2im` | `TorchSharp.Modules.Fold` | ✅ | ❌ | ❌ | ❌ | ❌ | 1 |
 | `aten::complex` | `TorchSharp.torch.complex` | ✅ | ❌ | ❌ | ❌ | ❌ | 1 |
-| `aten::concat` | `TorchSharp.torch.concat` | ✅ | ✅ | ✅ | ❌ | ❌ | 3 |
-| `aten::concatenate` | `TorchSharp.torch.concatenate` | ✅ | ✅ | ✅ | ❌ | ❌ | 0 |
+| `aten::concat` | `TorchSharp.torch.concat` | ✅ | ✅ | ✅ | ✅ | ✅ | 3 |
+| `aten::concatenate` | `TorchSharp.torch.concatenate` | ✅ | ✅ | ✅ | ✅ | ✅ | 0 |
 | `aten::conj` | `TorchSharp.torch.conj` | ✅ | ❌ | ✅ | ❌ | ❌ | 1 |
 | `aten::constant_pad_nd` | `TorchSharp.torch+nn+functional.pad` | ✅ | ❌ | ❌ | ❌ | ❌ | 4 |
 | `aten::contiguous` | `TorchSharp.torch+Tensor.contiguous` | ✅ | ✅ | ✅ | ❌ | ❌ | 1 |
@@ -294,7 +294,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::erfc` | `TorchSharp.torch.erfc` | ✅ | ❌ | ✅ | ❌ | ❌ | 5 |
 | `aten::exp` | `TorchSharp.torch.exp` | ✅ | ✅ | ✅ | ✅ | ✅ | 10 |
 | `aten::exp2` | `TorchSharp.torch.exp2` | ✅ | ❌ | ✅ | ❌ | ❌ | 10 |
-| `aten::expand` | `TorchSharp.torch+Tensor.expand` | ✅ | ✅ | ✅ | ❌ | ❌ | 7 |
+| `aten::expand` | `TorchSharp.torch+Tensor.expand` | ✅ | ✅ | ✅ | ✅ | ✅ | 7 |
 | `aten::expand_as` | `TorchSharp.torch+Tensor.expand_as` | ✅ | ✅ | ✅ | ❌ | ❌ | 15 |
 | `aten::expm1` | `TorchSharp.torch.expm1` | ✅ | ❌ | ✅ | ❌ | ❌ | 3 |
 | `aten::fake_quantize_per_channel_affine` | `TorchSharp.torch.fake_quantize_per_channel_affine` | ✅ | ❌ | ❌ | ❌ | ❌ | 5 |
@@ -459,7 +459,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::remainder.Scalar` | `TorchSharp.torch.remainder` | ✅ | ✅ | ✅ | ✅ | ✅ | 3 |
 | `aten::remainder.Scalar_Tensor` | `TorchSharp.torch.remainder` | ✅ | ✅ | ✅ | ✅ | ✅ | 3 |
 | `aten::remainder.Tensor` | `TorchSharp.torch.remainder` | ✅ | ✅ | ✅ | ✅ | ✅ | 3 |
-| `aten::repeat` | `TorchSharp.torch+Tensor.repeat` | ✅ | ❌ | ✅ | ❌ | ❌ | 6 |
+| `aten::repeat` | `TorchSharp.torch+Tensor.repeat` | ✅ | ❌ | ✅ | ✅ | ✅ | 6 |
 | `aten::repeat_interleave.Tensor` | `TorchSharp.torch.repeat_interleave` | ✅ | ❌ | ✅ | ❌ | ❌ | 6 |
 | `aten::repeat_interleave.self_int` | `TorchSharp.torch.repeat_interleave` | ✅ | ❌ | ✅ | ❌ | ❌ | 6 |
 | `aten::replication_pad1d` | `TorchSharp.Modules.ReplicationPad1d` | ✅ | ❌ | ✅ | ❌ | ❌ | 0 |
@@ -488,7 +488,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::sin` | `TorchSharp.torch.sin` | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
 | `aten::sinc` | `TorchSharp.torch.sinc` | ✅ | ❌ | ✅ | ❌ | ❌ | 6 |
 | `aten::sinh` | `TorchSharp.torch.sinh` | ✅ | ✅ | ✅ | ✅ | ✅ | 3 |
-| `aten::slice.Tensor` | `TorchSharp.torch+Tensor.slice` | ✅ | ✅ | ✅ | ❌ | ❌ | 13 |
+| `aten::slice.Tensor` | `TorchSharp.torch+Tensor.slice` | ✅ | ✅ | ✅ | ✅ | ✅ | 13 |
 | `aten::slice_scatter` | `TorchSharp.torch.slice_scatter` | ✅ | ❌ | ❌ | ❌ | ❌ | 12 |
 | `aten::softmax.int` | `TorchSharp.torch.softmax` | ✅ | ✅ | ✅ | ❌ | ❌ | 0 |
 | `aten::softplus` | `TorchSharp.torch+Tensor.softplus` | ✅ | ✅ | ✅ | ✅ | ✅ | 0 |
@@ -500,12 +500,12 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::special_log_softmax` | `TorchSharp.torch+Tensor.log_softmax` | ✅ | ✅ | ✅ | ❌ | ❌ | 9 |
 | `aten::special_sinc` | `TorchSharp.torch.sinc` | ✅ | ❌ | ✅ | ❌ | ❌ | 6 |
 | `aten::special_softmax` | `TorchSharp.torch.softmax` | ✅ | ✅ | ✅ | ❌ | ❌ | 2 |
-| `aten::split` | `TorchSharp.torch.split` | ✅ | ✅ | ✅ | ❌ | ❌ | 6 |
+| `aten::split` | `TorchSharp.torch.split` | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
 | `aten::split.Tensor` | `TorchSharp.torch.split` | ✅ | ✅ | ✅ | ❌ | ❌ | 6 |
-| `aten::split_with_sizes` | `TorchSharp.torch.split` | ✅ | ✅ | ✅ | ❌ | ❌ | 70 |
+| `aten::split_with_sizes` | `TorchSharp.torch.split` | ✅ | ✅ | ✅ | ✅ | ✅ | 70 |
 | `aten::sqrt` | `TorchSharp.torch.sqrt` | ✅ | ✅ | ✅ | ✅ | ✅ | 1 |
 | `aten::squeeze` | `TorchSharp.torch.squeeze` | ✅ | ✅ | ✅ | ❌ | ❌ | 4 |
-| `aten::squeeze.dim` | `TorchSharp.torch.squeeze` | ✅ | ✅ | ✅ | ❌ | ❌ | 4 |
+| `aten::squeeze.dim` | `TorchSharp.torch.squeeze` | ✅ | ✅ | ✅ | ✅ | ✅ | 4 |
 | `aten::stack` | `TorchSharp.torch.stack` | ✅ | ❌ | ✅ | ❌ | ❌ | 2 |
 | `aten::stft` | `TorchSharp.torch.stft` | ✅ | ❌ | ❌ | ❌ | ❌ | 0 |
 | `aten::sub.Scalar` | `TorchSharp.torch.sub` | ✅ | ✅ | ✅ | ✅ | ✅ | 2 |
@@ -522,7 +522,7 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::tensor.bool` | `TorchSharp.torch.tensor` | ✅ | ❌ | ✅ | ❌ | ❌ | 56 |
 | `aten::tensor.float` | `TorchSharp.torch.tensor` | ✅ | ❌ | ✅ | ❌ | ❌ | 56 |
 | `aten::tensor.int` | `TorchSharp.torch.tensor` | ✅ | ❌ | ✅ | ❌ | ❌ | 51 |
-| `aten::tile` | `TorchSharp.torch.tile` | ✅ | ✅ | ✅ | ❌ | ❌ | 2 |
+| `aten::tile` | `TorchSharp.torch.tile` | ✅ | ✅ | ✅ | ✅ | ✅ | 2 |
 | `aten::topk` | `TorchSharp.torch.topk` | ✅ | ✅ | ✅ | ❌ | ❌ | 4 |
 | `aten::transpose.int` | `TorchSharp.torch.transpose` | ✅ | ✅ | ✅ | ❌ | ❌ | 7 |
 | `aten::tril` | `TorchSharp.torch.tril` | ✅ | ✅ | ✅ | ❌ | ❌ | 2 |
@@ -531,8 +531,8 @@ Current versions and direct dependencies are read from the publishable `Onnxify.
 | `aten::true_divide.Tensor` | `TorchSharp.torch.true_divide` | ✅ | ✅ | ✅ | ✅ | ✅ | 0 |
 | `aten::trunc` | `TorchSharp.torch.trunc` | ✅ | ❌ | ✅ | ❌ | ✅ | 1 |
 | `aten::type_as` | `TorchSharp.torch+Tensor.type_as` | ✅ | ✅ | ✅ | ✅ | ✅ | 50 |
-| `aten::unbind.int` | `TorchSharp.torch.unbind` | ✅ | ❌ | ✅ | ❌ | ❌ | 2 |
-| `aten::unflatten.int` | `TorchSharp.torch.unflatten` | ✅ | ❌ | ✅ | ❌ | ❌ | 1 |
+| `aten::unbind.int` | `TorchSharp.torch.unbind` | ✅ | ❌ | ✅ | ✅ | ✅ | 2 |
+| `aten::unflatten.int` | `TorchSharp.torch.unflatten` | ✅ | ❌ | ✅ | ✅ | ✅ | 1 |
 | `aten::unfold` | `TorchSharp.torch+Tensor.unfold` | ✅ | ❌ | ❌ | ❌ | ❌ | 0 |
 | `aten::unique_consecutive` | `TorchSharp.torch.unique_consecutive` | ✅ | ❌ | ❌ | ❌ | ❌ | 0 |
 | `aten::unique_dim` | `TorchSharp.torch.unique` | ✅ | ❌ | ❌ | ❌ | ❌ | 0 |

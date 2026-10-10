@@ -22,6 +22,8 @@ internal abstract class CompilerOperator
     public virtual int MinimumInputCount => 1;
     public virtual int MaximumInputCount => MinimumInputCount;
     public virtual int InputCount => MinimumInputCount;
+    public virtual int MinimumOutputCount => 1;
+    public virtual int MaximumOutputCount => 1;
     public virtual string? BinaryOperator => TorchSharpForms.FirstOrDefault(static form => form.Kind == CompilerTorchSharpFormKind.Binary)?.Name;
     public virtual string? UnaryOperator => TorchSharpForms.FirstOrDefault(static form => form.Kind == CompilerTorchSharpFormKind.Unary)?.Name;
     public virtual string? TorchSharpMethod => null;
@@ -56,7 +58,8 @@ internal abstract class CompilerOperator
         return Accepts(operation.Node)
             && operation.Inputs.Count >= MinimumInputCount
             && operation.Inputs.Count <= MaximumInputCount
-            && operation.Outputs.Count == 1
+            && operation.Outputs.Count >= MinimumOutputCount
+            && operation.Outputs.Count <= MaximumOutputCount
             && (AllowsEmptyOptionalInputs || operation.Inputs.All(static input => !input.IsEmptyOptional))
             && operation.Outputs.All(static output => !output.IsEmptyOptional)
             && operation.Node.Attributes.All(attribute => AttributeNames.Contains(attribute.Name, StringComparer.Ordinal));
@@ -69,7 +72,8 @@ internal abstract class CompilerOperator
             && string.Equals(node.OpType, OnnxName, StringComparison.Ordinal)
             && node.Inputs.Count >= MinimumInputCount
             && node.Inputs.Count <= MaximumInputCount
-            && node.Outputs.Count == 1
+            && node.Outputs.Count >= MinimumOutputCount
+            && node.Outputs.Count <= MaximumOutputCount
             && node.Attributes.All(attribute => AttributeNames.Contains(attribute.Name, StringComparer.Ordinal));
     }
 

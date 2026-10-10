@@ -1,10 +1,12 @@
 using System.Globalization;
 using Onnxify;
+using Onnxify.Compiler.Operators.Helpers;
 
 namespace Onnxify.Compiler.Operators;
 
 [CompilerTorchOperator("aten::reshape")]
 [CompilerTorchOperator("aten::view")]
+[CompilerTorchOperator("aten::unflatten.int")]
 internal sealed class ReshapeOperator() : CompilerOperator<Onnxify.Reshape>(CompilerOperatorIdentity.Onnx("Reshape"))
 {
     public override IReadOnlyCollection<CompilerTorchSharpForm> TorchSharpForms { get; } =
@@ -12,6 +14,8 @@ internal sealed class ReshapeOperator() : CompilerOperator<Onnxify.Reshape>(Comp
         CompilerTorchSharpForm.Call("torch.reshape"),
         CompilerTorchSharpForm.Call("Tensor.reshape"),
         CompilerTorchSharpForm.Call("Tensor.view"),
+        CompilerTorchSharpForm.Call("Tensor.unflatten"),
+        CompilerTorchSharpForm.Call("torch.unflatten"),
     ];
 
     public override IReadOnlyList<string> AttributeNames { get; } = ["allowzero"];
@@ -61,6 +65,12 @@ internal sealed class ReshapeOperator() : CompilerOperator<Onnxify.Reshape>(Comp
         if (expression is not CompilerInvocationExpression invocation)
         {
             return false;
+        }
+
+        if (string.Equals(context.CallName, "Tensor.unflatten", StringComparison.Ordinal)
+            || string.Equals(context.CallName, "torch.unflatten", StringComparison.Ordinal))
+        {
+            return TryScanUnflatten(context, expression, invocation);
         }
 
         var inputExpression = context.Receiver ?? invocation.Arguments.FirstOrDefault();
@@ -115,6 +125,83 @@ internal sealed class ReshapeOperator() : CompilerOperator<Onnxify.Reshape>(Comp
 
         var node = new Onnxify.Reshape(
             OnnxName.ToLowerInvariant(),
+            new Onnxify.ReshapeInputOutputOptions
+            {
+                Data = new OnnxEdge(input.Name),
+                Shape = new OnnxEdge(shapeName),
+                Allowzero = 1,
+                Reshaped = output,
+            });
+        context.AddOperation(this, node, expression.Span);
+        return true;
+    }
+
+    private bool TryScanUnflatten(
+        TorchSharpOperatorScanContext context,
+        CompilerExpression expression,
+        CompilerInvocationExpression invocation)
+    {
+        var inputExpression = context.Receiver ?? invocation.Arguments.FirstOrDefault();
+        var arguments = context.Receiver is null
+            ? invocation.Arguments.Skip(1).ToArray()
+            : invocation.Arguments;
+        if (inputExpression is null || arguments.Count < 2)
+        {
+            throw context.Unsupported(expression, "TorchSharp unflatten requires a tensor, one static axis, and compile-time sizes.");
+        }
+
+        var axis = StaticInt64Vector.ReadScalar(arguments[0], context, "TorchSharp unflatten axis");
+        var sizes = arguments.Count == 2 && arguments[1] is CompilerArrayExpression sizesArray
+            ? sizesArray.Items.Select(item => StaticInt64Vector.ReadScalar(item, context, "TorchSharp unflatten sizes")).ToArray()
+            : arguments.Skip(1).Select(argument => StaticInt64Vector.ReadScalar(argument, context, "TorchSharp unflatten sizes")).ToArray();
+        if (sizes.Length == 0 || sizes.Any(static dimension => dimension < 0))
+        {
+            throw context.Unsupported(expression, "TorchSharp unflatten sizes must be a non-empty array of non-negative integers.");
+        }
+
+        var input = context.RequireTensorReference(inputExpression, OnnxName);
+        var inputType = context.Inputs.FirstOrDefault(value => string.Equals(value.Name, input.Name, StringComparison.Ordinal))?.Type as CompilerTensorType;
+        if (inputType?.Dimensions is not { } dimensions
+            || dimensions.Any(static dimension => dimension is not CompilerFixedDimension))
+        {
+            throw context.Unsupported(expression, "TorchSharp unflatten requires statically known input dimensions until runtime shape lowering is available.");
+        }
+
+        var normalizedAxis = axis < 0 ? axis + dimensions.Count : axis;
+        if (normalizedAxis < 0 || normalizedAxis >= dimensions.Count)
+        {
+            throw context.Unsupported(arguments[0], "TorchSharp unflatten axis is outside the input rank.");
+        }
+
+        var inputDimensions = dimensions
+            .Cast<CompilerFixedDimension>()
+            .Select(static dimension => dimension.Value)
+            .ToArray();
+        long requestedDimension;
+        try
+        {
+            requestedDimension = sizes.Aggregate(1L, static (product, size) => checked(product * size));
+        }
+        catch (OverflowException)
+        {
+            throw context.Unsupported(expression, "TorchSharp unflatten sizes overflow the supported ONNX dimension range.");
+        }
+
+        if (inputDimensions[(int)normalizedAxis] != requestedDimension)
+        {
+            throw context.Unsupported(expression, "TorchSharp unflatten sizes must multiply to the selected input dimension.");
+        }
+
+        var shape = inputDimensions
+            .Take((int)normalizedAxis)
+            .Concat(sizes)
+            .Concat(inputDimensions.Skip((int)normalizedAxis + 1))
+            .ToArray();
+        var output = context.RequireSingleOutputEdge(this);
+        var shapeName = CompilerCSharpNaming.Identifier($"__unflatten_shape_{output.Name}");
+        StaticInt64Vector.AddInitializer(context, shapeName, shape);
+        var node = new Onnxify.Reshape(
+            "unflatten",
             new Onnxify.ReshapeInputOutputOptions
             {
                 Data = new OnnxEdge(input.Name),
