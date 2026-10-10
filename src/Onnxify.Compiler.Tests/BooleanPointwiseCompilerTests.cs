@@ -152,6 +152,68 @@ public sealed class BooleanPointwiseCompilerTests
             expected);
     }
 
+    [Fact]
+    public void IsInfMappingIsBidirectionalAndMatchesOnnxRuntime()
+    {
+        // Torch converter case: third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py (isinf), exercised by ops_test.py::test_output_match_opinfo_.
+        // ONNX Runtime cases: third_party/onnxruntime/onnxruntime/test/providers/cpu/tensor/isinf_test.cc (IsInfTest.test_isinf_float10, IsInfTest.test_isinf_positive_float10, IsInfTest.test_isinf_negative_float10).
+        var inputValues = new[] { float.NegativeInfinity, -1f, float.PositiveInfinity, float.NaN };
+        var expected = new[] { true, false, true, false };
+        var model = CreateUnaryModel(
+            inputType: OnnxTensorType.Create<float>([new OnnxDimension<long>(4)]),
+            node: new Onnxify.IsInf(
+                "isinf",
+                new Onnxify.IsInfInputOutputOptions
+                {
+                    X = new OnnxEdge("input"),
+                    Y = new OnnxEdge("output"),
+                }),
+            outputType: OnnxTensorType.Create<bool>([new OnnxDimension<long>(4)]));
+
+        VerifyUnaryBooleanMapping(
+            model,
+            "torch.isinf(input)",
+            "IsInf",
+            inputValues,
+            expected);
+    }
+
+    [Fact]
+    public void IsInfSignSpecificMappingsPreserveOnnxAttributes()
+    {
+        // Torch converter cases: third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py (isposinf, isneginf).
+        // ONNX Runtime cases: third_party/onnxruntime/onnxruntime/test/providers/cpu/tensor/isinf_test.cc (IsInfTest.test_isinf_positive_float10, IsInfTest.test_isinf_negative_float10).
+        var inputValues = new[] { float.NegativeInfinity, -1f, float.PositiveInfinity, float.NaN };
+        var cases = new[]
+        {
+            (Name: "isposinf", Call: "torch.isposinf(input)", Negative: 0L, Positive: 1L, Expected: new[] { false, false, true, false }),
+            (Name: "isneginf", Call: "torch.isneginf(input)", Negative: 1L, Positive: 0L, Expected: new[] { true, false, false, false }),
+        };
+
+        foreach (var testCase in cases)
+        {
+            var model = CreateUnaryModel(
+                inputType: OnnxTensorType.Create<float>([new OnnxDimension<long>(4)]),
+                node: new Onnxify.IsInf(
+                    testCase.Name,
+                    new Onnxify.IsInfInputOutputOptions
+                    {
+                        X = new OnnxEdge("input"),
+                        DetectNegative = testCase.Negative,
+                        DetectPositive = testCase.Positive,
+                        Y = new OnnxEdge("output"),
+                    }),
+                outputType: OnnxTensorType.Create<bool>([new OnnxDimension<long>(4)]));
+
+            VerifyUnaryBooleanMapping(
+                model,
+                testCase.Call,
+                "IsInf",
+                inputValues,
+                testCase.Expected);
+        }
+    }
+
     private static OnnxModel CreateUnaryModel(OnnxTensorType inputType, OnnxNode node, OnnxTensorType outputType)
     {
         var model = OnnxModel.Create(new OnnxModelCreationOptions { Opset = 25 });

@@ -133,6 +133,103 @@ public sealed class ShapeCompilerTests
         Assert.Contains(scanned.Diagnostics, static diagnostic => diagnostic.Severity == CompilerDiagnosticSeverity.Error);
     }
 
+    [Fact]
+    public void ReshapeWithStaticShapeInitializerRoundTripsAndPreservesRuntimeValues()
+    {
+        // ONNXScript cases: third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py (reshape, view).
+        // ONNX Runtime cases: third_party/onnxruntime/onnxruntime/test/providers/cpu/tensor/tensor_op_test.cc (TensorOpTest.Reshape, TensorOpTest.ReshapeWithInitializer).
+        var model = CreateReshapeModel([6, 4]);
+        var imported = Compiler.CreateTreeFromOnnx(model);
+        Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
+        var onnxStep = Assert.IsType<CompilerOnnxStep>(Assert.Single(imported.Value!.Operations));
+        Assert.IsType<Onnxify.Reshape>(onnxStep.Node);
+        Assert.Equal(CompilerOperationCapability.Bidirectional, onnxStep.Descriptor.Capability);
+
+        var generated = Compiler.GenerateCSharp(imported.Value);
+        Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
+        Assert.Contains("input.reshape(new long[] { 6L, 4L })", generated.Value);
+
+        var values = Enumerable.Range(0, 24).Select(static value => (float)value).ToArray();
+        var expected = ExecuteOnnx(model, values);
+        Assert.Equal(expected, ExecuteGenerated(generated.Value!, values));
+
+        const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.view(new long[] { 6, 4 }); }";
+        var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
+        Assert.True(scanned.IsSuccess, FormatDiagnostics(scanned.Diagnostics));
+        var torchStep = Assert.IsType<CompilerOnnxStep>(Assert.Single(scanned.Value!.Operations));
+        Assert.IsType<Onnxify.Reshape>(torchStep.Node);
+        Assert.Equal(onnxStep.Descriptor, torchStep.Descriptor);
+        Assert.Single(scanned.Value.Initializers);
+
+        var emitted = Compiler.GenerateOnnx(scanned.Value);
+        Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
+        Assert.IsType<Onnxify.Reshape>(Assert.Single(emitted.Value!.Graph.Nodes));
+        Assert.Equal(expected, ExecuteOnnx(emitted.Value, values));
+    }
+
+    [Fact]
+    public void ReshapeRejectsDynamicOrInvalidStaticShapes()
+    {
+        const string dynamicShapeSource = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input, global::TorchSharp.torch.Tensor shape) { return torch.reshape(input, shape); }";
+        var dynamicShape = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(dynamicShapeSource));
+        Assert.False(dynamicShape.IsSuccess);
+        Assert.Contains(dynamicShape.Diagnostics, static diagnostic => diagnostic.Severity == CompilerDiagnosticSeverity.Error);
+
+        const string invalidShapeSource = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.reshape(new long[] { -1, -1 }); }";
+        var invalidShape = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(invalidShapeSource));
+        Assert.False(invalidShape.IsSuccess);
+        Assert.Contains(invalidShape.Diagnostics, static diagnostic => diagnostic.Message.Contains("at most one", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ReshapePreservesCopiedDimensionsAndInferredDimension()
+    {
+        // ONNX Runtime case: third_party/onnxruntime/onnxruntime/test/providers/cpu/tensor/tensor_op_test.cc (TensorOpTest.Reshape_UnknownDimWithoutAllowZero).
+        var model = CreateReshapeModel([0, -1], allowzero: 0, outputShape: [2, 12]);
+        var imported = Compiler.CreateTreeFromOnnx(model);
+        Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
+
+        var generated = Compiler.GenerateCSharp(imported.Value!);
+        Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
+        Assert.Contains("input.reshape(new long[] { input.shape[0], -1L })", generated.Value);
+
+        var values = Enumerable.Range(0, 24).Select(static value => (float)value).ToArray();
+        var expected = ExecuteOnnx(model, values);
+        Assert.Equal(expected, ExecuteGenerated(generated.Value!, values));
+    }
+
+    [Fact]
+    public void UnsqueezeStaticAxisRoundTripsAndPreservesRuntimeValues()
+    {
+        // ONNXScript case: third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py (aten_unsqueeze).
+        // ONNX Runtime case: third_party/onnxruntime/onnxruntime/test/providers/cpu/tensor/unsqueeze_op_test.cc (UnsqueezeOpTest.Unsqueeze_1).
+        var model = CreateUnsqueezeModel(1);
+        var imported = Compiler.CreateTreeFromOnnx(model);
+        Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
+        var onnxStep = Assert.IsType<CompilerOnnxStep>(Assert.Single(imported.Value!.Operations));
+        Assert.IsType<Onnxify.Unsqueeze>(onnxStep.Node);
+        Assert.Equal(CompilerOperationCapability.Bidirectional, onnxStep.Descriptor.Capability);
+
+        var generated = Compiler.GenerateCSharp(imported.Value);
+        Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
+        Assert.Contains("input.unsqueeze(1)", generated.Value);
+
+        var values = Enumerable.Range(0, 24).Select(static value => (float)value).ToArray();
+        var expected = ExecuteOnnx(model, values);
+        Assert.Equal(expected, ExecuteGenerated(generated.Value!, values));
+
+        const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.unsqueeze(1); }";
+        var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
+        Assert.True(scanned.IsSuccess, FormatDiagnostics(scanned.Diagnostics));
+        var torchStep = Assert.IsType<CompilerOnnxStep>(Assert.Single(scanned.Value!.Operations));
+        Assert.IsType<Onnxify.Unsqueeze>(torchStep.Node);
+        Assert.Equal(onnxStep.Descriptor, torchStep.Descriptor);
+        var emitted = Compiler.GenerateOnnx(scanned.Value);
+        Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
+        Assert.IsType<Onnxify.Unsqueeze>(Assert.Single(emitted.Value!.Graph.Nodes));
+        Assert.Equal(expected, ExecuteOnnx(emitted.Value, values));
+    }
+
     private static OnnxModel CreateFlattenModel(long? axis = null)
     {
         var normalizedAxis = axis ?? 1;
@@ -177,6 +274,43 @@ public sealed class ShapeCompilerTests
                 Data = input,
                 Perm = permutation,
                 Transposed = output,
+            }));
+        return model;
+    }
+
+    private static OnnxModel CreateReshapeModel(long[] shape, long? allowzero = 1, long[]? outputShape = null)
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions { Opset = 25 });
+        var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([2, 3, 4]));
+        var output = model.Graph.AddOutput(
+            "output",
+            OnnxTensorType.Create<float>((outputShape ?? shape).Select(static dimension => new OnnxDimension<long>(dimension))));
+        var shapeTensor = model.Graph.AddTensor("shape", [shape.Length], shape);
+        model.Graph.AddNode(new Onnxify.Reshape(
+            "reshape",
+            new Onnxify.ReshapeInputOutputOptions
+            {
+                Data = input,
+                Shape = shapeTensor,
+                Allowzero = allowzero,
+                Reshaped = output,
+            }));
+        return model;
+    }
+
+    private static OnnxModel CreateUnsqueezeModel(long axis)
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions { Opset = 25 });
+        var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([2, 3, 4]));
+        var output = model.Graph.AddOutput("output", OnnxTensorType.Create<float>([2, 1, 3, 4]));
+        var axes = model.Graph.AddTensor("axes", [1], [axis]);
+        model.Graph.AddNode(new Onnxify.Unsqueeze(
+            "unsqueeze",
+            new Onnxify.UnsqueezeInputOutputOptions
+            {
+                Data = input,
+                Axes = axes,
+                Expanded = output,
             }));
         return model;
     }

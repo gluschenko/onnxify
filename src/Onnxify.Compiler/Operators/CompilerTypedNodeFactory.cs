@@ -413,6 +413,20 @@
                         }
                     );
                 },
+                [typeof(Onnxify.IsInf)] = static (name, inputs, outputs, onnxAttributes) =>
+                {
+                    var attributes = onnxAttributes.ToDictionary(attribute => attribute.Name, attribute => attribute.GetValue(), StringComparer.Ordinal);
+                    return new Onnxify.IsInf(
+                        name,
+                        new Onnxify.IsInfInputOutputOptions
+                        {
+                            X = inputs[0] ?? throw new InvalidOperationException("Missing required input 'X'"),
+                            DetectNegative = (long?)attributes.GetValueOrDefault("detect_negative") ?? 1,
+                            DetectPositive = (long?)attributes.GetValueOrDefault("detect_positive") ?? 1,
+                            Y = outputs[0] ?? throw new InvalidOperationException("Missing required output 'Y'"),
+                        }
+                    );
+                },
                 [typeof(Onnxify.LeakyRelu)] = static (name, inputs, outputs, onnxAttributes) =>
                 {
                     var attributes = onnxAttributes.ToDictionary(attribute => attribute.Name, attribute => attribute.GetValue(), StringComparer.Ordinal);
@@ -824,6 +838,32 @@
                             Data = inputs[0] ?? throw new InvalidOperationException("Missing required input 'data'"),
                             Perm = attributes.TryGetValue("perm", out var permutation) ? (long[]?)permutation : null,
                             Transposed = outputs[0] ?? throw new InvalidOperationException("Missing required output 'transposed'"),
+                        }
+                    );
+                },
+                [typeof(Onnxify.Reshape)] = static (name, inputs, outputs, onnxAttributes) =>
+                {
+                    var attributes = onnxAttributes.ToDictionary(attribute => attribute.Name, attribute => attribute.GetValue(), StringComparer.Ordinal);
+                    return new Onnxify.Reshape(
+                        name,
+                        new Onnxify.ReshapeInputOutputOptions
+                        {
+                            Data = inputs[0] ?? throw new InvalidOperationException("Missing required input 'data'"),
+                            Shape = inputs[1] ?? throw new InvalidOperationException("Missing required input 'shape'"),
+                            Allowzero = (long?)attributes.GetValueOrDefault("allowzero"),
+                            Reshaped = outputs[0] ?? throw new InvalidOperationException("Missing required output 'reshaped'"),
+                        }
+                    );
+                },
+                [typeof(Onnxify.Unsqueeze)] = static (name, inputs, outputs, onnxAttributes) =>
+                {
+                    return new Onnxify.Unsqueeze(
+                        name,
+                        new Onnxify.UnsqueezeInputOutputOptions
+                        {
+                            Data = inputs[0] ?? throw new InvalidOperationException("Missing required input 'data'"),
+                            Axes = inputs[1] ?? throw new InvalidOperationException("Missing required input 'axes'"),
+                            Expanded = outputs[0] ?? throw new InvalidOperationException("Missing required output 'expanded'"),
                         }
                     );
                 },

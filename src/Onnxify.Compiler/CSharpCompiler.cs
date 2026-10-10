@@ -2007,7 +2007,7 @@ internal sealed class CSharpSourcePrinter
                         span: mappedOperation.Span);
                 }
 
-                Line($"var {CompilerCSharpNaming.Identifier(mappedOperation.Outputs[0].Name)} = {mapping.PrintTorchSharp(mappedOperation)};");
+                Line($"var {CompilerCSharpNaming.Identifier(mappedOperation.Outputs[0].Name)} = {mapping.PrintTorchSharp(mappedOperation, new CompilerTorchSharpPrintContext(_tree))};");
                 continue;
             }
 

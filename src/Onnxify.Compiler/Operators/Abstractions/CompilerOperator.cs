@@ -75,6 +75,13 @@ internal abstract class CompilerOperator
 
     public abstract string PrintTorchSharp(CompilerOnnxStep operation);
 
+    public virtual string PrintTorchSharp(
+        CompilerOnnxStep operation,
+        CompilerTorchSharpPrintContext context)
+    {
+        return PrintTorchSharp(operation);
+    }
+
     public virtual void PrintOnnx(OnnxGraph graph, CompilerOnnxStep operation)
     {
         graph.AddNode(operation.Node);
