@@ -30,7 +30,7 @@
 | [OXY-026](OXY-026.md) | Add Compatibility Facades And Extensibility | DONE | 16 human-hours | 2026-09-05 | 2026-10-07 |
 | [OXY-027](OXY-027.md) | Complete Roundtrip Validation, Documentation, And Cleanup | TODO | 16 human-hours | 2026-09-05 | 2026-10-11 |
 | [OXY-028](OXY-028.md) | OnnxGraph Stale Value And Dead Node Cleanup | DONE | 24 human-hours | 2026-09-05 | 2026-09-05 |
-| [OXY-029](OXY-029.md) | Compiler Operator Mappings: Pointwise Operations And Broadcasting | TODO | 64 human-hours | 2026-10-06 | 2026-10-07 |
+| [OXY-029](OXY-029.md) | Compiler Operator Mappings: Pointwise Operations And Broadcasting | IN PROGRESS | 64 human-hours | 2026-10-06 | 2026-10-11 |
 | [OXY-030](OXY-030.md) | Compiler Operator Mappings: Matrix Multiplication | DONE | 16 human-hours | 2026-10-06 | 2026-10-07 |
 | [OXY-031](OXY-031.md) | Compiler Operator Mappings: Shape Operations And Factories | TODO | 56 human-hours | 2026-10-06 | 2026-10-11 |
 | [OXY-032](OXY-032.md) | Compiler Operator Mappings: Activations Beyond ReLU | DONE | 24 human-hours | 2026-10-06 | 2026-10-06 |

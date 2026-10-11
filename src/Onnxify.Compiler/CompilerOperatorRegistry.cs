@@ -8,6 +8,8 @@ internal static class CompilerOperatorRegistry
     [
         new AbsOperator(),
         new AddOperator(),
+        new AddCdivOperator(),
+        new AddCmulOperator(),
         new AcosOperator(),
         new AcoshOperator(),
         new AsinOperator(),
@@ -22,11 +24,18 @@ internal static class CompilerOperatorRegistry
         new CosOperator(),
         new CoshOperator(),
         new ExpOperator(),
+        new Exp2Operator(),
         new ExpandOperator(),
         new FloorOperator(),
         new FlattenOperator(),
         new GlobalAveragePoolOperator(),
         new LogOperator(),
+        new Log1pOperator(),
+        new Log10Operator(),
+        new LogAddExpOperator(),
+        new LogAddExp2Operator(),
+        new Log2Operator(),
+        new LerpOperator(),
         new ModOperator(),
         new MatMulOperator(),
         new GemmOperator(),
@@ -41,6 +50,7 @@ internal static class CompilerOperatorRegistry
         new TileOperator(),
         new MulOperator(),
         new DivOperator(),
+        new Deg2RadOperator(),
         new EqualOperator(),
         new PowOperator(),
         new GreaterOperator(),
@@ -55,6 +65,8 @@ internal static class CompilerOperatorRegistry
         new NotOperator(),
         new WhereOperator(),
         new ReciprocalOperator(),
+        new Rad2DegOperator(),
+        new RsqrtOperator(),
         new ReshapeOperator(),
         new SqueezeOperator(),
         new UnsqueezeOperator(),
@@ -167,6 +179,11 @@ internal static class CompilerOperatorRegistry
         var index = new Dictionary<Type, CompilerOperator>();
         foreach (var compilerOperator in operators)
         {
+            if (compilerOperator.NodeType == typeof(OnnxNode))
+            {
+                continue;
+            }
+
             if (index.ContainsKey(compilerOperator.NodeType))
             {
                 throw new InvalidOperationException($"Duplicate compiler node type '{compilerOperator.NodeType.FullName}'.");

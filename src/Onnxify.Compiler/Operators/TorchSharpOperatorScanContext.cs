@@ -39,7 +39,8 @@ internal sealed class TorchSharpOperatorScanContext
     public CompilerValueReference RequireTensorReference(CompilerExpression expression, string operation)
     {
         if (expression is CompilerReferenceExpression reference
-            && Inputs.Any(input => string.Equals(input.Name, reference.Name, StringComparison.Ordinal)))
+            && Inputs.Any(input => string.Equals(input.Name, reference.Name, StringComparison.Ordinal)
+                && input.Type is CompilerTensorType))
         {
             return new CompilerValueReference(reference.Name);
         }

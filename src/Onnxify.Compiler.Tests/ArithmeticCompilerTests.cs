@@ -140,14 +140,44 @@ public sealed class ArithmeticCompilerTests
         AssertClose([3f, 4f, 5f], ExecuteOnnxScalar(emitted.Value!, [1f, 2f, 3f]));
     }
 
+    [Theory]
+    [InlineData("return input - 2f;", new float[] { -1f, 0f, 1f })]
+    [InlineData("return input * 2f;", new float[] { 2f, 4f, 6f })]
+    [InlineData("return input / 2f;", new float[] { 0.5f, 1f, 1.5f })]
+    [InlineData("return input.pow(2f);", new float[] { 1f, 4f, 9f })]
+    [InlineData("return 2f - input;", new float[] { 1f, 0f, -1f })]
+    [InlineData("return 2f / input;", new float[] { 2f, 1f, 2f / 3f })]
+    public void ScalarArithmeticOperandsPreserveOrderAndExecute(string returnStatement, float[] expected)
+    {
+        // Torch converter cases: third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py (aten_sub, aten_mul, aten_div, aten_pow).
+        // ONNX Runtime semantics: third_party/onnxruntime/onnxruntime/test/providers/cpu/math/element_wise_ops_test.cc (Sub, Mul, Div, Pow scalar broadcasting cases).
+        var source = $"public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) {{ {returnStatement} }}";
+        var imported = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
+
+        Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
+        Assert.Single(imported.Value!.Initializers);
+
+        var emitted = Compiler.GenerateOnnx(imported.Value);
+
+        Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
+        AssertClose(expected, ExecuteOnnxScalar(emitted.Value!, [1f, 2f, 3f]));
+
+        var generated = Compiler.GenerateCSharp(imported.Value);
+
+        Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
+        AssertClose(expected, ExecuteGeneratedModule(generated.Value!, [1f, 2f, 3f], null));
+    }
+
     [Fact]
     public void DynamicScalarArithmeticIsRejectedWithACompilerDiagnostic()
     {
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input, float scale) { return input * scale; }";
         var result = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
         Assert.False(result.IsSuccess);
-        Assert.Contains(result.Diagnostics, static diagnostic => diagnostic.Severity == CompilerDiagnosticSeverity.Error
-            && diagnostic.Code == CompilerDiagnosticCodes.Unsupported);
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(CompilerDiagnosticSeverity.Error, diagnostic.Severity);
+        Assert.Equal(CompilerDiagnosticCodes.Unsupported, diagnostic.Code);
+        Assert.NotNull(diagnostic.Span);
     }
 
     [Fact]
@@ -231,6 +261,12 @@ public sealed class ArithmeticCompilerTests
         var expected = new[] { 11d, 21d, 12d, 22d };
         Assert.Equal(expected, ExecuteGeneratedDoubleBroadcastModule(generated.Value!, leftValues, rightValues));
         Assert.Equal(expected, ExecuteOnnxDouble(model, leftValues, rightValues));
+
+        var emitted = Compiler.GenerateOnnx(imported.Value!);
+
+        Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
+        Assert.IsType<Onnxify.Add>(Assert.Single(emitted.Value!.Graph.Nodes));
+        Assert.Equal(expected, ExecuteOnnxDouble(emitted.Value, leftValues, rightValues));
     }
 
     [Fact]
@@ -374,6 +410,233 @@ public sealed class ArithmeticCompilerTests
         Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
         Assert.Equal(7L, Assert.IsType<Onnxify.Cast>(torchOperation.Node).To);
         Assert.Equal([1L, -2L, 3L], ExecuteOnnxCast(emitted.Value!, [1.9f, -2.2f, 3.8f]));
+    }
+
+    [Theory]
+    [InlineData("input.to_type(dtype)")]
+    [InlineData("input.to_type(torch.ScalarType.ComplexFloat32)")]
+    public void CastRejectsDynamicOrUnsupportedTargetTypes(string castExpression)
+    {
+        // No Cast converter entry exists in third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py; the compiler supports only statically named TorchSharp ScalarType targets.
+        // ONNX Runtime semantics: third_party/onnxruntime/onnxruntime/test/providers/cpu/tensor/cast_op_test.cc (CastOpTest.NonStringTypes).
+        var source = $"public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input, global::TorchSharp.torch.ScalarType dtype) {{ return {castExpression}; }}";
+        var result = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
+
+        Assert.False(result.IsSuccess);
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(CompilerDiagnosticSeverity.Error, diagnostic.Severity);
+        Assert.Equal(CompilerDiagnosticCodes.Unsupported, diagnostic.Code);
+        Assert.NotNull(diagnostic.Span);
+    }
+
+    [Theory]
+    [InlineData("torch.exp2(input)", "Exp2", new string[] { "Pow" }, new float[] { -2f, 0f, 3f }, new float[] { 0.25f, 1f, 8f })]
+    [InlineData("torch.log1p(input)", "Log1p", new string[] { "Add", "Log" }, new float[] { 0f, 1f, 3f }, new float[] { 0f, 0.6931472f, 1.3862944f })]
+    [InlineData("torch.log10(input)", "Log10", new string[] { "Log", "Log", "Div" }, new float[] { 0.1f, 1f, 10f }, new float[] { -1f, 0f, 1f })]
+    [InlineData("torch.log2(input)", "Log2", new string[] { "Log", "Log", "Div" }, new float[] { 0.25f, 1f, 8f }, new float[] { -2f, 0f, 3f })]
+    [InlineData("torch.deg2rad(input)", "Deg2Rad", new string[] { "Mul" }, new float[] { -180f, 0f, 90f }, new float[] { -MathF.PI, 0f, MathF.PI / 2f })]
+    [InlineData("torch.rad2deg(input)", "Rad2Deg", new string[] { "Mul" }, new float[] { -MathF.PI, 0f, MathF.PI / 2f }, new float[] { -180f, 0f, 90f })]
+    [InlineData("torch.rsqrt(input)", "Rsqrt", new string[] { "Sqrt", "Reciprocal" }, new float[] { 0.25f, 1f, 4f }, new float[] { 2f, 1f, 0.5f })]
+    public void CompositeUnaryPointwiseMappingsLowerToOnnxAndMatchRuntime(
+        string torchExpression,
+        string mappingName,
+        string[] expectedOperators,
+        float[] inputValues,
+        float[] expectedValues
+    )
+    {
+        // TorchLib converter cases: third_party/onnxscript/onnxscript/function_libs/torch_lib/ops/core.py (aten_exp2, aten_log1p, aten_log10, aten_log2, aten_deg2rad, aten_rad2deg, aten_rsqrt).
+        // ONNX Runtime cases: third_party/onnxruntime/onnxruntime/test/providers/cpu/math/element_wise_ops_test.cc (MathOpTest.Pow_Float, MathOpTest.Log, MathOpTest.Exp_float).
+        var source = $"public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) {{ return {torchExpression}; }}";
+        var tree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
+
+        Assert.True(tree.IsSuccess, FormatDiagnostics(tree.Diagnostics));
+        var operation = Assert.IsType<CompilerOnnxStep>(Assert.Single(tree.Value!.Operations));
+        Assert.Equal(mappingName, operation.Descriptor.Name);
+        Assert.Equal(CompilerOperationCapability.ExportOnly, operation.Descriptor.Capability);
+
+        var emitted = Compiler.GenerateOnnx(tree.Value);
+
+        Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
+        Assert.Equal(expectedOperators, emitted.Value!.Graph.Nodes.Select(static node => node.OpType));
+        var actualValues = ExecuteOnnxUnary(emitted.Value, inputValues);
+        AssertClose(expectedValues, actualValues);
+
+        using var torchInput = global::TorchSharp.torch.tensor(
+            inputValues,
+            [inputValues.Length],
+            dtype: global::TorchSharp.torch.ScalarType.Float32);
+        using var torchOutput = mappingName switch
+        {
+            "Exp2" => global::TorchSharp.torch.exp2(torchInput),
+            "Log1p" => global::TorchSharp.torch.log1p(torchInput),
+            "Log10" => global::TorchSharp.torch.log10(torchInput),
+            "Log2" => global::TorchSharp.torch.log2(torchInput),
+            "Deg2Rad" => global::TorchSharp.torch.deg2rad(torchInput),
+            "Rad2Deg" => global::TorchSharp.torch.rad2deg(torchInput),
+            "Rsqrt" => global::TorchSharp.torch.rsqrt(torchInput),
+            _ => throw new ArgumentOutOfRangeException(nameof(mappingName)),
+        };
+        AssertClose(torchOutput.data<float>().ToArray(), actualValues);
+
+        var unsupportedImport = Compiler.GenerateCSharp(tree.Value);
+
+        Assert.False(unsupportedImport.IsSuccess);
+        Assert.Contains(unsupportedImport.Diagnostics, static diagnostic => diagnostic.Code == CompilerDiagnosticCodes.Unsupported);
+    }
+
+    [Theory]
+    [InlineData("torch.logaddexp(left, right)", "LogAddExp", new string[] { "Sub", "Abs", "Neg", "Exp", "Add", "Log", "Max", "Add", "IsInf", "IsInf", "Equal", "And", "And", "Where" })]
+    [InlineData("torch.logaddexp2(left, right)", "LogAddExp2", new string[] { "Sub", "Abs", "Neg", "Pow", "Add", "Log", "Log", "Div", "Max", "Add", "IsInf", "IsInf", "Equal", "And", "And", "Where" })]
+    public void CompositeBinaryPointwiseMappingsLowerToOnnxAndMatchRuntime(
+        string torchExpression,
+        string mappingName,
+        string[] expectedOperators
+    )
+    {
+        // TorchLib converter cases: third_party/onnxscript/tests/function_libs/torch_lib/ops/core.py (aten_logaddexp, aten_logaddexp2).
+        // ONNX Runtime cases: third_party/onnxruntime/onnxruntime/test/providers/cpu/math/element_wise_ops_test.cc (MathOpTest.Exp_float, MathOpTest.Log, MathOpTest.Pow_Float, MathOpTest.Add_float).
+        var leftValues = new[] { -2f, 0f, 100f, float.PositiveInfinity, float.NegativeInfinity };
+        var rightValues = new[] { 2f, 1f, 100f, float.PositiveInfinity, float.NegativeInfinity };
+        var source = $"public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor left, global::TorchSharp.torch.Tensor right) {{ return {torchExpression}; }}";
+        var tree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
+
+        Assert.True(tree.IsSuccess, FormatDiagnostics(tree.Diagnostics));
+        var operation = Assert.IsType<CompilerOnnxStep>(Assert.Single(tree.Value!.Operations));
+        Assert.Equal(mappingName, operation.Descriptor.Name);
+        Assert.Equal(CompilerOperationCapability.ExportOnly, operation.Descriptor.Capability);
+
+        var emitted = Compiler.GenerateOnnx(tree.Value);
+
+        Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
+        Assert.Equal(expectedOperators, emitted.Value!.Graph.Nodes.Select(static node => node.OpType));
+
+        using var left = global::TorchSharp.torch.tensor(leftValues, [leftValues.Length], dtype: global::TorchSharp.torch.ScalarType.Float32);
+        using var right = global::TorchSharp.torch.tensor(rightValues, [rightValues.Length], dtype: global::TorchSharp.torch.ScalarType.Float32);
+        using var torchOutput = mappingName == "LogAddExp"
+            ? global::TorchSharp.torch.logaddexp(left, right)
+            : global::TorchSharp.torch.logaddexp2(left, right);
+        AssertClose(torchOutput.data<float>().ToArray(), ExecuteOnnx(emitted.Value, leftValues, [5], rightValues, [5]));
+
+        var unsupportedImport = Compiler.GenerateCSharp(tree.Value);
+
+        Assert.False(unsupportedImport.IsSuccess);
+        Assert.Contains(unsupportedImport.Diagnostics, static diagnostic => diagnostic.Code == CompilerDiagnosticCodes.Unsupported);
+    }
+
+    [Theory]
+    [InlineData("torch.addcdiv(input, first, second, value: 1f)", "AddCdiv", new string[] { "Div", "Mul", "Add" })]
+    [InlineData("torch.addcmul(input, first, second, value: 1f)", "AddCmul", new string[] { "Mul", "Mul", "Add" })]
+    [InlineData("torch.addcdiv(input, first, second, value: 0.5f)", "AddCdiv", new string[] { "Div", "Mul", "Add" })]
+    [InlineData("torch.addcmul(input, first, second, value: 0.5f)", "AddCmul", new string[] { "Mul", "Mul", "Add" })]
+    public void CompositeTernaryPointwiseMappingsSupportStaticScale(
+        string torchExpression,
+        string mappingName,
+        string[] expectedOperators
+    )
+    {
+        // TorchLib converter cases: third_party/onnxscript/tests/function_libs/torch_lib/ops/core.py (aten_addcdiv, aten_addcmul).
+        // ONNX Runtime cases: third_party/onnxruntime/onnxruntime/test/providers/cpu/math/element_wise_ops_test.cc (MathOpTest.Div_float, MathOpTest.Mul_float, MathOpTest.Add_float).
+        var inputValues = new[] { 1f, 2f, 3f };
+        var firstValues = new[] { 2f, 4f, 6f };
+        var secondValues = new[] { 1f, 2f, 3f };
+        var source = $"public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input, global::TorchSharp.torch.Tensor first, global::TorchSharp.torch.Tensor second) {{ return {torchExpression}; }}";
+        var tree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
+
+        Assert.True(tree.IsSuccess, FormatDiagnostics(tree.Diagnostics));
+        var operation = Assert.IsType<CompilerOnnxStep>(Assert.Single(tree.Value!.Operations));
+        Assert.Equal(mappingName, operation.Descriptor.Name);
+        Assert.Equal(CompilerOperationCapability.ExportOnly, operation.Descriptor.Capability);
+
+        var emitted = Compiler.GenerateOnnx(tree.Value);
+
+        Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
+        Assert.Equal(expectedOperators, emitted.Value!.Graph.Nodes.Select(static node => node.OpType));
+
+        using var input = global::TorchSharp.torch.tensor(inputValues, [3L], dtype: global::TorchSharp.torch.ScalarType.Float32);
+        using var first = global::TorchSharp.torch.tensor(firstValues, [3L], dtype: global::TorchSharp.torch.ScalarType.Float32);
+        using var second = global::TorchSharp.torch.tensor(secondValues, [3L], dtype: global::TorchSharp.torch.ScalarType.Float32);
+        using var eagerOutput = mappingName == "AddCdiv"
+            ? torchExpression.Contains("0.5f", StringComparison.Ordinal)
+                ? global::TorchSharp.torch.addcdiv(input, first, second, value: 0.5)
+                : global::TorchSharp.torch.addcdiv(input, first, second, value: 1.0)
+            : torchExpression.Contains("0.5f", StringComparison.Ordinal)
+                ? global::TorchSharp.torch.addcmul(input, first, second, value: 0.5)
+                : global::TorchSharp.torch.addcmul(input, first, second, value: 1.0);
+        AssertClose(eagerOutput.data<float>().ToArray(), ExecuteOnnxThreeInputs(
+            emitted.Value,
+            ["input", "first", "second"],
+            [inputValues, firstValues, secondValues]));
+    }
+
+    [Fact]
+    public void LerpCompositeSupportsTensorWeightAndMatchesRuntime()
+    {
+        // TorchLib converter cases: third_party/onnxscript/tests/function_libs/torch_lib/ops/core.py (aten_lerp, Tensor weight form).
+        // ONNX Runtime cases: third_party/onnxruntime/onnxruntime/test/providers/cpu/math/element_wise_ops_test.cc (MathOpTest.Less, MathOpTest.Where, MathOpTest.Add_float, MathOpTest.Sub_float, MathOpTest.Mul_float).
+        var startValues = new[] { -2f, 1f, 4f };
+        var endValues = new[] { 2f, 5f, -2f };
+        var weightValues = new[] { 0.25f, 0.5f, 0.75f };
+        const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor start, global::TorchSharp.torch.Tensor end, global::TorchSharp.torch.Tensor weight) { return torch.lerp(start, end, weight); }";
+        var tree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
+
+        Assert.True(tree.IsSuccess, FormatDiagnostics(tree.Diagnostics));
+        var operation = Assert.IsType<CompilerOnnxStep>(Assert.Single(tree.Value!.Operations));
+        Assert.Equal("Lerp", operation.Descriptor.Name);
+        Assert.Equal(CompilerOperationCapability.ExportOnly, operation.Descriptor.Capability);
+
+        var emitted = Compiler.GenerateOnnx(tree.Value);
+
+        Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
+        Assert.Equal(["Sub", "Mul", "Add", "Sub", "Mul", "Sub", "Less", "Where"], emitted.Value!.Graph.Nodes.Select(static node => node.OpType));
+
+        using var start = global::TorchSharp.torch.tensor(startValues, [3L], dtype: global::TorchSharp.torch.ScalarType.Float32);
+        using var end = global::TorchSharp.torch.tensor(endValues, [3L], dtype: global::TorchSharp.torch.ScalarType.Float32);
+        using var weight = global::TorchSharp.torch.tensor(weightValues, [3L], dtype: global::TorchSharp.torch.ScalarType.Float32);
+        using var eagerOutput = global::TorchSharp.torch.lerp(start, end, weight);
+        AssertClose(eagerOutput.data<float>().ToArray(), ExecuteOnnxThreeInputs(
+            emitted.Value,
+            ["start", "end", "weight"],
+            [startValues, endValues, weightValues]));
+    }
+
+    [Fact]
+    public void LerpCompositeSupportsScalarWeightAndMatchesRuntime()
+    {
+        // TorchLib converter cases: third_party/onnxscript/tests/function_libs/torch_lib/ops/core.py (aten_lerp, Scalar weight form).
+        // ONNX Runtime cases: third_party/onnxruntime/onnxruntime/test/providers/cpu/math/element_wise_ops_test.cc (MathOpTest.Less, MathOpTest.Where, MathOpTest.Add_float, MathOpTest.Sub_float, MathOpTest.Mul_float).
+        var startValues = new[] { -2f, 1f, 4f };
+        var endValues = new[] { 2f, 5f, -2f };
+        const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor start, global::TorchSharp.torch.Tensor end) { return torch.lerp(start, end, 0.25f); }";
+        var tree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
+
+        Assert.True(tree.IsSuccess, FormatDiagnostics(tree.Diagnostics));
+        Assert.Single(tree.Value!.Initializers);
+
+        var emitted = Compiler.GenerateOnnx(tree.Value);
+
+        Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
+
+        using var start = global::TorchSharp.torch.tensor(startValues, [3L], dtype: global::TorchSharp.torch.ScalarType.Float32);
+        using var end = global::TorchSharp.torch.tensor(endValues, [3L], dtype: global::TorchSharp.torch.ScalarType.Float32);
+        using var eagerOutput = global::TorchSharp.torch.lerp(start, end, 0.25);
+        AssertClose(eagerOutput.data<float>().ToArray(), ExecuteOnnxThreeInputs(
+            emitted.Value!,
+            ["start", "end"],
+            [startValues, endValues]));
+    }
+
+    [Theory]
+    [InlineData("public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor start, global::TorchSharp.torch.Tensor end, float weight) { return torch.lerp(start, end, weight); }")]
+    [InlineData("public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input, global::TorchSharp.torch.Tensor first, global::TorchSharp.torch.Tensor second, float value) { return torch.addcdiv(input, first, second, value: value); }")]
+    public void CompositePointwiseMappingsRejectDynamicScalarArguments(string source)
+    {
+        var result = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
+
+        Assert.False(result.IsSuccess);
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(CompilerDiagnosticCodes.Unsupported, diagnostic.Code);
+        Assert.NotNull(diagnostic.Span);
     }
 
     [Theory]
@@ -631,6 +894,30 @@ public sealed class ArithmeticCompilerTests
         }
     }
 
+    private static float[] ExecuteOnnxThreeInputs(OnnxModel model, string[] inputNames, float[][] inputValues)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"onnxify-pointwise-{Guid.NewGuid():N}.onnx");
+        try
+        {
+            model.Save(path, overwrite: true);
+            using var session = new InferenceSession(path);
+            var inputs = inputNames
+                .Select((name, index) => NamedOnnxValue.CreateFromTensor(
+                    name,
+                    new DenseTensor<float>(inputValues[index], [inputValues[index].Length])))
+                .ToArray();
+            using var results = session.Run(inputs);
+            return results.Single().AsTensor<float>().ToArray();
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
     private static float[] ExecuteGeneratedUnaryModule(string source, float[] inputValues)
     {
         var compilation = CSharpCompilation.Create(
@@ -801,6 +1088,12 @@ public sealed class ArithmeticCompilerTests
         Assert.Equal(expected.Length, actual.Length);
         for (var index = 0; index < expected.Length; index++)
         {
+            if (float.IsInfinity(expected[index]) || float.IsNaN(expected[index]))
+            {
+                Assert.Equal(expected[index], actual[index]);
+                continue;
+            }
+
             Assert.InRange(MathF.Abs(expected[index] - actual[index]), 0f, 1e-5f * MathF.Max(1f, MathF.Abs(expected[index])));
         }
     }
