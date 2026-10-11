@@ -279,16 +279,105 @@ public sealed class ArithmeticCompilerTests
         Assert.True(tree.IsSuccess, FormatDiagnostics(tree.Diagnostics));
         var operation = Assert.IsType<CompilerOnnxStep>(Assert.Single(tree.Value!.Operations));
         Assert.Equal("Trunc", operation.Descriptor.Name);
-        Assert.Equal(CompilerOperationCapability.ExportOnly, operation.Descriptor.Capability);
-
-        var unsupportedImport = Compiler.GenerateCSharp(tree.Value);
-        Assert.False(unsupportedImport.IsSuccess);
-        Assert.Contains(unsupportedImport.Diagnostics, static diagnostic => diagnostic.Code == CompilerDiagnosticCodes.Unsupported);
+        Assert.Equal(CompilerOperationCapability.Bidirectional, operation.Descriptor.Capability);
 
         var emitted = Compiler.GenerateOnnx(tree.Value);
         Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
         Assert.Equal(["Mod", "Sub"], emitted.Value!.Graph.Nodes.Select(static node => node.OpType));
-        AssertClose([-1f, 0f, 2f], ExecuteOnnxUnary(emitted.Value, [-1.9f, 0.5f, 2.1f]));
+        var inputValues = new[] { -1.9f, 0.5f, 2.1f };
+        var expectedValues = ExecuteOnnxUnary(emitted.Value, inputValues);
+        AssertClose([-1f, 0f, 2f], expectedValues);
+        AssertClose(expectedValues, AssertCompositeRoundTrip(emitted.Value, "Trunc", inputValues));
+    }
+
+    [Fact]
+    public void Exp2PatternRejectsChangedConstantsAndEscapedIntermediateValues()
+    {
+        var changedConstant = OnnxModel.Create(new OnnxModelCreationOptions { Opset = 25 });
+        var changedInput = changedConstant.Graph.AddInput("input", OnnxTensorType.Create<float>([3]));
+        var changedOutput = changedConstant.Graph.AddOutput("output", OnnxTensorType.Create<float>([3]));
+        var three = changedConstant.Graph.AddTensor("three", [], [3f]);
+        changedConstant.Graph.AddNode(new Onnxify.Pow(
+            "power",
+            new Onnxify.PowInputOutputOptions
+            {
+                X = three,
+                Y = changedInput,
+                Z = changedOutput,
+            }));
+
+        var changedTree = Compiler.CreateTreeFromOnnx(changedConstant);
+        Assert.True(changedTree.IsSuccess, FormatDiagnostics(changedTree.Diagnostics));
+        Assert.DoesNotContain(changedTree.Value!.Operations.OfType<CompilerOnnxStep>(),
+            static operation => operation.Descriptor.Name == "Exp2");
+        Assert.Equal("Pow", Assert.IsType<CompilerOnnxStep>(Assert.Single(changedTree.Value.Operations)).Descriptor.Name);
+
+        var escapedIntermediate = OnnxModel.Create(new OnnxModelCreationOptions { Opset = 25 });
+        var input = escapedIntermediate.Graph.AddInput("input", OnnxTensorType.Create<float>([3]));
+        var output = escapedIntermediate.Graph.AddOutput("output", OnnxTensorType.Create<float>([3]));
+        var extraOutput = escapedIntermediate.Graph.AddOutput("extra_output", OnnxTensorType.Create<float>([3]));
+        var one = escapedIntermediate.Graph.AddTensor("one", [], [1f]);
+        var sum = new OnnxEdge("sum");
+        escapedIntermediate.Graph.AddNode(new Onnxify.Add(
+            "add",
+            new Onnxify.AddInputOutputOptions
+            {
+                A = input,
+                B = one,
+                C = sum,
+            }));
+        escapedIntermediate.Graph.AddNode(new Onnxify.Log(
+            "log",
+            new Onnxify.LogInputOutputOptions
+            {
+                Input = sum,
+                Output = output,
+            }));
+        escapedIntermediate.Graph.AddNode(new Onnxify.Neg(
+            "negate",
+            new Onnxify.NegInputOutputOptions
+            {
+                X = sum,
+                Y = extraOutput,
+            }));
+
+        var escapedTree = Compiler.CreateTreeFromOnnx(escapedIntermediate);
+        Assert.True(escapedTree.IsSuccess, FormatDiagnostics(escapedTree.Diagnostics));
+        Assert.DoesNotContain(escapedTree.Value!.Operations.OfType<CompilerOnnxStep>(),
+            static operation => operation.Descriptor.Name == "Log1p");
+        Assert.Equal(["Add", "Log", "Neg"], escapedTree.Value.Operations
+            .OfType<CompilerOnnxStep>()
+            .Select(static operation => operation.Descriptor.Name));
+    }
+
+    [Fact]
+    public void CompositePatternsRejectChangedConnectionsAndAttributes()
+    {
+        const string unarySource = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return torch.log1p(input); }";
+        var unaryTree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(unarySource));
+        Assert.True(unaryTree.IsSuccess, FormatDiagnostics(unaryTree.Diagnostics));
+        var unaryModel = Compiler.GenerateOnnx(unaryTree.Value!);
+        Assert.True(unaryModel.IsSuccess, FormatDiagnostics(unaryModel.Diagnostics));
+        var log = Assert.Single(unaryModel.Value!.Graph.Nodes.OfType<Onnxify.Log>());
+        log.Input = new OnnxEdge("input");
+
+        var connectionNearMiss = Compiler.CreateTreeFromOnnx(unaryModel.Value);
+        Assert.True(connectionNearMiss.IsSuccess, FormatDiagnostics(connectionNearMiss.Diagnostics));
+        Assert.DoesNotContain(connectionNearMiss.Value!.Operations.OfType<CompilerOnnxStep>(),
+            static operation => operation.Descriptor.Name == "Log1p");
+
+        const string binarySource = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor left, global::TorchSharp.torch.Tensor right) { return torch.logaddexp(left, right); }";
+        var binaryTree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(binarySource));
+        Assert.True(binaryTree.IsSuccess, FormatDiagnostics(binaryTree.Diagnostics));
+        var binaryModel = Compiler.GenerateOnnx(binaryTree.Value!);
+        Assert.True(binaryModel.IsSuccess, FormatDiagnostics(binaryModel.Diagnostics));
+        var isInf = binaryModel.Value!.Graph.Nodes.OfType<Onnxify.IsInf>().First();
+        isInf.DetectNegative = 0;
+
+        var attributeNearMiss = Compiler.CreateTreeFromOnnx(binaryModel.Value);
+        Assert.True(attributeNearMiss.IsSuccess, FormatDiagnostics(attributeNearMiss.Diagnostics));
+        Assert.DoesNotContain(attributeNearMiss.Value!.Operations.OfType<CompilerOnnxStep>(),
+            static operation => operation.Descriptor.Name == "LogAddExp");
     }
 
     [Fact]
@@ -453,7 +542,7 @@ public sealed class ArithmeticCompilerTests
         Assert.True(tree.IsSuccess, FormatDiagnostics(tree.Diagnostics));
         var operation = Assert.IsType<CompilerOnnxStep>(Assert.Single(tree.Value!.Operations));
         Assert.Equal(mappingName, operation.Descriptor.Name);
-        Assert.Equal(CompilerOperationCapability.ExportOnly, operation.Descriptor.Capability);
+        Assert.Equal(CompilerOperationCapability.Bidirectional, operation.Descriptor.Capability);
 
         var emitted = Compiler.GenerateOnnx(tree.Value);
 
@@ -479,10 +568,7 @@ public sealed class ArithmeticCompilerTests
         };
         AssertClose(torchOutput.data<float>().ToArray(), actualValues);
 
-        var unsupportedImport = Compiler.GenerateCSharp(tree.Value);
-
-        Assert.False(unsupportedImport.IsSuccess);
-        Assert.Contains(unsupportedImport.Diagnostics, static diagnostic => diagnostic.Code == CompilerDiagnosticCodes.Unsupported);
+        AssertClose(actualValues, AssertCompositeRoundTrip(emitted.Value, mappingName, inputValues));
     }
 
     [Theory]
@@ -504,7 +590,7 @@ public sealed class ArithmeticCompilerTests
         Assert.True(tree.IsSuccess, FormatDiagnostics(tree.Diagnostics));
         var operation = Assert.IsType<CompilerOnnxStep>(Assert.Single(tree.Value!.Operations));
         Assert.Equal(mappingName, operation.Descriptor.Name);
-        Assert.Equal(CompilerOperationCapability.ExportOnly, operation.Descriptor.Capability);
+        Assert.Equal(CompilerOperationCapability.Bidirectional, operation.Descriptor.Capability);
 
         var emitted = Compiler.GenerateOnnx(tree.Value);
 
@@ -518,10 +604,8 @@ public sealed class ArithmeticCompilerTests
             : global::TorchSharp.torch.logaddexp2(left, right);
         AssertClose(torchOutput.data<float>().ToArray(), ExecuteOnnx(emitted.Value, leftValues, [5], rightValues, [5]));
 
-        var unsupportedImport = Compiler.GenerateCSharp(tree.Value);
-
-        Assert.False(unsupportedImport.IsSuccess);
-        Assert.Contains(unsupportedImport.Diagnostics, static diagnostic => diagnostic.Code == CompilerDiagnosticCodes.Unsupported);
+        var onnxValues = ExecuteOnnx(emitted.Value, leftValues, [5], rightValues, [5]);
+        AssertClose(onnxValues, AssertCompositeRoundTrip(emitted.Value, mappingName, leftValues, rightValues));
     }
 
     [Theory]
@@ -546,7 +630,7 @@ public sealed class ArithmeticCompilerTests
         Assert.True(tree.IsSuccess, FormatDiagnostics(tree.Diagnostics));
         var operation = Assert.IsType<CompilerOnnxStep>(Assert.Single(tree.Value!.Operations));
         Assert.Equal(mappingName, operation.Descriptor.Name);
-        Assert.Equal(CompilerOperationCapability.ExportOnly, operation.Descriptor.Capability);
+        Assert.Equal(CompilerOperationCapability.Bidirectional, operation.Descriptor.Capability);
 
         var emitted = Compiler.GenerateOnnx(tree.Value);
 
@@ -567,6 +651,12 @@ public sealed class ArithmeticCompilerTests
             emitted.Value,
             ["input", "first", "second"],
             [inputValues, firstValues, secondValues]));
+        AssertClose(eagerOutput.data<float>().ToArray(), AssertCompositeRoundTrip(
+            emitted.Value,
+            mappingName,
+            inputValues,
+            firstValues,
+            secondValues));
     }
 
     [Fact]
@@ -583,7 +673,7 @@ public sealed class ArithmeticCompilerTests
         Assert.True(tree.IsSuccess, FormatDiagnostics(tree.Diagnostics));
         var operation = Assert.IsType<CompilerOnnxStep>(Assert.Single(tree.Value!.Operations));
         Assert.Equal("Lerp", operation.Descriptor.Name);
-        Assert.Equal(CompilerOperationCapability.ExportOnly, operation.Descriptor.Capability);
+        Assert.Equal(CompilerOperationCapability.Bidirectional, operation.Descriptor.Capability);
 
         var emitted = Compiler.GenerateOnnx(tree.Value);
 
@@ -598,6 +688,12 @@ public sealed class ArithmeticCompilerTests
             emitted.Value,
             ["start", "end", "weight"],
             [startValues, endValues, weightValues]));
+        AssertClose(eagerOutput.data<float>().ToArray(), AssertCompositeRoundTrip(
+            emitted.Value,
+            "Lerp",
+            startValues,
+            endValues,
+            weightValues));
     }
 
     [Fact]
@@ -624,6 +720,11 @@ public sealed class ArithmeticCompilerTests
             emitted.Value!,
             ["start", "end"],
             [startValues, endValues]));
+        AssertClose(eagerOutput.data<float>().ToArray(), AssertCompositeRoundTrip(
+            emitted.Value!,
+            "Lerp",
+            startValues,
+            endValues));
     }
 
     [Theory]
@@ -684,6 +785,63 @@ public sealed class ArithmeticCompilerTests
         Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
         Assert.Equal(onnxName, Assert.Single(emitted.Value!.Graph.Nodes).OpType);
         AssertClose(expectedValues, ExecuteOnnxUnary(emitted.Value!, inputValues));
+    }
+
+    private static float[] AssertCompositeRoundTrip(OnnxModel model, string mappingName, params float[][] inputValues)
+    {
+        var imported = Compiler.CreateTreeFromOnnx(model);
+        Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
+        var operation = Assert.IsType<CompilerOnnxStep>(Assert.Single(imported.Value!.Operations));
+        Assert.Equal(mappingName, operation.Descriptor.Name);
+        Assert.Equal(CompilerOperationCapability.Bidirectional, operation.Descriptor.Capability);
+
+        var generated = Compiler.GenerateCSharp(imported.Value);
+        Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
+        Assert.Contains("forward", generated.Value, StringComparison.Ordinal);
+        return ExecuteGeneratedComposite(generated.Value!, inputValues);
+    }
+
+    private static float[] ExecuteGeneratedComposite(string source, IReadOnlyList<float[]> inputValues)
+    {
+        var assemblyName = $"Onnxify.GeneratedComposite{Guid.NewGuid():N}";
+        var references = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))!
+            .Split(Path.PathSeparator)
+            .Select(static path => MetadataReference.CreateFromFile(path))
+            .Append(MetadataReference.CreateFromFile(typeof(global::TorchSharp.torch.Tensor).Assembly.Location));
+        var compilation = CSharpCompilation.Create(
+            assemblyName,
+            [CSharpSyntaxTree.ParseText(source)],
+            references,
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        using var assemblyBytes = new MemoryStream();
+        var emit = compilation.Emit(assemblyBytes);
+        Assert.True(emit.Success, string.Join(Environment.NewLine,
+            emit.Diagnostics.Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)));
+
+        assemblyBytes.Position = 0;
+        var assembly = AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
+        var moduleType = assembly.GetTypes().Single(static type => type.GetMethod("forward") is not null);
+        using var module = (IDisposable)Activator.CreateInstance(moduleType, "composite-round-trip")!;
+        var tensors = inputValues.Select(values => (IDisposable)global::TorchSharp.torch.tensor(
+            values,
+            [values.Length],
+            dtype: global::TorchSharp.torch.ScalarType.Float32)).ToArray();
+        try
+        {
+            var output = (global::TorchSharp.torch.Tensor)moduleType.GetMethod("forward")!
+                .Invoke(module, tensors.Cast<object>().ToArray())!;
+            using (output)
+            {
+                return output.data<float>().ToArray();
+            }
+        }
+        finally
+        {
+            foreach (var tensor in tensors)
+            {
+                tensor.Dispose();
+            }
+        }
     }
 
     private static OnnxModel CreateBinaryModel(string opType, long[] leftShape, long[] rightShape, long[]? outputShape = null)

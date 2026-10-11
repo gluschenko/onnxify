@@ -132,6 +132,42 @@ internal static class CompilerOperatorRegistry
         return _calls.TryGetValue(name, out compilerOperator);
     }
 
+    public static bool TryScanOnnxSubgraph(
+        CompilerOnnxSubgraphScanContext context,
+        out CompilerOnnxStep? operation,
+        out int consumedNodeCount)
+    {
+        CompilerOnnxStep? matchedOperation = null;
+        var matchedNodeCount = 0;
+        foreach (var compilerOperator in _operators)
+        {
+            if (!compilerOperator.TryScanOnnxSubgraph(context, out var candidate, out var candidateNodeCount))
+            {
+                continue;
+            }
+
+            if (candidate is null || candidateNodeCount <= 0)
+            {
+                throw new InvalidOperationException(
+                    $"Compiler operator '{compilerOperator.OnnxName}' returned an invalid ONNX subgraph match.");
+            }
+
+            if (matchedOperation is not null)
+            {
+                operation = null;
+                consumedNodeCount = 0;
+                return false;
+            }
+
+            matchedOperation = candidate;
+            matchedNodeCount = candidateNodeCount;
+        }
+
+        operation = matchedOperation;
+        consumedNodeCount = matchedNodeCount;
+        return matchedOperation is not null;
+    }
+
     public static bool TryGetTorchSharpBinaryOperator(string token, out CompilerOperator? compilerOperator)
     {
         return _binary.TryGetValue(token, out compilerOperator);

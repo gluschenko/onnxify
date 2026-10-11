@@ -5,8 +5,83 @@ namespace Onnxify.Compiler.Operators;
 [CompilerTorchOperator("aten::logaddexp2")]
 internal sealed class LogAddExp2Operator() : TorchSharpCompositeOperator("LogAddExp2", "com.onnxify.compiler", "torch.logaddexp2")
 {
+    public override CompilerOperationCapability Capability => CompilerOperationCapability.Bidirectional;
+
     public override int MinimumInputCount => 2;
     public override int MaximumInputCount => 2;
+
+    public override bool TryScanOnnxSubgraph(
+        CompilerOnnxSubgraphScanContext context,
+        out CompilerOnnxStep? operation,
+        out int consumedNodeCount)
+    {
+        operation = null;
+        consumedNodeCount = 0;
+        if (!context.TryGetNode<Onnxify.Sub>(0, out var subtract)
+            || !context.TryGetNode<Onnxify.Abs>(1, out var absolute)
+            || !context.TryGetNode<Onnxify.Neg>(2, out var negate)
+            || !context.TryGetNode<Onnxify.Pow>(3, out var power)
+            || !context.TryGetNode<Onnxify.Add>(4, out var addOne)
+            || !context.TryGetNode<Onnxify.Log>(5, out var logSum)
+            || !context.TryGetNode<Onnxify.Log>(6, out var logTwo)
+            || !context.TryGetNode<Onnxify.Div>(7, out var divide)
+            || !context.TryGetNode<Onnxify.Max>(8, out var maximum)
+            || !context.TryGetNode<Onnxify.Add>(9, out var addMaximum)
+            || !context.TryGetNode<Onnxify.IsInf>(10, out var leftIsInfinite)
+            || !context.TryGetNode<Onnxify.IsInf>(11, out var rightIsInfinite)
+            || !context.TryGetNode<Onnxify.Equal>(12, out var equal)
+            || !context.TryGetNode<Onnxify.And>(13, out var bothInfinite)
+            || !context.TryGetNode<Onnxify.And>(14, out var sameInfinite)
+            || !context.TryGetNode<Onnxify.Where>(15, out var where)
+            || subtract is null || absolute is null || negate is null || power is null
+            || addOne is null || logSum is null || logTwo is null || divide is null
+            || maximum is null || addMaximum is null || leftIsInfinite is null
+            || rightIsInfinite is null || equal is null || bothInfinite is null
+            || sameInfinite is null || where is null
+            || !context.IsScalarConstant(power.X.Name, 2d)
+            || !context.IsScalarConstant(addOne.A.Name, 1d)
+            || leftIsInfinite.DetectNegative is not (null or 1)
+            || leftIsInfinite.DetectPositive is not (null or 1)
+            || rightIsInfinite.DetectNegative is not (null or 1)
+            || rightIsInfinite.DetectPositive is not (null or 1)
+            || !string.Equals(subtract.C.Name, absolute.X.Name, StringComparison.Ordinal)
+            || !string.Equals(absolute.Y.Name, negate.X.Name, StringComparison.Ordinal)
+            || !string.Equals(negate.Y.Name, power.Y.Name, StringComparison.Ordinal)
+            || !string.Equals(power.Z.Name, addOne.B.Name, StringComparison.Ordinal)
+            || !string.Equals(addOne.C.Name, logSum.Input.Name, StringComparison.Ordinal)
+            || !string.Equals(power.X.Name, logTwo.Input.Name, StringComparison.Ordinal)
+            || !string.Equals(logSum.Output.Name, divide.A.Name, StringComparison.Ordinal)
+            || !string.Equals(logTwo.Output.Name, divide.B.Name, StringComparison.Ordinal)
+            || !string.Equals(maximum.OutputMax.Name, addMaximum.A.Name, StringComparison.Ordinal)
+            || !string.Equals(divide.C.Name, addMaximum.B.Name, StringComparison.Ordinal)
+            || !string.Equals(leftIsInfinite.Y.Name, bothInfinite.A.Name, StringComparison.Ordinal)
+            || !string.Equals(rightIsInfinite.Y.Name, bothInfinite.B.Name, StringComparison.Ordinal)
+            || !string.Equals(bothInfinite.C.Name, sameInfinite.A.Name, StringComparison.Ordinal)
+            || !string.Equals(equal.C.Name, sameInfinite.B.Name, StringComparison.Ordinal)
+            || !string.Equals(sameInfinite.C.Name, where.Condition.Name, StringComparison.Ordinal)
+            || !context.CanCollapse(16))
+        {
+            return false;
+        }
+
+        var leftName = subtract.A.Name;
+        var rightName = subtract.B.Name;
+        if (!string.Equals(maximum.Data0.ElementAtOrDefault(0)?.Name, leftName, StringComparison.Ordinal)
+            || !string.Equals(maximum.Data0.ElementAtOrDefault(1)?.Name, rightName, StringComparison.Ordinal)
+            || !string.Equals(leftIsInfinite.X.Name, leftName, StringComparison.Ordinal)
+            || !string.Equals(rightIsInfinite.X.Name, rightName, StringComparison.Ordinal)
+            || !string.Equals(equal.A.Name, leftName, StringComparison.Ordinal)
+            || !string.Equals(equal.B.Name, rightName, StringComparison.Ordinal)
+            || !string.Equals(where.X.Name, leftName, StringComparison.Ordinal)
+            || !string.Equals(where.Y.Name, addMaximum.C.Name, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        operation = context.CreateCompositeStep(this, [leftName, rightName], where.Output.Name, 16);
+        consumedNodeCount = 16;
+        return true;
+    }
 
     public override void PrintOnnx(OnnxGraph graph, CompilerOnnxStep operation)
     {

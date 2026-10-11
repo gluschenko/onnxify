@@ -1480,6 +1480,21 @@ internal sealed class CSharpSyntaxScanner
     private IEnumerable<CompilerExpression> ScanInvocationArguments(InvocationExpressionSyntax invocation)
     {
         var arguments = invocation.ArgumentList.Arguments;
+        if (TryGetSyntaxMemberPath(invocation.Expression, out var operatorPath)
+            && arguments.Any(static argument => argument.NameColon is not null))
+        {
+            var rejectsNamedArguments = operatorPath is "torch.clamp"
+                or "torch.nn.functional.conv2d"
+                or "torch.nn.functional.adaptive_avg_pool2d"
+                || operatorPath.EndsWith(".clamp", StringComparison.Ordinal);
+            if (rejectsNamedArguments)
+            {
+                throw Unsupported(
+                    invocation,
+                    $"Named arguments are not supported for '{operatorPath}'; use the documented positional form.");
+            }
+        }
+
         if (!TryGetSyntaxMemberPath(invocation.Expression, out var targetPath)
             || !targetPath.EndsWith("addmm", StringComparison.Ordinal)
             || !arguments.Any(static argument => argument.NameColon is not null))

@@ -10,7 +10,7 @@ internal sealed class TruncOperator : CompilerOperator
     {
     }
 
-    public override CompilerOperationCapability Capability => CompilerOperationCapability.ExportOnly;
+    public override CompilerOperationCapability Capability => CompilerOperationCapability.Bidirectional;
 
     public override IReadOnlyList<string> AttributeNames { get; } = [];
 
@@ -24,7 +24,32 @@ internal sealed class TruncOperator : CompilerOperator
 
     public override string PrintTorchSharp(CompilerOnnxStep operation)
     {
-        return $"{operation.Node.Inputs[0].Name}.trunc()";
+        return $"{CompilerCSharpNaming.Identifier(operation.Node.Inputs[0].Name)}.trunc()";
+    }
+
+    public override bool TryScanOnnxSubgraph(
+        CompilerOnnxSubgraphScanContext context,
+        out CompilerOnnxStep? operation,
+        out int consumedNodeCount)
+    {
+        operation = null;
+        consumedNodeCount = 0;
+        if (!context.TryGetNode<Onnxify.Mod>(0, out var modulo)
+            || !context.TryGetNode<Onnxify.Sub>(1, out var subtract)
+            || modulo is null
+            || subtract is null
+            || modulo.Fmod != 1
+            || !context.IsScalarConstant(modulo.B.Name, 1d)
+            || !string.Equals(modulo.A.Name, subtract.A.Name, StringComparison.Ordinal)
+            || !string.Equals(modulo.C.Name, subtract.B.Name, StringComparison.Ordinal)
+            || !context.CanCollapse(2))
+        {
+            return false;
+        }
+
+        operation = context.CreateCompositeStep(this, [modulo.A.Name], subtract.C.Name, 2);
+        consumedNodeCount = 2;
+        return true;
     }
 
     public override CompilerOnnxStep CreateNode(

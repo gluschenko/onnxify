@@ -1,4 +1,5 @@
 using Onnxify;
+using System.Globalization;
 
 namespace Onnxify.Compiler.Operators;
 
@@ -24,7 +25,14 @@ internal abstract class TorchSharpCompositeOperator : CompilerOperator
 
     public override string PrintTorchSharp(CompilerOnnxStep operation)
     {
-        throw Unsupported(operation.Span, $"'{OnnxName}' is an export-only TorchSharp composite operation.");
+        if (TorchSharpForms.Count != 1)
+        {
+            throw Unsupported(operation.Span, $"'{OnnxName}' does not have one unambiguous TorchSharp call form.");
+        }
+
+        var arguments = operation.Node.Inputs
+            .Select(static input => CompilerCSharpNaming.Identifier(input.Name));
+        return $"{TorchSharpForms.Single().Name}({string.Join(", ", arguments)})";
     }
 
     public override bool TryScanTorchSharp(TorchSharpOperatorScanContext context, CompilerExpression expression)
@@ -95,6 +103,33 @@ internal abstract class TorchSharpCompositeOperator : CompilerOperator
     protected static OnnxEdge Output(CompilerOnnxStep operation)
     {
         return new OnnxEdge(operation.Node.Outputs[0].Name);
+    }
+
+    protected static string TorchSharpInput(
+        CompilerOnnxStep operation,
+        int index,
+        CompilerTorchSharpPrintContext context
+    )
+    {
+        var inputName = operation.Node.Inputs[index].Name;
+        if (context.TryGetTensorInitializer(inputName, out var tensor)
+            && tensor is not null
+            && tensor.Dimensions.Count == 0
+            && tensor.Values.Count == 1)
+        {
+            return tensor.Values[0] switch
+            {
+                CompilerFloatingPointLiteral value when value.ElementType == CompilerElementType.Float32 =>
+                    value.Value.ToString("R", CultureInfo.InvariantCulture) + "f",
+                CompilerFloatingPointLiteral value when value.ElementType == CompilerElementType.Float64 =>
+                    value.Value.ToString("R", CultureInfo.InvariantCulture) + "d",
+                CompilerSignedIntegerLiteral value => value.Value.ToString(CultureInfo.InvariantCulture) + "L",
+                CompilerUnsignedIntegerLiteral value => value.Value.ToString(CultureInfo.InvariantCulture) + "UL",
+                _ => CompilerCSharpNaming.Identifier(inputName),
+            };
+        }
+
+        return CompilerCSharpNaming.Identifier(inputName);
     }
 
     protected static IOnnxGraphEdge AddFloatInitializer(OnnxGraph graph, CompilerOnnxStep operation, string suffix, float value)

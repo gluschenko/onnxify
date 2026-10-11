@@ -96,6 +96,16 @@ internal abstract class CompilerOperator
         return false;
     }
 
+    public virtual bool TryScanOnnxSubgraph(
+        CompilerOnnxSubgraphScanContext context,
+        out CompilerOnnxStep? operation,
+        out int consumedNodeCount)
+    {
+        operation = null;
+        consumedNodeCount = 0;
+        return false;
+    }
+
     public virtual CompilerOnnxStep ScanOnnx(OnnxNode node, string name, CompilerSourceSpan? span)
     {
         if (node.GetType() != NodeType)

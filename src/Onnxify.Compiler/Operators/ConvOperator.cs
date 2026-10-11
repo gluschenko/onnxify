@@ -1,16 +1,20 @@
 using System.Globalization;
 using Onnxify;
+using Onnxify.Compiler.Operators.Helpers;
 
 namespace Onnxify.Compiler.Operators;
 
 [CompilerTorchOperator("aten::conv2d")]
 internal sealed class ConvOperator() : CompilerOperator<Onnxify.Conv>(CompilerOperatorIdentity.Onnx("Conv"))
 {
-    public override CompilerOperationCapability Capability => CompilerOperationCapability.ImportOnly;
+    public override CompilerOperationCapability Capability => CompilerOperationCapability.Bidirectional;
     public override int MinimumInputCount => 2;
     public override int MaximumInputCount => 3;
     protected override bool AllowsEmptyOptionalInputs => true;
-    public override IReadOnlyCollection<CompilerTorchSharpForm> TorchSharpForms { get; } = [];
+    public override IReadOnlyCollection<CompilerTorchSharpForm> TorchSharpForms { get; } =
+    [
+        CompilerTorchSharpForm.Call("torch.nn.functional.conv2d"),
+    ];
     public override IReadOnlyList<string> AttributeNames { get; } =
     [
         "auto_pad",
@@ -20,6 +24,135 @@ internal sealed class ConvOperator() : CompilerOperator<Onnxify.Conv>(CompilerOp
         "pads",
         "strides",
     ];
+
+    public override bool TryScanTorchSharp(TorchSharpOperatorScanContext context, CompilerExpression expression)
+    {
+        if (expression is not CompilerInvocationExpression invocation)
+        {
+            return false;
+        }
+
+        if (context.Receiver is not null || invocation.Arguments.Count is < 2 or > 7)
+        {
+            throw context.Unsupported(expression, "conv2d supports input, weight, optional bias, stride, padding, dilation, and groups.");
+        }
+
+        var arguments = invocation.Arguments;
+        var inputExpression = arguments[0];
+        long[]? externalPads = null;
+        if (inputExpression is CompilerInvocationExpression padInvocation
+            && CompilerOperatorRegistry.TryGetMemberPath(padInvocation.Target, out var padName)
+            && string.Equals(padName, "torch.nn.functional.pad", StringComparison.Ordinal))
+        {
+            if (padInvocation.Arguments.Count != 2)
+            {
+                throw context.Unsupported(inputExpression, "Compiler Conv supports only constant-zero functional.pad with an input and a static padding vector.");
+            }
+
+            var torchPads = StaticInt64Vector.ReadVector(padInvocation.Arguments[1], context, "functional.pad padding");
+            if (torchPads.Length != 4)
+            {
+                throw context.Unsupported(padInvocation.Arguments[1], "Compiler Conv expects two-dimensional functional.pad padding in left, right, top, bottom order.");
+            }
+
+            externalPads = [torchPads[2], torchPads[0], torchPads[3], torchPads[1]];
+            inputExpression = padInvocation.Arguments[0];
+        }
+
+        var input = context.RequireTensorReference(inputExpression, OnnxName);
+        var weight = context.RequireTensorReference(arguments[1], OnnxName);
+        var bias = arguments.Count > 2 && arguments[2] is not (CompilerLiteralExpression { Literal: CompilerNullLiteral })
+            ? context.RequireTensorReference(arguments[2], OnnxName)
+            : null;
+        var strides = ReadPair(3, 1, "conv2d stride");
+        var pads = ReadPadding(4);
+        if (externalPads is not null)
+        {
+            if (pads.Any(static value => value != 0))
+            {
+                throw context.Unsupported(arguments[4], "Compiler Conv cannot combine functional.pad with non-zero conv2d padding.");
+            }
+
+            pads = externalPads;
+        }
+        var dilations = ReadPair(5, 1, "conv2d dilation");
+        var groups = arguments.Count > 6
+            ? StaticInt64Vector.ReadScalar(arguments[6], context, "conv2d groups")
+            : 1L;
+        if (groups < 1)
+        {
+            throw context.Unsupported(expression, "conv2d groups must be a positive compile-time integer.");
+        }
+
+        var node = new Onnxify.Conv(
+            OnnxName.ToLowerInvariant(),
+            new Onnxify.ConvInputOutputOptions
+            {
+                X = new OnnxEdge(input.Name),
+                W = new OnnxEdge(weight.Name),
+                B = bias is null ? null : new OnnxEdge(bias.Name),
+                Strides = strides,
+                Dilations = dilations,
+                Group = groups,
+                Pads = pads,
+                Y = context.RequireSingleOutputEdge(this),
+            });
+        context.AddOperation(this, node, expression.Span);
+        return true;
+
+        long[] ReadPair(int index, long defaultValue, string description)
+        {
+            if (arguments.Count <= index)
+            {
+                return [defaultValue, defaultValue];
+            }
+
+            var value = arguments[index];
+            if (value is CompilerLiteralExpression { Literal: CompilerNullLiteral })
+            {
+                return [defaultValue, defaultValue];
+            }
+
+            if (value is CompilerArrayExpression)
+            {
+                var vector = StaticInt64Vector.ReadVector(value, context, description);
+                if (vector.Length != 2)
+                {
+                    throw context.Unsupported(value, $"{description} must contain exactly two values.");
+                }
+
+                return vector;
+            }
+
+            var scalar = StaticInt64Vector.ReadScalar(value, context, description);
+            return [scalar, scalar];
+        }
+
+        long[] ReadPadding(int index)
+        {
+            if (arguments.Count <= index)
+            {
+                return [0L, 0L, 0L, 0L];
+            }
+
+            var value = arguments[index];
+            if (value is CompilerLiteralExpression { Literal: CompilerNullLiteral })
+            {
+                return [0L, 0L, 0L, 0L];
+            }
+
+            var padding = value is CompilerArrayExpression
+                ? StaticInt64Vector.ReadVector(value, context, "conv2d padding")
+                : [StaticInt64Vector.ReadScalar(value, context, "conv2d padding")];
+            return padding.Length switch
+            {
+                1 => [padding[0], padding[0], padding[0], padding[0]],
+                2 => [padding[0], padding[1], padding[0], padding[1]],
+                4 => padding,
+                _ => throw context.Unsupported(value, "conv2d padding must be a scalar or contain two or four values."),
+            };
+        }
+    }
 
     protected override string PrintTorchSharp(Onnxify.Conv node, CompilerSourceSpan? span)
     {

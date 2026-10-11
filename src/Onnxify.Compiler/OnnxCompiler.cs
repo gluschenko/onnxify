@@ -890,23 +890,35 @@ internal static class OnnxCompilerFrontend
         List<CompilerDiagnostic> diagnostics
     )
     {
-        foreach (var pair in graph.Nodes.Select((node, index) => (node, index)))
+        for (var nodeIndex = 0; nodeIndex < graph.Nodes.Count; nodeIndex++)
         {
-            var node = pair.node;
+            var node = graph.Nodes[nodeIndex];
             var nodeName = string.IsNullOrWhiteSpace(node.Name)
-                ? $"__onnx_node_{pair.index}"
+                ? $"__onnx_node_{nodeIndex}"
                 : node.Name;
             var span = Span(
                 document: document,
-                ordinal: pair.index,
+                ordinal: nodeIndex,
                 nodeName: nodeName,
                 operatorName: node.OpType);
+
+            var subgraphContext = new CompilerOnnxSubgraphScanContext(graph, nodeIndex, span);
+            if (CompilerOperatorRegistry.TryScanOnnxSubgraph(
+                    subgraphContext,
+                    out var compositeOperation,
+                    out var consumedNodeCount)
+                && compositeOperation is not null)
+            {
+                builder.AddOperation(compositeOperation);
+                nodeIndex += consumedNodeCount - 1;
+                continue;
+            }
 
             if (string.IsNullOrWhiteSpace(node.Name))
             {
                 diagnostics.Add(new CompilerDiagnostic(
                     code: CompilerDiagnosticCodes.Lossy,
-                    message: $"ONNX node at ordinal {pair.index} had no name; '{nodeName}' was synthesized.",
+                    message: $"ONNX node at ordinal {nodeIndex} had no name; '{nodeName}' was synthesized.",
                     stage: CompilerDiagnosticStage.Normalize,
                     severity: CompilerDiagnosticSeverity.Warning,
                     span: span,
@@ -923,7 +935,7 @@ internal static class OnnxCompilerFrontend
                         ImportAttributeLiteral(
                             value: attribute.GetValue(),
                             document: document,
-                            ordinal: pair.index,
+                            ordinal: nodeIndex,
                             nodeName: nodeName,
                             operatorName: node.OpType,
                             outerValues: knownTypes,
