@@ -47,7 +47,7 @@ public sealed class OnnxCompilerTests
         Assert.Single(tree.Operations);
         Assert.Equal("identity", tree.Operations[0].Name);
         Assert.Equal("Identity", ((CompilerOnnxStep)tree.Operations[0]).Descriptor.Name);
-        Assert.Equal(typeof(OnnxNode), ((CompilerOnnxStep)tree.Operations[0]).Node.GetType());
+        Assert.IsType<Onnxify.Identity>(((CompilerOnnxStep)tree.Operations[0]).Node);
 
         var emitted = Compiler.GenerateOnnx(imported.Value!);
 

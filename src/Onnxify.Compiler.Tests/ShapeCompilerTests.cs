@@ -303,7 +303,7 @@ public sealed class ShapeCompilerTests
 
         var generated = Compiler.GenerateCSharp(imported.Value);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Contains("input.expand(new long[] { 2L, 3L, 4L })", generated.Value);
+        Assert.Contains("ExpandWithRuntimeShape(input, new long[] { 2L, 3L, 4L })", generated.Value);
 
         var values = Enumerable.Range(0, 12).Select(static value => (float)value).ToArray();
         var expected = ExecuteOnnx(model, values, [1, 3, 4]);

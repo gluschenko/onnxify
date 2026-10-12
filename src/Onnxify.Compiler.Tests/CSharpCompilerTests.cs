@@ -42,6 +42,148 @@ public sealed class CSharpCompilerTests
     }
 
     [Fact]
+    public void RuntimeIfForWhileBreakAndContinueAreRetainedInGeneratedCSharp()
+    {
+        var source = new CSharpTorchSharpSource(
+            """
+            public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input)
+            {
+                var index = 0;
+                var output = input;
+                while (index < 4)
+                {
+                    if (index == 1)
+                    {
+                        index++;
+                        continue;
+                    }
+                    output = output + 1f;
+                    if (index > 3) break;
+                    index++;
+                }
+                for (var step = 0; step < 2; step++)
+                {
+                    output = output + input;
+                }
+                return output;
+            }
+            """);
+
+        var imported = Compiler.CreateTreeFromTorchSharp(source);
+        Assert.True(imported.IsSuccess, string.Join(Environment.NewLine, imported.Diagnostics.Select(x => x.Message)));
+        Assert.NotNull(imported.Value!.SyntaxBody);
+
+        var generated = Compiler.GenerateCSharp(imported.Value, new CompilerCSharpGenerationOptions
+        {
+            Namespace = "Onnxify.GeneratedControlFlow",
+            ClassName = "GeneratedControlFlow",
+            ModuleName = "generated-control-flow",
+        });
+        Assert.True(generated.IsSuccess, string.Join(Environment.NewLine, generated.Diagnostics.Select(x => x.Message)));
+        var output = generated.Value!;
+        Assert.Contains("while ((index < 4))", output);
+        Assert.Contains("if ((index == 1))", output);
+        Assert.Contains("continue;", output);
+        Assert.Contains("break;", output);
+        Assert.Contains("for (var step = 0; (step < 2); step++)", output);
+        Assert.DoesNotContain(CSharpSyntaxTree.ParseText(output).GetDiagnostics(), x => x.Severity == DiagnosticSeverity.Error);
+
+        var references = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))!
+            .Split(Path.PathSeparator)
+            .Select(static path => MetadataReference.CreateFromFile(path))
+            .Append(MetadataReference.CreateFromFile(typeof(global::TorchSharp.torch.Tensor).Assembly.Location));
+        var compilation = CSharpCompilation.Create(
+            $"ControlFlow{Guid.NewGuid():N}",
+            [CSharpSyntaxTree.ParseText(output)],
+            references,
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        using var assemblyBytes = new MemoryStream();
+        var emitted = compilation.Emit(assemblyBytes);
+        Assert.True(emitted.Success, string.Join(Environment.NewLine,
+            emitted.Diagnostics.Where(x => x.Severity == DiagnosticSeverity.Error)) + Environment.NewLine + output);
+        assemblyBytes.Position = 0;
+        var assembly = AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
+        var moduleType = assembly.GetTypes().Single(x => x.Name == "GeneratedControlFlow");
+        using var module = (IDisposable)Activator.CreateInstance(moduleType, "generated-control-flow")!;
+        using var input = global::TorchSharp.torch.tensor(new float[] { 2f }, [1L]);
+        using var result = (global::TorchSharp.torch.Tensor)moduleType.GetMethod("forward")!.Invoke(module, [input])!;
+        Assert.Equal([9f], result.data<float>().ToArray());
+    }
+
+    [Fact]
+    public void ExplicitLocalTypesAndRefOutArgumentsSurviveCompilerRoundtrip()
+    {
+        var source = new CSharpTorchSharpSource(
+            """
+            public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input)
+            {
+                System.IntPtr outputHandle;
+                NativeMethods.Create(input.Handle, out outputHandle);
+                return input;
+            }
+            """);
+
+        var imported = Compiler.CreateTreeFromTorchSharp(source);
+        Assert.True(imported.IsSuccess, string.Join(Environment.NewLine, imported.Diagnostics.Select(x => x.Message)));
+
+        var generated = Compiler.GenerateCSharp(imported.Value!);
+        Assert.True(generated.IsSuccess, string.Join(Environment.NewLine, generated.Diagnostics.Select(x => x.Message)));
+        Assert.Contains("System.IntPtr outputHandle;", generated.Value);
+        Assert.Contains("out outputHandle", generated.Value);
+    }
+
+    [Fact]
+    public void TorchSharpLstmForwardRetainsRuntimeControlFlow()
+    {
+        using var module = global::TorchSharp.torch.nn.LSTM(
+            4,
+            5,
+            numLayers: 1,
+            bidirectional: true,
+            batchFirst: true);
+        var source = TorchSharpCompilerAdapter.CreateSource(module);
+
+        var outputType = Assert.IsType<CompilerTupleType>(Assert.Single(source.Module!.Outputs).Type);
+        Assert.Equal(3, outputType.ElementTypes.Count);
+        Assert.Contains(source.Module.Inputs, input => input.Type is CompilerNullableType
+        {
+            UnderlyingType: CompilerTupleType,
+        });
+
+        var imported = Compiler.CreateTreeFromTorchSharp(source);
+
+        Assert.True(imported.IsSuccess, string.Join(Environment.NewLine,
+            imported.Diagnostics.Select(x => $"{x.Code}: {x.Message}")));
+        Assert.NotNull(imported.Value!.SyntaxBody);
+        Assert.Contains(FlattenStatements(imported.Value.SyntaxBody!), statement =>
+            statement is CompilerRuntimeIfStatement or CompilerRuntimeLoopStatement);
+        var generated = Compiler.GenerateCSharp(imported.Value);
+        Assert.True(generated.IsSuccess, string.Join(Environment.NewLine, generated.Diagnostics.Select(x => x.Message)));
+        Assert.Contains("(global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor)? h0_c0", generated.Value);
+    }
+
+    private static IEnumerable<CompilerStatement> FlattenStatements(CompilerStatement statement)
+    {
+        yield return statement;
+        switch (statement)
+        {
+            case CompilerBlockStatement block:
+                foreach (var child in block.Statements.SelectMany(FlattenStatements)) yield return child;
+                break;
+            case CompilerRuntimeIfStatement conditional:
+                foreach (var child in FlattenStatements(conditional.WhenTrue)) yield return child;
+                if (conditional.WhenFalse is not null)
+                {
+                    foreach (var child in FlattenStatements(conditional.WhenFalse)) yield return child;
+                }
+                break;
+            case CompilerRuntimeLoopStatement loop:
+                foreach (var child in FlattenStatements(loop.Body)) yield return child;
+                break;
+        }
+    }
+
+    [Fact]
     public void BackendGeneratesTorchSharpSourceFromSyntaxTree()
     {
         var treeResult = Compiler.CreateTreeFromTorchSharp(
@@ -523,7 +665,7 @@ public sealed class CSharpCompilerTests
     }
 
     [Fact]
-    public void DynamicIfIsReportedAsAnAnalyzeErrorWithCSharpSpan()
+    public void RuntimeIfIsRetainedWithItsSourceSpan()
     {
         var result = Compiler.CreateTreeFromTorchSharp(
             new CSharpTorchSharpSource(
@@ -538,13 +680,9 @@ public sealed class CSharpCompilerTests
                 }
                 """));
 
-        Assert.False(result.IsSuccess);
-        var diagnostic = Assert.Single(result.Diagnostics);
-        Assert.Equal(CompilerDiagnosticCodes.Unsupported, diagnostic.Code);
-        Assert.Equal(CompilerDiagnosticStage.Analyze, diagnostic.Stage);
-        Assert.Equal(CompilerDiagnosticSeverity.Error, diagnostic.Severity);
-        Assert.Equal(CompilerSourceSpanKind.CSharp, diagnostic.Span!.Kind);
-        Assert.NotNull(diagnostic.Context);
+        Assert.True(result.IsSuccess, string.Join(Environment.NewLine, result.Diagnostics.Select(x => x.Message)));
+        var conditional = Assert.IsType<CompilerRuntimeIfStatement>(result.Value!.SyntaxBody!.Statements[0]);
+        Assert.Equal(CompilerSourceSpanKind.CSharp, conditional.Span!.Kind);
     }
 
     [Fact]

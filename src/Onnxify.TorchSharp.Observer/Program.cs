@@ -394,7 +394,8 @@ internal static partial class Program
                 compilerCoverage,
                 testMethods
             ))
-            .OrderBy(row => row.Operator, StringComparer.Ordinal)
+            .OrderByDescending(static row => row.GreenCheckCount)
+            .ThenBy(static row => row.Operator, StringComparer.Ordinal)
             .ToArray();
 
         var markdown = BuildMarkdown(rows, packageReferences);
@@ -1329,6 +1330,7 @@ internal static partial class Program
         builder.AppendLine("* `Exportable (compiler)` means a compiler mapping can scan the TorchSharp operator and emit ONNX (`Bidirectional` or `ExportOnly`).");
         builder.AppendLine("* `Onnxify.Tests tests` is the number of `[Fact]` / `[Theory]` test methods in `src/Onnxify.Tests` whose name or body mentions the ONNXScript operator, normalized TorchSharp API name, or a known operator alias.");
         builder.AppendLine("* `✅` means the category is covered/found. `❌` means it is not covered/found.");
+        builder.AppendLine("* Rows are sorted by the number of green checks, highest first; ties are sorted by ONNXScript operator name.");
         builder.AppendLine();
         builder.AppendLine("| ONNXScript operator | TorchSharp module | Found | Importable (legacy) | Exportable (legacy) | Importable (compiler) | Exportable (compiler) | Onnxify.Tests tests |");
         builder.AppendLine("| --- | --- | --- | --- | --- | --- | --- | --- |");
@@ -1613,5 +1615,13 @@ internal static partial class Program
         bool CompilerImportable,
         bool CompilerExportable,
         int OnnxifyTestsCount
-    );
+    )
+    {
+        public int GreenCheckCount =>
+            (Found ? 1 : 0)
+            + (LegacyImportable ? 1 : 0)
+            + (LegacyExportable ? 1 : 0)
+            + (CompilerImportable ? 1 : 0)
+            + (CompilerExportable ? 1 : 0);
+    }
 }

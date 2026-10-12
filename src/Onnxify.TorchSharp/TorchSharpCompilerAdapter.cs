@@ -109,8 +109,10 @@ public static class TorchSharpCompilerAdapter
                     var attribute = index < attributes.Length ? attributes[index] : null;
                     return new CompilerTorchSharpValueDescriptor(
                         parameter.Name ?? $"input{index}",
-                        attribute is null ? TensorType(null, null) : TensorType(attribute.DataType, attribute.Dimensions),
-                        parameter.ParameterType.FullName ?? "global::TorchSharp.torch.Tensor");
+                        attribute is null
+                            ? TypeFromCSharpType(parameter.ParameterType)
+                            : TensorType(attribute.DataType, attribute.Dimensions),
+                        CSharpTypeName(parameter.ParameterType));
                 })
             .ToArray();
     }
@@ -131,16 +133,93 @@ public static class TorchSharpCompilerAdapter
                     x => new CompilerTorchSharpValueDescriptor(
                         x.Name,
                         TensorType(x.DataType, x.Dimensions),
-                        method.ReturnType.FullName ?? "global::TorchSharp.torch.Tensor"))
+                        CSharpTypeName(method.ReturnType)))
                 .ToArray();
         }
 
         return [
             new CompilerTorchSharpValueDescriptor(
                 "output",
-                TensorType(null, null),
-                method.ReturnType.FullName ?? "global::TorchSharp.torch.Tensor"),
+                TypeFromCSharpType(method.ReturnType),
+                CSharpTypeName(method.ReturnType)),
         ];
+    }
+
+    private static CompilerType TypeFromCSharpType(Type type)
+    {
+        var nullableType = Nullable.GetUnderlyingType(type);
+        if (nullableType is not null)
+        {
+            return new CompilerNullableType(TypeFromCSharpType(nullableType));
+        }
+
+        if (type == typeof(global::TorchSharp.torch.Tensor)
+            || typeof(global::TorchSharp.torch.Tensor).IsAssignableFrom(type))
+        {
+            return TensorType(null, null);
+        }
+
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ValueTuple<,>))
+        {
+            return new CompilerTupleType(type.GetGenericArguments().Select(TypeFromCSharpType));
+        }
+
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ValueTuple<,,>))
+        {
+            return new CompilerTupleType(type.GetGenericArguments().Select(TypeFromCSharpType));
+        }
+
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ValueTuple<,,,>))
+        {
+            return new CompilerTupleType(type.GetGenericArguments().Select(TypeFromCSharpType));
+        }
+
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ValueTuple<,,,,>))
+        {
+            return new CompilerTupleType(type.GetGenericArguments().Select(TypeFromCSharpType));
+        }
+
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ValueTuple<,,,,,>))
+        {
+            return new CompilerTupleType(type.GetGenericArguments().Select(TypeFromCSharpType));
+        }
+
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ValueTuple<,,,,,,>))
+        {
+            return new CompilerTupleType(type.GetGenericArguments().Select(TypeFromCSharpType));
+        }
+
+        return type == typeof(bool) ? new CompilerScalarType(CompilerElementType.Boolean)
+            : type == typeof(int) ? new CompilerScalarType(CompilerElementType.Int32)
+            : type == typeof(long) ? new CompilerScalarType(CompilerElementType.Int64)
+            : type == typeof(float) ? new CompilerScalarType(CompilerElementType.Float32)
+            : type == typeof(double) ? new CompilerScalarType(CompilerElementType.Float64)
+            : new CompilerOpaqueType("CSharp", type.FullName ?? type.Name);
+    }
+
+    private static string CSharpTypeName(Type type)
+    {
+        var nullableType = Nullable.GetUnderlyingType(type);
+        if (nullableType is not null)
+        {
+            return $"{CSharpTypeName(nullableType)}?";
+        }
+
+        if (type == typeof(global::TorchSharp.torch.Tensor)) return "global::TorchSharp.torch.Tensor";
+        if (type == typeof(bool)) return "bool";
+        if (type == typeof(int)) return "int";
+        if (type == typeof(long)) return "long";
+        if (type == typeof(float)) return "float";
+        if (type == typeof(double)) return "double";
+        if (type == typeof(string)) return "string";
+
+        if (type.IsGenericType && type.GetGenericTypeDefinition().FullName?.StartsWith("System.ValueTuple`", StringComparison.Ordinal) == true)
+        {
+            var tupleTypes = type.GetGenericArguments().Select(CSharpTypeName);
+            return $"({string.Join(", ", tupleTypes)})";
+        }
+
+        return $"global::{type.FullName?.Replace('+', '.') ?? type.Name}";
     }
 
     private static IReadOnlyList<CompilerTorchSharpStateMemberDescriptor> GetStateMembers(
