@@ -20,6 +20,20 @@ internal sealed class ReshapeOperator() : CompilerOperator<Onnxify.Reshape>(Comp
 
     public override IReadOnlyList<string> AttributeNames { get; } = ["allowzero"];
 
+    public override void PrintOnnx(OnnxGraph graph, CompilerOnnxStep operation)
+    {
+        if (operation.Node is Onnxify.Reshape { Allowzero: not null })
+        {
+            graph.AddNode(operation.Node);
+            return;
+        }
+
+        // Reshape-14 introduced allowzero. Preserve legacy Reshape nodes as generic ONNX
+        // nodes so opset-12 models are not accidentally emitted with the newer schema.
+        var node = operation.Node;
+        graph.AddNode(new OnnxNode(node.Name, node.OpType, node.Domain, node.DocString, node.Inputs, node.Outputs, node.Attributes));
+    }
+
     public override int MinimumInputCount => 2;
     public override int MaximumInputCount => 2;
 
@@ -225,14 +239,7 @@ internal sealed class ReshapeOperator() : CompilerOperator<Onnxify.Reshape>(Comp
                 : null;
         if (shapeValues is null)
         {
-            if (node.Allowzero is not (1))
-            {
-                throw Unsupported(
-                    span,
-                    "Reshape with dynamic shape input requires allowzero=1 so its shape semantics remain exact.");
-            }
-
-            return $"{inputName}.reshape({CompilerCSharpNaming.Identifier(node.Shape.Name)}.data<long>())";
+            return $"ReshapeWithRuntimeShape({inputName}, {CompilerCSharpNaming.Identifier(node.Shape.Name)}, {node.Allowzero ?? 0}L)";
         }
 
         var dimensions = shapeValues.Select((dimension, index) =>

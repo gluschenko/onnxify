@@ -11,8 +11,31 @@ internal sealed class UnsqueezeOperator() : CompilerOperator<Onnxify.Unsqueeze>(
         CompilerTorchSharpForm.Call("Tensor.unsqueeze"),
     ];
 
-    public override int MinimumInputCount => 2;
+    public override int MinimumInputCount => 1;
     public override int MaximumInputCount => 2;
+    public override IReadOnlyList<string> AttributeNames { get; } = ["axes"];
+
+    public override CompilerOnnxStep ScanOnnx(OnnxNode node, string name, CompilerSourceSpan? span)
+    {
+        if (node.GetType() == typeof(OnnxNode) && node.Inputs.Count == 1 && node.Attributes.Any(attribute => attribute.Name == "axes"))
+        {
+            return new CompilerOnnxStep(node, Descriptor, span, name);
+        }
+
+        return base.ScanOnnx(node, name, span);
+    }
+
+    public override void PrintOnnx(OnnxGraph graph, CompilerOnnxStep operation)
+    {
+        var node = operation.Node;
+        if (node is Onnxify.Unsqueeze)
+        {
+            graph.AddNode(node);
+            return;
+        }
+
+        graph.AddNode(new OnnxNode(node.Name, node.OpType, node.Domain, node.DocString, node.Inputs, node.Outputs, node.Attributes));
+    }
 
     protected override string PrintTorchSharp(Onnxify.Unsqueeze node, CompilerSourceSpan? span)
     {
@@ -21,24 +44,47 @@ internal sealed class UnsqueezeOperator() : CompilerOperator<Onnxify.Unsqueeze>(
 
     public override string PrintTorchSharp(CompilerOnnxStep operation, CompilerTorchSharpPrintContext context)
     {
+        if (operation.Node.GetType() == typeof(OnnxNode))
+        {
+            var data = CompilerCSharpNaming.Identifier(operation.Inputs[0].Name);
+            if (operation.Node.Attributes.FirstOrDefault(attribute => attribute.Name == "axes")?.GetValue() is long[] legacyAxes)
+            {
+                return PrintAxes(data, legacyAxes);
+            }
+
+            throw Unsupported(operation.Span, "Legacy Unsqueeze requires a static int64 axes attribute.");
+        }
+
         if (operation.Node is not Onnxify.Unsqueeze unsqueeze)
         {
             throw Unsupported(operation.Span, "Unsqueeze requires the generated ONNX Unsqueeze node type.");
         }
 
-        if (!context.TryGetTensorInitializer(unsqueeze.Axes.Name, out var axes)
-            || axes!.ElementType != CompilerElementType.Int64
-            || axes.Values.Count != 1
-            || axes.Values[0] is not CompilerSignedIntegerLiteral axis)
+        if (context.TryGetTensorInitializer(unsqueeze.Axes.Name, out var axes)
+            && axes!.ElementType == CompilerElementType.Int64
+            && axes.Values.Count == 1
+            && axes.Values[0] is CompilerSignedIntegerLiteral axis)
         {
-            throw Unsupported(operation.Span, "Unsqueeze requires a static int64 axes initializer with exactly one axis.");
+            return $"{CompilerCSharpNaming.Identifier(unsqueeze.Data.Name)}.unsqueeze({axis.Value})";
         }
 
-        return $"{CompilerCSharpNaming.Identifier(unsqueeze.Data.Name)}.unsqueeze({axis.Value})";
+        return $"{CompilerCSharpNaming.Identifier(unsqueeze.Data.Name)}.unsqueeze({CompilerCSharpNaming.Identifier(unsqueeze.Axes.Name)}.item<long>())";
+    }
+
+    private static string PrintAxes(string data, IEnumerable<long> axes)
+    {
+        return axes.Aggregate(data, static (current, axis) => $"{current}.unsqueeze({axis})");
     }
 
     public override string? ValidateOnnxNode(OnnxNode node, IReadOnlyDictionary<string, CompilerType> knownTypes)
     {
+        if (node.GetType() == typeof(OnnxNode)
+            && node.Inputs.Count == 1
+            && node.Attributes.FirstOrDefault(attribute => attribute.Name == "axes")?.GetValue() is long[])
+        {
+            return null;
+        }
+
         if (node is not Onnxify.Unsqueeze unsqueeze)
         {
             return $"Unsqueeze requires the generated node type '{nameof(Onnxify.Unsqueeze)}'.";

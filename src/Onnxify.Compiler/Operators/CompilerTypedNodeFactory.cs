@@ -959,6 +959,73 @@
                         }
                     );
                 },
+                [typeof(Onnxify.Gather)] = static (name, inputs, outputs, onnxAttributes) =>
+                {
+                    var attributes = onnxAttributes.ToDictionary(attribute => attribute.Name, attribute => attribute.GetValue(), StringComparer.Ordinal);
+                    return new Onnxify.Gather(name, new Onnxify.GatherInputOutputOptions
+                    {
+                        Data = inputs[0] ?? throw new InvalidOperationException("Missing data"),
+                        Indices = inputs[1] ?? throw new InvalidOperationException("Missing indices"),
+                        Axis = (long?)attributes.GetValueOrDefault("axis"),
+                        Output = outputs[0] ?? throw new InvalidOperationException("Missing output"),
+                    });
+                },
+                [typeof(Onnxify.Identity)] = static (name, inputs, outputs, _) =>
+                    new Onnxify.Identity(name, new Onnxify.IdentityInputOutputOptions
+                    {
+                        Input = inputs[0] ?? throw new InvalidOperationException("Missing input"),
+                        Output = outputs[0] ?? throw new InvalidOperationException("Missing output"),
+                    }),
+                [typeof(Onnxify.LayerNormalization)] = static (name, inputs, outputs, onnxAttributes) =>
+                {
+                    var attributes = onnxAttributes.ToDictionary(attribute => attribute.Name, attribute => attribute.GetValue(), StringComparer.Ordinal);
+                    return new Onnxify.LayerNormalization(name, new Onnxify.LayerNormalizationInputOutputOptions
+                    {
+                        X = inputs[0] ?? throw new InvalidOperationException("Missing X"),
+                        Scale = inputs[1] ?? throw new InvalidOperationException("Missing Scale"),
+                        B = inputs.Count > 2 ? inputs[2] : null,
+                        Axis = (long?)attributes.GetValueOrDefault("axis"),
+                        Epsilon = (float?)attributes.GetValueOrDefault("epsilon"),
+                        StashType = (long?)attributes.GetValueOrDefault("stash_type"),
+                        Y = outputs[0] ?? throw new InvalidOperationException("Missing Y"),
+                        Mean = outputs.Count > 1 ? outputs[1] : null,
+                        InvStdDev = outputs.Count > 2 ? outputs[2] : null,
+                    });
+                },
+                [typeof(Onnxify.Shape)] = static (name, inputs, outputs, onnxAttributes) =>
+                {
+                    var attributes = onnxAttributes.ToDictionary(attribute => attribute.Name, attribute => attribute.GetValue(), StringComparer.Ordinal);
+                    return new Onnxify.Shape(name, new Onnxify.ShapeInputOutputOptions
+                    {
+                        Data = inputs[0] ?? throw new InvalidOperationException("Missing data"),
+                        Start = (long?)attributes.GetValueOrDefault("start"),
+                        End = (long?)attributes.GetValueOrDefault("end"),
+                        OutputShape = outputs[0] ?? throw new InvalidOperationException("Missing shape output"),
+                    });
+                },
+                [typeof(Onnxify.Softmax)] = static (name, inputs, outputs, onnxAttributes) =>
+                {
+                    var attributes = onnxAttributes.ToDictionary(attribute => attribute.Name, attribute => attribute.GetValue(), StringComparer.Ordinal);
+                    return new Onnxify.Softmax(name, new Onnxify.SoftmaxInputOutputOptions
+                    {
+                        Input = inputs[0] ?? throw new InvalidOperationException("Missing input"),
+                        Axis = (long?)attributes.GetValueOrDefault("axis"),
+                        Output = outputs[0] ?? throw new InvalidOperationException("Missing output"),
+                    });
+                },
+                [typeof(Onnxify.Dropout)] = static (name, inputs, outputs, onnxAttributes) =>
+                {
+                    var attributes = onnxAttributes.ToDictionary(attribute => attribute.Name, attribute => attribute.GetValue(), StringComparer.Ordinal);
+                    return new Onnxify.Dropout(name, new Onnxify.DropoutInputOutputOptions
+                    {
+                        Data = inputs[0] ?? throw new InvalidOperationException("Missing data"),
+                        Ratio = inputs.Count > 1 ? inputs[1] : null,
+                        TrainingMode = inputs.Count > 2 ? inputs[2] : null,
+                        Seed = (long?)attributes.GetValueOrDefault("seed"),
+                        Output = outputs[0] ?? throw new InvalidOperationException("Missing output"),
+                        Mask = outputs.Count > 1 ? outputs[1] : null,
+                    });
+                },
             };
 
         public static TNode Create<TNode>(

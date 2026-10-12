@@ -311,6 +311,28 @@ public sealed class CompilerTupleType : CompilerType
     }
 }
 
+/// <summary>Represents a nullable value type or nullable reference type in C# source contracts.</summary>
+public sealed class CompilerNullableType : CompilerType
+{
+    public CompilerNullableType(CompilerType underlyingType, string? denotation = null)
+        : base(denotation)
+    {
+        CompilerStructural.RequireNotNull(underlyingType, nameof(underlyingType));
+        UnderlyingType = underlyingType;
+    }
+
+    public CompilerType UnderlyingType { get; }
+
+    protected override bool EqualsCore(CompilerType other)
+    {
+        var nullable = (CompilerNullableType)other;
+        return EqualityComparer<CompilerType>.Default.Equals(UnderlyingType, nullable.UnderlyingType)
+            && string.Equals(Denotation, other.Denotation, StringComparison.Ordinal);
+    }
+
+    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, UnderlyingType, Denotation);
+}
+
 public sealed class CompilerMapType : CompilerType
 {
     public CompilerMapType(CompilerElementType keyType, CompilerType valueType, string? denotation = null)

@@ -38,6 +38,7 @@ internal abstract class CompilerOperator
     }
 
     protected virtual bool AllowsEmptyOptionalInputs => false;
+    protected virtual bool AllowsEmptyOptionalOutputs => false;
     public virtual IReadOnlyCollection<string> Constraints =>
     [
         MinimumInputCount == MaximumInputCount
@@ -61,20 +62,21 @@ internal abstract class CompilerOperator
             && operation.Outputs.Count >= MinimumOutputCount
             && operation.Outputs.Count <= MaximumOutputCount
             && (AllowsEmptyOptionalInputs || operation.Inputs.All(static input => !input.IsEmptyOptional))
-            && operation.Outputs.All(static output => !output.IsEmptyOptional)
+            && (AllowsEmptyOptionalOutputs || operation.Outputs.All(static output => !output.IsEmptyOptional))
             && operation.Node.Attributes.All(attribute => AttributeNames.Contains(attribute.Name, StringComparer.Ordinal));
     }
 
     public bool Accepts(OnnxNode node)
     {
-        return (node.GetType() == NodeType || node.GetType() == typeof(OnnxNode))
+        return (NodeType.IsAssignableFrom(node.GetType()) || node.GetType() == typeof(OnnxNode))
             && string.Equals(node.Domain, OnnxDomain, StringComparison.Ordinal)
             && string.Equals(node.OpType, OnnxName, StringComparison.Ordinal)
             && node.Inputs.Count >= MinimumInputCount
             && node.Inputs.Count <= MaximumInputCount
             && node.Outputs.Count >= MinimumOutputCount
             && node.Outputs.Count <= MaximumOutputCount
-            && node.Attributes.All(attribute => AttributeNames.Contains(attribute.Name, StringComparer.Ordinal));
+            && node.Attributes.All(attribute => AttributeNames.Contains(attribute.Name, StringComparer.Ordinal))
+            && (AllowsEmptyOptionalOutputs || node.Outputs.All(static output => !string.IsNullOrEmpty(output.Name)));
     }
 
     public abstract string PrintTorchSharp(CompilerOnnxStep operation);
@@ -108,7 +110,7 @@ internal abstract class CompilerOperator
 
     public virtual CompilerOnnxStep ScanOnnx(OnnxNode node, string name, CompilerSourceSpan? span)
     {
-        if (node.GetType() != NodeType)
+        if (!NodeType.IsAssignableFrom(node.GetType()))
         {
             throw new CompilerConversionException(
                 CompilerDiagnosticCodes.Unsupported,
@@ -230,7 +232,7 @@ internal abstract class CompilerOperator<TNode>(CompilerOperatorIdentity identit
 
     protected abstract string PrintTorchSharp(TNode node, CompilerSourceSpan? span);
 
-    public sealed override CompilerOnnxStep ScanOnnx(OnnxNode node, string name, CompilerSourceSpan? span)
+    public override CompilerOnnxStep ScanOnnx(OnnxNode node, string name, CompilerSourceSpan? span)
     {
         if (node.GetType() != typeof(OnnxNode) && node is not TNode)
         {

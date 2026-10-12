@@ -277,7 +277,8 @@ public sealed class CompilerUnaryExpression : CompilerExpression
     public CompilerUnaryExpression(
         string @operator,
         CompilerExpression expression,
-        CompilerSourceSpan? span = null
+        CompilerSourceSpan? span = null,
+        bool isPostfix = false
     ) : base(span)
     {
         CompilerStructural.RequireNotNull(expression, nameof(expression));
@@ -288,24 +289,74 @@ public sealed class CompilerUnaryExpression : CompilerExpression
 
         Operator = @operator;
         Expression = expression;
+        IsPostfix = isPostfix;
     }
 
     public string Operator { get; }
 
     public CompilerExpression Expression { get; }
 
+    public bool IsPostfix { get; }
+
     protected override bool EqualsCore(CompilerExpression other)
     {
         var unary = (CompilerUnaryExpression)other;
         var result = string.Equals(Operator, unary.Operator, StringComparison.Ordinal)
-            && EqualityComparer<CompilerExpression>.Default.Equals(Expression, unary.Expression);
+            && EqualityComparer<CompilerExpression>.Default.Equals(Expression, unary.Expression)
+            && IsPostfix == unary.IsPostfix;
         return result;
     }
 
     protected override int GetHashCodeCore()
     {
-        return CompilerStructural.Combine(17, Operator, Expression);
+        return CompilerStructural.Combine(17, Operator, Expression, IsPostfix);
     }
+}
+
+/// <summary>Represents a runtime C# conditional expression.</summary>
+public sealed class CompilerConditionalExpression(
+    CompilerExpression condition,
+    CompilerExpression whenTrue,
+    CompilerExpression whenFalse,
+    CompilerSourceSpan? span = null
+) : CompilerExpression(span)
+{
+    public CompilerExpression Condition { get; } = condition ?? throw new System.ArgumentNullException(nameof(condition));
+    public CompilerExpression WhenTrue { get; } = whenTrue ?? throw new System.ArgumentNullException(nameof(whenTrue));
+    public CompilerExpression WhenFalse { get; } = whenFalse ?? throw new System.ArgumentNullException(nameof(whenFalse));
+
+    protected override bool EqualsCore(CompilerExpression other)
+    {
+        var conditional = (CompilerConditionalExpression)other;
+        return Equals(Condition, conditional.Condition)
+            && Equals(WhenTrue, conditional.WhenTrue)
+            && Equals(WhenFalse, conditional.WhenFalse);
+    }
+
+    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Condition, WhenTrue, WhenFalse);
+}
+
+/// <summary>Represents a C# constructor expression.</summary>
+public sealed class CompilerObjectCreationExpression(
+    string typeName,
+    IEnumerable<CompilerExpression> arguments,
+    CompilerSourceSpan? span = null
+) : CompilerExpression(span)
+{
+    public string TypeName { get; } = string.IsNullOrWhiteSpace(typeName)
+        ? throw new ArgumentException("Object creation type name cannot be empty.", nameof(typeName))
+        : typeName;
+    public IReadOnlyList<CompilerExpression> Arguments { get; } = CompilerStructural.Copy(arguments, nameof(arguments));
+
+    protected override bool EqualsCore(CompilerExpression other)
+    {
+        var creation = (CompilerObjectCreationExpression)other;
+        return string.Equals(TypeName, creation.TypeName, StringComparison.Ordinal)
+            && CompilerStructural.SequenceEqual(Arguments, creation.Arguments);
+    }
+
+    protected override int GetHashCodeCore() => CompilerStructural.Combine(
+        17, TypeName, CompilerStructural.GetHashCode(Arguments));
 }
 
 /// <summary>Base class for ordered compiler-owned C# statements.</summary>
@@ -369,7 +420,8 @@ public sealed class CompilerDeclarationStatement : CompilerStatement
     public CompilerDeclarationStatement(
         string name,
         CompilerExpression? initializer = null,
-        CompilerSourceSpan? span = null
+        CompilerSourceSpan? span = null,
+        string? declaredTypeName = null
     ) : base(span)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -379,23 +431,27 @@ public sealed class CompilerDeclarationStatement : CompilerStatement
 
         Name = name;
         Initializer = initializer;
+        DeclaredTypeName = string.IsNullOrWhiteSpace(declaredTypeName) ? null : declaredTypeName;
     }
 
     public string Name { get; }
 
     public CompilerExpression? Initializer { get; }
 
+    public string? DeclaredTypeName { get; }
+
     protected override bool EqualsCore(CompilerStatement other)
     {
         var declaration = (CompilerDeclarationStatement)other;
         var result = string.Equals(Name, declaration.Name, StringComparison.Ordinal)
-            && EqualityComparer<CompilerExpression?>.Default.Equals(Initializer, declaration.Initializer);
+            && EqualityComparer<CompilerExpression?>.Default.Equals(Initializer, declaration.Initializer)
+            && string.Equals(DeclaredTypeName, declaration.DeclaredTypeName, StringComparison.Ordinal);
         return result;
     }
 
     protected override int GetHashCodeCore()
     {
-        return CompilerStructural.Combine(17, Name, Initializer);
+        return CompilerStructural.Combine(17, Name, Initializer, DeclaredTypeName);
     }
 }
 
@@ -563,4 +619,70 @@ public sealed class CompilerStaticForeachStatement : CompilerStatement
     {
         return CompilerStructural.Combine(17, VariableName, Collection, Body);
     }
+}
+
+/// <summary>Runtime conditional statement retained in compiler-owned syntax.</summary>
+public sealed class CompilerRuntimeIfStatement(
+    CompilerExpression condition,
+    CompilerStatement whenTrue,
+    CompilerStatement? whenFalse = null,
+    CompilerSourceSpan? span = null
+) : CompilerStatement(span)
+{
+    public CompilerExpression Condition { get; } = condition ?? throw new System.ArgumentNullException(nameof(condition));
+    public CompilerStatement WhenTrue { get; } = whenTrue ?? throw new System.ArgumentNullException(nameof(whenTrue));
+    public CompilerStatement? WhenFalse { get; } = whenFalse;
+
+    protected override bool EqualsCore(CompilerStatement other)
+    {
+        var conditional = (CompilerRuntimeIfStatement)other;
+        return Equals(Condition, conditional.Condition)
+            && Equals(WhenTrue, conditional.WhenTrue)
+            && Equals(WhenFalse, conditional.WhenFalse);
+    }
+
+    protected override int GetHashCodeCore() => CompilerStructural.Combine(17, Condition, WhenTrue, WhenFalse);
+}
+
+/// <summary>Runtime for/while loop statement with loop-carried local variables.</summary>
+public sealed class CompilerRuntimeLoopStatement(
+    IEnumerable<CompilerStatement> initializers,
+    CompilerExpression? condition,
+    IEnumerable<CompilerExpression> increments,
+    CompilerStatement body,
+    bool isForLoop = false,
+    CompilerSourceSpan? span = null
+) : CompilerStatement(span)
+{
+    public IReadOnlyList<CompilerStatement> Initializers { get; } = CompilerStructural.Copy(initializers, nameof(initializers));
+    public CompilerExpression? Condition { get; } = condition;
+    public IReadOnlyList<CompilerExpression> Increments { get; } = CompilerStructural.Copy(increments, nameof(increments));
+    public CompilerStatement Body { get; } = body ?? throw new System.ArgumentNullException(nameof(body));
+    public bool IsForLoop { get; } = isForLoop;
+
+    protected override bool EqualsCore(CompilerStatement other)
+    {
+        var loop = (CompilerRuntimeLoopStatement)other;
+        return CompilerStructural.SequenceEqual(Initializers, loop.Initializers)
+            && Equals(Condition, loop.Condition)
+            && CompilerStructural.SequenceEqual(Increments, loop.Increments)
+            && IsForLoop == loop.IsForLoop
+            && Equals(Body, loop.Body);
+    }
+
+    protected override int GetHashCodeCore() => CompilerStructural.Combine(
+        17, CompilerStructural.GetHashCode(Initializers), Condition,
+        CompilerStructural.GetHashCode(Increments), IsForLoop, Body);
+}
+
+public sealed class CompilerBreakStatement(CompilerSourceSpan? span = null) : CompilerStatement(span)
+{
+    protected override bool EqualsCore(CompilerStatement other) => true;
+    protected override int GetHashCodeCore() => 0;
+}
+
+public sealed class CompilerContinueStatement(CompilerSourceSpan? span = null) : CompilerStatement(span)
+{
+    protected override bool EqualsCore(CompilerStatement other) => true;
+    protected override int GetHashCodeCore() => 0;
 }

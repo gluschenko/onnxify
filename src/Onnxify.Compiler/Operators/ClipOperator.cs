@@ -190,9 +190,10 @@ internal sealed class ClipOperator() : CompilerOperator<Onnxify.Clip>(CompilerOp
 
             if (type is not CompilerTensorType tensorType
                 || tensorType.ElementType != CompilerElementType.Float32
-                || tensorType.Dimensions is { Count: > 0 })
+                || tensorType.Dimensions is null
+                || tensorType.Dimensions.Any(static dimension => dimension is not CompilerFixedDimension { Value: 1 }))
             {
-                return "Compiler Clip supports Float32 scalar min and max inputs only.";
+                return "Compiler Clip supports Float32 scalar or statically known single-element min and max inputs only.";
             }
         }
 

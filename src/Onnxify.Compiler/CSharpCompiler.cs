@@ -496,6 +496,7 @@ internal sealed class CSharpSyntaxScanner
 
     private readonly string _document;
     private readonly CSharpCompilerFrontend.CompilationContext? _context;
+    private int _loopDepth;
 
     public CSharpSyntaxScanner(
         string document,
@@ -935,6 +936,8 @@ internal sealed class CSharpSyntaxScanner
         return type switch
         {
             CompilerTensorType => "global::TorchSharp.torch.Tensor",
+            CompilerNullableType nullable => $"{CSharpTypeName(nullable.UnderlyingType)}?",
+            CompilerTupleType tuple => $"({string.Join(", ", tuple.ElementTypes.Select(CSharpTypeName))})",
             CompilerScalarType scalar => scalar.ElementType switch
             {
                 CompilerElementType.Boolean => "bool",
@@ -1158,18 +1161,39 @@ internal sealed class CSharpSyntaxScanner
                     Span(returnStatement));
 
             case IfStatementSyntax ifStatement:
-                if (!TryEvaluateStaticBoolean(ifStatement.Condition, out _))
-                {
-                    throw Unsupported(
-                        ifStatement,
-                        "Only statically resolvable if conditions are supported by the compiler frontend.");
-                }
+                var condition = ScanExpression(ifStatement.Condition);
+                var whenTrue = ScanStatement(ifStatement.Statement);
+                var whenFalse = ifStatement.Else is null ? null : ScanStatement(ifStatement.Else.Statement);
+                return TryEvaluateStaticBoolean(ifStatement.Condition, out _)
+                    ? new CompilerStaticIfStatement(condition, whenTrue, whenFalse, Span(ifStatement))
+                    : new CompilerRuntimeIfStatement(condition, whenTrue, whenFalse, Span(ifStatement));
 
-                return new CompilerStaticIfStatement(
-                    condition: ScanExpression(ifStatement.Condition),
-                    whenTrue: ScanStatement(ifStatement.Statement),
-                    whenFalse: ifStatement.Else is null ? null : ScanStatement(ifStatement.Else.Statement),
-                    span: Span(ifStatement));
+            case ForStatementSyntax forStatement:
+                return new CompilerRuntimeLoopStatement(
+                    initializers: forStatement.Declaration is not null
+                        ? [ScanVariableDeclaration(forStatement.Declaration, forStatement)]
+                        : forStatement.Initializers.Select(ScanForInitializer),
+                    condition: forStatement.Condition is null ? null : ScanExpression(forStatement.Condition),
+                    increments: forStatement.Incrementors.Select(ScanExpression),
+                    body: ScanLoopBody(forStatement.Statement),
+                    isForLoop: true,
+                    span: Span(forStatement));
+
+            case WhileStatementSyntax whileStatement:
+                return new CompilerRuntimeLoopStatement(
+                    initializers: [],
+                    condition: ScanExpression(whileStatement.Condition),
+                    increments: [],
+                    body: ScanLoopBody(whileStatement.Statement),
+                    span: Span(whileStatement));
+
+            case BreakStatementSyntax breakStatement:
+                if (_loopDepth == 0) throw Unsupported(breakStatement, "break is only supported inside a loop.");
+                return new CompilerBreakStatement(Span(breakStatement));
+
+            case ContinueStatementSyntax continueStatement:
+                if (_loopDepth == 0) throw Unsupported(continueStatement, "continue is only supported inside a loop.");
+                return new CompilerContinueStatement(Span(continueStatement));
 
             case ForEachStatementSyntax foreachStatement:
                 if (!IsStaticCollection(foreachStatement))
@@ -1182,7 +1206,7 @@ internal sealed class CSharpSyntaxScanner
                 return new CompilerStaticForeachStatement(
                     variableName: foreachStatement.Identifier.ValueText,
                     collection: ScanExpression(foreachStatement.Expression),
-                    body: ScanStatement(foreachStatement.Statement),
+                    body: ScanLoopBody(foreachStatement.Statement),
                     span: Span(foreachStatement));
 
             case UsingStatementSyntax usingStatement:
@@ -1196,6 +1220,33 @@ internal sealed class CSharpSyntaxScanner
                     statement,
                     $"C# statement '{statement.Kind()}' is not supported by the compiler frontend.");
         }
+    }
+
+    private CompilerStatement ScanLoopBody(StatementSyntax statement)
+    {
+        _loopDepth++;
+        try
+        {
+            return ScanStatement(statement);
+        }
+        finally
+        {
+            _loopDepth--;
+        }
+    }
+
+    private CompilerStatement ScanForInitializer(ExpressionSyntax expression)
+    {
+        if (expression is AssignmentExpressionSyntax assignment)
+        {
+            return new CompilerAssignmentStatement(
+                ScanExpression(assignment.Left),
+                ScanExpression(assignment.Right),
+                Span(assignment),
+                assignment.OperatorToken.ValueText);
+        }
+
+        return new CompilerExpressionStatement(ScanExpression(expression), Span(expression));
     }
 
     private CompilerStatement ScanDeconstructionAssignment(
@@ -1371,7 +1422,8 @@ internal sealed class CSharpSyntaxScanner
                     variable.Initializer?.Value is null
                         ? null
                         : ScanExpression(variable.Initializer.Value),
-                    Span(variable)));
+                    Span(variable),
+                    declaration.Type.ToString()));
         }
 
         var result = statements.Count == 1
@@ -1394,6 +1446,9 @@ internal sealed class CSharpSyntaxScanner
             case ThisExpressionSyntax:
                 return new CompilerReferenceExpression("this", Span(expression));
 
+            case BaseExpressionSyntax:
+                return new CompilerReferenceExpression("base", Span(expression));
+
             case MemberAccessExpressionSyntax member:
                 return new CompilerMemberAccessExpression(
                     ScanExpression(member.Expression),
@@ -1405,6 +1460,13 @@ internal sealed class CSharpSyntaxScanner
                     ScanExpression(invocation.Expression),
                     ScanInvocationArguments(invocation),
                     Span(invocation));
+
+            case ObjectCreationExpressionSyntax creation when creation.Initializer is null:
+                return new CompilerObjectCreationExpression(
+                    creation.Type.ToString(),
+                    creation.ArgumentList?.Arguments.Select(argument => ScanExpression(argument.Expression))
+                        ?? Array.Empty<CompilerExpression>(),
+                    Span(creation));
 
             case ElementAccessExpressionSyntax indexer:
                 if (indexer.ArgumentList.Arguments.Count != 1)
@@ -1449,6 +1511,13 @@ internal sealed class CSharpSyntaxScanner
                     right: ScanExpression(binary.Right),
                     span: Span(binary));
 
+            case IsPatternExpressionSyntax pattern when TryGetNullPatternOperator(pattern.Pattern, out var patternOperator):
+                return new CompilerBinaryExpression(
+                    ScanExpression(pattern.Expression),
+                    patternOperator,
+                    new CompilerLiteralExpression(new CompilerNullLiteral(), Span(pattern.Pattern)),
+                    Span(pattern));
+
             case PrefixUnaryExpressionSyntax prefix:
                 return new CompilerUnaryExpression(
                     prefix.OperatorToken.ValueText,
@@ -1459,22 +1528,49 @@ internal sealed class CSharpSyntaxScanner
                 return new CompilerUnaryExpression(
                     postfix.OperatorToken.ValueText,
                     ScanExpression(postfix.Operand),
-                    Span(postfix));
+                    isPostfix: true,
+                    span: Span(postfix));
 
             case ConditionalExpressionSyntax conditional:
-                if (!TryEvaluateStaticBoolean(conditional.Condition, out var condition))
+                if (TryEvaluateStaticBoolean(conditional.Condition, out var condition))
                 {
-                    throw Unsupported(conditional, "Only statically resolvable conditional expressions are supported.");
+                    return ScanExpression(condition ? conditional.WhenTrue : conditional.WhenFalse);
                 }
 
-                var result = ScanExpression(condition ? conditional.WhenTrue : conditional.WhenFalse);
-                return result;
+                return new CompilerConditionalExpression(
+                    ScanExpression(conditional.Condition),
+                    ScanExpression(conditional.WhenTrue),
+                    ScanExpression(conditional.WhenFalse),
+                    Span(conditional));
 
             default:
                 throw Unsupported(
                     expression,
-                    $"C# expression '{expression.Kind()}' is not supported by the compiler frontend.");
+                    $"C# expression '{expression.Kind()}' is not supported by the compiler frontend: '{expression}'.");
         }
+    }
+
+    private static bool TryGetNullPatternOperator(PatternSyntax pattern, out string @operator)
+    {
+        if (pattern is ConstantPatternSyntax { Expression: LiteralExpressionSyntax literal }
+            && literal.IsKind(SyntaxKind.NullLiteralExpression))
+        {
+            @operator = "is";
+            return true;
+        }
+
+        if (pattern is UnaryPatternSyntax
+            {
+                OperatorToken.RawKind: (int)SyntaxKind.NotKeyword,
+                Pattern: ConstantPatternSyntax { Expression: LiteralExpressionSyntax notLiteral },
+            } && notLiteral.IsKind(SyntaxKind.NullLiteralExpression))
+        {
+            @operator = "is not";
+            return true;
+        }
+
+        @operator = string.Empty;
+        return false;
     }
 
     private IEnumerable<CompilerExpression> ScanInvocationArguments(InvocationExpressionSyntax invocation)
@@ -1499,7 +1595,7 @@ internal sealed class CSharpSyntaxScanner
             || !targetPath.EndsWith("addmm", StringComparison.Ordinal)
             || !arguments.Any(static argument => argument.NameColon is not null))
         {
-            return arguments.Select(argument => ScanExpression(argument.Expression)).ToArray();
+            return arguments.Select(ScanArgument).ToArray();
         }
 
         var isStaticAddmm = targetPath.StartsWith("torch.", StringComparison.Ordinal)
@@ -1535,6 +1631,14 @@ internal sealed class CSharpSyntaxScanner
         normalized.Add(beta);
         normalized.Add(alpha);
         return normalized;
+
+        CompilerExpression ScanArgument(ArgumentSyntax argument)
+        {
+            var value = ScanExpression(argument.Expression);
+            return argument.RefOrOutKeyword.IsKind(SyntaxKind.None)
+                ? value
+                : new CompilerUnaryExpression(argument.RefOrOutKeyword.ValueText, value, Span(argument));
+        }
     }
 
     private static CompilerExpression FloatLiteral(float value)
@@ -1677,13 +1781,40 @@ internal sealed class CSharpSyntaxScanner
                 .Concat(descriptor?.StateMembers.Select(x => x.Name) ?? Array.Empty<string>()),
             StringComparer.Ordinal);
 
+        var knownTypes = inputs.Concat(outputs)
+            .ToDictionary(static value => value.Name, static value => value.Type, StringComparer.Ordinal);
+
         foreach (var declaration in FindDeclarations(body))
         {
             if (existing.Add(declaration.Name))
             {
-                builder.AddIntermediateValue(new CompilerValue(declaration.Name, _defaultTensorType, declaration.Span));
+                var declaredType = InferDeclarationType(declaration, knownTypes);
+                builder.AddIntermediateValue(new CompilerValue(declaration.Name, declaredType, declaration.Span));
+                knownTypes[declaration.Name] = declaredType;
             }
         }
+    }
+
+    private static CompilerType InferDeclarationType(
+        CompilerDeclarationStatement declaration,
+        IReadOnlyDictionary<string, CompilerType> knownTypes)
+    {
+        if (declaration.DeclaredTypeName is { } declaredTypeName
+            && !string.Equals(declaredTypeName, "var", StringComparison.Ordinal))
+        {
+            return InferType(declaredTypeName);
+        }
+
+        return declaration.Initializer switch
+        {
+            CompilerReferenceExpression reference when knownTypes.TryGetValue(reference.Name, out var type) => type,
+            CompilerLiteralExpression { Literal: CompilerScalarLiteral literal } => new CompilerScalarType(literal.ElementType),
+            CompilerBinaryExpression binary => InferDeclarationType(
+                new CompilerDeclarationStatement("__inferred", binary.Left), knownTypes),
+            CompilerUnaryExpression unary => InferDeclarationType(
+                new CompilerDeclarationStatement("__inferred", unary.Expression), knownTypes),
+            _ => _defaultTensorType,
+        };
     }
 
     private static IEnumerable<CompilerDeclarationStatement> FindDeclarations(CompilerStatement statement)
@@ -1715,12 +1846,23 @@ internal sealed class CSharpSyntaxScanner
                 }
 
                 break;
+            case CompilerRuntimeIfStatement conditional:
+                foreach (var child in FindDeclarations(conditional.WhenTrue)) yield return child;
+                if (conditional.WhenFalse is not null)
+                {
+                    foreach (var child in FindDeclarations(conditional.WhenFalse)) yield return child;
+                }
+                break;
             case CompilerStaticForeachStatement loop:
                 foreach (var child in FindDeclarations(loop.Body))
                 {
                     yield return child;
                 }
 
+                break;
+            case CompilerRuntimeLoopStatement loop:
+                foreach (var declaration in loop.Initializers.SelectMany(FindDeclarations)) yield return declaration;
+                foreach (var declaration in FindDeclarations(loop.Body)) yield return declaration;
                 break;
         }
     }
@@ -1938,6 +2080,7 @@ internal sealed class CSharpSourcePrinter
         }
 
         Line("using System;");
+        Line("using System.Linq;");
         Line("using global::TorchSharp;");
         Line("using static global::TorchSharp.torch;");
         Line();
@@ -1968,11 +2111,166 @@ internal sealed class CSharpSourcePrinter
             Line($"private {TORCH_MODULE_TYPE}<{TORCH_TENSOR_TYPE}, {TORCH_TENSOR_TYPE}> {childName} = default;");
         }
 
+        if (_tree.Operations.OfType<CompilerOnnxStep>().Any(operation => operation.Node is Onnxify.Reshape))
+        {
+            Line();
+            Line($"private static {TORCH_TENSOR_TYPE} ReshapeWithRuntimeShape({TORCH_TENSOR_TYPE} input, {TORCH_TENSOR_TYPE} shapeTensor, long allowzero)");
+            Line("{");
+            _indent++;
+            Line("var shape = shapeTensor.data<long>().ToArray();");
+            Line("if (allowzero == 0)");
+            Line("{");
+            _indent++;
+            Line("for (var index = 0; index < shape.Length; index++)");
+            Line("{");
+            _indent++;
+            Line("if (shape[index] == 0) shape[index] = input.shape[index];");
+            _indent--;
+            Line("}");
+            _indent--;
+            Line("}");
+            Line("return input.reshape(shape);");
+            _indent--;
+            Line("}");
+        }
+
+        if (_tree.Operations.OfType<CompilerOnnxStep>().Any(operation => operation.Node is Onnxify.Gather))
+        {
+            Line();
+            Line($"private static {TORCH_TENSOR_TYPE} Gather({TORCH_TENSOR_TYPE} data, {TORCH_TENSOR_TYPE} indices, long axis)");
+            Line("{");
+            _indent++;
+            Line("var rank = data.shape.Length;");
+            Line("if (axis < 0) axis += rank;");
+            Line("if (axis < 0 || axis >= rank) throw new ArgumentOutOfRangeException(nameof(axis));");
+            Line("var flatIndices = indices.reshape(-1L);");
+            Line("var selected = data.index_select(axis, flatIndices);");
+            Line("var outputShape = new long[data.shape.Length - 1 + indices.shape.Length];");
+            Line("Array.Copy(data.shape, 0, outputShape, 0, (int)axis);");
+            Line("Array.Copy(indices.shape, 0, outputShape, (int)axis, indices.shape.Length);");
+            Line("Array.Copy(data.shape, (int)axis + 1, outputShape, (int)axis + indices.shape.Length, data.shape.Length - (int)axis - 1);");
+            Line("return selected.reshape(outputShape);");
+            _indent--;
+            Line("}");
+        }
+
+        if (_tree.Operations.OfType<CompilerOnnxStep>().Any(operation => operation.Node is Onnxify.Expand))
+        {
+            Line();
+            Line($"private static {TORCH_TENSOR_TYPE} ExpandWithRuntimeShape({TORCH_TENSOR_TYPE} input, long[] targetShape)");
+            Line("{");
+            _indent++;
+            Line("var shape = (long[])targetShape.Clone();");
+            Line("var offset = shape.Length - input.shape.Length;");
+            Line("for (var index = 0; index < shape.Length; index++)");
+            Line("{");
+            _indent++;
+            Line("var inputIndex = index - offset;");
+            Line("if (shape[index] == 0 && inputIndex >= 0 && input.shape[inputIndex] == 1) shape[index] = 1;");
+            _indent--;
+            Line("}");
+            Line("return input.expand(shape);");
+            _indent--;
+            Line("}");
+        }
+
+        if (_tree.Operations.OfType<CompilerOnnxStep>().Any(operation => operation.Node is Onnxify.Shape))
+        {
+            Line();
+            Line($"private static {TORCH_TENSOR_TYPE} ShapeWithRange({TORCH_TENSOR_TYPE} input, long start, long? end)");
+            Line("{");
+            _indent++;
+            Line("var dimensions = input.shape;");
+            Line("var first = start < 0 ? dimensions.Length + (int)start : (int)start;");
+            Line("var last = end is null ? dimensions.Length : end.Value < 0 ? dimensions.Length + (int)end.Value : (int)end.Value;");
+            Line("first = Math.Min(Math.Max(first, 0), dimensions.Length);");
+            Line("last = Math.Min(Math.Max(last, first), dimensions.Length);");
+            Line("var result = new long[(int)(last - first)];");
+            Line("Array.Copy(dimensions, first, result, 0, result.Length);");
+            Line("return torch.tensor(result, dtype: torch.ScalarType.Int64);");
+            _indent--;
+            Line("}");
+        }
+
+        if (_tree.Operations.OfType<CompilerOnnxStep>().Any(operation => operation.Node.OpType == "ReduceSum"))
+        {
+            Line();
+            Line($"private static {TORCH_TENSOR_TYPE} ReduceSum({TORCH_TENSOR_TYPE} input, long[] axes, bool keepDims, bool noopWithEmptyAxes)");
+            Line("{");
+            _indent++;
+            Line("if (axes.Length == 0)");
+            Line("{");
+            _indent++;
+            Line("if (noopWithEmptyAxes) return input;");
+            Line("return keepDims ? torch.sum(input, dim: Enumerable.Range(0, input.shape.Length).Select(static axis => (long)axis).ToArray(), keepdim: true) : torch.sum(input);");
+            _indent--;
+            Line("}");
+            Line("return torch.sum(input, dim: axes, keepdim: keepDims);");
+            _indent--;
+            Line("}");
+        }
+
+        if (_tree.Operations.OfType<CompilerOnnxStep>().Any(operation => operation.Node.OpType == "LSTM"))
+        {
+            PrintOnnxLstmHelper();
+        }
+
         foreach (var block in _tree.Blocks)
         {
             Line();
             PrintBlock(block);
         }
+    }
+
+    private void PrintOnnxLstmHelper()
+    {
+        Line();
+        Line($"private static {TORCH_TENSOR_TYPE}[] RunOnnxLstm({TORCH_TENSOR_TYPE} input, {TORCH_TENSOR_TYPE} weights, {TORCH_TENSOR_TYPE} recurrentWeights, {TORCH_TENSOR_TYPE} bias, long hiddenSize, string direction, long inputForget)");
+        Line("{");
+        _indent++;
+        Line("var directionCount = direction == \"bidirectional\" ? 2 : 1;");
+        Line("var sequenceLength = input.shape[0];");
+        Line("var batchSize = input.shape[1];");
+        Line("var outputsByDirection = new " + TORCH_TENSOR_TYPE + "[directionCount][];");
+        Line("var finalHidden = new " + TORCH_TENSOR_TYPE + "[directionCount];");
+        Line("var finalCell = new " + TORCH_TENSOR_TYPE + "[directionCount];");
+        Line("for (var directionIndex = 0; directionIndex < directionCount; directionIndex++)");
+        Line("{");
+        _indent++;
+        Line("var reverse = direction == \"reverse\" || direction == \"bidirectional\" && directionIndex == 1;");
+        Line("var inputWeights = weights.select(0, directionIndex);");
+        Line("var recurrent = recurrentWeights.select(0, directionIndex);");
+        Line("var directionBias = bias is null ? torch.zeros(new long[] { directionCount, 8 * hiddenSize }, dtype: input.dtype, device: input.device).select(0, directionIndex) : bias.select(0, directionIndex);");
+        Line("var inputBias = directionBias.narrow(0, 0, 4 * hiddenSize);");
+        Line("var recurrentBias = directionBias.narrow(0, 4 * hiddenSize, 4 * hiddenSize);");
+        Line("var hidden = torch.zeros(new long[] { batchSize, hiddenSize }, dtype: input.dtype, device: input.device);");
+        Line("var cell = torch.zeros(new long[] { batchSize, hiddenSize }, dtype: input.dtype, device: input.device);");
+        Line("var sequenceOutputs = new " + TORCH_TENSOR_TYPE + "[(int)sequenceLength];");
+        Line("for (long step = 0; step < sequenceLength; step++)");
+        Line("{");
+        _indent++;
+        Line("var timeIndex = reverse ? sequenceLength - step - 1 : step;");
+        Line("var gates = torch.matmul(input.select(0, timeIndex), inputWeights.transpose(0, 1)) + inputBias + torch.matmul(hidden, recurrent.transpose(0, 1)) + recurrentBias;");
+        Line("var inputGate = torch.sigmoid(gates.narrow(1, 0, hiddenSize));");
+        Line("var outputGate = torch.sigmoid(gates.narrow(1, hiddenSize, hiddenSize));");
+        Line("var forgetGate = torch.sigmoid(gates.narrow(1, 2 * hiddenSize, hiddenSize));");
+        Line("var cellGate = torch.tanh(gates.narrow(1, 3 * hiddenSize, hiddenSize));");
+        Line("if (inputForget != 0) inputGate = 1 - forgetGate;");
+        Line("cell = forgetGate * cell + inputGate * cellGate;");
+        Line("hidden = outputGate * torch.tanh(cell);");
+        Line("sequenceOutputs[(int)timeIndex] = hidden;");
+        _indent--;
+        Line("}");
+        Line("outputsByDirection[directionIndex] = sequenceOutputs;");
+        Line("finalHidden[directionIndex] = hidden;");
+        Line("finalCell[directionIndex] = cell;");
+        _indent--;
+        Line("}");
+        Line("var directionSequences = outputsByDirection.Select(sequence => torch.stack(sequence, 0)).ToArray();");
+        Line("var sequenceOutput = torch.stack(directionSequences, 1);");
+        Line("return new[] { sequenceOutput, torch.stack(finalHidden, 0), torch.stack(finalCell, 0) };");
+        _indent--;
+        Line("}");
     }
 
     private void PrintForwardMethod()
@@ -2022,8 +2320,15 @@ internal sealed class CSharpSourcePrinter
                         span: mappedOperation.Span);
                 }
 
-                var expression = mapping.PrintTorchSharp(mappedOperation, new CompilerTorchSharpPrintContext(_tree));
+                var printContext = new CompilerTorchSharpPrintContext(_tree);
+                var expression = mapping.PrintTorchSharp(mappedOperation, printContext);
                 if (mappedOperation.Outputs.Count == 1)
+                {
+                    Line($"var {CompilerCSharpNaming.Identifier(mappedOperation.Outputs[0].Name)} = {expression};");
+                }
+                else if (mappedOperation.Node.OpType is not ("If" or "Loop")
+                    && mappedOperation.Outputs.Count > 1
+                    && mappedOperation.Outputs.Skip(1).All(output => !printContext.IsValueUsed(output.Name)))
                 {
                     Line($"var {CompilerCSharpNaming.Identifier(mappedOperation.Outputs[0].Name)} = {expression};");
                 }
@@ -2077,13 +2382,13 @@ internal sealed class CSharpSourcePrinter
 
     private string ModuleBaseType()
     {
-        var result = $"{TORCH_MODULE_TYPE}<{string.Join(", ", _tree.Inputs.Select(_ => TORCH_TENSOR_TYPE).Concat([OutputType()]))}>";
+        var result = $"{TORCH_MODULE_TYPE}<{string.Join(", ", _tree.Inputs.Select(x => TypeName(x.Type)).Concat([OutputType()]))}>";
         return result;
     }
 
     private string InputParameters()
     {
-        var result = string.Join(", ", _tree.Inputs.Select(x => $"{TORCH_TENSOR_TYPE} {CompilerCSharpNaming.Identifier(x.Name)}"));
+        var result = string.Join(", ", _tree.Inputs.Select(x => $"{TypeName(x.Type)} {CompilerCSharpNaming.Identifier(x.Name)}"));
         return result;
     }
 
@@ -2120,6 +2425,7 @@ internal sealed class CSharpSourcePrinter
                 _ => "object",
             },
             CompilerTupleType tuple => $"({string.Join(", ", tuple.ElementTypes.Select(TypeName))})",
+            CompilerNullableType nullable => $"{TypeName(nullable.UnderlyingType)}?",
             _ => "object",
         };
     }
@@ -2138,7 +2444,7 @@ internal sealed class CSharpSourcePrinter
         Line("{");
         _indent++;
         PrintStatement(block.Body);
-        if (!AlwaysReturns(block.Body))
+        if (!string.Equals(outputType, "void", StringComparison.Ordinal) && !AlwaysReturns(block.Body))
         {
             Line("return default;");
         }
@@ -2168,7 +2474,7 @@ internal sealed class CSharpSourcePrinter
 
                 break;
             case CompilerDeclarationStatement declaration:
-                Line($"var {declaration.Name}{(declaration.Initializer is null ? string.Empty : $" = {Expression(declaration.Initializer)}")};");
+                Line($"{declaration.DeclaredTypeName ?? "var"} {CompilerCSharpNaming.Identifier(declaration.Name)}{(declaration.Initializer is null ? string.Empty : $" = {Expression(declaration.Initializer)}")};");
                 break;
             case CompilerAssignmentStatement assignment:
                 Line($"{Expression(assignment.Target)} {assignment.Operator} {Expression(assignment.Value)};");
@@ -2205,6 +2511,54 @@ internal sealed class CSharpSourcePrinter
                 _indent--;
                 Line("}");
                 break;
+            case CompilerRuntimeIfStatement conditional:
+                Line($"if ({Expression(conditional.Condition)})");
+                Line("{");
+                _indent++;
+                PrintStatement(conditional.WhenTrue);
+                _indent--;
+                Line("}");
+                if (conditional.WhenFalse is not null)
+                {
+                    Line("else");
+                    Line("{");
+                    _indent++;
+                    PrintStatement(conditional.WhenFalse);
+                    _indent--;
+                    Line("}");
+                }
+                break;
+            case CompilerRuntimeLoopStatement loop:
+                if (loop.IsForLoop)
+                {
+                    var initializers = string.Join(", ", loop.Initializers.Select(InlineStatement));
+                    var condition = loop.Condition is null ? string.Empty : Expression(loop.Condition);
+                    var increments = string.Join(", ", loop.Increments.Select(Expression));
+                    Line($"for ({initializers}; {condition}; {increments})");
+                }
+                else
+                {
+                    foreach (var initializer in loop.Initializers) PrintStatement(initializer);
+                    Line($"while ({(loop.Condition is null ? "true" : Expression(loop.Condition))})");
+                }
+                Line("{");
+                _indent++;
+                PrintStatement(loop.Body);
+                _indent--;
+                Line("}");
+                break;
+            case CompilerBreakStatement:
+                Line("break;");
+                break;
+            case CompilerContinueStatement:
+                if (statement.Span is null)
+                {
+                    throw new CSharpCompilerDiagnosticException(CompilerDiagnosticCodes.Unsupported,
+                        "A continue statement requires source context for safe loop-increment lowering.",
+                        CompilerDiagnosticStage.Emit);
+                }
+                Line("continue;");
+                break;
             default:
                 throw new CSharpCompilerDiagnosticException(
                     code: CompilerDiagnosticCodes.Unsupported,
@@ -2218,20 +2572,41 @@ internal sealed class CSharpSourcePrinter
     {
         return expression switch
         {
+            CompilerReferenceExpression reference when reference.Name is "this" or "base" => reference.Name,
             CompilerReferenceExpression reference => CompilerCSharpNaming.Identifier(reference.Name),
             CompilerLiteralExpression literal => Literal(literal.Literal),
             CompilerArrayExpression array => $"new[] {{ {string.Join(", ", array.Items.Select(Expression))} }}",
             CompilerTupleExpression tuple => $"({string.Join(", ", tuple.Items.Select(Expression))})",
             CompilerIndexerExpression indexer => $"{Expression(indexer.Target)}[{Expression(indexer.Index)}]",
             CompilerInvocationExpression invocation => $"{Expression(invocation.Target)}({string.Join(", ", invocation.Arguments.Select(Expression))})",
+            CompilerObjectCreationExpression creation => $"new {creation.TypeName}({string.Join(", ", creation.Arguments.Select(Expression))})",
             CompilerMemberAccessExpression member => $"{Expression(member.Target)}.{member.MemberName}",
             CompilerBinaryExpression binary => $"({Expression(binary.Left)} {binary.Operator} {Expression(binary.Right)})",
+            CompilerUnaryExpression unary when unary.IsPostfix => $"{Expression(unary.Expression)}{unary.Operator}",
+            CompilerUnaryExpression unary when unary.Operator is "++" or "--" => $"{unary.Operator}{Expression(unary.Expression)}",
+            CompilerUnaryExpression unary when unary.Operator is "ref" or "out" or "in" => $"{unary.Operator} {Expression(unary.Expression)}",
             CompilerUnaryExpression unary => $"({unary.Operator}{Expression(unary.Expression)})",
+            CompilerConditionalExpression conditional => $"({Expression(conditional.Condition)} ? {Expression(conditional.WhenTrue)} : {Expression(conditional.WhenFalse)})",
             _ => throw new CSharpCompilerDiagnosticException(
                 code: CompilerDiagnosticCodes.Unsupported,
                 message: $"C# expression '{expression.GetType().Name}' cannot be emitted.",
                 stage: CompilerDiagnosticStage.Emit,
                 span: expression.Span),
+        };
+    }
+
+    private string InlineStatement(CompilerStatement statement)
+    {
+        return statement switch
+        {
+            CompilerDeclarationStatement declaration => $"{declaration.DeclaredTypeName ?? "var"} {CompilerCSharpNaming.Identifier(declaration.Name)}{(declaration.Initializer is null ? string.Empty : $" = {Expression(declaration.Initializer)}")}",
+            CompilerAssignmentStatement assignment => $"{Expression(assignment.Target)} {assignment.Operator} {Expression(assignment.Value)}",
+            CompilerExpressionStatement expression => Expression(expression.Expression),
+            _ => throw new CSharpCompilerDiagnosticException(
+                CompilerDiagnosticCodes.Unsupported,
+                $"Statement '{statement.GetType().Name}' cannot be used in a for initializer.",
+                CompilerDiagnosticStage.Emit,
+                span: statement.Span),
         };
     }
 
@@ -2242,9 +2617,8 @@ internal sealed class CSharpSourcePrinter
             CompilerNullLiteral => "null",
             CompilerBooleanLiteral boolean => boolean.Value ? "true" : "false",
             CompilerSignedIntegerLiteral integer => integer.Value.ToString(CultureInfo.InvariantCulture),
-            CompilerUnsignedIntegerLiteral integer => integer.Value.ToString(CultureInfo.InvariantCulture) + "UL",
-            CompilerFloatingPointLiteral floating => floating.Value.ToString("R", CultureInfo.InvariantCulture)
-                + (floating.ElementType == CompilerElementType.Float32 ? "f" : "d"),
+            CompilerUnsignedIntegerLiteral integer => FormatUnsignedIntegerLiteral(integer),
+            CompilerFloatingPointLiteral floating => FormatFloatingPointLiteral(floating),
             CompilerStringLiteral text => $"\"{Escape(text.Value)}\"",
             CompilerTensorLiteral tensor => TensorLiteral(tensor),
             _ => throw new CSharpCompilerDiagnosticException(
@@ -2255,10 +2629,33 @@ internal sealed class CSharpSourcePrinter
         };
     }
 
+    private static string FormatFloatingPointLiteral(CompilerFloatingPointLiteral floating)
+    {
+        var typePrefix = floating.ElementType == CompilerElementType.Float32 ? "float" : "double";
+        if (double.IsNaN(floating.Value)) return $"{typePrefix}.NaN";
+        if (double.IsPositiveInfinity(floating.Value)) return $"{typePrefix}.PositiveInfinity";
+        if (double.IsNegativeInfinity(floating.Value)) return $"{typePrefix}.NegativeInfinity";
+        return floating.Value.ToString("R", CultureInfo.InvariantCulture)
+            + (floating.ElementType == CompilerElementType.Float32 ? "f" : "d");
+    }
+
+    private static string FormatUnsignedIntegerLiteral(CompilerUnsignedIntegerLiteral integer)
+    {
+        var value = integer.Value.ToString(CultureInfo.InvariantCulture);
+        return integer.ElementType switch
+        {
+            CompilerElementType.UInt8 or CompilerElementType.UInt16 => value,
+            CompilerElementType.UInt32 => integer.Value > int.MaxValue ? value + "U" : value,
+            CompilerElementType.UInt64 => value + "UL",
+            _ => value + "UL",
+        };
+    }
+
     private static string TensorLiteral(CompilerTensorLiteral tensor)
     {
         var elementType = tensor.ElementType switch
         {
+            CompilerElementType.Boolean => "bool",
             CompilerElementType.Float32 => "float",
             CompilerElementType.Float64 => "double",
             CompilerElementType.Int8 => "sbyte",
@@ -2274,7 +2671,6 @@ internal sealed class CSharpSourcePrinter
                 $"Scalar initializer dtype '{tensor.ElementType}' cannot be emitted as a TorchSharp tensor.",
                 CompilerDiagnosticStage.Emit),
         };
-        var values = string.Join(", ", tensor.Values.Select(Literal));
         var dimensions = string.Join(", ", tensor.Dimensions.Select(dimension =>
             dimension is CompilerFixedDimension fixedDimension
                 ? fixedDimension.Value.ToString(CultureInfo.InvariantCulture) + "L"
@@ -2284,10 +2680,11 @@ internal sealed class CSharpSourcePrinter
                     CompilerDiagnosticStage.Emit)));
         var torchType = tensor.ElementType switch
         {
+            CompilerElementType.Boolean => "Bool",
             CompilerElementType.Float32 => "Float32",
             CompilerElementType.Float64 => "Float64",
             CompilerElementType.Int8 => "Int8",
-            CompilerElementType.UInt8 => "UInt8",
+            CompilerElementType.UInt8 => "Byte",
             CompilerElementType.Int16 => "Int16",
             CompilerElementType.UInt16 => "UInt16",
             CompilerElementType.Int32 => "Int32",
@@ -2299,6 +2696,7 @@ internal sealed class CSharpSourcePrinter
                 $"Scalar initializer dtype '{tensor.ElementType}' cannot be emitted as a TorchSharp tensor.",
                 CompilerDiagnosticStage.Emit),
         };
+        var values = string.Join(", ", tensor.Values.Select(Literal));
         return $"torch.tensor(new {elementType}[] {{ {values} }}, [{dimensions}], dtype: torch.ScalarType.{torchType})";
     }
 
@@ -2309,6 +2707,9 @@ internal sealed class CSharpSourcePrinter
             CompilerReturnStatement => true,
             CompilerBlockStatement block => block.Statements.Any(AlwaysReturns),
             CompilerStaticIfStatement conditional => AlwaysReturns(conditional.WhenTrue)
+                && conditional.WhenFalse is not null
+                && AlwaysReturns(conditional.WhenFalse),
+            CompilerRuntimeIfStatement conditional => AlwaysReturns(conditional.WhenTrue)
                 && conditional.WhenFalse is not null
                 && AlwaysReturns(conditional.WhenFalse),
             _ => false,

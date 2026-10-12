@@ -37,7 +37,7 @@ internal sealed class ExpandOperator() : CompilerOperator<Onnxify.Expand>(Compil
             throw Unsupported(operation.Span, "ONNX Expand cannot represent TorchSharp expand dimensions below zero.");
         }
 
-        return $"{CompilerCSharpNaming.Identifier(expand.Input.Name)}.expand(new long[] {{ {StaticInt64Vector.Format(dimensions)} }})";
+        return $"ExpandWithRuntimeShape({CompilerCSharpNaming.Identifier(expand.Input.Name)}, new long[] {{ {StaticInt64Vector.Format(dimensions)} }})";
     }
 
     public override string? ValidateOnnxNode(OnnxNode node, IReadOnlyDictionary<string, CompilerType> knownTypes)

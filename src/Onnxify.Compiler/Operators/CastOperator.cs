@@ -105,5 +105,20 @@ internal sealed class CastOperator() : UnaryOperator<Onnxify.Cast>("Cast", "to_t
         };
         return $"{node.Inputs[0].Name}.to_type(torch.ScalarType.{typeName})";
     }
+
+    public override void PrintOnnx(OnnxGraph graph, CompilerOnnxStep operation)
+    {
+        // Imported models may use the legacy Cast schema (attribute `to`). Keep it generic so
+        // OnnxModel can preserve that schema when the source model's opset predates Cast-24.
+        var node = operation.Node;
+        graph.AddNode(new OnnxNode(
+            node.Name,
+            node.OpType,
+            node.Domain,
+            node.DocString,
+            node.Inputs,
+            node.Outputs,
+            node.Attributes));
+    }
 }
 

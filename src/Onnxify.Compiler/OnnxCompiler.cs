@@ -961,7 +961,7 @@ internal static class OnnxCompilerFrontend
             {
                 diagnostics.Add(new CompilerDiagnostic(
                     code: CompilerDiagnosticCodes.Unsupported,
-                    message: $"ONNX operator '{node.Domain}::{node.OpType}' cannot be represented as generated node type '{mapping.NodeType.Name}' with its current inputs, outputs, and attributes.",
+                    message: $"ONNX operator '{node.Domain}::{node.OpType}' ({node.GetType().Name}, inputs={node.Inputs.Count}, outputs={node.Outputs.Count}, attributes=[{string.Join(", ", node.Attributes.Select(static attribute => attribute.Name))}]) cannot be represented as generated node type '{mapping.NodeType.Name}' for mapping domain '{mapping.OnnxDomain}' with its current inputs, outputs, and attributes.",
                     stage: CompilerDiagnosticStage.Analyze,
                     severity: CompilerDiagnosticSeverity.Error,
                     span: span,
@@ -1261,18 +1261,6 @@ internal static class OnnxCompilerBackend
         CompilerStructural.RequireNotNull(tree, nameof(tree));
         var diagnostics = new List<CompilerDiagnostic>();
 
-        if (tree.SyntaxBody is not null)
-        {
-            return CompilerResult<OnnxModel>.Failure(
-            [
-                new CompilerDiagnostic(
-                    code: CompilerDiagnosticCodes.Unsupported,
-                    message: "The ONNX backend cannot emit an unlowered C# syntax body.",
-                    stage: CompilerDiagnosticStage.Emit,
-                    severity: CompilerDiagnosticSeverity.Error),
-            ]);
-        }
-
         try
         {
             var envelope = tree.ModelEnvelope;
@@ -1373,7 +1361,10 @@ internal static class OnnxCompilerBackend
 
         var definitions = tree.Inputs
             .Concat(tree.Outputs)
-            .Concat(tree.IntermediateValues)
+            // Missing ONNX value_info entries are represented as opaque compiler values.
+            // They are not declarations and must not be emitted as opaque ONNX ValueInfo,
+            // which can contradict types inferred by ONNX Runtime from producer operators.
+            .Concat(tree.IntermediateValues.Where(static value => value.Type is not CompilerOpaqueType))
             .GroupBy(x => x.Name, StringComparer.Ordinal)
             .Select(x => x.First())
             .ToDictionary(x => x.Name, x => x, StringComparer.Ordinal);
@@ -1381,7 +1372,7 @@ internal static class OnnxCompilerBackend
         var onnxValues = new Dictionary<string, OnnxValue>(StringComparer.Ordinal);
         foreach (var value in definitions.Values)
         {
-            var onnxType = OnnxCompilerTypeMap.ToOnnxType(value.Type);
+            var onnxType = ToGraphValueType(value.Type);
             var onnxValue = CreateOnnxValue(value.Name, onnxType);
             graph.AddValue(onnxValue);
             onnxValues.Add(value.Name, onnxValue);
@@ -1421,6 +1412,19 @@ internal static class OnnxCompilerBackend
                 "ONNX graphs cannot represent compiler parameters or buffers separately from initializers.");
         }
 
+        if (tree.SyntaxBody is not null)
+        {
+            if (tree.Operations.Count != 0)
+            {
+                throw new CompilerConversionException(
+                    CompilerDiagnosticCodes.Unsupported,
+                    "C# syntax lowering cannot be mixed with pre-lowered operations in the same computation tree.");
+            }
+
+            new CSharpOnnxControlFlowLowerer(tree, graph, diagnostics, caller).Lower();
+            return;
+        }
+
         foreach (var operation in tree.Operations)
         {
             switch (operation)
@@ -1447,6 +1451,16 @@ internal static class OnnxCompilerBackend
                         $"Computation step '{operation.Name}' has no ONNX representation.");
             }
         }
+    }
+
+    private static OnnxValueType ToGraphValueType(CompilerType type)
+    {
+        return type is CompilerScalarType scalar
+            ? new OnnxTensorType(
+                CompilerElementTypeMap.ToSystemType(scalar.ElementType),
+                OnnxTensorShape.Create(Array.Empty<long>()),
+                string.Empty)
+            : OnnxCompilerTypeMap.ToOnnxType(type);
     }
 
     private static void EmitModuleCall(
