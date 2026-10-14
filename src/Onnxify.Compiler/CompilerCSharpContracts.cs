@@ -340,4 +340,10 @@ public sealed class CompilerCSharpGenerationOptions
     public string ModuleName { get; set; } = "GeneratedTorchModule";
 
     public bool IncludeNullableContext { get; set; } = true;
+
+    public CompilerWeightStorageKind WeightStorage { get; set; } = CompilerWeightStorageKind.Onnx;
+
+    public string SourceFileName { get; set; } = "GeneratedTorchModule.cs";
+
+    public string? WeightsFileName { get; set; }
 }

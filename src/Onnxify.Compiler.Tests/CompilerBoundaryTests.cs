@@ -32,7 +32,7 @@ public sealed class CompilerBoundaryTests
     {
         ICompilerSink<OnnxGraph> onnxSink = new OnnxCompilerSink();
         ICompilerSink<OnnxModel> modelSink = new OnnxModelCompilerSink();
-        ICompilerSink<string> csharpSink = new CSharpCompilerSink();
+        ICompilerSink<IFile[]> csharpSink = new CSharpCompilerSink();
 
         Assert.Equal(CompilerTargetKind.OnnxGraph, onnxSink.Kind);
         Assert.Equal(CompilerTargetKind.OnnxModel, modelSink.Kind);
@@ -43,7 +43,7 @@ public sealed class CompilerBoundaryTests
     [Fact]
     public void CompilerSessionContractReturnsDiagnosticResults()
     {
-        ICompilerSession session = new TestCompilerSession();
+        ICSharpCompilerSession session = new TestCompilerSession();
 
         var treeResult = session.CreateTree(new CSharpTorchSharpSource("return input;"));
         var outputResult = session.Generate(treeResult.Value!, new CSharpCompilerSink());
@@ -51,13 +51,14 @@ public sealed class CompilerBoundaryTests
         Assert.True(treeResult.IsSuccess);
         Assert.Empty(treeResult.Diagnostics);
         Assert.True(outputResult.IsSuccess);
-        Assert.Equal("generated", outputResult.Value);
+        Assert.Equal("generated.cs", Assert.Single(outputResult.Value!).Name);
+        Assert.Equal("generated", Assert.IsType<SourceCodeFile>(Assert.Single(outputResult.Value!)).Content);
     }
 
     [Fact]
     public void CompilerSessionContractSupportsOnnxOutput()
     {
-        ICompilerSession session = new TestCompilerSession();
+        IOnnxCompilerSession session = new TestCompilerSession();
 
         var treeResult = session.CreateTree(new OnnxCompilerSource(OnnxModel.Create()));
         var outputResult = session.Generate(treeResult.Value!, new OnnxCompilerSink());
@@ -406,7 +407,7 @@ public sealed class CompilerBoundaryTests
             new CompilerDiagnosticContext("forward", "torch.add"));
     }
 
-    private sealed class TestCompilerSession : ICompilerSession
+    private sealed class TestCompilerSession : ICSharpCompilerSession, IOnnxCompilerSession
     {
         public CompilerResult<ICompilerTree> CreateTree(ICompilerSource source)
         {
@@ -418,7 +419,7 @@ public sealed class CompilerBoundaryTests
             return CompilerResult<ICompilerTree>.Success(new TestCompilerTree(source));
         }
 
-        public CompilerResult<TOutput> Generate<TOutput>(ICompilerTree tree, ICompilerSink<TOutput> sink)
+        public CompilerResult<OnnxGraph> Generate(ICompilerTree tree, OnnxCompilerSink sink)
         {
             if (tree is null)
             {
@@ -430,25 +431,39 @@ public sealed class CompilerBoundaryTests
                 throw new ArgumentNullException(nameof(sink));
             }
 
-            if (sink.Kind == CompilerTargetKind.CSharp && typeof(TOutput) == typeof(string))
-            {
-                return CompilerResult<TOutput>.Success((TOutput)(object)"generated");
-            }
-
-            if (sink.Kind == CompilerTargetKind.OnnxGraph && typeof(TOutput) == typeof(OnnxGraph))
-            {
-                return CompilerResult<TOutput>.Success((TOutput)(object)OnnxModel.Create().Graph);
-            }
-
-            return CompilerResult<TOutput>.Failure(
-            [
-                new CompilerDiagnostic(
-                    CompilerDiagnosticCodes.Unsupported,
-                    "The test session does not support this compiler sink.",
-                    CompilerDiagnosticStage.Emit,
-                    CompilerDiagnosticSeverity.Error),
-            ]);
+            return CompilerResult<OnnxGraph>.Success(OnnxModel.Create().Graph);
         }
+
+        public CompilerResult<OnnxModel> Generate(ICompilerTree tree, OnnxModelCompilerSink sink)
+        {
+            if (tree is null)
+            {
+                throw new ArgumentNullException(nameof(tree));
+            }
+
+            if (sink is null)
+            {
+                throw new ArgumentNullException(nameof(sink));
+            }
+
+            return CompilerResult<OnnxModel>.Success(OnnxModel.Create());
+        }
+
+        public CompilerResult<IFile[]> Generate(ICompilerTree tree, CSharpCompilerSink sink)
+        {
+            if (tree is null)
+            {
+                throw new ArgumentNullException(nameof(tree));
+            }
+
+            if (sink is null)
+            {
+                throw new ArgumentNullException(nameof(sink));
+            }
+
+            return CompilerResult<IFile[]>.Success([new SourceCodeFile("generated.cs", "generated")]);
+        }
+
     }
 
     private sealed class TestCompilerTree(ICompilerSource source) : ICompilerTree

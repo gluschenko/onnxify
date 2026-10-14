@@ -1,4 +1,4 @@
-﻿using System.Runtime.Loader;
+using System.Runtime.Loader;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.ML.OnnxRuntime;
@@ -74,7 +74,7 @@ public sealed class ArithmeticCompilerTests
         var onnxOperation = Assert.IsType<CompilerOnnxStep>(Assert.Single(onnxTree.Value!.Operations));
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxOperation.Descriptor.Capability);
         Assert.Equal(onnxName, onnxOperation.Descriptor.Name);
-        var generatedCSharp = Compiler.GenerateCSharp(onnxTree.Value);
+        var generatedCSharp = Compiler.GenerateSourceCode(onnxTree.Value);
         Assert.True(generatedCSharp.IsSuccess, FormatDiagnostics(generatedCSharp.Diagnostics));
         var expectedGeneratedForm = onnxName switch
         {
@@ -86,8 +86,8 @@ public sealed class ArithmeticCompilerTests
             "Max" => ".maximum(",
             _ => ".minimum(",
         };
-        Assert.Contains(expectedGeneratedForm, generatedCSharp.Value);
-        AssertClose(expectedValues, ExecuteGeneratedModule(generatedCSharp.Value!, leftValues, rightValues));
+        Assert.Contains(expectedGeneratedForm, generatedCSharp.SourceCode());
+        AssertClose(expectedValues, ExecuteGeneratedModule(generatedCSharp.SourceCode(), leftValues, rightValues));
 
         var torchSource = onnxName switch
         {
@@ -119,9 +119,9 @@ public sealed class ArithmeticCompilerTests
         Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
         Assert.Equal([3f, 4f, 5f], ExecuteOnnxScalar(emitted.Value!, [1f, 2f, 3f]));
 
-        var generated = Compiler.GenerateCSharp(imported.Value);
+        var generated = Compiler.GenerateSourceCode(imported.Value);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Equal([3f, 4f, 5f], ExecuteGeneratedModule(generated.Value!, [1f, 2f, 3f], null));
+        Assert.Equal([3f, 4f, 5f], ExecuteGeneratedModule(generated.SourceCode(), [1f, 2f, 3f], null));
     }
 
     [Fact]
@@ -162,10 +162,10 @@ public sealed class ArithmeticCompilerTests
         Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics));
         AssertClose(expected, ExecuteOnnxScalar(emitted.Value!, [1f, 2f, 3f]));
 
-        var generated = Compiler.GenerateCSharp(imported.Value);
+        var generated = Compiler.GenerateSourceCode(imported.Value);
 
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        AssertClose(expected, ExecuteGeneratedModule(generated.Value!, [1f, 2f, 3f], null));
+        AssertClose(expected, ExecuteGeneratedModule(generated.SourceCode(), [1f, 2f, 3f], null));
     }
 
     [Fact]
@@ -217,9 +217,9 @@ public sealed class ArithmeticCompilerTests
         var onnxModel = CreateBinaryModel("Add", leftShape, rightShape, outputShape);
         var onnxTree = Compiler.CreateTreeFromOnnx(onnxModel);
         Assert.True(onnxTree.IsSuccess, FormatDiagnostics(onnxTree.Diagnostics));
-        var generated = Compiler.GenerateCSharp(onnxTree.Value!);
+        var generated = Compiler.GenerateSourceCode(onnxTree.Value!);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Equal(expected, ExecuteGeneratedBroadcastModule(generated.Value!, leftValues, leftShape, rightValues, rightShape));
+        Assert.Equal(expected, ExecuteGeneratedBroadcastModule(generated.SourceCode(), leftValues, leftShape, rightValues, rightShape));
         Assert.Equal(expected, ExecuteOnnx(onnxModel, leftValues, leftShape, rightValues, rightShape));
 
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor left, global::TorchSharp.torch.Tensor right) { return left + right; }";
@@ -253,13 +253,13 @@ public sealed class ArithmeticCompilerTests
 
         var imported = Compiler.CreateTreeFromOnnx(model);
         Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
-        var generated = Compiler.GenerateCSharp(imported.Value!);
+        var generated = Compiler.GenerateSourceCode(imported.Value!);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
 
         var leftValues = new[] { 1d, 2d };
         var rightValues = new[] { 10d, 20d };
         var expected = new[] { 11d, 21d, 12d, 22d };
-        Assert.Equal(expected, ExecuteGeneratedDoubleBroadcastModule(generated.Value!, leftValues, rightValues));
+        Assert.Equal(expected, ExecuteGeneratedDoubleBroadcastModule(generated.SourceCode(), leftValues, rightValues));
         Assert.Equal(expected, ExecuteOnnxDouble(model, leftValues, rightValues));
 
         var emitted = Compiler.GenerateOnnx(imported.Value!);
@@ -401,9 +401,9 @@ public sealed class ArithmeticCompilerTests
         var expected = new[] { 0.5f, -0.5f, 0.5f, 1.5f, -0.5f, 2.5f };
         AssertClose(expected, ExecuteOnnx(emitted.Value, leftValues, [2, 3], rightValues, [3]));
 
-        var generated = Compiler.GenerateCSharp(imported.Value);
+        var generated = Compiler.GenerateSourceCode(imported.Value);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        AssertClose(expected, ExecuteGeneratedModule(generated.Value!, leftValues, rightValues));
+        AssertClose(expected, ExecuteGeneratedModule(generated.SourceCode(), leftValues, rightValues));
     }
 
     [Fact]
@@ -415,9 +415,9 @@ public sealed class ArithmeticCompilerTests
         var operation = Assert.IsType<CompilerOnnxStep>(Assert.Single(imported.Value!.Operations));
         Assert.Equal("Mod", operation.Descriptor.Name);
         Assert.Equal(CompilerOperationCapability.Bidirectional, operation.Descriptor.Capability);
-        var generated = Compiler.GenerateCSharp(imported.Value);
+        var generated = Compiler.GenerateSourceCode(imported.Value);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Contains("left.remainder(right)", generated.Value);
+        Assert.Contains("left.remainder(right)", generated.SourceCode());
 
         var fmodModel = CreateModModel(fmod: 1);
         var unsupported = Compiler.CreateTreeFromOnnx(fmodModel);
@@ -450,15 +450,15 @@ public sealed class ArithmeticCompilerTests
         var operation = Assert.IsType<CompilerOnnxStep>(Assert.Single(imported.Value!.Operations));
         Assert.Equal("Where", operation.Descriptor.Name);
         Assert.Equal(CompilerOperationCapability.Bidirectional, operation.Descriptor.Capability);
-        var source = Compiler.GenerateCSharp(imported.Value);
+        var source = Compiler.GenerateSourceCode(imported.Value);
         Assert.True(source.IsSuccess, FormatDiagnostics(source.Diagnostics));
-        Assert.Contains("torch.where(condition, left, right)", source.Value);
+        Assert.Contains("torch.where(condition, left, right)", source.SourceCode());
 
         var conditions = new[] { true, false, true, false, true, false };
         var leftValues = new[] { 1f, 2f, 3f, 4f, 5f, 6f };
         var rightValues = new[] { 10f, 20f, 30f };
         var expectedValues = new[] { 1f, 20f, 3f, 10f, 5f, 30f };
-        AssertClose(expectedValues, ExecuteWhereModule(source.Value!, conditions, leftValues, rightValues));
+        AssertClose(expectedValues, ExecuteWhereModule(source.SourceCode(), conditions, leftValues, rightValues));
 
         const string torchSource = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor condition, global::TorchSharp.torch.Tensor left, global::TorchSharp.torch.Tensor right) { return torch.where(condition, left, right); }";
         var torchTree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(torchSource));
@@ -485,10 +485,10 @@ public sealed class ArithmeticCompilerTests
         Assert.True(onnxTree.IsSuccess, FormatDiagnostics(onnxTree.Diagnostics));
         var onnxOperation = Assert.IsType<CompilerOnnxStep>(Assert.Single(onnxTree.Value!.Operations));
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxOperation.Descriptor.Capability);
-        var generated = Compiler.GenerateCSharp(onnxTree.Value);
+        var generated = Compiler.GenerateSourceCode(onnxTree.Value);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Contains("to_type(torch.ScalarType.Int64)", generated.Value);
-        Assert.Equal([1L, -2L, 3L], ExecuteGeneratedCastModule(generated.Value!, [1.9f, -2.2f, 3.8f]));
+        Assert.Contains("to_type(torch.ScalarType.Int64)", generated.SourceCode());
+        Assert.Equal([1L, -2L, 3L], ExecuteGeneratedCastModule(generated.SourceCode(), [1.9f, -2.2f, 3.8f]));
 
         const string torchSource = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.to_type(torch.ScalarType.Int64); }";
         var torchTree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(torchSource));
@@ -771,9 +771,9 @@ public sealed class ArithmeticCompilerTests
         var onnxOperation = Assert.IsType<CompilerOnnxStep>(Assert.Single(onnxTree.Value!.Operations));
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxOperation.Descriptor.Capability);
         Assert.Equal(onnxName, onnxOperation.Descriptor.Name);
-        var generated = Compiler.GenerateCSharp(onnxTree.Value);
+        var generated = Compiler.GenerateSourceCode(onnxTree.Value);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        AssertClose(expectedValues, ExecuteGeneratedUnaryModule(generated.Value!, inputValues));
+        AssertClose(expectedValues, ExecuteGeneratedUnaryModule(generated.SourceCode(), inputValues));
 
         var expression = onnxName == "Neg" ? "-input" : $"input.{torchMethod}()";
         var torchTree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(
@@ -795,10 +795,10 @@ public sealed class ArithmeticCompilerTests
         Assert.Equal(mappingName, operation.Descriptor.Name);
         Assert.Equal(CompilerOperationCapability.Bidirectional, operation.Descriptor.Capability);
 
-        var generated = Compiler.GenerateCSharp(imported.Value);
+        var generated = Compiler.GenerateSourceCode(imported.Value);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Contains("forward", generated.Value, StringComparison.Ordinal);
-        return ExecuteGeneratedComposite(generated.Value!, inputValues);
+        Assert.Contains("forward", generated.SourceCode(), StringComparison.Ordinal);
+        return ExecuteGeneratedComposite(generated.SourceCode(), inputValues);
     }
 
     private static float[] ExecuteGeneratedComposite(string source, IReadOnlyList<float[]> inputValues)

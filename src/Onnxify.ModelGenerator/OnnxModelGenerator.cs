@@ -1,4 +1,4 @@
-﻿using System.Collections.Immutable;
+using System.Collections.Immutable;
 using System.Text;
 using Google.Protobuf;
 using Microsoft.CodeAnalysis;
@@ -255,20 +255,20 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
                     return new ModelAnalysisResult(null, diagnostics.ToImmutableArray());
                 }
 
-                var generated = CompilerFacade.GenerateCSharp(treeResult.Value,
+                var generated = CompilerFacade.GenerateSourceCode(treeResult.Value,
                     new CompilerCSharpGenerationOptions
                     {
                         Namespace = namespaceName,
                         ClassName = $"{className}TorchModule",
                         ModuleName = $"{className}TorchModule",
                     });
-                if (!generated.IsSuccess || generated.Value is null)
+                if (!generated.IsSuccess || generated.SourceCode() is null)
                 {
                     AddCompilerDiagnostics(fileName, generated.Diagnostics, diagnostics);
                     return new ModelAnalysisResult(null, diagnostics.ToImmutableArray());
                 }
 
-                experimentalTorchModuleSource = generated.Value;
+                experimentalTorchModuleSource = generated.SourceCode();
             }
             catch (Exception exception)
             {

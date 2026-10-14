@@ -62,6 +62,28 @@ public class SafetensorsTests
     }
 
     [Fact]
+    public void ValueApi_SetTensorAndGetBFloat16_PreserveEncodedValues()
+    {
+        var safetensors = new SafeTensors();
+        Array values = new BFloat16[]
+        {
+            BFloat16.FromEncoded(0x3f80),
+            BFloat16.FromEncoded(0xc000),
+        };
+
+        safetensors.SetTensor("bf16", values, 1, 2);
+        var loaded = SafeTensors.Deserialize(safetensors.Serialize());
+
+        Assert.Equal(DataType.Bf16, loaded.Tensor("bf16").DataType);
+        Assert.Equal([1, 2], loaded.Tensor("bf16").Shape);
+        Assert.Equal(
+            new[] { BFloat16.FromEncoded(0x3f80), BFloat16.FromEncoded(0xc000) },
+            loaded.Get<BFloat16>("bf16"));
+        Assert.Equal(new[] { 1f, -2f }, loaded.Get<BFloat16>("bf16").Select(static value => value.ToSingle()));
+        Assert.Throws<InvalidOperationException>(() => loaded.Get<float>("bf16"));
+    }
+
+    [Fact]
     public void Serialize_F32_MatchesUpstreamBytes()
     {
         var data = FloatsToBytes(0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f);

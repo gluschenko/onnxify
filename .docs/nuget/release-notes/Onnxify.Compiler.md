@@ -1,5 +1,7 @@
 ## 0.4.0
 
+- Changed `Compiler.GenerateCSharp(...)` to return source and binary `IFile` artifacts, with ONNX-file and Safetensors-backed runtime weight loading and no generated inline weight payloads.
+
 - Introduced the shared compiler package boundary for bidirectional C# TorchSharp and ONNX transformations.
 - Added compiler-owned source, sink, and session contracts with acyclic dependency direction through the core `Onnxify` package.
 - Added immutable compiler IR types for computation trees, value types, dimensions, literals, state members, operations, module calls, reusable blocks, and ordered C# syntax.

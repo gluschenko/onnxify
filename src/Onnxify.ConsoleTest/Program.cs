@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Runtime.Loader;
 using System.Text;
 using Microsoft.ML.OnnxRuntime;
@@ -77,18 +77,18 @@ namespace Onnxify.ConsoleTest
                 throw new InvalidOperationException($"Unexpected compiler mapping counts for {sourcePath}.");
             }
 
-            var generated = global::Onnxify.Compiler.Compiler.GenerateCSharp(tree, new CompilerCSharpGenerationOptions
+            var generated = global::Onnxify.Compiler.Compiler.GenerateSourceCode(tree, new CompilerCSharpGenerationOptions
             {
                 Namespace = "Onnxify.ConsoleTest.GeneratedMobileNet",
                 ClassName = "GeneratedMobileNetModule",
                 ModuleName = "generated-mobilenet",
             });
-            if (!generated.IsSuccess || generated.Value is null)
+            if (!generated.IsSuccess || generated.SourceCode() is null)
             {
                 throw new InvalidOperationException(FormatCompilerDiagnostics(generated.Diagnostics));
             }
 
-            var generatedModule = CompileGeneratedModule(generated.Value);
+            var generatedModule = CompileGeneratedModule(generated.SourceCode(), sourcePath);
             var inputValues = Enumerable.Range(0, 3 * 224 * 224)
                 .Select(static index => (float)(Math.Sin(index * 0.017) * 0.75))
                 .ToArray();
@@ -166,7 +166,7 @@ namespace Onnxify.ConsoleTest
                     $"{diagnostic.Severity} {diagnostic.Code}: {diagnostic.Message}"));
         }
 
-        private static IDisposable CompileGeneratedModule(string source)
+        private static IDisposable CompileGeneratedModule(string source, string weightsPath)
         {
             var references = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))!
                 .Split(Path.PathSeparator)
@@ -189,7 +189,7 @@ namespace Onnxify.ConsoleTest
             assemblyBytes.Position = 0;
             var assembly = AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
             var moduleType = assembly.GetTypes().Single(static type => type.Name == "GeneratedMobileNetModule");
-            return (IDisposable)Activator.CreateInstance(moduleType, "generated-mobilenet")!;
+            return (IDisposable)Activator.CreateInstance(moduleType, weightsPath, "generated-mobilenet")!;
         }
 
         private static float[] ExecuteGeneratedModule(IDisposable module, float[] inputValues)

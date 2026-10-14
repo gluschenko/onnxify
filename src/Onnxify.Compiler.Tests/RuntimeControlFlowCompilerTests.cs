@@ -444,7 +444,7 @@ public sealed class RuntimeControlFlowCompilerTests
     {
         var imported = Compiler.CreateTreeFromOnnx(source);
         Assert.True(imported.IsSuccess, string.Join(Environment.NewLine, imported.Diagnostics.Select(x => x.Message)));
-        var generated = Compiler.GenerateCSharp(imported.Value!, new CompilerCSharpGenerationOptions
+        var generated = Compiler.GenerateSourceCode(imported.Value!, new CompilerCSharpGenerationOptions
         {
             Namespace = "Onnxify.GeneratedControlFlow",
             ClassName = "GeneratedIf",
@@ -458,14 +458,14 @@ public sealed class RuntimeControlFlowCompilerTests
             .Append(MetadataReference.CreateFromFile(typeof(global::TorchSharp.torch.Tensor).Assembly.Location));
         var compilation = CSharpCompilation.Create(
             $"GeneratedIf{Guid.NewGuid():N}",
-            [CSharpSyntaxTree.ParseText(generated.Value!)],
+            [CSharpSyntaxTree.ParseText(generated.SourceCode())],
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         using var assemblyBytes = new MemoryStream();
         var emitted = compilation.Emit(assemblyBytes);
         Assert.True(emitted.Success, string.Join(Environment.NewLine,
             emitted.Diagnostics.Where(x => x.Severity == DiagnosticSeverity.Error))
-            + Environment.NewLine + generated.Value);
+            + Environment.NewLine + generated.SourceCode());
 
         assemblyBytes.Position = 0;
         var assembly = System.Runtime.Loader.AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);

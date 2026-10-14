@@ -163,9 +163,9 @@ public sealed class OnnxCompilerTests
         Assert.IsType<Onnxify.Relu>(operation.Node);
         Assert.DoesNotContain(imported.Diagnostics, diagnostic => diagnostic.Code == CompilerDiagnosticCodes.Unsupported);
 
-        var csharp = Compiler.GenerateCSharp(imported.Value);
+        var csharp = Compiler.GenerateSourceCode(imported.Value);
         Assert.True(csharp.IsSuccess, string.Join(" | ", csharp.Diagnostics.Select(x => x.Message)));
-        Assert.Contains("torch.nn.functional.relu(input)", csharp.Value);
+        Assert.Contains("torch.nn.functional.relu(input)", csharp.SourceCode());
 
         var emitted = Compiler.GenerateOnnx(imported.Value);
         Assert.True(emitted.IsSuccess, string.Join(" | ", emitted.Diagnostics.Select(x => x.Message)));

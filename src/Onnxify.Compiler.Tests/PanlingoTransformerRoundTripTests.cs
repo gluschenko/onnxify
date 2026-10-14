@@ -34,14 +34,14 @@ public sealed class PanlingoTransformerRoundTripTests
         Assert.Single(nodes, node => node.Node is global::Onnxify.Shape);
         Assert.Single(nodes, node => node.Node is global::Onnxify.Identity);
 
-        var generated = Compiler.GenerateCSharp(tree, new CompilerCSharpGenerationOptions
+        var generated = Compiler.GenerateSourceCode(tree, new CompilerCSharpGenerationOptions
         {
             Namespace = "Onnxify.GeneratedPanlingoTransformer",
             ClassName = "GeneratedPanlingoTransformer",
             ModuleName = "panlingo-transformer",
         });
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        using var module = CompileGeneratedModule(generated.Value!);
+        using var module = CompileGeneratedModule(generated.SourceCode(), modelPath);
 
         var roundTripPath = Path.Combine(Path.GetTempPath(), $"oxy036-{Guid.NewGuid():N}.onnx");
         try
@@ -70,7 +70,7 @@ public sealed class PanlingoTransformerRoundTripTests
         }
     }
 
-    private static IDisposable CompileGeneratedModule(string source)
+    private static IDisposable CompileGeneratedModule(string source, string weightsPath)
     {
         var references = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))!
             .Split(Path.PathSeparator)
@@ -87,7 +87,7 @@ public sealed class PanlingoTransformerRoundTripTests
         assemblyBytes.Position = 0;
         var assembly = AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
         var type = assembly.GetTypes().Single(candidate => candidate.Name == "GeneratedPanlingoTransformer");
-        return (IDisposable)Activator.CreateInstance(type, "panlingo-transformer")!;
+        return (IDisposable)Activator.CreateInstance(type, weightsPath, "panlingo-transformer")!;
     }
 
     private static float[] ExecuteGeneratedModule(IDisposable module, long[] ids)

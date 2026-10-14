@@ -41,18 +41,18 @@ public sealed class CompilerMobileNetRoundTripTests
         try
         {
             exported.Value!.Save(roundTrippedPath, overwrite: true);
-            var generated = global::Onnxify.Compiler.Compiler.GenerateCSharp(tree, new CompilerCSharpGenerationOptions
+            var generated = global::Onnxify.Compiler.Compiler.GenerateSourceCode(tree, new CompilerCSharpGenerationOptions
             {
                 Namespace = "Onnxify.Tests.GeneratedMobileNet",
                 ClassName = "GeneratedMobileNetModule",
                 ModuleName = "generated-mobilenet",
             });
             Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-            Assert.Contains("torch.nn.functional.conv2d", generated.Value, StringComparison.Ordinal);
-            Assert.Contains(".clamp(", generated.Value, StringComparison.Ordinal);
-            Assert.Contains("torch.nn.functional.adaptive_avg_pool2d", generated.Value, StringComparison.Ordinal);
+            Assert.Contains("torch.nn.functional.conv2d", generated.SourceCode(), StringComparison.Ordinal);
+            Assert.Contains(".clamp(", generated.SourceCode(), StringComparison.Ordinal);
+            Assert.Contains("torch.nn.functional.adaptive_avg_pool2d", generated.SourceCode(), StringComparison.Ordinal);
 
-            using var module = CompileGeneratedModule(generated.Value!);
+            using var module = CompileGeneratedModule(generated.SourceCode(), sourcePath);
             var values = Enumerable.Range(0, 3 * 224 * 224)
                 .Select(static index => (float)(Math.Sin(index * 0.017) * 0.75))
                 .ToArray();
@@ -81,7 +81,7 @@ public sealed class CompilerMobileNetRoundTripTests
                 $"{diagnostic.Severity} {diagnostic.Code}: {diagnostic.Message}"));
     }
 
-    private static IDisposable CompileGeneratedModule(string source)
+    private static IDisposable CompileGeneratedModule(string source, string weightsPath)
     {
         var references = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))!
             .Split(Path.PathSeparator)
@@ -103,7 +103,7 @@ public sealed class CompilerMobileNetRoundTripTests
         assemblyBytes.Position = 0;
         var assembly = AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
         var moduleType = assembly.GetTypes().Single(static type => type.Name == "GeneratedMobileNetModule");
-        return (IDisposable)Activator.CreateInstance(moduleType, "generated-mobilenet")!;
+        return (IDisposable)Activator.CreateInstance(moduleType, weightsPath, "generated-mobilenet")!;
     }
 
     private static float[] ExecuteGeneratedModule(IDisposable module, float[] inputValues)

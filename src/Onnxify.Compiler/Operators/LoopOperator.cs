@@ -125,11 +125,15 @@ internal sealed class LoopOperator() : CompilerOperator(CompilerOperatorIdentity
         return node.Outputs.Count == 1 ? $"{arrayExpression}[0]" : arrayExpression;
     }
 
-    private static string TorchScalarType(Type type, CompilerSourceSpan? span) =>
-        type == typeof(float) ? "Float32"
-        : type == typeof(double) ? "Float64"
-        : type == typeof(bool) ? "Bool"
-        : type == typeof(long) ? "Int64"
-        : type == typeof(int) ? "Int32"
-        : throw Unsupported(span, $"Loop scan output dtype '{type.Name}' is not supported by the zero-trip TorchSharp lowering.");
+    private static string TorchScalarType(Type type, CompilerSourceSpan? span)
+    {
+        try
+        {
+            return CompilerElementTypeMap.ToTorchSharpScalarTypeName(CompilerElementTypeMap.FromSystemType(type));
+        }
+        catch (CompilerConversionException)
+        {
+            throw Unsupported(span, $"Loop scan output dtype '{type.Name}' is not supported by the zero-trip TorchSharp lowering.");
+        }
+    }
 }

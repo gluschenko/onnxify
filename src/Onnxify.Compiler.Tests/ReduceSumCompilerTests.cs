@@ -31,14 +31,14 @@ public sealed class ReduceSumCompilerTests
         Assert.Equal("ReduceSum", Assert.Single(emitted.Value!.Graph.Nodes).OpType);
         var onnxImported = Compiler.CreateTreeFromOnnx(emitted.Value);
         Assert.True(onnxImported.IsSuccess, FormatDiagnostics(onnxImported.Diagnostics));
-        var generated = Compiler.GenerateCSharp(onnxImported.Value!, new CompilerCSharpGenerationOptions
+        var generated = Compiler.GenerateSourceCode(onnxImported.Value!, new CompilerCSharpGenerationOptions
         {
             Namespace = "Onnxify.GeneratedReduceSum",
             ClassName = "GeneratedReduceSum",
             ModuleName = "generated-reduce-sum",
         });
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        using var module = CompileGeneratedModule(generated.Value!);
+        using var module = CompileGeneratedModule(generated.SourceCode());
 
         float[] values = [1f, -2f, 3f, 4f, 5f, -6f];
         using var eagerInput = global::TorchSharp.torch.tensor(values, [2L, 3L]);

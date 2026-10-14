@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Reflection;
 using Onnxify;
 using Onnxify.Compiler.Operators;
@@ -9,7 +9,7 @@ namespace Onnxify.Compiler;
 /// <summary>
 /// Public compiler session for the ONNX frontend and backend.
 /// </summary>
-public sealed class OnnxCompilerSession : ICompilerSession
+public sealed class OnnxCompilerSession : IOnnxCompilerSession
 {
     /// <inheritdoc />
     public CompilerResult<ICompilerTree> CreateTree(ICompilerSource source)
@@ -40,9 +40,9 @@ public sealed class OnnxCompilerSession : ICompilerSession
     }
 
     /// <inheritdoc />
-    public CompilerResult<TOutput> Generate<TOutput>(
+    public CompilerResult<OnnxModel> Generate(
         ICompilerTree tree,
-        ICompilerSink<TOutput> sink
+        OnnxModelCompilerSink sink
     )
     {
         CompilerStructural.RequireNotNull(tree, nameof(tree));
@@ -50,7 +50,7 @@ public sealed class OnnxCompilerSession : ICompilerSession
 
         if (tree is not CompilerComputationTree computationTree)
         {
-            return CompilerResult<TOutput>.Failure(
+            return CompilerResult<OnnxModel>.Failure(
             [
                 new CompilerDiagnostic(
                     code: CompilerDiagnosticCodes.Unsupported,
@@ -60,36 +60,31 @@ public sealed class OnnxCompilerSession : ICompilerSession
             ]);
         }
 
-        if (sink is OnnxModelCompilerSink && typeof(TOutput) == typeof(OnnxModel))
+        return OnnxCompilerBackend.EmitModel(computationTree);
+    }
+
+    /// <inheritdoc />
+    public CompilerResult<OnnxGraph> Generate(ICompilerTree tree, OnnxCompilerSink sink)
+    {
+        CompilerStructural.RequireNotNull(tree, nameof(tree));
+        CompilerStructural.RequireNotNull(sink, nameof(sink));
+        if (tree is not CompilerComputationTree computationTree)
         {
-            var emittedModel = OnnxCompilerBackend.EmitModel(computationTree);
-            var resultModel = CompilerResultMapper.Map(
-                source: emittedModel,
-                projection: static model => (TOutput)(object)model,
-                missingValueStage: CompilerDiagnosticStage.Emit,
-                missingValueMessage: "The ONNX backend reported success without producing a model.");
-            return resultModel;
+            return CompilerResult<OnnxGraph>.Failure(
+            [
+                new CompilerDiagnostic(
+                    code: CompilerDiagnosticCodes.Unsupported,
+                    message: "The ONNX backend requires a CompilerComputationTree.",
+                    stage: CompilerDiagnosticStage.Emit,
+                    severity: CompilerDiagnosticSeverity.Error),
+            ]);
         }
 
-        if (sink is OnnxCompilerSink && typeof(TOutput) == typeof(OnnxGraph))
-        {
-            var emittedModel = OnnxCompilerBackend.EmitModel(computationTree);
-            var resultGraph = CompilerResultMapper.Map(
-                source: emittedModel,
-                projection: static model => (TOutput)(object)model.Graph,
-                missingValueStage: CompilerDiagnosticStage.Emit,
-                missingValueMessage: "The ONNX backend reported success without producing a model.");
-            return resultGraph;
-        }
-
-        return CompilerResult<TOutput>.Failure(
-        [
-            new CompilerDiagnostic(
-                code: CompilerDiagnosticCodes.Unsupported,
-                message: $"The ONNX compiler session cannot emit target '{sink.Kind}'.",
-                stage: CompilerDiagnosticStage.Emit,
-                severity: CompilerDiagnosticSeverity.Error),
-        ]);
+        return CompilerResultMapper.Map(
+            source: OnnxCompilerBackend.EmitModel(computationTree),
+            projection: static model => model.Graph,
+            missingValueStage: CompilerDiagnosticStage.Emit,
+            missingValueMessage: "The ONNX backend reported success without producing a model.");
     }
 }
 
@@ -256,7 +251,7 @@ public static class Compiler
     }
 
     /// <summary>Generates compiler-owned C# TorchSharp module source.</summary>
-    public static CompilerResult<string> GenerateCSharp(
+    public static CompilerResult<IFile[]> GenerateSourceCode(
         CompilerComputationTree tree,
         CompilerCSharpGenerationOptions? options = null
     )
@@ -267,7 +262,7 @@ public static class Compiler
     }
 
     /// <summary>Generates C# using registered compiler extensions and observation options.</summary>
-    public static CompilerResult<string> GenerateCSharp(
+    public static CompilerResult<IFile[]> GenerateSourceCode(
         CompilerComputationTree tree,
         CompilerCSharpGenerationOptions? generationOptions,
         CompilerOptions compilerOptions
@@ -277,10 +272,10 @@ public static class Compiler
         CompilerStructural.RequireNotNull(compilerOptions, nameof(compilerOptions));
         var extensionResult = TryExtensionPrint(tree, CompilerTargetKind.CSharp, compilerOptions);
         var result = extensionResult is CompilerResult<object> printed && printed.Value is string source
-            ? CompilerResult<string>.Success(source, printed.Diagnostics)
+            ? CompilerResult<IFile[]>.Success([new SourceCodeFile(generationOptions?.SourceFileName ?? "GeneratedTorchModule.cs", source)], printed.Diagnostics)
             : extensionResult is CompilerResult<object> failed && !failed.IsSuccess
-                ? CompilerResult<string>.Failure(failed.Diagnostics)
-                : GenerateCSharp(tree, generationOptions);
+                ? CompilerResult<IFile[]>.Failure(failed.Diagnostics)
+                : GenerateSourceCode(tree, generationOptions);
         return compilerOptions.Observe(result);
     }
 
@@ -779,7 +774,8 @@ internal static class OnnxCompilerFrontend
                 kind: CompilerStateMemberKind.Initializer,
                 type: type,
                 value: literal,
-                span: Span(document: document, ordinal: 0, nodeName: tensor.Name, operatorName: null)));
+                span: Span(document: document, ordinal: 0, nodeName: tensor.Name, operatorName: null),
+                isOnnxInitializer: true));
             stateTypes[tensor.Name] = type;
         }
 
@@ -798,7 +794,8 @@ internal static class OnnxCompilerFrontend
                 kind: CompilerStateMemberKind.Initializer,
                 type: type,
                 value: literal,
-                span: Span(document: document, ordinal: 0, nodeName: sparse.Name, operatorName: null)));
+                span: Span(document: document, ordinal: 0, nodeName: sparse.Name, operatorName: null),
+                isOnnxInitializer: true));
             stateTypes[sparse.Name] = type;
         }
 
@@ -2227,6 +2224,51 @@ internal static class CompilerElementTypeMap
                 $"Compiler element type '{elementType}' is not supported by Onnxify."),
         };
     }
+
+    public static string ToCSharpTypeName(CompilerElementType elementType)
+    {
+        var fullName = ToSystemType(elementType).FullName;
+        if (string.IsNullOrWhiteSpace(fullName))
+        {
+            throw new CompilerConversionException(
+                CompilerDiagnosticCodes.Unsupported,
+                $"Compiler element type '{elementType}' has no fully qualified CLR type name.");
+        }
+
+        return "global::" + fullName.Replace('+', '.');
+    }
+
+    public static string ToCSharpTypeNameOrObject(CompilerElementType elementType)
+    {
+        try
+        {
+            return ToCSharpTypeName(elementType);
+        }
+        catch (CompilerConversionException)
+        {
+            return "object";
+        }
+    }
+
+    public static string ToTorchSharpScalarTypeName(CompilerElementType elementType) => elementType switch
+    {
+        CompilerElementType.Boolean => "Bool",
+        CompilerElementType.Int8 => "Int8",
+        CompilerElementType.UInt8 => "Byte",
+        CompilerElementType.Int16 => "Int16",
+        CompilerElementType.UInt16 => "UInt16",
+        CompilerElementType.Int32 => "Int32",
+        CompilerElementType.UInt32 => "UInt32",
+        CompilerElementType.Int64 => "Int64",
+        CompilerElementType.UInt64 => "UInt64",
+        CompilerElementType.Float16 => "Float16",
+        CompilerElementType.BFloat16 => "BFloat16",
+        CompilerElementType.Float32 => "Float32",
+        CompilerElementType.Float64 => "Float64",
+        _ => throw new CompilerConversionException(
+            CompilerDiagnosticCodes.Unsupported,
+            $"Compiler element type '{elementType}' has no supported TorchSharp scalar type."),
+    };
 
     public static CompilerLiteral ToLiteral(object value)
     {

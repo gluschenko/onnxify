@@ -40,7 +40,7 @@ public sealed class MobileNetV2DynamicBatchRoundTripTests
         try
         {
             emitted.Value!.Save(roundTripPath, overwrite: true);
-            var generated = Compiler.GenerateCSharp(tree, new CompilerCSharpGenerationOptions
+            var generated = Compiler.GenerateSourceCode(tree, new CompilerCSharpGenerationOptions
             {
                 Namespace = "Onnxify.GeneratedDynamicMobileNet",
                 ClassName = "GeneratedDynamicMobileNet",
@@ -49,7 +49,7 @@ public sealed class MobileNetV2DynamicBatchRoundTripTests
             Assert.True(generated.IsSuccess, string.Join(Environment.NewLine, generated.Diagnostics.Select(x => x.Message)));
             var references = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))!.Split(Path.PathSeparator)
                 .Select(static p => MetadataReference.CreateFromFile(p)).Append(MetadataReference.CreateFromFile(typeof(global::TorchSharp.torch.Tensor).Assembly.Location));
-            var compilation = CSharpCompilation.Create($"Probe{Guid.NewGuid():N}", [CSharpSyntaxTree.ParseText(generated.Value!)], references,
+            var compilation = CSharpCompilation.Create($"Probe{Guid.NewGuid():N}", [CSharpSyntaxTree.ParseText(generated.SourceCode())], references,
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
             using var bytes = new MemoryStream();
             var result = compilation.Emit(bytes);
@@ -57,7 +57,7 @@ public sealed class MobileNetV2DynamicBatchRoundTripTests
             bytes.Position = 0;
             var assembly = AssemblyLoadContext.Default.LoadFromStream(bytes);
             var type = assembly.GetTypes().Single(x => x.Name == "GeneratedDynamicMobileNet");
-            using var module = (IDisposable)Activator.CreateInstance(type, "generated-dynamic-mobilenet")!;
+            using var module = (IDisposable)Activator.CreateInstance(type, path, "generated-dynamic-mobilenet")!;
             using var roundTripSession = new InferenceSession(roundTripPath);
             Assert.NotEmpty(roundTripSession.InputMetadata);
             Assert.NotEmpty(roundTripSession.OutputMetadata);

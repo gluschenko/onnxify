@@ -74,11 +74,11 @@ public sealed class CompilerOptionsTests
         var metadata = Compiler.GetMetadata(source, options);
         var imported = Compiler.CreateTreeFromModule(new object(), options);
         Assert.True(imported.IsSuccess);
-        var printed = Compiler.GenerateCSharp(imported.Value!, null, options);
+        var printed = Compiler.GenerateSourceCode(imported.Value!, null, options);
 
         Assert.Equal(nameof(CompilerSourceKind.CSharpTorchSharp), metadata["source"]);
         Assert.True(printed.IsSuccess);
-        Assert.Equal("extension printer", printed.Value);
+        Assert.Equal("extension printer", printed.SourceCode());
         Assert.Equal(1, metadataProvider.Calls);
         Assert.Equal(1, exporter.Calls);
         Assert.Equal(1, printer.Calls);

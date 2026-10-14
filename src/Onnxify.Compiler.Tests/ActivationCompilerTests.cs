@@ -48,9 +48,9 @@ public sealed class ActivationCompilerTests
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxOperation.Descriptor.Capability);
         Assert.Equal(onnxName, onnxOperation.Descriptor.Name);
 
-        var generatedCSharp = Compiler.GenerateCSharp(onnxComputationTree);
+        var generatedCSharp = Compiler.GenerateSourceCode(onnxComputationTree);
         Assert.True(generatedCSharp.IsSuccess, FormatDiagnostics(generatedCSharp.Diagnostics));
-        Assert.Contains(expectedCSharp, generatedCSharp.Value);
+        Assert.Contains(expectedCSharp, generatedCSharp.SourceCode());
 
         var source = $"return {torchCall};";
         if (onnxName == "PRelu")

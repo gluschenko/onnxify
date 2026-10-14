@@ -95,6 +95,38 @@ public sealed class RepositoryAssetRoundTripTests
     }
 
     [Fact]
+    public void QuantizedAlexNetLoadsLargeWeightsFromOriginalOnnxWithoutInliningThem()
+    {
+        var sourcePath = Path.Combine(AppContext.BaseDirectory, "Assets", "bvlcalexnet-12-qdq.onnx");
+        Assert.True(File.Exists(sourcePath), $"Missing compiler round-trip fixture '{sourcePath}'.");
+        var imported = Compiler.CreateTreeFromOnnx(sourcePath);
+        Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
+        var tree = Assert.IsType<CompilerComputationTree>(imported.Value);
+        Assert.All(tree.Operations.OfType<CompilerOnnxStep>(), step =>
+            Assert.NotEqual(CompilerOperationCapability.Unsupported, step.Descriptor.Capability));
+
+        var generated = Compiler.GenerateSourceCode(tree, new CompilerCSharpGenerationOptions
+        {
+            Namespace = "Onnxify.GeneratedQuantizedAlexNet",
+            ClassName = "GeneratedQuantizedAlexNet",
+            ModuleName = "generated-quantized-alexnet",
+        });
+        Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
+        Assert.Single(generated.Value!.OfType<SourceCodeFile>());
+        Assert.True(generated.SourceCode().Length < 1_000_000, "Generated C# unexpectedly contains model-sized weight data.");
+        Assert.Contains("OnnxModel.FromFile(weightsPath", generated.SourceCode(), StringComparison.Ordinal);
+
+        using var module = CompileGeneratedModule(generated.SourceCode(), sourcePath, "GeneratedQuantizedAlexNet");
+        var inputValues = Enumerable.Range(0, 3 * 224 * 224)
+            .Select(static index => (float)(Math.Sin(index * 0.017) * 0.75))
+            .ToArray();
+        var actual = ExecuteGeneratedModule(module, inputValues);
+        var expected = ExecuteOnnx(sourcePath, inputValues);
+        Assert.Equal(1000, actual.Length);
+        AssertOutputsClose(expected, actual);
+    }
+
+    [Fact]
     public void MobileNetRoundTripsThroughGeneratedTorchSharpAndOnnxRuntime()
     {
         // Source: third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py
@@ -148,18 +180,18 @@ public sealed class RepositoryAssetRoundTripTests
                 original.Graph.Initializers.Select(static initializer => initializer.Name),
                 roundTripped.Graph.Initializers.Select(static initializer => initializer.Name));
 
-            var generated = Compiler.GenerateCSharp(tree, new CompilerCSharpGenerationOptions
+            var generated = Compiler.GenerateSourceCode(tree, new CompilerCSharpGenerationOptions
             {
                 Namespace = "Onnxify.GeneratedMobileNetRoundTrip",
                 ClassName = "GeneratedMobileNetTorchModule",
                 ModuleName = "generated-mobilenet",
             });
             Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-            Assert.Contains("torch.nn.functional.conv2d", generated.Value, StringComparison.Ordinal);
-            Assert.Contains(".clamp(", generated.Value, StringComparison.Ordinal);
-            Assert.Contains("torch.nn.functional.adaptive_avg_pool2d", generated.Value, StringComparison.Ordinal);
+            Assert.Contains("torch.nn.functional.conv2d", generated.SourceCode(), StringComparison.Ordinal);
+            Assert.Contains(".clamp(", generated.SourceCode(), StringComparison.Ordinal);
+            Assert.Contains("torch.nn.functional.adaptive_avg_pool2d", generated.SourceCode(), StringComparison.Ordinal);
 
-            using var generatedModule = CompileGeneratedModule(generated.Value!);
+            using var generatedModule = CompileGeneratedModule(generated.SourceCode(), sourcePath);
             var inputValues = Enumerable.Range(0, 3 * 224 * 224)
                 .Select(static index => (float)(Math.Sin(index * 0.017) * 0.75))
                 .ToArray();
@@ -204,7 +236,10 @@ public sealed class RepositoryAssetRoundTripTests
                 $"{diagnostic.Severity} {diagnostic.Code}: {diagnostic.Message}"));
     }
 
-    private static IDisposable CompileGeneratedModule(string source)
+    private static IDisposable CompileGeneratedModule(
+        string source,
+        string weightsPath,
+        string className = "GeneratedMobileNetTorchModule")
     {
         var references = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))!
             .Split(Path.PathSeparator)
@@ -223,8 +258,8 @@ public sealed class RepositoryAssetRoundTripTests
 
         assemblyBytes.Position = 0;
         var assembly = AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
-        var moduleType = assembly.GetTypes().Single(static type => type.Name == "GeneratedMobileNetTorchModule");
-        return (IDisposable)Activator.CreateInstance(moduleType, "generated-mobilenet")!;
+        var moduleType = assembly.GetTypes().Single(type => type.Name == className);
+        return (IDisposable)Activator.CreateInstance(moduleType, weightsPath, "generated-mobilenet")!;
     }
 
     private static float[] ExecuteGeneratedModule(IDisposable module, float[] inputValues)
@@ -243,10 +278,11 @@ public sealed class RepositoryAssetRoundTripTests
     private static float[] ExecuteOnnx(string modelPath, float[] inputValues)
     {
         using var session = new InferenceSession(modelPath);
+        var inputName = session.InputMetadata.Keys.Single();
         using var results = session.Run(
         [
             NamedOnnxValue.CreateFromTensor(
-                "pixel_values",
+                inputName,
                 new DenseTensor<float>(inputValues, [1, 3, 224, 224])),
         ]);
         return results.Single().AsTensor<float>().ToArray();

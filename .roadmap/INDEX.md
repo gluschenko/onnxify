@@ -44,3 +44,4 @@
 | [OXY-040](OXY-040.md) | Restore And Compile GPT-OSS Q4F16 Model Fixture | TODO | 8 human-hours | 2026-10-12 | 2026-10-12 |
 | [OXY-041](OXY-041.md) | Compile Dynamic MobileNetV2-12 ONNX Through TorchSharp | DONE | 16 human-hours | 2026-10-12 | 2026-10-12 |
 | [OXY-042](OXY-042.md) | Runtime Control Flow In Onnxify.Compiler | IN PROGRESS | 64 human-hours | 2026-10-12 | 2026-10-12 |
+| [OXY-043](OXY-043.md) | External Weight Storage For Generated Compiler Modules | DONE | 24 human-hours | 2026-10-12 | 2026-10-13 |

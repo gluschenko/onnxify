@@ -24,6 +24,7 @@ Modern ML workflows often keep model weights in `.safetensors` because the forma
 - Read safetensors metadata and tensor layout information.
 - Work with tensor slices and tensor-backed storage abstractions.
 - Support safetensors-related flows that integrate with the broader Onnxify toolchain.
+- Read and write supported CLR arrays through typed APIs, including exact bfloat16 payloads.
 
 ## Code Examples
 
@@ -69,6 +70,19 @@ Console.WriteLine(string.Join(", ", archive.Names()));
 Console.WriteLine($"Shape: [{string.Join(", ", loaded.Shape)}]");
 Console.WriteLine(string.Join(", ", loadedValues.Select(x => x.ToString(CultureInfo.InvariantCulture))));
 ```
+
+For typed values, use `Set<T>` / `Get<T>` or `SetTensor` when the array's element type is known only at runtime:
+
+```csharp
+var archive = new SafeTensors();
+archive.Set("weights", new[] { 1.0f, 2.0f }, 1, 2);
+archive.SetTensor("bias", (Array)new[] { 0.5f, -0.5f }, 1, 2);
+
+var loadedWeights = SafeTensors.Deserialize(archive.Serialize());
+float[] weights = loadedWeights.Get<float>("weights");
+```
+
+`Get<BFloat16>` returns encoded bfloat16 values with a `ToSingle()` conversion for callers that need single-precision values.
 
 ### Read Only Metadata Before Touching Tensor Payloads
 

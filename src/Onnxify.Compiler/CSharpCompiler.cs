@@ -13,7 +13,7 @@ using RoslynLanguageVersion = Microsoft.CodeAnalysis.CSharp.LanguageVersion;
 namespace Onnxify.Compiler;
 
 /// <summary>A session for importing and generating C# TorchSharp through the shared compiler intermediate representation.</summary>
-public sealed class CSharpCompilerSession : ICompilerSession
+public sealed class CSharpCompilerSession : ICSharpCompilerSession
 {
     public CompilerResult<ICompilerTree> CreateTree(ICompilerSource source)
     {
@@ -39,45 +39,28 @@ public sealed class CSharpCompilerSession : ICompilerSession
         return treeResult;
     }
 
-    public CompilerResult<TOutput> Generate<TOutput>(
+    /// <inheritdoc />
+    public CompilerResult<IFile[]> Generate(
         ICompilerTree tree,
-        ICompilerSink<TOutput> sink
+        CSharpCompilerSink sink
     )
     {
         CompilerStructural.RequireNotNull(tree, nameof(tree));
         CompilerStructural.RequireNotNull(sink, nameof(sink));
 
-        if (sink is CSharpCompilerSink && typeof(TOutput) == typeof(string))
+        if (tree is not CompilerComputationTree computationTree)
         {
-            if (tree is not CompilerComputationTree computationTree)
-            {
-                return CompilerResult<TOutput>.Failure(
-                [
-                    new CompilerDiagnostic(
-                        code: CompilerDiagnosticCodes.InvalidSource,
-                        message: "The C# backend requires a CompilerComputationTree.",
-                        stage: CompilerDiagnosticStage.Emit,
-                        severity: CompilerDiagnosticSeverity.Error),
-                ]);
-            }
-
-            var generated = CSharpCompilerBackend.Generate(computationTree);
-            var resultSource = CompilerResultMapper.Map(
-                source: generated,
-                projection: static generatedSource => (TOutput)(object)generatedSource,
-                missingValueStage: CompilerDiagnosticStage.Emit,
-                missingValueMessage: "The C# backend reported success without producing source text.");
-            return resultSource;
+            return CompilerResult<IFile[]>.Failure(
+            [
+                new CompilerDiagnostic(
+                    code: CompilerDiagnosticCodes.InvalidSource,
+                    message: "The C# backend requires a CompilerComputationTree.",
+                    stage: CompilerDiagnosticStage.Emit,
+                    severity: CompilerDiagnosticSeverity.Error),
+            ]);
         }
 
-        return CompilerResult<TOutput>.Failure(
-        [
-            new CompilerDiagnostic(
-                code: CompilerDiagnosticCodes.Unsupported,
-                message: $"The C# compiler session cannot emit target '{sink.Kind}'.",
-                stage: CompilerDiagnosticStage.Emit,
-                severity: CompilerDiagnosticSeverity.Error),
-        ]);
+        return CSharpCompilerBackend.Generate(computationTree);
     }
 }
 
@@ -938,15 +921,7 @@ internal sealed class CSharpSyntaxScanner
             CompilerTensorType => "global::TorchSharp.torch.Tensor",
             CompilerNullableType nullable => $"{CSharpTypeName(nullable.UnderlyingType)}?",
             CompilerTupleType tuple => $"({string.Join(", ", tuple.ElementTypes.Select(CSharpTypeName))})",
-            CompilerScalarType scalar => scalar.ElementType switch
-            {
-                CompilerElementType.Boolean => "bool",
-                CompilerElementType.Int32 => "int",
-                CompilerElementType.Int64 => "long",
-                CompilerElementType.Float32 => "float",
-                CompilerElementType.Float64 => "double",
-                _ => "object",
-            },
+            CompilerScalarType scalar => CompilerElementTypeMap.ToCSharpTypeNameOrObject(scalar.ElementType),
             _ => "object",
         };
     }
@@ -1969,7 +1944,7 @@ internal static class CSharpCompilerBackend
     /// Generates a TorchSharp class from the C# syntax representation and returns diagnostics for constructs without a C# mapping.
     /// Validation before printing prevents ONNX operations from being accidentally emitted as executable C# code.
     /// </summary>
-    public static CompilerResult<string> Generate(
+    public static CompilerResult<IFile[]> Generate(
         CompilerComputationTree tree,
         CompilerCSharpGenerationOptions? options = null
     )
@@ -1983,7 +1958,7 @@ internal static class CSharpCompilerBackend
                 || mapping is null
                 || !mapping.Accepts(operation)))
             {
-                return CompilerResult<string>.Failure(
+                return CompilerResult<IFile[]>.Failure(
                 [
                     new CompilerDiagnostic(
                         code: CompilerDiagnosticCodes.Unsupported,
@@ -1995,7 +1970,7 @@ internal static class CSharpCompilerBackend
 
             if (tree.SyntaxBody is null && tree.Operations.Count == 0)
             {
-                return CompilerResult<string>.Failure(
+                return CompilerResult<IFile[]>.Failure(
                 [
                     new CompilerDiagnostic(
                         code: CompilerDiagnosticCodes.Unsupported,
@@ -2007,12 +1982,30 @@ internal static class CSharpCompilerBackend
 
             var printer = new CSharpSourcePrinter(tree, options);
             var source = printer.Print();
-            var result = CompilerResult<string>.Success(source);
+            var files = new List<IFile> { new SourceCodeFile(options.SourceFileName, source) };
+            if (options.WeightStorage == CompilerWeightStorageKind.Safetensors)
+            {
+#if NET8_0_OR_GREATER
+                var filename = options.WeightsFileName ?? $"{options.ClassName}.safetensors";
+                files.Add(new BinaryFile(filename, CompilerWeightArtifactWriter.WriteSafetensors(tree)));
+#else
+                return CompilerResult<IFile[]>.Failure(
+                [
+                    new CompilerDiagnostic(
+                        code: CompilerDiagnosticCodes.Unsupported,
+                        message: "Safetensors artifact generation requires the net8.0 or net10.0 compiler target.",
+                        stage: CompilerDiagnosticStage.Emit,
+                        severity: CompilerDiagnosticSeverity.Error),
+                ]);
+#endif
+            }
+
+            var result = CompilerResult<IFile[]>.Success(files.ToArray());
             return result;
         }
         catch (CSharpCompilerDiagnosticException exception)
         {
-            return CompilerResult<string>.Failure(
+            return CompilerResult<IFile[]>.Failure(
             [
                 new CompilerDiagnostic(
                     code: exception.Code,
@@ -2023,13 +2016,26 @@ internal static class CSharpCompilerBackend
                     context: exception.Context),
             ]);
         }
+        catch (Exception exception) when (exception is InvalidOperationException or NotSupportedException or OverflowException or ArgumentException)
+        {
+            return CompilerResult<IFile[]>.Failure(
+            [
+                new CompilerDiagnostic(
+                    code: CompilerDiagnosticCodes.Unsupported,
+                    message: exception.Message,
+                    stage: CompilerDiagnosticStage.Emit,
+                    severity: CompilerDiagnosticSeverity.Error),
+            ]);
+        }
     }
 
     private static void ValidateOptions(CompilerCSharpGenerationOptions options)
     {
         if (string.IsNullOrWhiteSpace(options.Namespace)
             || string.IsNullOrWhiteSpace(options.ClassName)
-            || string.IsNullOrWhiteSpace(options.ModuleName))
+            || string.IsNullOrWhiteSpace(options.ModuleName)
+            || string.IsNullOrWhiteSpace(options.SourceFileName)
+            || !Enum.IsDefined(typeof(CompilerWeightStorageKind), options.WeightStorage))
         {
             throw new CSharpCompilerDiagnosticException(
                 code: CompilerDiagnosticCodes.InvalidSource,
@@ -2081,6 +2087,13 @@ internal sealed class CSharpSourcePrinter
 
         Line("using System;");
         Line("using System.Linq;");
+        Line("using System.IO;");
+        Line("using System.Globalization;");
+        Line("using global::Onnxify;");
+        if (_options.WeightStorage == CompilerWeightStorageKind.Safetensors)
+        {
+            Line("using global::Onnxify.Safetensors;");
+        }
         Line("using global::TorchSharp;");
         Line("using static global::TorchSharp.torch;");
         Line();
@@ -2089,6 +2102,18 @@ internal sealed class CSharpSourcePrinter
         Line($"public sealed class {_options.ClassName} : {ModuleBaseType()}");
         Line("{");
         _indent++;
+        var hasInitializers = CompilerWeightSelection.Select(_tree, _options.WeightStorage).Count > 0;
+        if (hasInitializers)
+        {
+            Line($"public {_options.ClassName}(string weightsPath, string name = \"{Escape(_options.ModuleName)}\") : base(name)");
+            Line("{");
+            _indent++;
+            PrintWeightLoading();
+            _indent--;
+            Line("}");
+            return;
+        }
+
         Line($"public {_options.ClassName}(string name = \"{Escape(_options.ModuleName)}\") : base(name)");
         Line("{");
         _indent++;
@@ -2098,10 +2123,16 @@ internal sealed class CSharpSourcePrinter
 
     private void PrintModuleMembers()
     {
+        var externalWeights = CompilerWeightSelection.Select(_tree, _options.WeightStorage)
+            .Select(static member => member.Name)
+            .ToHashSet(StringComparer.Ordinal);
         foreach (var member in _tree.Parameters.Concat(_tree.Buffers).Concat(_tree.Initializers))
         {
             var memberType = TypeName(member.Type);
-            var memberValue = member.Value is null ? "default" : Literal(member.Value);
+            var memberValue = member.Kind == CompilerStateMemberKind.Initializer
+                && externalWeights.Contains(member.Name)
+                ? "default!"
+                : member.Value is null ? "default" : Literal(member.Value);
             Line($"private {memberType} {CompilerCSharpNaming.Identifier(member.Name)} = {memberValue};");
         }
 
@@ -2220,6 +2251,81 @@ internal sealed class CSharpSourcePrinter
             Line();
             PrintBlock(block);
         }
+    }
+
+    private void PrintWeightLoading()
+    {
+        var externalWeights = CompilerWeightSelection.Select(_tree, _options.WeightStorage);
+        if (externalWeights.Count > 0)
+        {
+            var archiveName = _options.WeightStorage == CompilerWeightStorageKind.Onnx
+                ? "__onnxWeights"
+                : "__safetensorsWeights";
+            var archiveExpression = _options.WeightStorage == CompilerWeightStorageKind.Onnx
+                ? "OnnxModel.FromFile(weightsPath, new OnnxModelBaseOptions { NodeTypeResolutionStrategy = NodeTypeResolutionStrategy.IgnoreIncompatible })"
+                : "SafeTensors.Deserialize(File.ReadAllBytes(weightsPath))";
+            Line($"var {archiveName} = {archiveExpression};");
+        }
+
+        foreach (var member in externalWeights)
+        {
+            if (member.Value is not CompilerTensorLiteral tensor)
+            {
+                throw new CSharpCompilerDiagnosticException(
+                    code: CompilerDiagnosticCodes.Unsupported,
+                    message: $"Initializer '{member.Name}' is not a dense tensor and cannot be loaded from an external weight file.",
+                    stage: CompilerDiagnosticStage.Emit,
+                    span: member.Span);
+            }
+
+            var memberName = CompilerCSharpNaming.Identifier(member.Name);
+            var localName = CompilerCSharpNaming.Identifier($"__weight_{member.Name}");
+            var expectedShape = "new long[] { " + string.Join(", ", tensor.Dimensions.Select(DimensionValue)) + " }";
+            var elementType = tensor.ElementType;
+            var torchType = CompilerElementTypeMap.ToTorchSharpScalarTypeName(elementType);
+            if (_options.WeightStorage == CompilerWeightStorageKind.Onnx)
+            {
+                var clrType = CompilerElementTypeMap.ToCSharpTypeName(elementType);
+                Line($"var {localName} = __onnxWeights.Graph.Initializers.SingleOrDefault(static tensor => tensor.Name == \"{Escape(member.Name)}\") ?? throw new InvalidDataException(\"Missing ONNX initializer '{Escape(member.Name)}'.\");");
+                Line($"if ({localName}.DataType != typeof({clrType})) throw new InvalidDataException(\"ONNX initializer '{Escape(member.Name)}' has an unexpected data type.\");");
+                Line($"if (!{localName}.Shape.SequenceEqual({expectedShape})) throw new InvalidDataException(\"ONNX initializer '{Escape(member.Name)}' has an unexpected shape.\");");
+                var conversion = elementType == CompilerElementType.BFloat16
+                    ? $"((global::Onnxify.Data.Numerics.BFloat16)value!).ToSingle()"
+                    : $"({clrType})Convert.ChangeType(value!, typeof({clrType}), CultureInfo.InvariantCulture)";
+                Line($"var {localName}Values = {localName}.Values.Select(static value => {conversion}).ToArray();");
+            }
+            else
+            {
+                var tensorLocalName = $"{localName}Metadata";
+                Line($"var {tensorLocalName} = __safetensorsWeights.Tensor(\"{Escape(member.Name)}\");");
+                var expectedSafetensorsShape = "new ulong[] { " + string.Join(", ", tensor.Dimensions.Select(DimensionValue).Select(static dimension => $"(ulong){dimension}")) + " }";
+                Line($"if (!{tensorLocalName}.Shape.SequenceEqual({expectedSafetensorsShape})) throw new InvalidDataException(\"Safetensors tensor '{Escape(member.Name)}' has an unexpected shape.\");");
+                if (elementType == CompilerElementType.BFloat16)
+                {
+                    Line($"var {localName}Values = __safetensorsWeights.Get<global::Onnxify.Safetensors.BFloat16>(\"{Escape(member.Name)}\").Select(static value => value.ToSingle()).ToArray();");
+                }
+                else
+                {
+                    var clrType = CompilerElementTypeMap.ToCSharpTypeName(elementType);
+                    Line($"var {localName}Values = __safetensorsWeights.Get<{clrType}>(\"{Escape(member.Name)}\");");
+                }
+            }
+
+            Line($"{memberName} = torch.tensor({localName}Values, {expectedShape}, dtype: torch.ScalarType.{torchType});");
+        }
+    }
+
+    private static long DimensionValue(CompilerDimension dimension)
+    {
+        if (dimension is not CompilerFixedDimension fixedDimension)
+        {
+            throw new CSharpCompilerDiagnosticException(
+                code: CompilerDiagnosticCodes.Unsupported,
+                message: "External tensor initializers require concrete dimensions.",
+                stage: CompilerDiagnosticStage.Emit);
+        }
+
+        return fixedDimension.Value;
     }
 
     private void PrintOnnxLstmHelper()
@@ -2408,22 +2514,7 @@ internal sealed class CSharpSourcePrinter
         return type switch
         {
             CompilerTensorType => TORCH_TENSOR_TYPE,
-            CompilerScalarType scalar => scalar.ElementType switch
-            {
-                CompilerElementType.Boolean => "bool",
-                CompilerElementType.Int8 => "sbyte",
-                CompilerElementType.UInt8 => "byte",
-                CompilerElementType.Int16 => "short",
-                CompilerElementType.UInt16 => "ushort",
-                CompilerElementType.Int32 => "int",
-                CompilerElementType.UInt32 => "uint",
-                CompilerElementType.Int64 => "long",
-                CompilerElementType.UInt64 => "ulong",
-                CompilerElementType.Float32 => "float",
-                CompilerElementType.Float64 => "double",
-                CompilerElementType.String => "string",
-                _ => "object",
-            },
+            CompilerScalarType scalar => CompilerElementTypeMap.ToCSharpTypeNameOrObject(scalar.ElementType),
             CompilerTupleType tuple => $"({string.Join(", ", tuple.ElementTypes.Select(TypeName))})",
             CompilerNullableType nullable => $"{TypeName(nullable.UnderlyingType)}?",
             _ => "object",

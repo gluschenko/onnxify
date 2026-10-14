@@ -110,7 +110,8 @@ public sealed class CompilerStateMember : IEquatable<CompilerStateMember>
         CompilerStateMemberKind kind,
         CompilerType type,
         CompilerLiteral? value = null,
-        CompilerSourceSpan? span = null
+        CompilerSourceSpan? span = null,
+        bool isOnnxInitializer = false
     )
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -123,12 +124,17 @@ public sealed class CompilerStateMember : IEquatable<CompilerStateMember>
         {
             throw new System.ArgumentNullException(nameof(value), "Initializers require a literal value.");
         }
+        if (isOnnxInitializer && kind != CompilerStateMemberKind.Initializer)
+        {
+            throw new ArgumentException("Only initializer members can originate from an ONNX model.", nameof(isOnnxInitializer));
+        }
 
         Name = name;
         Kind = kind;
         Type = type;
         Value = value;
         Span = span;
+        IsOnnxInitializer = isOnnxInitializer;
     }
 
     public string Name { get; }
@@ -141,6 +147,9 @@ public sealed class CompilerStateMember : IEquatable<CompilerStateMember>
 
     public CompilerSourceSpan? Span { get; }
 
+    /// <summary>Gets whether this initializer is stored in the ONNX source model.</summary>
+    public bool IsOnnxInitializer { get; }
+
     public bool Equals(CompilerStateMember? other)
     {
         var result = other is not null
@@ -148,7 +157,8 @@ public sealed class CompilerStateMember : IEquatable<CompilerStateMember>
             && Kind == other.Kind
             && EqualityComparer<CompilerType>.Default.Equals(Type, other.Type)
             && EqualityComparer<CompilerLiteral?>.Default.Equals(Value, other.Value)
-            && EqualityComparer<CompilerSourceSpan?>.Default.Equals(Span, other.Span);
+            && EqualityComparer<CompilerSourceSpan?>.Default.Equals(Span, other.Span)
+            && IsOnnxInitializer == other.IsOnnxInitializer;
         return result;
     }
 
@@ -159,7 +169,7 @@ public sealed class CompilerStateMember : IEquatable<CompilerStateMember>
 
     public override int GetHashCode()
     {
-        return CompilerStructural.Combine(17, Name, Kind, Type, Value, Span);
+        return CompilerStructural.Combine(17, Name, Kind, Type, Value, Span, IsOnnxInitializer);
     }
 }
 

@@ -47,14 +47,14 @@ public sealed class NeuralNetworkOperatorTests
             ]);
             var expected = results.Single().AsTensor<float>().ToArray();
 
-            var generated = Compiler.GenerateCSharp(imported.Value, new CompilerCSharpGenerationOptions
+            var generated = Compiler.GenerateSourceCode(imported.Value, new CompilerCSharpGenerationOptions
             {
                 Namespace = "Onnxify.GeneratedLstmOperator",
                 ClassName = "GeneratedLstmOperator",
                 ModuleName = "generated-lstm-operator",
             });
             Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-            using var module = CompileGeneratedModule(generated.Value!);
+            using var module = CompileGeneratedModule(generated.SourceCode());
             using var inputTensor = global::TorchSharp.torch.tensor(inputValues, [3L, 2L, 4L]);
             using var weightsTensor = global::TorchSharp.torch.tensor(weightValues, [2L, 20L, 4L]);
             using var recurrentTensor = global::TorchSharp.torch.tensor(recurrentValues, [2L, 20L, 5L]);
@@ -268,9 +268,9 @@ public sealed class NeuralNetworkOperatorTests
         var result = Compiler.CreateTreeFromOnnx(model);
         Assert.True(result.IsSuccess, FormatDiagnostics(result.Diagnostics));
 
-        var generated = Compiler.GenerateCSharp(result.Value!);
+        var generated = Compiler.GenerateSourceCode(result.Value!);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Contains("min.item<float>()", generated.Value, StringComparison.Ordinal);
+        Assert.Contains("min.item<float>()", generated.SourceCode(), StringComparison.Ordinal);
     }
 
     [Fact]

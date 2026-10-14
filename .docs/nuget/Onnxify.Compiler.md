@@ -78,24 +78,40 @@ CompilerResult<CompilerComputationTree> tree =
 
 if (tree.IsSuccess)
 {
-    CompilerResult<string> generated = Compiler.GenerateCSharp(tree.Value!);
-    File.WriteAllText("GeneratedTorchModule.cs", generated.Value!);
+    CompilerResult<IFile[]> generated = Compiler.GenerateCSharp(tree.Value!);
+    foreach (var file in generated.Value!)
+    {
+        if (file is SourceCodeFile source)
+        {
+            File.WriteAllText(source.Name, source.Content);
+        }
+        else if (file is BinaryFile binary)
+        {
+            File.WriteAllBytes(binary.Name, binary.Data.ToArray());
+        }
+    }
 }
 ```
 
-The OXY-023 backend emits regular TorchSharp module code, including ordered declarations,
-assignments, returns, arrays, tuples, indexers, static `if`/`foreach`, helper blocks, and reusable
-module calls. Full bidirectional operator mappings are intentionally handled by OXY-024.
+The OXY-023 backend emits TorchSharp module code, including ordered declarations, assignments,
+returns, arrays, tuples, indexers, static `if`/`foreach`, helper blocks, and reusable module calls.
+`GenerateCSharp` returns a file bundle. Select `CompilerWeightStorageKind.Onnx` to make generated
+modules load initializer weights by name from the original ONNX file, or `Safetensors` to also
+receive a typed `.safetensors` artifact. Generated modules with weights take the chosen weights file
+path in their constructor and validate names, dtypes, and shapes. Generated C# never embeds weight
+values. ONNX mode requires the `Onnxify` runtime package; Safetensors mode requires both `Onnxify`
+and `Onnxify.Safetensors`, in addition to TorchSharp.
 
 The dependency direction is intentionally one-way:
 
 ```text
 Onnxify.Compiler -> Onnxify
+Onnxify.Compiler (net8.0/net10.0) -> Onnxify.Safetensors
 Onnxify.ModelGenerator -> Onnxify.Compiler
 Onnxify.TorchSharp -> Onnxify.Compiler
 ```
 
-This keeps compiler semantics in one project and prevents the two consumer packages from growing parallel compiler implementations.
+The Safetensors reference is available on the .NET 8 and .NET 10 compiler targets, where binary sidecar generation is supported. The .NET Standard 2.0 target remains usable for ONNX-backed C# generation. This keeps compiler semantics in one project and prevents the two consumer packages from growing parallel compiler implementations.
 
 ## Repository
 

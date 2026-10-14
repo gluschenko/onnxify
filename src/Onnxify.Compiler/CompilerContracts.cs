@@ -175,7 +175,7 @@ public sealed class OnnxModelCompilerSink : ICompilerSink<OnnxModel>
 /// <summary>
 /// Describes a generated C# output target.
 /// </summary>
-public sealed class CSharpCompilerSink : ICompilerSink<string>
+public sealed class CSharpCompilerSink : ICompilerSink<IFile[]>
 {
     /// <inheritdoc />
     public CompilerTargetKind Kind => CompilerTargetKind.CSharp;
@@ -192,13 +192,26 @@ public interface ICompilerSession
     /// <param name="source">The source to pass to a future frontend.</param>
     /// <returns>An opaque compiler tree.</returns>
     CompilerResult<ICompilerTree> CreateTree(ICompilerSource source);
+}
 
+/// <summary>A compiler session with ONNX output backends.</summary>
+public interface IOnnxCompilerSession : ICompilerSession
+{
     /// <summary>
-    /// Generates a typed output through a target sink.
+    /// Generates an ONNX graph through the ONNX graph sink.
     /// </summary>
-    /// <typeparam name="TOutput">The type emitted by <paramref name="sink" />.</typeparam>
     /// <param name="tree">The compiler tree to pass to a future backend.</param>
-    /// <param name="sink">The target sink that defines the output type.</param>
-    /// <returns>The generated output.</returns>
-    CompilerResult<TOutput> Generate<TOutput>(ICompilerTree tree, ICompilerSink<TOutput> sink);
+    /// <param name="sink">The ONNX graph output target.</param>
+    /// <returns>The generated graph.</returns>
+    CompilerResult<OnnxGraph> Generate(ICompilerTree tree, OnnxCompilerSink sink);
+
+    /// <summary>Generates a complete ONNX model through the model sink.</summary>
+    CompilerResult<OnnxModel> Generate(ICompilerTree tree, OnnxModelCompilerSink sink);
+}
+
+/// <summary>A compiler session with a C# source and artifact backend.</summary>
+public interface ICSharpCompilerSession : ICompilerSession
+{
+    /// <summary>Generates compiler source and auxiliary artifacts through the C# sink.</summary>
+    CompilerResult<IFile[]> Generate(ICompilerTree tree, CSharpCompilerSink sink);
 }

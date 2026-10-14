@@ -345,7 +345,7 @@ public sealed class SafeTensors
     /// </summary>
     /// <typeparam name="T">
     /// Supported types: <see cref="bool"/>, <see cref="byte"/>, <see cref="sbyte"/>, <see cref="short"/>,
-    /// <see cref="ushort"/>, <see cref="Half"/>, <see cref="int"/>, <see cref="uint"/>, <see cref="float"/>,
+    /// <see cref="ushort"/>, <see cref="Half"/>, <see cref="BFloat16"/>, <see cref="int"/>, <see cref="uint"/>, <see cref="float"/>,
     /// <see cref="double"/>, <see cref="long"/>, <see cref="ulong"/>, and <see cref="string"/>.
     /// </typeparam>
     /// <param name="tensorName">The tensor name to create or replace.</param>
@@ -353,84 +353,67 @@ public sealed class SafeTensors
     /// <param name="shape">Optional tensor shape. When omitted, the value is stored as a one-dimensional vector.</param>
     public void Set<T>(string tensorName, T[] values, params ulong[] shape)
     {
+        SetTensor(tensorName, values, shape);
+    }
+
+    /// <summary>Stores a supported CLR array and infers its Safetensors dtype from the element type.</summary>
+    /// <param name="tensorName">The tensor name to create or replace.</param>
+    /// <param name="values">The typed tensor values.</param>
+    /// <param name="shape">Optional tensor shape. When omitted, values are stored as a one-dimensional vector.</param>
+    public void SetTensor(string tensorName, Array values, params ulong[] shape)
+    {
         ArgumentNullException.ThrowIfNull(tensorName);
         ArgumentNullException.ThrowIfNull(values);
+        ArgumentNullException.ThrowIfNull(shape);
 
-        if (typeof(T) == typeof(string))
+        switch (values)
         {
-            if (shape.Length != 0)
-            {
+            case string[] strings when shape.Length == 0:
+                SetString(tensorName, strings);
+                return;
+            case string[]:
                 throw new ArgumentException("String values do not support an explicit safetensors shape.", nameof(shape));
-            }
-
-            SetString(tensorName, (string[])(object)values);
-            return;
-        }
-
-        var type = typeof(T);
-        if (type == typeof(bool))
-        {
-            var typedValues = (bool[])(object)values;
-            SetTensor(tensorName, DataType.Bool, ShapeOrVector(typedValues.Length, shape), BooleansToBytes(typedValues));
-        }
-        else if (type == typeof(byte))
-        {
-            var typedValues = (byte[])(object)values;
-            SetTensor(tensorName, DataType.U8, ShapeOrVector(typedValues.Length, shape), typedValues.ToArray());
-        }
-        else if (type == typeof(sbyte))
-        {
-            var typedValues = (sbyte[])(object)values;
-            SetTensor(tensorName, DataType.I8, ShapeOrVector(typedValues.Length, shape), CopyBytes<sbyte>(typedValues));
-        }
-        else if (type == typeof(short))
-        {
-            var typedValues = (short[])(object)values;
-            SetTensor(tensorName, DataType.I16, ShapeOrVector(typedValues.Length, shape), CopyBytes<short>(typedValues));
-        }
-        else if (type == typeof(ushort))
-        {
-            var typedValues = (ushort[])(object)values;
-            SetTensor(tensorName, DataType.U16, ShapeOrVector(typedValues.Length, shape), CopyBytes<ushort>(typedValues));
-        }
-        else if (type == typeof(Half))
-        {
-            var typedValues = (Half[])(object)values;
-            SetTensor(tensorName, DataType.F16, ShapeOrVector(typedValues.Length, shape), CopyBytes<Half>(typedValues));
-        }
-        else if (type == typeof(int))
-        {
-            var typedValues = (int[])(object)values;
-            SetTensor(tensorName, DataType.I32, ShapeOrVector(typedValues.Length, shape), CopyBytes<int>(typedValues));
-        }
-        else if (type == typeof(uint))
-        {
-            var typedValues = (uint[])(object)values;
-            SetTensor(tensorName, DataType.U32, ShapeOrVector(typedValues.Length, shape), CopyBytes<uint>(typedValues));
-        }
-        else if (type == typeof(float))
-        {
-            var typedValues = (float[])(object)values;
-            SetTensor(tensorName, DataType.F32, ShapeOrVector(typedValues.Length, shape), CopyBytes<float>(typedValues));
-        }
-        else if (type == typeof(double))
-        {
-            var typedValues = (double[])(object)values;
-            SetTensor(tensorName, DataType.F64, ShapeOrVector(typedValues.Length, shape), CopyBytes<double>(typedValues));
-        }
-        else if (type == typeof(long))
-        {
-            var typedValues = (long[])(object)values;
-            SetTensor(tensorName, DataType.I64, ShapeOrVector(typedValues.Length, shape), CopyBytes<long>(typedValues));
-        }
-        else if (type == typeof(ulong))
-        {
-            var typedValues = (ulong[])(object)values;
-            SetTensor(tensorName, DataType.U64, ShapeOrVector(typedValues.Length, shape), CopyBytes<ulong>(typedValues));
-        }
-        else
-        {
-            throw new NotSupportedException($"Safetensors values of type '{type.FullName}' are not supported.");
+            case bool[] items:
+                SetTensorPayload(tensorName, DataType.Bool, ShapeOrVector(items.Length, shape), BooleansToBytes(items));
+                return;
+            case byte[] items:
+                SetTensorPayload(tensorName, DataType.U8, ShapeOrVector(items.Length, shape), items.ToArray());
+                return;
+            case sbyte[] items:
+                SetUnmanagedTensor(tensorName, items, DataType.I8, shape);
+                return;
+            case short[] items:
+                SetUnmanagedTensor(tensorName, items, DataType.I16, shape);
+                return;
+            case ushort[] items:
+                SetUnmanagedTensor(tensorName, items, DataType.U16, shape);
+                return;
+            case Half[] items:
+                SetUnmanagedTensor(tensorName, items, DataType.F16, shape);
+                return;
+            case BFloat16[] items:
+                SetUnmanagedTensor(tensorName, items, DataType.Bf16, shape);
+                return;
+            case int[] items:
+                SetUnmanagedTensor(tensorName, items, DataType.I32, shape);
+                return;
+            case uint[] items:
+                SetUnmanagedTensor(tensorName, items, DataType.U32, shape);
+                return;
+            case float[] items:
+                SetUnmanagedTensor(tensorName, items, DataType.F32, shape);
+                return;
+            case double[] items:
+                SetUnmanagedTensor(tensorName, items, DataType.F64, shape);
+                return;
+            case long[] items:
+                SetUnmanagedTensor(tensorName, items, DataType.I64, shape);
+                return;
+            case ulong[] items:
+                SetUnmanagedTensor(tensorName, items, DataType.U64, shape);
+                return;
+            default:
+                throw new NotSupportedException($"Safetensors values of type '{values.GetType().GetElementType()?.FullName}' are not supported.");
         }
     }
 
@@ -451,7 +434,7 @@ public sealed class SafeTensors
     /// </summary>
     /// <typeparam name="T">
     /// Supported types: <see cref="bool"/>, <see cref="byte"/>, <see cref="sbyte"/>, <see cref="short"/>,
-    /// <see cref="ushort"/>, <see cref="Half"/>, <see cref="int"/>, <see cref="uint"/>, <see cref="float"/>,
+    /// <see cref="ushort"/>, <see cref="Half"/>, <see cref="BFloat16"/>, <see cref="int"/>, <see cref="uint"/>, <see cref="float"/>,
     /// <see cref="double"/>, <see cref="long"/>, <see cref="ulong"/>, and <see cref="string"/>.
     /// </typeparam>
     /// <param name="tensorName">The tensor name to read.</param>
@@ -476,6 +459,7 @@ public sealed class SafeTensors
         if (type == typeof(short)) return (T[])(object)GetUnmanagedValue<short>(tensorName, tensor, DataType.I16);
         if (type == typeof(ushort)) return (T[])(object)GetUnmanagedValue<ushort>(tensorName, tensor, DataType.U16);
         if (type == typeof(Half)) return (T[])(object)GetUnmanagedValue<Half>(tensorName, tensor, DataType.F16);
+        if (type == typeof(BFloat16)) return (T[])(object)GetUnmanagedValue<BFloat16>(tensorName, tensor, DataType.Bf16);
         if (type == typeof(int)) return (T[])(object)GetUnmanagedValue<int>(tensorName, tensor, DataType.I32);
         if (type == typeof(uint)) return (T[])(object)GetUnmanagedValue<uint>(tensorName, tensor, DataType.U32);
         if (type == typeof(float)) return (T[])(object)GetUnmanagedValue<float>(tensorName, tensor, DataType.F32);
@@ -657,7 +641,7 @@ public sealed class SafeTensors
         return new Metadata(metadataEntries, tensors);
     }
 
-    private void SetTensor(string tensorName, DataType dataType, ulong[] shape, byte[] data)
+    private void SetTensorPayload(string tensorName, DataType dataType, ulong[] shape, byte[] data)
     {
         ArgumentNullException.ThrowIfNull(tensorName);
         _tensors[tensorName] = new TensorView(dataType, shape, data);
@@ -683,6 +667,10 @@ public sealed class SafeTensors
 
     private static ulong[] ShapeOrVector(int valueCount, ulong[] shape)
         => shape.Length == 0 ? [(ulong)valueCount] : shape;
+
+    private void SetUnmanagedTensor<T>(string name, T[] values, DataType dataType, ulong[] shape)
+        where T : unmanaged
+        => SetTensorPayload(name, dataType, ShapeOrVector(values.Length, shape), CopyBytes<T>(values));
 
     private static byte[] BooleansToBytes(ReadOnlySpan<bool> values)
     {
@@ -713,26 +701,6 @@ public sealed class SafeTensors
             throw new InvalidOperationException(
                 $"Tensor '{tensorName}' has dtype {tensor.DataType.ToWireName()}, not {expectedType.ToWireName()}.");
         }
-    }
-
-    private static DataType GetDataType<T>()
-        where T : unmanaged
-    {
-        var type = typeof(T);
-        if (type == typeof(bool)) return DataType.Bool;
-        if (type == typeof(byte)) return DataType.U8;
-        if (type == typeof(sbyte)) return DataType.I8;
-        if (type == typeof(short)) return DataType.I16;
-        if (type == typeof(ushort)) return DataType.U16;
-        if (type == typeof(Half)) return DataType.F16;
-        if (type == typeof(int)) return DataType.I32;
-        if (type == typeof(uint)) return DataType.U32;
-        if (type == typeof(float)) return DataType.F32;
-        if (type == typeof(double)) return DataType.F64;
-        if (type == typeof(long)) return DataType.I64;
-        if (type == typeof(ulong)) return DataType.U64;
-
-        throw new NotSupportedException($"Safetensors values of type '{type.FullName}' are not supported.");
     }
 
     /// <summary>

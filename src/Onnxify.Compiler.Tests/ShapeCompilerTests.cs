@@ -22,13 +22,13 @@ public sealed class ShapeCompilerTests
         Assert.IsType<Onnxify.Flatten>(onnxStep.Node);
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxStep.Descriptor.Capability);
 
-        var generated = Compiler.GenerateCSharp(imported.Value!);
+        var generated = Compiler.GenerateSourceCode(imported.Value!);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Contains("torch.flatten(input, start_dim: 1)", generated.Value);
+        Assert.Contains("torch.flatten(input, start_dim: 1)", generated.SourceCode());
 
         var values = Enumerable.Range(0, 24).Select(static value => (float)value).ToArray();
         var expected = ExecuteOnnx(model, values);
-        Assert.Equal(expected, ExecuteGenerated(generated.Value!, values));
+        Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), values));
 
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.flatten(1); }";
         var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
@@ -65,12 +65,12 @@ public sealed class ShapeCompilerTests
             var model = CreateFlattenModel(axis);
             var imported = Compiler.CreateTreeFromOnnx(model);
             Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
-            var generated = Compiler.GenerateCSharp(imported.Value!);
+            var generated = Compiler.GenerateSourceCode(imported.Value!);
             Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
 
             var values = Enumerable.Range(0, 24).Select(static value => (float)value).ToArray();
             var expected = ExecuteOnnx(model, values);
-            Assert.Equal(expected, ExecuteGenerated(generated.Value!, values));
+            Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), values));
 
             var source = $"public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) {{ return input.flatten({axis}); }}";
             var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
@@ -95,13 +95,13 @@ public sealed class ShapeCompilerTests
         Assert.IsType<Onnxify.Transpose>(onnxStep.Node);
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxStep.Descriptor.Capability);
 
-        var generated = Compiler.GenerateCSharp(imported.Value!);
+        var generated = Compiler.GenerateSourceCode(imported.Value!);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Contains("input.permute(new long[] { 1, 2, 0 })", generated.Value);
+        Assert.Contains("input.permute(new long[] { 1, 2, 0 })", generated.SourceCode());
 
         var values = Enumerable.Range(0, 24).Select(static value => (float)value).ToArray();
         var expected = ExecuteOnnx(model, values);
-        Assert.Equal(expected, ExecuteGenerated(generated.Value!, values));
+        Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), values));
 
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.permute(new long[] { 1, 2, 0 }); }";
         var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
@@ -145,13 +145,13 @@ public sealed class ShapeCompilerTests
         Assert.IsType<Onnxify.Reshape>(onnxStep.Node);
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxStep.Descriptor.Capability);
 
-        var generated = Compiler.GenerateCSharp(imported.Value!);
+        var generated = Compiler.GenerateSourceCode(imported.Value!);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Contains("input.reshape(new long[] { 6L, 4L })", generated.Value);
+        Assert.Contains("input.reshape(new long[] { 6L, 4L })", generated.SourceCode());
 
         var values = Enumerable.Range(0, 24).Select(static value => (float)value).ToArray();
         var expected = ExecuteOnnx(model, values);
-        Assert.Equal(expected, ExecuteGenerated(generated.Value!, values));
+        Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), values));
 
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.view(new long[] { 6, 4 }); }";
         var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
@@ -189,13 +189,13 @@ public sealed class ShapeCompilerTests
         var imported = Compiler.CreateTreeFromOnnx(model);
         Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
 
-        var generated = Compiler.GenerateCSharp(imported.Value!);
+        var generated = Compiler.GenerateSourceCode(imported.Value!);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Contains("input.reshape(new long[] { input.shape[0], -1L })", generated.Value);
+        Assert.Contains("input.reshape(new long[] { input.shape[0], -1L })", generated.SourceCode());
 
         var values = Enumerable.Range(0, 24).Select(static value => (float)value).ToArray();
         var expected = ExecuteOnnx(model, values);
-        Assert.Equal(expected, ExecuteGenerated(generated.Value!, values));
+        Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), values));
     }
 
     [Fact]
@@ -210,13 +210,13 @@ public sealed class ShapeCompilerTests
         Assert.IsType<Onnxify.Unsqueeze>(onnxStep.Node);
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxStep.Descriptor.Capability);
 
-        var generated = Compiler.GenerateCSharp(imported.Value);
+        var generated = Compiler.GenerateSourceCode(imported.Value);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Contains("input.unsqueeze(1)", generated.Value);
+        Assert.Contains("input.unsqueeze(1)", generated.SourceCode());
 
         var values = Enumerable.Range(0, 24).Select(static value => (float)value).ToArray();
         var expected = ExecuteOnnx(model, values);
-        Assert.Equal(expected, ExecuteGenerated(generated.Value!, values));
+        Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), values));
 
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.unsqueeze(1); }";
         var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
@@ -242,13 +242,13 @@ public sealed class ShapeCompilerTests
         Assert.IsType<Onnxify.Squeeze>(onnxStep.Node);
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxStep.Descriptor.Capability);
 
-        var generated = Compiler.GenerateCSharp(imported.Value);
+        var generated = Compiler.GenerateSourceCode(imported.Value);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Contains("input.squeeze(1)", generated.Value);
+        Assert.Contains("input.squeeze(1)", generated.SourceCode());
 
         var values = Enumerable.Range(0, 8).Select(static value => (float)value).ToArray();
         var expected = ExecuteOnnx(model, values, [2, 1, 4]);
-        Assert.Equal(expected, ExecuteGenerated(generated.Value!, values, [2, 1, 4]));
+        Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), values, [2, 1, 4]));
 
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.squeeze(1); }";
         var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
@@ -301,13 +301,13 @@ public sealed class ShapeCompilerTests
         Assert.IsType<Onnxify.Expand>(onnxStep.Node);
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxStep.Descriptor.Capability);
 
-        var generated = Compiler.GenerateCSharp(imported.Value);
+        var generated = Compiler.GenerateSourceCode(imported.Value);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Contains("ExpandWithRuntimeShape(input, new long[] { 2L, 3L, 4L })", generated.Value);
+        Assert.Contains("ExpandWithRuntimeShape(input, new long[] { 2L, 3L, 4L })", generated.SourceCode());
 
         var values = Enumerable.Range(0, 12).Select(static value => (float)value).ToArray();
         var expected = ExecuteOnnx(model, values, [1, 3, 4]);
-        Assert.Equal(expected, ExecuteGenerated(generated.Value!, values, [1, 3, 4]));
+        Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), values, [1, 3, 4]));
 
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.expand(new long[] { 2, 3, 4 }); }";
         var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
@@ -334,13 +334,13 @@ public sealed class ShapeCompilerTests
         Assert.IsType<Onnxify.Tile>(onnxStep.Node);
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxStep.Descriptor.Capability);
 
-        var generated = Compiler.GenerateCSharp(imported.Value);
+        var generated = Compiler.GenerateSourceCode(imported.Value);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Contains("input.repeat(new long[] { 1L, 2L, 1L })", generated.Value);
+        Assert.Contains("input.repeat(new long[] { 1L, 2L, 1L })", generated.SourceCode());
 
         var values = Enumerable.Range(0, 24).Select(static value => (float)value).ToArray();
         var expected = ExecuteOnnx(model, values);
-        Assert.Equal(expected, ExecuteGenerated(generated.Value!, values));
+        Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), values));
 
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.repeat(new long[] { 1, 2, 1 }); }";
         var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
@@ -367,13 +367,13 @@ public sealed class ShapeCompilerTests
         Assert.IsType<Onnxify.Slice>(onnxStep.Node);
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxStep.Descriptor.Capability);
 
-        var generated = Compiler.GenerateCSharp(imported.Value);
+        var generated = Compiler.GenerateSourceCode(imported.Value);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Contains("input.slice(1, 1, 3, 1)", generated.Value);
+        Assert.Contains("input.slice(1, 1, 3, 1)", generated.SourceCode());
 
         var values = Enumerable.Range(0, 24).Select(static value => (float)value).ToArray();
         var expected = ExecuteOnnx(model, values);
-        Assert.Equal(expected, ExecuteGenerated(generated.Value!, values));
+        Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), values));
 
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.slice(1, 1, 3, 1); }";
         var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
@@ -400,14 +400,14 @@ public sealed class ShapeCompilerTests
         Assert.IsType<Onnxify.Concat>(onnxStep.Node);
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxStep.Descriptor.Capability);
 
-        var generated = Compiler.GenerateCSharp(imported.Value);
+        var generated = Compiler.GenerateSourceCode(imported.Value);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Contains("torch.cat(new global::TorchSharp.torch.Tensor[] { left, right }, dim: 1)", generated.Value);
+        Assert.Contains("torch.cat(new global::TorchSharp.torch.Tensor[] { left, right }, dim: 1)", generated.SourceCode());
 
         var left = Enumerable.Range(0, 4).Select(static value => (float)value).ToArray();
         var right = Enumerable.Range(4, 4).Select(static value => (float)value).ToArray();
         var expected = ExecuteOnnx(model, [left, right], [[2, 2], [2, 2]]);
-        Assert.Equal(expected, ExecuteGenerated(generated.Value!, [left, right], [[2, 2], [2, 2]]));
+        Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), [left, right], [[2, 2], [2, 2]]));
 
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor left, global::TorchSharp.torch.Tensor right) { return torch.cat(new global::TorchSharp.torch.Tensor[] { left, right }, 1); }";
         var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
@@ -435,15 +435,15 @@ public sealed class ShapeCompilerTests
         Assert.Equal(["first", "second"], onnxStep.Outputs.Select(static output => output.Name));
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxStep.Descriptor.Capability);
 
-        var generated = Compiler.GenerateCSharp(imported.Value);
+        var generated = Compiler.GenerateSourceCode(imported.Value);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Contains("torch.split(input, new long[] { 1L, 3L }, dim: 1)", generated.Value);
-        Assert.Contains("var first = __first_outputs[0];", generated.Value);
-        Assert.Contains("var second = __first_outputs[1];", generated.Value);
+        Assert.Contains("torch.split(input, new long[] { 1L, 3L }, dim: 1)", generated.SourceCode());
+        Assert.Contains("var first = __first_outputs[0];", generated.SourceCode());
+        Assert.Contains("var second = __first_outputs[1];", generated.SourceCode());
 
         var values = Enumerable.Range(0, 8).Select(static value => (float)value).ToArray();
         var expected = ExecuteOnnxOutputs(model, [values], [[2, 4]]);
-        var generatedValues = ExecuteGeneratedOutputs(generated.Value!, [values], [[2L, 4L]]);
+        var generatedValues = ExecuteGeneratedOutputs(generated.SourceCode(), [values], [[2L, 4L]]);
         Assert.Equal(expected, generatedValues);
 
         const string source = "public (global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor) forward(global::TorchSharp.torch.Tensor input) { return torch.split(input, new long[] { 1, 3 }, 1); }";
@@ -501,9 +501,9 @@ public sealed class ShapeCompilerTests
 
         var imported = Compiler.CreateTreeFromOnnx(emitted.Value);
         Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
-        var generated = Compiler.GenerateCSharp(imported.Value!);
+        var generated = Compiler.GenerateSourceCode(imported.Value!);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Equal(expected, ExecuteGenerated(generated.Value!, values, [2, 4, 3]));
+        Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), values, [2, 4, 3]));
     }
 
     [Theory]
@@ -545,9 +545,9 @@ public sealed class ShapeCompilerTests
         Assert.IsType<Onnxify.Split>(Assert.Single(emitted.Value!.Graph.Nodes));
         var imported = Compiler.CreateTreeFromOnnx(emitted.Value);
         Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
-        var generated = Compiler.GenerateCSharp(imported.Value!);
+        var generated = Compiler.GenerateSourceCode(imported.Value!);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Contains("torch.split", generated.Value);
+        Assert.Contains("torch.split", generated.SourceCode());
     }
 
     private static OnnxModel CreateFlattenModel(long? axis = null)

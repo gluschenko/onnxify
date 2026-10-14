@@ -73,14 +73,14 @@ public sealed class CSharpCompilerTests
         Assert.True(imported.IsSuccess, string.Join(Environment.NewLine, imported.Diagnostics.Select(x => x.Message)));
         Assert.NotNull(imported.Value!.SyntaxBody);
 
-        var generated = Compiler.GenerateCSharp(imported.Value, new CompilerCSharpGenerationOptions
+        var generated = Compiler.GenerateSourceCode(imported.Value, new CompilerCSharpGenerationOptions
         {
             Namespace = "Onnxify.GeneratedControlFlow",
             ClassName = "GeneratedControlFlow",
             ModuleName = "generated-control-flow",
         });
         Assert.True(generated.IsSuccess, string.Join(Environment.NewLine, generated.Diagnostics.Select(x => x.Message)));
-        var output = generated.Value!;
+        var output = generated.SourceCode();
         Assert.Contains("while ((index < 4))", output);
         Assert.Contains("if ((index == 1))", output);
         Assert.Contains("continue;", output);
@@ -126,10 +126,10 @@ public sealed class CSharpCompilerTests
         var imported = Compiler.CreateTreeFromTorchSharp(source);
         Assert.True(imported.IsSuccess, string.Join(Environment.NewLine, imported.Diagnostics.Select(x => x.Message)));
 
-        var generated = Compiler.GenerateCSharp(imported.Value!);
+        var generated = Compiler.GenerateSourceCode(imported.Value!);
         Assert.True(generated.IsSuccess, string.Join(Environment.NewLine, generated.Diagnostics.Select(x => x.Message)));
-        Assert.Contains("System.IntPtr outputHandle;", generated.Value);
-        Assert.Contains("out outputHandle", generated.Value);
+        Assert.Contains("System.IntPtr outputHandle;", generated.SourceCode());
+        Assert.Contains("out outputHandle", generated.SourceCode());
     }
 
     [Fact]
@@ -157,9 +157,9 @@ public sealed class CSharpCompilerTests
         Assert.NotNull(imported.Value!.SyntaxBody);
         Assert.Contains(FlattenStatements(imported.Value.SyntaxBody!), statement =>
             statement is CompilerRuntimeIfStatement or CompilerRuntimeLoopStatement);
-        var generated = Compiler.GenerateCSharp(imported.Value);
+        var generated = Compiler.GenerateSourceCode(imported.Value);
         Assert.True(generated.IsSuccess, string.Join(Environment.NewLine, generated.Diagnostics.Select(x => x.Message)));
-        Assert.Contains("(global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor)? h0_c0", generated.Value);
+        Assert.Contains("(global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor)? h0_c0", generated.SourceCode());
     }
 
     private static IEnumerable<CompilerStatement> FlattenStatements(CompilerStatement statement)
@@ -191,7 +191,7 @@ public sealed class CSharpCompilerTests
 
         Assert.True(treeResult.IsSuccess);
         Assert.Equal("Add", Assert.IsType<CompilerOnnxStep>(Assert.Single(treeResult.Value!.Operations)).Descriptor.Name);
-        var generated = Compiler.GenerateCSharp(
+        var generated = Compiler.GenerateSourceCode(
             treeResult.Value,
             new CompilerCSharpGenerationOptions
             {
@@ -201,9 +201,9 @@ public sealed class CSharpCompilerTests
             });
 
         Assert.True(generated.IsSuccess, string.Join(Environment.NewLine, generated.Diagnostics.Select(x => x.Message)));
-        Assert.Contains("torch.nn.Module", generated.Value);
-        Assert.Contains("public override", generated.Value);
-        Assert.Contains(" + ", generated.Value);
+        Assert.Contains("torch.nn.Module", generated.SourceCode());
+        Assert.Contains("public override", generated.SourceCode());
+        Assert.Contains(" + ", generated.SourceCode());
     }
 
     [Fact]
@@ -220,9 +220,9 @@ public sealed class CSharpCompilerTests
         Assert.Equal("Relu", operation.Descriptor.Name);
         Assert.Null(imported.Value.SyntaxBody);
 
-        var generated = Compiler.GenerateCSharp(imported.Value);
+        var generated = Compiler.GenerateSourceCode(imported.Value);
         Assert.True(generated.IsSuccess, string.Join(" | ", generated.Diagnostics.Select(x => x.Message)));
-        Assert.Contains("torch.nn.functional.relu(input)", generated.Value);
+        Assert.Contains("torch.nn.functional.relu(input)", generated.SourceCode());
 
         var emitted = Compiler.GenerateOnnx(imported.Value);
         Assert.True(emitted.IsSuccess, string.Join(" | ", emitted.Diagnostics.Select(x => x.Message)));
@@ -279,12 +279,12 @@ public sealed class CSharpCompilerTests
             new CSharpTorchSharpSource("return input;"));
         Assert.True(treeResult.IsSuccess);
 
-        var generated = Compiler.GenerateCSharp(treeResult.Value!);
+        var generated = Compiler.GenerateSourceCode(treeResult.Value!);
         Assert.True(generated.IsSuccess);
 
         var compilation = CSharpCompilation.Create(
             "Onnxify.Generated.CompilerTest",
-            [CSharpSyntaxTree.ParseText(generated.Value!)],
+            [CSharpSyntaxTree.ParseText(generated.SourceCode())],
             GetCompilationReferences(),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         using var output = new MemoryStream();
@@ -301,12 +301,12 @@ public sealed class CSharpCompilerTests
         var treeResult = Compiler.CreateTreeFromTorchSharp(
             new CSharpTorchSharpSource("return input;"));
         Assert.True(treeResult.IsSuccess);
-        var generated = Compiler.GenerateCSharp(treeResult.Value!);
+        var generated = Compiler.GenerateSourceCode(treeResult.Value!);
         Assert.True(generated.IsSuccess);
 
         var compilation = CSharpCompilation.Create(
             "Onnxify.Generated.CompilerExecutionTest",
-            [CSharpSyntaxTree.ParseText(generated.Value!)],
+            [CSharpSyntaxTree.ParseText(generated.SourceCode())],
             GetCompilationReferences(),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         using var assemblyBytes = new MemoryStream();
@@ -357,11 +357,11 @@ public sealed class CSharpCompilerTests
         Assert.Equal("Project", moduleCall.TargetBlock);
         Assert.Null(tree.SyntaxBody);
 
-        var generated = Compiler.GenerateCSharp(tree);
+        var generated = Compiler.GenerateSourceCode(tree);
 
         Assert.True(generated.IsSuccess, string.Join(Environment.NewLine, generated.Diagnostics.Select(x => x.Message)));
-        Assert.Contains("private global::TorchSharp.torch.Tensor Project", generated.Value);
-        Assert.Contains("var output = Project(input);", generated.Value);
+        Assert.Contains("private global::TorchSharp.torch.Tensor Project", generated.SourceCode());
+        Assert.Contains("var output = Project(input);", generated.SourceCode());
 
         var emitted = Compiler.GenerateOnnx(tree);
         Assert.True(emitted.IsSuccess, string.Join(" | ", emitted.Diagnostics.Select(x => x.Message)));
@@ -449,10 +449,10 @@ public sealed class CSharpCompilerTests
         Assert.Equal(2, moduleCall.Arguments.Count);
         Assert.IsType<CompilerLiteralExpression>(moduleCall.Arguments[1]);
 
-        var generated = Compiler.GenerateCSharp(tree);
+        var generated = Compiler.GenerateSourceCode(tree);
         Assert.True(generated.IsSuccess, string.Join(" | ", generated.Diagnostics.Select(x => x.Message)));
-        Assert.Contains("ApplySlope(input, 0.25f)", generated.Value);
-        Assert.Contains("float slope", generated.Value);
+        Assert.Contains("ApplySlope(input, 0.25f)", generated.SourceCode());
+        Assert.Contains("float slope", generated.SourceCode());
 
         var emitted = Compiler.GenerateOnnx(tree);
         Assert.True(emitted.IsSuccess, string.Join(" | ", emitted.Diagnostics.Select(x => x.Message)));
@@ -487,9 +487,9 @@ public sealed class CSharpCompilerTests
         Assert.Equal("Split", call.TargetBlock);
         Assert.Equal(["output0", "output1"], call.Outputs.Select(output => output.Name));
 
-        var generated = Compiler.GenerateCSharp(tree);
+        var generated = Compiler.GenerateSourceCode(tree);
         Assert.True(generated.IsSuccess, string.Join(" | ", generated.Diagnostics.Select(x => x.Message)));
-        Assert.Contains("var (output0, output1) = Split(input);", generated.Value);
+        Assert.Contains("var (output0, output1) = Split(input);", generated.SourceCode());
 
         var emitted = Compiler.GenerateOnnx(tree);
         Assert.True(emitted.IsSuccess, string.Join(" | ", emitted.Diagnostics.Select(x => x.Message)));
@@ -601,9 +601,9 @@ public sealed class CSharpCompilerTests
         var tree = Assert.IsType<CompilerComputationTree>(result.Value);
         Assert.Contains(tree.SyntaxBody!.Statements, statement => statement is CompilerStaticForeachStatement);
 
-        var generated = Compiler.GenerateCSharp(tree);
+        var generated = Compiler.GenerateSourceCode(tree);
         Assert.True(generated.IsSuccess, string.Join(" | ", generated.Diagnostics.Select(x => x.Message)));
-        Assert.Contains("foreach (var value in values)", generated.Value);
+        Assert.Contains("foreach (var value in values)", generated.SourceCode());
     }
 
     private static void AssertOnnxOutput(
@@ -657,11 +657,11 @@ public sealed class CSharpCompilerTests
                 [new CompilerValueReference("input")],
                 [new CompilerValueReference("output")]));
 
-        var generated = Compiler.GenerateCSharp(builder.Build());
+        var generated = Compiler.GenerateSourceCode(builder.Build());
 
         Assert.True(generated.IsSuccess, string.Join(Environment.NewLine, generated.Diagnostics.Select(x => x.Message)));
-        Assert.Contains("var output = Project(input);", generated.Value);
-        Assert.Contains("return output;", generated.Value);
+        Assert.Contains("var output = Project(input);", generated.SourceCode());
+        Assert.Contains("return output;", generated.SourceCode());
     }
 
     [Fact]
@@ -878,10 +878,10 @@ public sealed class CSharpCompilerTests
         var childCall = Assert.IsType<CompilerModuleCall>(Assert.Single(tree.Operations));
         Assert.Equal("_child__forward", childCall.TargetBlock);
 
-        var generated = Compiler.GenerateCSharp(tree);
+        var generated = Compiler.GenerateSourceCode(tree);
         Assert.True(generated.IsSuccess, string.Join(" | ", generated.Diagnostics.Select(x => x.Message)));
-        Assert.Contains("_child__forward(input)", generated.Value);
-        Assert.Contains("_child___inner__forward(input)", generated.Value);
+        Assert.Contains("_child__forward(input)", generated.SourceCode());
+        Assert.Contains("_child___inner__forward(input)", generated.SourceCode());
 
         var emitted = Compiler.GenerateOnnx(tree);
         Assert.True(emitted.IsSuccess, string.Join(" | ", emitted.Diagnostics.Select(x => x.Message)));

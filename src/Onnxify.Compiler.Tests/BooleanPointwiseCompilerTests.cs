@@ -1,4 +1,4 @@
-﻿using System.Runtime.Loader;
+using System.Runtime.Loader;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.ML.OnnxRuntime;
@@ -47,9 +47,9 @@ public sealed class BooleanPointwiseCompilerTests
         Assert.Equal(onnxName, onnxStep.Descriptor.Name);
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxStep.Descriptor.Capability);
 
-        var generatedSource = Compiler.GenerateCSharp(onnxTree.Value);
+        var generatedSource = Compiler.GenerateSourceCode(onnxTree.Value);
         Assert.True(generatedSource.IsSuccess, FormatDiagnostics(generatedSource.Diagnostics));
-        Assert.True(expected.SequenceEqual(ExecuteGeneratedModule(generatedSource.Value!, leftValues, rightValues)));
+        Assert.True(expected.SequenceEqual(ExecuteGeneratedModule(generatedSource.SourceCode(), leftValues, rightValues)));
 
         var torchSource = CreateTorchSource(torchName);
         var torchTree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(torchSource));
@@ -84,9 +84,9 @@ public sealed class BooleanPointwiseCompilerTests
         Assert.Equal(onnxName, onnxStep.Descriptor.Name);
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxStep.Descriptor.Capability);
 
-        var generatedSource = Compiler.GenerateCSharp(onnxTree.Value);
+        var generatedSource = Compiler.GenerateSourceCode(onnxTree.Value);
         Assert.True(generatedSource.IsSuccess, FormatDiagnostics(generatedSource.Diagnostics));
-        Assert.True(expected.SequenceEqual(ExecuteGeneratedModule(generatedSource.Value!, leftValues, rightValues)));
+        Assert.True(expected.SequenceEqual(ExecuteGeneratedModule(generatedSource.SourceCode(), leftValues, rightValues)));
 
         var torchSource = CreateTorchSource(torchName);
         var torchTree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(torchSource));
@@ -235,9 +235,9 @@ public sealed class BooleanPointwiseCompilerTests
         var onnxStep = Assert.IsType<CompilerOnnxStep>(Assert.Single(onnxTree.Value!.Operations));
         Assert.Equal(onnxName, onnxStep.Descriptor.Name);
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxStep.Descriptor.Capability);
-        var generatedSource = Compiler.GenerateCSharp(onnxTree.Value);
+        var generatedSource = Compiler.GenerateSourceCode(onnxTree.Value);
         Assert.True(generatedSource.IsSuccess, FormatDiagnostics(generatedSource.Diagnostics));
-        Assert.Equal(expected, ExecuteGeneratedUnaryModule(generatedSource.Value!, inputValues));
+        Assert.Equal(expected, ExecuteGeneratedUnaryModule(generatedSource.SourceCode(), inputValues));
 
         var torchSource = $"public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) {{ return {torchExpression}; }}";
         var torchTree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(torchSource));

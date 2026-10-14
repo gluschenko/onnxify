@@ -29,11 +29,11 @@ public sealed class MatrixMultiplicationCompilerTests
         var onnxOperation = Assert.IsType<CompilerOnnxStep>(Assert.Single(imported.Value!.Operations));
         Assert.Equal("MatMul", onnxOperation.Descriptor.Name);
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxOperation.Descriptor.Capability);
-        var generated = Compiler.GenerateCSharp(imported.Value);
+        var generated = Compiler.GenerateSourceCode(imported.Value);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Contains("torch.matmul(left, right)", generated.Value);
+        Assert.Contains("torch.matmul(left, right)", generated.SourceCode());
         var expected = ExecuteOnnx(model, leftValues, leftShape, rightValues, rightShape);
-        AssertClose(expected, ExecuteGenerated(generated.Value!, leftValues, leftShape, rightValues, rightShape));
+        AssertClose(expected, ExecuteGenerated(generated.SourceCode(), leftValues, leftShape, rightValues, rightShape));
 
         var torchSource = $"public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor left, global::TorchSharp.torch.Tensor right) {{ return left.{methodName}(right); }}";
         var sourceTree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(torchSource));
@@ -72,9 +72,9 @@ public sealed class MatrixMultiplicationCompilerTests
         Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
         var importedOperation = Assert.IsType<CompilerOnnxStep>(Assert.Single(imported.Value!.Operations));
         Assert.Equal("Gemm", importedOperation.Descriptor.Name);
-        var generated = Compiler.GenerateCSharp(imported.Value);
+        var generated = Compiler.GenerateSourceCode(imported.Value);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Contains("torch.matmul(input.transpose(0, 1), weight.transpose(0, 1))", generated.Value);
+        Assert.Contains("torch.matmul(input.transpose(0, 1), weight.transpose(0, 1))", generated.SourceCode());
 
         var bias = new[] { 1f, -1f, 2f, 0.5f };
         var input = new[] { 1f, 2f, 3f, 4f, 5f, 6f };
@@ -82,7 +82,7 @@ public sealed class MatrixMultiplicationCompilerTests
         var transposedWeight = new[] { 1f, 0f, 0f, 1f, 0f, 1f, 1f, 0f, 1f, 0f, 0f, 1f };
         var transposedInput = new[] { 1f, 4f, 2f, 5f, 3f, 6f };
         var expected = ExecuteOnnx(onnxModel, transposedInput, [3, 2], weight, [4, 3], bias, [1, 4]);
-        AssertClose(expected, ExecuteGeneratedGemm(generated.Value!, transposedInput, [3, 2], weight, [4, 3], bias, [1, 4]));
+        AssertClose(expected, ExecuteGeneratedGemm(generated.SourceCode(), transposedInput, [3, 2], weight, [4, 3], bias, [1, 4]));
         AssertClose(expected, ExecuteOnnx(emitted.Value, input, [2, 3], transposedWeight, [3, 4], bias, [1, 4]));
     }
 
@@ -104,7 +104,7 @@ public sealed class MatrixMultiplicationCompilerTests
         var weightValues = new[] { 1f, 0f, 1f, 0f, 1f, 0f, 0f, 1f, 0f, 1f, 0f, 1f };
         var biasValues = new[] { 0.25f, -0.5f, 1f, 2f };
         var expected = ExecuteOnnx(emitted.Value, inputValues, [2, 3], weightValues, [4, 3], biasValues, [4]);
-        using var module = CompileModule(Compiler.GenerateCSharp(result.Value).Value!, "linear");
+        using var module = CompileModule(Compiler.GenerateSourceCode(result.Value).SourceCode(), "linear");
         using var input = global::TorchSharp.torch.tensor(inputValues, [2L, 3L], dtype: global::TorchSharp.torch.ScalarType.Float32);
         using var weight = global::TorchSharp.torch.tensor(weightValues, [4L, 3L], dtype: global::TorchSharp.torch.ScalarType.Float32);
         using var bias = global::TorchSharp.torch.tensor(biasValues, [4L], dtype: global::TorchSharp.torch.ScalarType.Float32);
@@ -131,7 +131,7 @@ public sealed class MatrixMultiplicationCompilerTests
         var values = new[] { 1f, 2f, 3f, 4f, 5f, 6f };
         var weights = new[] { 1f, 0f, 1f, 0f, 1f, 0f, 0f, 1f, 0f, 1f, 0f, 1f };
         var expected = ExecuteOnnxWithoutBias(onnx.Value, values, weights);
-        using var module = CompileModule(Compiler.GenerateCSharp(tree.Value).Value!, "linear-no-bias");
+        using var module = CompileModule(Compiler.GenerateSourceCode(tree.Value).SourceCode(), "linear-no-bias");
         using var input = global::TorchSharp.torch.tensor(values, [2L, 3L], dtype: global::TorchSharp.torch.ScalarType.Float32);
         using var weight = global::TorchSharp.torch.tensor(weights, [4L, 3L], dtype: global::TorchSharp.torch.ScalarType.Float32);
         using var output = (global::TorchSharp.torch.Tensor)module.Type.GetMethod("forward")!.Invoke(module.Instance, [input, weight])!;
@@ -139,9 +139,9 @@ public sealed class MatrixMultiplicationCompilerTests
 
         var imported = Compiler.CreateTreeFromOnnx(onnx.Value);
         Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
-        var generated = Compiler.GenerateCSharp(imported.Value!);
+        var generated = Compiler.GenerateSourceCode(imported.Value!);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        using var importedModule = CompileModule(generated.Value!, "gemm-no-bias");
+        using var importedModule = CompileModule(generated.SourceCode(), "gemm-no-bias");
         using var importedInput = global::TorchSharp.torch.tensor(values, [2L, 3L], dtype: global::TorchSharp.torch.ScalarType.Float32);
         using var importedWeight = global::TorchSharp.torch.tensor(weights, [4L, 3L], dtype: global::TorchSharp.torch.ScalarType.Float32);
         using var importedOutput = (global::TorchSharp.torch.Tensor)importedModule.Type.GetMethod("forward")!.Invoke(importedModule.Instance, [importedInput, importedWeight])!;
@@ -218,14 +218,14 @@ public sealed class MatrixMultiplicationCompilerTests
         var model = CreateDoubleGemmModel();
         var imported = Compiler.CreateTreeFromOnnx(model);
         Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
-        var generated = Compiler.GenerateCSharp(imported.Value!);
+        var generated = Compiler.GenerateSourceCode(imported.Value!);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
 
         var inputValues = new[] { 1d, 2d, 3d, 4d, 5d, 6d };
         var weightValues = new[] { 1d, 0d, 1d, 0d, 1d, 0d, 0d, 1d, 0d, 1d, 0d, 1d };
         var biasValues = new[] { 0.25d, -0.5d, 1d, 2d };
         var expected = ExecuteOnnxDouble(model, inputValues, [2, 3], weightValues, [4, 3], biasValues, [4]);
-        using var module = CompileModule(generated.Value!, "gemm-double");
+        using var module = CompileModule(generated.SourceCode(), "gemm-double");
         using var input = global::TorchSharp.torch.tensor(inputValues, [2L, 3L], dtype: global::TorchSharp.torch.ScalarType.Float64);
         using var weight = global::TorchSharp.torch.tensor(weightValues, [4L, 3L], dtype: global::TorchSharp.torch.ScalarType.Float64);
         using var bias = global::TorchSharp.torch.tensor(biasValues, [4L], dtype: global::TorchSharp.torch.ScalarType.Float64);
@@ -290,9 +290,9 @@ public sealed class MatrixMultiplicationCompilerTests
         var model = CreateTypedMatMulModel<T>();
         var imported = Compiler.CreateTreeFromOnnx(model);
         Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
-        var generated = Compiler.GenerateCSharp(imported.Value!);
+        var generated = Compiler.GenerateSourceCode(imported.Value!);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        using var module = CompileModule(generated.Value!, "typed-matmul");
+        using var module = CompileModule(generated.SourceCode(), "typed-matmul");
         var torchValues = ExecuteTypedTorchMatMul(module, leftValues, rightValues, elementType);
         var onnxValues = ExecuteTypedOnnxMatMul(model, leftValues, rightValues);
         Assert.Equal(expected, torchValues);

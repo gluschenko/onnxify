@@ -35,7 +35,7 @@ public sealed class CompilerRoundTripTests
         var onnxOperation = Assert.IsType<CompilerOnnxStep>(Assert.Single(onnxImported.Value!.Operations));
         Assert.Equal(sourceOperation.Descriptor, onnxOperation.Descriptor);
 
-        var generatedSource = GenerateCSharp(onnxImported.Value);
+        var generatedSource = GenerateSourceCode(onnxImported.Value);
         var inputValues = new[] { -2f, -0.5f, 0f, 3f };
         var generatedOutput = ExecuteGeneratedModule(generatedSource, inputValues);
         var onnxOutput = ExecuteOnnx(emitted.Value, inputValues);
@@ -49,17 +49,17 @@ public sealed class CompilerRoundTripTests
         Assert.Equal(eager.data<float>().ToArray(), onnxOutput);
     }
 
-    private static string GenerateCSharp(CompilerComputationTree tree)
+    private static string GenerateSourceCode(CompilerComputationTree tree)
     {
         var suffix = Guid.NewGuid().ToString("N");
-        var generated = Compiler.GenerateCSharp(tree, new CompilerCSharpGenerationOptions
+        var generated = Compiler.GenerateSourceCode(tree, new CompilerCSharpGenerationOptions
         {
             Namespace = $"Onnxify.GeneratedRoundTrip{suffix}",
             ClassName = $"GeneratedTorchModule{suffix}",
             ModuleName = $"GeneratedTorchModule{suffix}",
         });
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        return generated.Value!;
+        return generated.SourceCode();
     }
 
     private static float[] ExecuteGeneratedModule(string source, float[] inputValues)
