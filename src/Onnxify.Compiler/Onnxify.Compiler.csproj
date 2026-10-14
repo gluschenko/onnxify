@@ -25,7 +25,7 @@
     <ProjectReference Include="..\Onnxify\Onnxify.csproj" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' != 'netstandard2.0'">
+  <ItemGroup>
     <ProjectReference Include="..\Onnxify.Safetensors\Onnxify.Safetensors.csproj" />
   </ItemGroup>
 

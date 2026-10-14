@@ -60,6 +60,30 @@ public sealed class CompilerWeightArtifactTests
             tensor.Data.ToArray());
     }
 
+    [Fact]
+    public void SafetensorsWeightModePreservesFloat16InitializerBits()
+    {
+        var model = OnnxModel.Create(new OnnxModelCreationOptions { Opset = 25 });
+        var input = model.Graph.AddInput("input", OnnxTensorType.Create<Half>([1, 2]));
+        var weight = model.Graph.AddTensor("weight", [1, 2], [HalfFromBits(0x3c00), HalfFromBits(0xc000)]);
+        var output = model.Graph.AddOutput("output", OnnxTensorType.Create<Half>([1, 2]));
+        model.Graph.AddNode("add", "Add", string.Empty, string.Empty, [input, weight], [output], []);
+        var imported = Compiler.CreateTreeFromOnnx(model);
+        Assert.True(imported.IsSuccess, string.Join(Environment.NewLine, imported.Diagnostics.Select(static item => item.Message)));
+
+        var generated = Compiler.GenerateSourceCode(imported.Value!, new CompilerCSharpGenerationOptions
+        {
+            ClassName = "Float16WeightsModule",
+            WeightStorage = CompilerWeightStorageKind.Safetensors,
+        });
+
+        Assert.True(generated.IsSuccess, string.Join(Environment.NewLine, generated.Diagnostics.Select(static item => item.Message)));
+        var binary = Assert.Single(generated.Value!.OfType<BinaryFile>());
+        var weights = SafeTensors.Deserialize(binary.Data.ToArray());
+        Assert.Equal(DataType.F16, weights.Tensor("weight").DataType);
+        Assert.Equal(new ushort[] { 0x3c00, 0xc000 }, weights.Get<Onnxify.Safetensors.Float16>("weight").Select(static value => value.Value));
+    }
+
     [Theory]
     [InlineData(CompilerWeightStorageKind.Onnx)]
     [InlineData(CompilerWeightStorageKind.Safetensors)]
@@ -75,7 +99,8 @@ public sealed class CompilerWeightArtifactTests
         });
 
         Assert.True(generated.IsSuccess, string.Join(Environment.NewLine, generated.Diagnostics.Select(static item => item.Message)));
-        var source = Assert.Single(generated.Value!.OfType<SourceCodeFile>());
+        var generatedFiles = generated.Value!;
+        var source = Assert.Single(generatedFiles.OfType<SourceCodeFile>());
         Assert.DoesNotContain("1.25f", source.Content, StringComparison.Ordinal);
         if (storage == CompilerWeightStorageKind.Onnx)
         {
@@ -83,7 +108,7 @@ public sealed class CompilerWeightArtifactTests
         }
         else
         {
-            var binary = Assert.Single(generated.Value.OfType<BinaryFile>());
+            var binary = Assert.Single(generatedFiles.OfType<BinaryFile>());
             Assert.Equal(DataType.F32, SafeTensors.Deserialize(binary.Data.ToArray()).Tensor("bias").DataType);
         }
     }
@@ -181,4 +206,6 @@ public sealed class CompilerWeightArtifactTests
         model.Graph.AddNode("add", "Add", string.Empty, string.Empty, [input, bias], [output], []);
         return model;
     }
+
+    private static Half HalfFromBits(ushort bits) => BitConverter.UInt16BitsToHalf(bits);
 }

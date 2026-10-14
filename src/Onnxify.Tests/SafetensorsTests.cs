@@ -39,6 +39,12 @@ public class SafetensorsTests
         AssertValueRoundTrip("shorts", DataType.I16, new short[] { -300, 0, 300 });
         AssertValueRoundTrip("ushorts", DataType.U16, new ushort[] { 0, 300, 600 });
         AssertValueRoundTrip("halfs", DataType.F16, new[] { (Half)1.25f, (Half)(-2.5f), (Half)3.75f });
+        AssertValueRoundTrip("portable-halfs", DataType.F16, new[]
+        {
+            Float16.FromSingle(1.25f),
+            Float16.FromSingle(-2.5f),
+            Float16.FromSingle(3.75f),
+        });
         AssertValueRoundTrip("ints", DataType.I32, new[] { -1000, 0, 1000 });
         AssertValueRoundTrip("uints", DataType.U32, new uint[] { 0, 1000, 2000 });
         AssertValueRoundTrip("floats", DataType.F32, new[] { 1.2f, 3.4f, 5.6f });
@@ -81,6 +87,31 @@ public class SafetensorsTests
             loaded.Get<BFloat16>("bf16"));
         Assert.Equal(new[] { 1f, -2f }, loaded.Get<BFloat16>("bf16").Select(static value => value.ToSingle()));
         Assert.Throws<InvalidOperationException>(() => loaded.Get<float>("bf16"));
+    }
+
+    [Fact]
+    public void ValueApi_Float16_PreservesEncodedValuesAndConvertsWithIeeeRounding()
+    {
+        var values = new[]
+        {
+            Float16.FromEncoded(0x0001),
+            Float16.FromEncoded(0x3c00),
+            Float16.FromEncoded(0xc000),
+            Float16.FromEncoded(0x7c00),
+        };
+        var archive = new SafeTensors();
+        archive.Set("half", values, 2, 2);
+
+        var loaded = SafeTensors.Deserialize(archive.Serialize());
+        Assert.Equal(DataType.F16, loaded.Tensor("half").DataType);
+        Assert.Equal(new ulong[] { 2, 2 }, loaded.Tensor("half").Shape);
+        Assert.Equal(values, loaded.Get<Float16>("half"));
+        Assert.Equal(0x3c00, Float16.FromSingle(1f).Value);
+        Assert.Equal(0xc000, Float16.FromSingle(-2f).Value);
+        Assert.Equal(0x0000, Float16.FromSingle((float)Math.Pow(2, -25)).Value);
+        Assert.Equal(0x0002, Float16.FromSingle(3f * (float)Math.Pow(2, -25)).Value);
+        Assert.Equal(1f, loaded.Get<Float16>("half")[1].ToSingle());
+        Assert.Equal(float.PositiveInfinity, loaded.Get<Float16>("half")[3].ToSingle());
     }
 
     [Fact]

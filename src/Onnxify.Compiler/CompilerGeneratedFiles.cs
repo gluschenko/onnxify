@@ -17,7 +17,7 @@ public sealed class SourceCodeFile : IFile
         }
 
         Name = name;
-        Content = content ?? throw new ArgumentNullException(nameof(content));
+        Content = content ?? throw new System.ArgumentNullException(nameof(content));
     }
 
     public string Name { get; }

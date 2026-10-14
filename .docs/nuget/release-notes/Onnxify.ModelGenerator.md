@@ -2,6 +2,7 @@
 
 - Updated the package version for the coordinated Onnxify 0.4.0 release.
 - Added the shared `Onnxify.Compiler` package dependency as the compiler boundary for future bidirectional ONNX and TorchSharp generation.
+- Bundled the compiler's Safetensors runtime dependency for its netstandard2.0 analyzer build.
 
 ## 0.3.11
 

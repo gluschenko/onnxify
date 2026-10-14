@@ -178,7 +178,10 @@ public static class DataTypeExtensions
     /// </remarks>
     public static DataType ParseWireName(string name)
     {
-        ArgumentNullException.ThrowIfNull(name);
+        if (name is null)
+        {
+            throw new ArgumentNullException(nameof(name));
+        }
 
         return name switch
         {

@@ -19,7 +19,7 @@ internal static class CompilerWeightSelection
                 .Where(static member => member.IsOnnxInitializer)
                 .ToArray(),
             CompilerWeightStorageKind.Safetensors => members.ToArray(),
-            _ => throw new ArgumentOutOfRangeException(nameof(storageKind)),
+            _ => throw new System.ArgumentOutOfRangeException(nameof(storageKind)),
         };
     }
 }

@@ -1985,19 +1985,8 @@ internal static class CSharpCompilerBackend
             var files = new List<IFile> { new SourceCodeFile(options.SourceFileName, source) };
             if (options.WeightStorage == CompilerWeightStorageKind.Safetensors)
             {
-#if NET8_0_OR_GREATER
                 var filename = options.WeightsFileName ?? $"{options.ClassName}.safetensors";
                 files.Add(new BinaryFile(filename, CompilerWeightArtifactWriter.WriteSafetensors(tree)));
-#else
-                return CompilerResult<IFile[]>.Failure(
-                [
-                    new CompilerDiagnostic(
-                        code: CompilerDiagnosticCodes.Unsupported,
-                        message: "Safetensors artifact generation requires the net8.0 or net10.0 compiler target.",
-                        stage: CompilerDiagnosticStage.Emit,
-                        severity: CompilerDiagnosticSeverity.Error),
-                ]);
-#endif
             }
 
             var result = CompilerResult<IFile[]>.Success(files.ToArray());

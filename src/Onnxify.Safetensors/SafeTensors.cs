@@ -1,4 +1,4 @@
-﻿using System.Buffers;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Globalization;
 using System.Runtime.InteropServices;
@@ -26,9 +26,14 @@ public sealed class SafeTensors
     public SafeTensors(IReadOnlyDictionary<string, string>? metadata = null)
     {
         _tensors = new Dictionary<string, TensorView>(StringComparer.Ordinal);
-        _metadataEntries = metadata is null
-            ? new Dictionary<string, string>(StringComparer.Ordinal)
-            : new Dictionary<string, string>(metadata, StringComparer.Ordinal);
+        _metadataEntries = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (metadata is not null)
+        {
+            foreach (var pair in metadata)
+            {
+                _metadataEntries.Add(pair.Key, pair.Value);
+            }
+        }
     }
 
     private SafeTensors(Metadata metadata, ReadOnlyMemory<byte> data)
@@ -68,7 +73,7 @@ public sealed class SafeTensors
             throw SafeTensorException.HeaderTooSmall();
         }
 
-        var headerLengthRaw = BinaryPrimitives.ReadUInt64LittleEndian(buffer.Span[..LENGTH_PREFIX_SIZE]);
+        var headerLengthRaw = BinaryPrimitives.ReadUInt64LittleEndian(buffer.Span.Slice(0, LENGTH_PREFIX_SIZE));
         if (headerLengthRaw > MAX_HEADER_SIZE)
         {
             throw SafeTensorException.HeaderTooLarge();
@@ -104,7 +109,7 @@ public sealed class SafeTensors
         string headerText;
         try
         {
-            headerText = _strictUtf8.GetString(headerBytes);
+            headerText = _strictUtf8.GetString(headerBytes.ToArray());
         }
         catch (DecoderFallbackException ex)
         {
@@ -178,12 +183,17 @@ public sealed class SafeTensors
         CancellationToken cancellationToken = default
     )
     {
-        ArgumentNullException.ThrowIfNull(path);
+        if (path is null)
+        {
+            throw new ArgumentNullException(nameof(path));
+        }
 
         try
         {
-            var raw = await File.ReadAllBytesAsync(path, cancellationToken);
-            return Deserialize(raw);
+            using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
+            using var buffer = new MemoryStream();
+            await file.CopyToAsync(buffer, 81920, cancellationToken).ConfigureAwait(false);
+            return Deserialize(buffer.ToArray());
         }
         catch (IOException ex)
         {
@@ -206,7 +216,10 @@ public sealed class SafeTensors
         IReadOnlyDictionary<string, string>? metadata = null
     )
     {
-        ArgumentNullException.ThrowIfNull(data);
+        if (data is null)
+        {
+            throw new ArgumentNullException(nameof(data));
+        }
 
         var prepared = Prepare(data, metadata);
         if (prepared.HeaderBytes.Length > MAX_HEADER_SIZE)
@@ -251,8 +264,14 @@ public sealed class SafeTensors
         string path
     )
     {
-        ArgumentNullException.ThrowIfNull(data);
-        ArgumentNullException.ThrowIfNull(path);
+        if (data is null)
+        {
+            throw new ArgumentNullException(nameof(data));
+        }
+        if (path is null)
+        {
+            throw new ArgumentNullException(nameof(path));
+        }
 
         var prepared = Prepare(data, metadata);
         if (prepared.HeaderBytes.Length > MAX_HEADER_SIZE)
@@ -263,14 +282,15 @@ public sealed class SafeTensors
         try
         {
             using var file = File.Create(path);
-            Span<byte> headerLength = stackalloc byte[LENGTH_PREFIX_SIZE];
+            var headerLength = new byte[LENGTH_PREFIX_SIZE];
             BinaryPrimitives.WriteUInt64LittleEndian(headerLength, (ulong)prepared.HeaderBytes.Length);
-            file.Write(headerLength);
-            file.Write(prepared.HeaderBytes);
+            file.Write(headerLength, 0, headerLength.Length);
+            file.Write(prepared.HeaderBytes, 0, prepared.HeaderBytes.Length);
 
             foreach (var tensor in prepared.Tensors)
             {
-                file.Write(tensor.Value.Data.Span);
+                var tensorBytes = tensor.Value.Data.ToArray();
+                file.Write(tensorBytes, 0, tensorBytes.Length);
             }
         }
         catch (IOException ex)
@@ -293,8 +313,14 @@ public sealed class SafeTensors
         CancellationToken cancellationToken = default
     )
     {
-        ArgumentNullException.ThrowIfNull(data);
-        ArgumentNullException.ThrowIfNull(path);
+        if (data is null)
+        {
+            throw new ArgumentNullException(nameof(data));
+        }
+        if (path is null)
+        {
+            throw new ArgumentNullException(nameof(path));
+        }
 
         var prepared = Prepare(data, metadata);
         if (prepared.HeaderBytes.Length > MAX_HEADER_SIZE)
@@ -304,15 +330,16 @@ public sealed class SafeTensors
 
         try
         {
-            await using var file = File.Create(path);
+            using var file = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
             var headerLength = new byte[LENGTH_PREFIX_SIZE];
             BinaryPrimitives.WriteUInt64LittleEndian(headerLength, (ulong)prepared.HeaderBytes.Length);
-            await file.WriteAsync(headerLength, cancellationToken);
-            await file.WriteAsync(prepared.HeaderBytes, cancellationToken);
+            await file.WriteAsync(headerLength, 0, headerLength.Length, cancellationToken).ConfigureAwait(false);
+            await file.WriteAsync(prepared.HeaderBytes, 0, prepared.HeaderBytes.Length, cancellationToken).ConfigureAwait(false);
 
             foreach (var tensor in prepared.Tensors)
             {
-                await file.WriteAsync(tensor.Value.Data, cancellationToken);
+                var tensorBytes = tensor.Value.Data.ToArray();
+                await file.WriteAsync(tensorBytes, 0, tensorBytes.Length, cancellationToken).ConfigureAwait(false);
             }
         }
         catch (IOException ex)
@@ -345,7 +372,7 @@ public sealed class SafeTensors
     /// </summary>
     /// <typeparam name="T">
     /// Supported types: <see cref="bool"/>, <see cref="byte"/>, <see cref="sbyte"/>, <see cref="short"/>,
-    /// <see cref="ushort"/>, <see cref="Half"/>, <see cref="BFloat16"/>, <see cref="int"/>, <see cref="uint"/>, <see cref="float"/>,
+    /// <see cref="ushort"/>, <see cref="Float16"/>, <see cref="BFloat16"/>, <see cref="int"/>, <see cref="uint"/>, <see cref="float"/>,
     /// <see cref="double"/>, <see cref="long"/>, <see cref="ulong"/>, and <see cref="string"/>.
     /// </typeparam>
     /// <param name="tensorName">The tensor name to create or replace.</param>
@@ -362,9 +389,18 @@ public sealed class SafeTensors
     /// <param name="shape">Optional tensor shape. When omitted, values are stored as a one-dimensional vector.</param>
     public void SetTensor(string tensorName, Array values, params ulong[] shape)
     {
-        ArgumentNullException.ThrowIfNull(tensorName);
-        ArgumentNullException.ThrowIfNull(values);
-        ArgumentNullException.ThrowIfNull(shape);
+        if (tensorName is null)
+        {
+            throw new ArgumentNullException(nameof(tensorName));
+        }
+        if (values is null)
+        {
+            throw new ArgumentNullException(nameof(values));
+        }
+        if (shape is null)
+        {
+            throw new ArgumentNullException(nameof(shape));
+        }
 
         switch (values)
         {
@@ -388,9 +424,14 @@ public sealed class SafeTensors
             case ushort[] items:
                 SetUnmanagedTensor(tensorName, items, DataType.U16, shape);
                 return;
-            case Half[] items:
+            case Float16[] items:
                 SetUnmanagedTensor(tensorName, items, DataType.F16, shape);
                 return;
+#if NET5_0_OR_GREATER
+            case Half[] items:
+                SetUnmanagedTensor(tensorName, items.Select(static value => Float16.FromEncoded(BitConverter.HalfToUInt16Bits(value))).ToArray(), DataType.F16, shape);
+                return;
+#endif
             case BFloat16[] items:
                 SetUnmanagedTensor(tensorName, items, DataType.Bf16, shape);
                 return;
@@ -424,7 +465,10 @@ public sealed class SafeTensors
     /// <returns><see langword="true"/> when a value was removed; otherwise <see langword="false"/>.</returns>
     public bool Remove(string tensorName)
     {
-        ArgumentNullException.ThrowIfNull(tensorName);
+        if (tensorName is null)
+        {
+            throw new ArgumentNullException(nameof(tensorName));
+        }
 
         return _tensors.Remove(tensorName);
     }
@@ -434,7 +478,7 @@ public sealed class SafeTensors
     /// </summary>
     /// <typeparam name="T">
     /// Supported types: <see cref="bool"/>, <see cref="byte"/>, <see cref="sbyte"/>, <see cref="short"/>,
-    /// <see cref="ushort"/>, <see cref="Half"/>, <see cref="BFloat16"/>, <see cref="int"/>, <see cref="uint"/>, <see cref="float"/>,
+    /// <see cref="ushort"/>, <see cref="Float16"/>, <see cref="BFloat16"/>, <see cref="int"/>, <see cref="uint"/>, <see cref="float"/>,
     /// <see cref="double"/>, <see cref="long"/>, <see cref="ulong"/>, and <see cref="string"/>.
     /// </typeparam>
     /// <param name="tensorName">The tensor name to read.</param>
@@ -458,7 +502,10 @@ public sealed class SafeTensors
         if (type == typeof(sbyte)) return (T[])(object)GetUnmanagedValue<sbyte>(tensorName, tensor, DataType.I8);
         if (type == typeof(short)) return (T[])(object)GetUnmanagedValue<short>(tensorName, tensor, DataType.I16);
         if (type == typeof(ushort)) return (T[])(object)GetUnmanagedValue<ushort>(tensorName, tensor, DataType.U16);
+        if (type == typeof(Float16)) return (T[])(object)GetUnmanagedValue<Float16>(tensorName, tensor, DataType.F16);
+#if NET5_0_OR_GREATER
         if (type == typeof(Half)) return (T[])(object)GetUnmanagedValue<Half>(tensorName, tensor, DataType.F16);
+#endif
         if (type == typeof(BFloat16)) return (T[])(object)GetUnmanagedValue<BFloat16>(tensorName, tensor, DataType.Bf16);
         if (type == typeof(int)) return (T[])(object)GetUnmanagedValue<int>(tensorName, tensor, DataType.I32);
         if (type == typeof(uint)) return (T[])(object)GetUnmanagedValue<uint>(tensorName, tensor, DataType.U32);
@@ -516,7 +563,10 @@ public sealed class SafeTensors
     /// </remarks>
     public TensorView Tensor(string tensorName)
     {
-        ArgumentNullException.ThrowIfNull(tensorName);
+        if (tensorName is null)
+        {
+            throw new ArgumentNullException(nameof(tensorName));
+        }
 
         if (!_tensors.TryGetValue(tensorName, out var tensor))
         {
@@ -610,7 +660,10 @@ public sealed class SafeTensors
         if (alignedLength != originalLength)
         {
             Array.Resize(ref headerBytes, alignedLength);
-            Array.Fill(headerBytes, (byte)' ', originalLength, alignedLength - originalLength);
+            for (var index = originalLength; index < alignedLength; index++)
+            {
+                headerBytes[index] = (byte)' ';
+            }
         }
 
         return new PreparedSafetensorsData(headerBytes, sorted);
@@ -643,7 +696,10 @@ public sealed class SafeTensors
 
     private void SetTensorPayload(string tensorName, DataType dataType, ulong[] shape, byte[] data)
     {
-        ArgumentNullException.ThrowIfNull(tensorName);
+        if (tensorName is null)
+        {
+            throw new ArgumentNullException(nameof(tensorName));
+        }
         _tensors[tensorName] = new TensorView(dataType, shape, data);
     }
 
@@ -658,7 +714,7 @@ public sealed class SafeTensors
     {
         var tensor = Tensor(tensorName);
         EnsureDataType(tensorName, tensor, DataType.U8);
-        var json = Encoding.UTF8.GetString(tensor.Data.Span);
+        var json = Encoding.UTF8.GetString(tensor.Data.ToArray());
         return JsonSerializer.Deserialize<string[]>(json) ?? [];
     }
 
@@ -828,47 +884,48 @@ public sealed class SafeTensors
     /// </remarks>
     private static byte[] SerializeMetadata(Metadata metadata)
     {
-        var buffer = new ArrayBufferWriter<byte>();
-        using var writer = new Utf8JsonWriter(buffer);
-
-        writer.WriteStartObject();
-
-        if (metadata.MetadataEntries is not null)
+        using var buffer = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(buffer))
         {
-            writer.WritePropertyName("__metadata__");
             writer.WriteStartObject();
-            foreach (var pair in metadata.MetadataEntries)
+
+            if (metadata.MetadataEntries is not null)
             {
-                writer.WriteString(pair.Key, pair.Value);
+                writer.WritePropertyName("__metadata__");
+                writer.WriteStartObject();
+                foreach (var pair in metadata.MetadataEntries)
+                {
+                    writer.WriteString(pair.Key, pair.Value);
+                }
+                writer.WriteEndObject();
             }
+
+            foreach (var name in metadata.OffsetKeys())
+            {
+                var info = metadata.Info(name)!;
+                writer.WritePropertyName(name);
+                writer.WriteStartObject();
+                writer.WriteString("dtype", info.DataType.ToWireName());
+                writer.WritePropertyName("shape");
+                writer.WriteStartArray();
+                foreach (var dim in info.Shape)
+                {
+                    writer.WriteNumberValue(dim);
+                }
+                writer.WriteEndArray();
+                writer.WritePropertyName("data_offsets");
+                writer.WriteStartArray();
+                writer.WriteNumberValue(info.DataOffsets.Start);
+                writer.WriteNumberValue(info.DataOffsets.End);
+                writer.WriteEndArray();
+                writer.WriteEndObject();
+            }
+
             writer.WriteEndObject();
+            writer.Flush();
         }
 
-        foreach (var name in metadata.OffsetKeys())
-        {
-            var info = metadata.Info(name)!;
-            writer.WritePropertyName(name);
-            writer.WriteStartObject();
-            writer.WriteString("dtype", info.DataType.ToWireName());
-            writer.WritePropertyName("shape");
-            writer.WriteStartArray();
-            foreach (var dim in info.Shape)
-            {
-                writer.WriteNumberValue(dim);
-            }
-            writer.WriteEndArray();
-            writer.WritePropertyName("data_offsets");
-            writer.WriteStartArray();
-            writer.WriteNumberValue(info.DataOffsets.Start);
-            writer.WriteNumberValue(info.DataOffsets.End);
-            writer.WriteEndArray();
-            writer.WriteEndObject();
-        }
-
-        writer.WriteEndObject();
-        writer.Flush();
-
-        return buffer.WrittenMemory.ToArray();
+        return buffer.ToArray();
     }
 
     /// <summary>
@@ -1023,7 +1080,7 @@ public sealed class SafeTensors
             DataType.I8 => nameof(SByte),
             DataType.I16 => nameof(Int16),
             DataType.U16 => nameof(UInt16),
-            DataType.F16 => nameof(Half),
+            DataType.F16 => nameof(Float16),
             DataType.Bf16 => "BFloat16",
             DataType.I32 => nameof(Int32),
             DataType.U32 => nameof(UInt32),
@@ -1039,17 +1096,8 @@ public sealed class SafeTensors
     private static bool[] ToBooleanArray(ReadOnlySpan<byte> data)
         => [.. data.ToArray().Select(static x => x != 0)];
 
-    private static Half[] ToHalfArray(ReadOnlySpan<byte> data)
-    {
-        var ushortValues = MemoryMarshal.Cast<byte, ushort>(data);
-        var result = new Half[ushortValues.Length];
-        for (var i = 0; i < ushortValues.Length; i++)
-        {
-            result[i] = BitConverter.UInt16BitsToHalf(ushortValues[i]);
-        }
-
-        return result;
-    }
+    private static Float16[] ToHalfArray(ReadOnlySpan<byte> data)
+        => MemoryMarshal.Cast<byte, Float16>(data).ToArray();
 
     private static float[] ToBFloat16Array(ReadOnlySpan<byte> data)
     {
@@ -1057,7 +1105,7 @@ public sealed class SafeTensors
         var result = new float[ushortValues.Length];
         for (var i = 0; i < ushortValues.Length; i++)
         {
-            result[i] = BitConverter.Int32BitsToSingle(ushortValues[i] << 16);
+            result[i] = Float32Bits.ToSingle(ushortValues[i] << 16);
         }
 
         return result;

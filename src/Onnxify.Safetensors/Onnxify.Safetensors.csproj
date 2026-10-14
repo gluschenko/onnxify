@@ -1,7 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net8.0;net10.0</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Version>0.4.0</Version>
@@ -12,6 +13,12 @@
     <PackageTags>safetensors;dotnet;machine-learning;ai;tensors;tensor-storage;model-weights;metadata;checkpoint;huggingface;torchsharp;pytorch;serialization;zero-copy;weights</PackageTags>
     <Description>Safetensors-focused .NET library for reading metadata, indexing tensor slices, and working with safetensors-backed tensor storage.</Description>
   </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="System.Memory" Version="4.6.3" GeneratePathProperty="true" />
+    <PackageReference Include="System.Buffers" Version="4.6.1" GeneratePathProperty="true" />
+    <PackageReference Include="System.Text.Json" Version="10.0.9" GeneratePathProperty="true" />
+  </ItemGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

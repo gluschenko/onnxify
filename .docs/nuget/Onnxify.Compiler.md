@@ -106,12 +106,12 @@ The dependency direction is intentionally one-way:
 
 ```text
 Onnxify.Compiler -> Onnxify
-Onnxify.Compiler (net8.0/net10.0) -> Onnxify.Safetensors
+Onnxify.Compiler -> Onnxify.Safetensors
 Onnxify.ModelGenerator -> Onnxify.Compiler
 Onnxify.TorchSharp -> Onnxify.Compiler
 ```
 
-The Safetensors reference is available on the .NET 8 and .NET 10 compiler targets, where binary sidecar generation is supported. The .NET Standard 2.0 target remains usable for ONNX-backed C# generation. This keeps compiler semantics in one project and prevents the two consumer packages from growing parallel compiler implementations.
+All compiler targets, including .NET Standard 2.0, can generate ONNX-backed source and Safetensors sidecars. The .NET Standard build is used by the ModelGenerator analyzer, which packages the compiler and its Safetensors runtime dependencies together.
 
 ## Repository
 

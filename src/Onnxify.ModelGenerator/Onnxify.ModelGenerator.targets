@@ -8,6 +8,19 @@
     <Analyzer Include="$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\Onnxify.Compiler.dll" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Analyzer Include="$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\Onnxify.Safetensors.dll" Condition="Exists('$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\Onnxify.Safetensors.dll')" />
+    <Analyzer Include="$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\System.Memory.dll" Condition="Exists('$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\System.Memory.dll')" />
+    <Analyzer Include="$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\System.Buffers.dll" Condition="Exists('$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\System.Buffers.dll')" />
+    <Analyzer Include="$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\System.Runtime.CompilerServices.Unsafe.dll" Condition="Exists('$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\System.Runtime.CompilerServices.Unsafe.dll')" />
+    <Analyzer Include="$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\System.Text.Json.dll" Condition="Exists('$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\System.Text.Json.dll')" />
+    <Analyzer Include="$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\System.Text.Encodings.Web.dll" Condition="Exists('$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\System.Text.Encodings.Web.dll')" />
+    <Analyzer Include="$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\System.Numerics.Vectors.dll" Condition="Exists('$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\System.Numerics.Vectors.dll')" />
+    <Analyzer Include="$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\Microsoft.Bcl.AsyncInterfaces.dll" Condition="Exists('$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\Microsoft.Bcl.AsyncInterfaces.dll')" />
+    <Analyzer Include="$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\System.IO.Pipelines.dll" Condition="Exists('$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\System.IO.Pipelines.dll')" />
+    <Analyzer Include="$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\System.Threading.Tasks.Extensions.dll" Condition="Exists('$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\System.Threading.Tasks.Extensions.dll')" />
+  </ItemGroup>
+
   <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\ICSharpCode.Decompiler.dll')">
     <Analyzer Include="$(MSBuildThisFileDirectory)bin\$(Configuration)\netstandard2.0\ICSharpCode.Decompiler.dll" />
   </ItemGroup>

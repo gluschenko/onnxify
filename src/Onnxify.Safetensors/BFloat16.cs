@@ -20,7 +20,7 @@ public readonly struct BFloat16 : IEquatable<BFloat16>
     public static BFloat16 FromEncoded(ushort value) => new(value);
 
     /// <summary>Expands this bfloat16 payload to its exactly representable single-precision value.</summary>
-    public float ToSingle() => BitConverter.Int32BitsToSingle((int)((uint)_value << 16));
+    public float ToSingle() => Float32Bits.ToSingle(unchecked((int)((uint)_value << 16)));
 
     public bool Equals(BFloat16 other) => _value == other._value;
 

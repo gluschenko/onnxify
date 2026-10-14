@@ -36,7 +36,10 @@ public sealed class Metadata
         IEnumerable<KeyValuePair<string, TensorInfo>> tensors
     )
     {
-        ArgumentNullException.ThrowIfNull(tensors);
+        if (tensors is null)
+        {
+            throw new ArgumentNullException(nameof(tensors));
+        }
 
         _indexMap = new Dictionary<string, int>(StringComparer.Ordinal);
         _namesByIndex = [];
@@ -49,9 +52,16 @@ public sealed class Metadata
             _tensors.Add(pair.Value);
         }
 
-        MetadataEntries = metadataEntries is null
-            ? null
-            : new Dictionary<string, string>(metadataEntries, StringComparer.Ordinal);
+        if (metadataEntries is not null)
+        {
+            var metadataCopy = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var pair in metadataEntries)
+            {
+                metadataCopy.Add(pair.Key, pair.Value);
+            }
+
+            MetadataEntries = metadataCopy;
+        }
 
         Validate();
     }
@@ -67,7 +77,10 @@ public sealed class Metadata
     /// </remarks>
     public TensorInfo? Info(string name)
     {
-        ArgumentNullException.ThrowIfNull(name);
+        if (name is null)
+        {
+            throw new ArgumentNullException(nameof(name));
+        }
         return _indexMap.TryGetValue(name, out var index) ? _tensors[index] : null;
     }
 
@@ -107,7 +120,7 @@ public sealed class Metadata
     /// </remarks>
     public ulong DataLength()
     {
-        return _tensors.Count == 0 ? 0UL : _tensors[^1].DataOffsets.End;
+        return _tensors.Count == 0 ? 0UL : _tensors[_tensors.Count - 1].DataOffsets.End;
     }
 
     /// <summary>

@@ -1,4 +1,3 @@
-#if NET8_0_OR_GREATER
 using Onnxify.Safetensors;
 
 namespace Onnxify.Compiler;
@@ -16,12 +15,24 @@ internal static class CompilerWeightArtifactWriter
                 throw new InvalidOperationException($"State member '{member.Name}' is not a dense tensor and cannot be written to Safetensors.");
             }
 
-            var values = CompilerElementTypeMap.ToArray(tensor);
-            if (tensor.ElementType == CompilerElementType.BFloat16)
+            Array values;
+            if (tensor.ElementType == CompilerElementType.Float16)
             {
-                values = ((Onnxify.Data.Numerics.BFloat16[])values)
-                    .Select(static value => BFloat16.FromEncoded(value.Value))
+                values = tensor.Values
+                    .Cast<CompilerFloatingPointLiteral>()
+                    .Select(static value => Float16.FromSingle((float)value.Value))
                     .ToArray();
+            }
+            else if (tensor.ElementType == CompilerElementType.BFloat16)
+            {
+                values = tensor.Values
+                    .Cast<CompilerPackedScalarLiteral>()
+                    .Select(static value => BFloat16.FromEncoded(checked((ushort)value.EncodedValue)))
+                    .ToArray();
+            }
+            else
+            {
+                values = CompilerElementTypeMap.ToArray(tensor);
             }
 
             var shape = tensor.Dimensions
@@ -33,4 +44,3 @@ internal static class CompilerWeightArtifactWriter
         return archive.Serialize();
     }
 }
-#endif
