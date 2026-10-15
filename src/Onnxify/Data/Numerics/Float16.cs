@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace Onnxify.Safetensors;
+namespace Onnxify.Data.Numerics;
 
 /// <summary>Represents an IEEE 754 binary16 value using a portable encoded payload.</summary>
 [StructLayout(LayoutKind.Sequential, Pack = 1)]

@@ -1,5 +1,6 @@
 ﻿using System.Buffers.Binary;
 using System.Text;
+using Onnxify.Data.Numerics;
 using Onnxify.Safetensors;
 using SafeTensors = Onnxify.Safetensors.SafeTensors;
 
@@ -82,9 +83,7 @@ public class SafetensorsTests
 
         Assert.Equal(DataType.Bf16, loaded.Tensor("bf16").DataType);
         Assert.Equal([1, 2], loaded.Tensor("bf16").Shape);
-        Assert.Equal(
-            new[] { BFloat16.FromEncoded(0x3f80), BFloat16.FromEncoded(0xc000) },
-            loaded.Get<BFloat16>("bf16"));
+        Assert.Equal(new ushort[] { 0x3f80, 0xc000 }, loaded.Get<BFloat16>("bf16").Select(static value => value.Value));
         Assert.Equal(new[] { 1f, -2f }, loaded.Get<BFloat16>("bf16").Select(static value => value.ToSingle()));
         Assert.Throws<InvalidOperationException>(() => loaded.Get<float>("bf16"));
     }

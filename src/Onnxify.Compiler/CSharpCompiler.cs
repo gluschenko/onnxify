@@ -2280,7 +2280,7 @@ internal sealed class CSharpSourcePrinter
                 Line($"if (!{localName}.Shape.SequenceEqual({expectedShape})) throw new InvalidDataException(\"ONNX initializer '{Escape(member.Name)}' has an unexpected shape.\");");
                 var conversion = elementType == CompilerElementType.BFloat16
                     ? $"((global::Onnxify.Data.Numerics.BFloat16)value!).ToSingle()"
-                    : $"({clrType})Convert.ChangeType(value!, typeof({clrType}), CultureInfo.InvariantCulture)";
+                    : $"({clrType})value!";
                 Line($"var {localName}Values = {localName}.Values.Select(static value => {conversion}).ToArray();");
             }
             else
@@ -2291,7 +2291,7 @@ internal sealed class CSharpSourcePrinter
                 Line($"if (!{tensorLocalName}.Shape.SequenceEqual({expectedSafetensorsShape})) throw new InvalidDataException(\"Safetensors tensor '{Escape(member.Name)}' has an unexpected shape.\");");
                 if (elementType == CompilerElementType.BFloat16)
                 {
-                    Line($"var {localName}Values = __safetensorsWeights.Get<global::Onnxify.Safetensors.BFloat16>(\"{Escape(member.Name)}\").Select(static value => value.ToSingle()).ToArray();");
+                    Line($"var {localName}Values = __safetensorsWeights.Get<global::Onnxify.Data.Numerics.BFloat16>(\"{Escape(member.Name)}\").Select(static value => value.ToSingle()).ToArray();");
                 }
                 else
                 {

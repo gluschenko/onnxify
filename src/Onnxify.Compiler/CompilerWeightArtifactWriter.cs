@@ -1,4 +1,5 @@
 using Onnxify.Safetensors;
+using Onnxify.Data.Numerics;
 
 namespace Onnxify.Compiler;
 

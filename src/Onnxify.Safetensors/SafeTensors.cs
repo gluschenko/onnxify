@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
+using Onnxify.Data.Numerics;
 
 namespace Onnxify.Safetensors;
 
@@ -380,6 +381,12 @@ public sealed class SafeTensors
     /// <param name="shape">Optional tensor shape. When omitted, the value is stored as a one-dimensional vector.</param>
     public void Set<T>(string tensorName, T[] values, params ulong[] shape)
     {
+        if (typeof(T) == typeof(sbyte))
+        {
+            SetUnmanagedTensor(tensorName, (sbyte[])(object)values, DataType.I8, shape);
+            return;
+        }
+
         SetTensor(tensorName, values, shape);
     }
 
@@ -402,6 +409,14 @@ public sealed class SafeTensors
             throw new ArgumentNullException(nameof(shape));
         }
 
+        // Keep signed bytes ahead of the general type switch: they share the same storage width
+        // as U8, but their Safetensors dtype must remain I8.
+        if (values.GetType() == typeof(sbyte[]))
+        {
+            SetUnmanagedTensor(tensorName, (sbyte[])values, DataType.I8, shape);
+            return;
+        }
+
         switch (values)
         {
             case string[] strings when shape.Length == 0:
@@ -414,9 +429,6 @@ public sealed class SafeTensors
                 return;
             case byte[] items:
                 SetTensorPayload(tensorName, DataType.U8, ShapeOrVector(items.Length, shape), items.ToArray());
-                return;
-            case sbyte[] items:
-                SetUnmanagedTensor(tensorName, items, DataType.I8, shape);
                 return;
             case short[] items:
                 SetUnmanagedTensor(tensorName, items, DataType.I16, shape);

@@ -3,6 +3,11 @@ using System.Reflection;
 using Onnxify;
 using Onnxify.Compiler.Operators;
 using Onnxify.Data.Numerics;
+#if NET8_0_OR_GREATER
+using Half = System.Half;
+#else
+using Half = Onnxify.Data.Numerics.Float16;
+#endif
 
 namespace Onnxify.Compiler;
 
@@ -2167,6 +2172,7 @@ internal static class CompilerElementTypeMap
             "System.Int64" => CompilerElementType.Int64,
             "System.UInt64" => CompilerElementType.UInt64,
             "System.Half" => CompilerElementType.Float16,
+            "Onnxify.Data.Numerics.Float16" => CompilerElementType.Float16,
             "System.Single" => CompilerElementType.Float32,
             "System.Double" => CompilerElementType.Float64,
             "System.String" => CompilerElementType.String,
@@ -2328,7 +2334,7 @@ internal static class CompilerElementTypeMap
             CompilerElementType.UInt8 or CompilerElementType.UInt16 or CompilerElementType.UInt32 or CompilerElementType.UInt64
                 => new CompilerUnsignedIntegerLiteral(elementType, Convert.ToUInt64(value)),
             CompilerElementType.Float16 or CompilerElementType.Float32 or CompilerElementType.Float64
-                => new CompilerFloatingPointLiteral(elementType, Convert.ToDouble(value)),
+                => new CompilerFloatingPointLiteral(elementType, ToDouble(value)),
             CompilerElementType.String => new CompilerStringLiteral(Convert.ToString(value) ?? string.Empty),
             _ => throw new CompilerConversionException(
                 CompilerDiagnosticCodes.Unsupported,
@@ -2465,7 +2471,26 @@ internal static class CompilerElementTypeMap
         CompilerElementType elementType
     )
     {
-        var converted = Convert.ChangeType(value, targetType);
+        object? converted;
+        if (targetType == typeof(Float16))
+        {
+            converted = Float16.FromSingle((float)ToDouble(value));
+        }
+#if NET8_0_OR_GREATER
+        else if (targetType == typeof(Half))
+        {
+            converted = (Half)ToDouble(value);
+        }
+#else
+        else if (targetType == typeof(System.Half))
+        {
+            converted = new System.Half(Float16.FromSingle((float)ToDouble(value)).Value);
+        }
+#endif
+        else
+        {
+            converted = Convert.ChangeType(value, targetType);
+        }
         if (converted is null)
         {
             throw new CompilerConversionException(
@@ -2474,6 +2499,25 @@ internal static class CompilerElementTypeMap
         }
 
         return converted;
+    }
+
+    private static double ToDouble(object value)
+    {
+#if NET8_0_OR_GREATER
+        return value switch
+        {
+            Half half => (double)half,
+            Float16 portableHalf => portableHalf.ToSingle(),
+            _ => Convert.ToDouble(value),
+        };
+#else
+        return value switch
+        {
+            System.Half half => Float16.FromEncoded(half.Bits).ToSingle(),
+            Half half => half.ToSingle(),
+            _ => Convert.ToDouble(value),
+        };
+#endif
     }
 
     private static Type FindType(string name)

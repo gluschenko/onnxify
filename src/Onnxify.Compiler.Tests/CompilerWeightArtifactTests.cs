@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using Onnxify.Compiler;
+using Onnxify.Data.Numerics;
 using Onnxify.Safetensors;
 using Onnxify;
 
@@ -81,7 +82,7 @@ public sealed class CompilerWeightArtifactTests
         var binary = Assert.Single(generated.Value!.OfType<BinaryFile>());
         var weights = SafeTensors.Deserialize(binary.Data.ToArray());
         Assert.Equal(DataType.F16, weights.Tensor("weight").DataType);
-        Assert.Equal(new ushort[] { 0x3c00, 0xc000 }, weights.Get<Onnxify.Safetensors.Float16>("weight").Select(static value => value.Value));
+        Assert.Equal(new ushort[] { 0x3c00, 0xc000 }, weights.Get<Float16>("weight").Select(static value => value.Value));
     }
 
     [Theory]
