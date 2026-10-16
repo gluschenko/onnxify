@@ -27,6 +27,14 @@ public readonly struct Float8E8M0
         }
     }
 
+    /// <summary>Creates a value from its encoded ONNX payload.</summary>
+    public static Float8E8M0 FromEncoded(byte value) => new(value, encoded: true);
+
+    private Float8E8M0(byte value, bool encoded)
+    {
+        Value = value;
+    }
+
     /// <summary>
     /// Expands the encoded exponent to a single-precision power-of-two value.
     /// </summary>

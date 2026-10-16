@@ -786,9 +786,9 @@ public sealed class EvaluationDiagnostic
 
 public enum EvaluationDiagnosticSeverity
 {
-    Info,
-    Warning,
-    Error,
+    Info = 0,
+    Warning = 1,
+    Error = 2,
 }
 
 public sealed class TorchExportEvaluationComparisonContext

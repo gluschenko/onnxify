@@ -16,8 +16,8 @@ Do not hand-edit this file; rerun the generator instead.
 
 | Package | Version |
 | --- | --- |
-| `Onnxify` | `0.3.11` |
-| `Onnxify.TorchSharp` | `0.3.11` |
+| `Onnxify` | `0.4.0` |
+| `Onnxify.TorchSharp` | `0.4.0` |
 
 ## Parameters
 

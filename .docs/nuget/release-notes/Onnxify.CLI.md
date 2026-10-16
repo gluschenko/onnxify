@@ -1,3 +1,7 @@
+## 0.4.0
+
+- Updated the package version for the coordinated Onnxify 0.4.0 release.
+
 ## 0.3.11
 
 - Updated the package version for the coordinated Onnxify 0.3.11 release.

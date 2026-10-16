@@ -106,6 +106,7 @@ For OXY-019 and subtasks OXY-020—OXY-027, read the relevant dedicated pages be
 - In this repo, when a method declaration or invocation is split across multiple lines, put the closing parenthesis on its own line instead of attaching it to the last argument line.
 - Apply the same rule to constructors and other argument lists when the call or declaration is formatted vertically.
 - Name constants in C++-style uppercase snake case rather than PascalCase.
+- Assign an explicit numeric value to every enum member, including the first member; never rely on implicit enum numbering. Use `0` for `Unknown`, `None`, `Undefined`, or another intentional default/sentinel value; start at `1` when zero is not a valid member. Keep existing wire/public values stable unless a deliberate contract change is required, and use explicit powers of two for `[Flags]` enums.
 
 Preferred declaration style:
 

@@ -26,6 +26,19 @@ public abstract class OnnxTensor : IOnnxGraphEdge
     /// Gets tensor dimensions in ONNX order.
     /// </summary>
     public abstract long[] Shape { get; }
+
+    /// <summary>
+    /// Gets whether the source model stored the payload inline or in ONNX external data.
+    /// </summary>
+    public abstract TensorDataLocation DataLocation { get; }
+
+    /// <summary>
+    /// Gets the tensor payload as immutable boxed values for consumers that only know the runtime element type.
+    /// </summary>
+    /// <remarks>
+    /// The generic <see cref="OnnxTensor{T}.Value"/> property remains the preferred typed access path. This view exists for compiler and inspection layers that must preserve tensors without depending on every supported numeric CLR type at compile time.
+    /// </remarks>
+    public abstract IReadOnlyList<object?> Values { get; }
     internal abstract TensorProto ToProto();
 
     internal static OnnxTensor<T> FromProto<T>(TensorProto tensor, OnnxModelBaseOptions options)
@@ -102,7 +115,7 @@ public class OnnxTensor<T> : OnnxTensor
     /// <summary>
     /// Gets the data-location state observed when the tensor was loaded.
     /// </summary>
-    public TensorDataLocation DataLocation { get; private set; }
+    public override TensorDataLocation DataLocation { get; }
 
     /// <inheritdoc />
     public override long[] Shape { get; }
@@ -111,6 +124,9 @@ public class OnnxTensor<T> : OnnxTensor
     /// Gets the flat tensor data in ONNX row-major order.
     /// </summary>
     public IEnumerable<T> Value { get; private set; }
+
+    /// <inheritdoc />
+    public override IReadOnlyList<object?> Values => Value.Cast<object?>().ToArray();
 
     private readonly TensorProto _tensor;
 

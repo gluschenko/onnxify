@@ -18,6 +18,113 @@ namespace Onnxify.Tests;
 public sealed class OnnxModelGeneratorTests
 {
     [Fact]
+    public void Generate_WithExperimentalTorchModule_UsesCompilerAndCompilesGeneratedType()
+    {
+        // ONNX source case: third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py (nn.functional.relu).
+        // Runtime oracle: third_party/onnxruntime/onnxruntime/test/providers/cpu/activation/activation_op_test.cc.
+        var tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+        var modelPath = Path.Combine(tempRoot, "relu.onnx");
+        var graph = new GraphProto { Name = "relu" };
+        graph.Input.Add(CreateTensorValueInfo("input", TensorProto.Types.DataType.Float, 2));
+        graph.Output.Add(CreateTensorValueInfo("output", TensorProto.Types.DataType.Float, 2));
+        graph.Node.Add(new NodeProto { OpType = "Relu", Input = { "input" }, Output = { "output" } });
+        var model = new ModelProto { IrVersion = 9, Graph = graph };
+        model.OpsetImport.Add(new OperatorSetIdProto { Domain = "", Version = 13 });
+        File.WriteAllBytes(modelPath, model.ToByteArray());
+
+        var driver = CreateDriver(
+            additionalFiles: [new BinaryAdditionalText(modelPath)],
+            globalOptions: new Dictionary<string, string>(StringComparer.Ordinal),
+            fileOptions: new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal)
+            {
+                [modelPath] = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["build_metadata.additionalfiles.OnnxifyModelImportType"] = "TorchModuleExperimental",
+                },
+            });
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(CreateCompilation(), out var updatedCompilation, out var diagnostics);
+
+        Assert.DoesNotContain(diagnostics, static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(updatedCompilation.GetDiagnostics(), static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        var generatedSource = GetAllGeneratedSource(driver);
+        Assert.Contains("class ReluModelTorchModule", generatedSource);
+        Assert.Contains("relu(", generatedSource);
+
+        using var generatedAssembly = new MemoryStream();
+        var emitResult = updatedCompilation.Emit(generatedAssembly);
+        Assert.True(emitResult.Success, string.Join(Environment.NewLine, emitResult.Diagnostics));
+        generatedAssembly.Position = 0;
+        var assembly = AssemblyLoadContext.Default.LoadFromStream(generatedAssembly);
+        var moduleType = assembly.GetType("GeneratedOnnxModels.ReluModelTorchModule", throwOnError: true)!;
+        var module = Activator.CreateInstance(moduleType, "experimental-relu")!;
+        var forward = moduleType.GetMethod("forward")!;
+        using var input = global::TorchSharp.torch.tensor(new float[] { -1f, 2f }, new long[] { 2L });
+        using var actual = (global::TorchSharp.torch.Tensor)forward.Invoke(module, [input])!;
+        using var session = new InferenceSession(modelPath);
+        var ortInput = new DenseTensor<float>(new float[] { -1f, 2f }, new int[] { 2 });
+        using var ortResults = session.Run([NamedOnnxValue.CreateFromTensor("input", ortInput)]);
+        var expected = ortResults.Single().AsTensor<float>().ToArray();
+        Assert.Equal(expected, actual.data<float>().ToArray());
+    }
+
+    [Fact]
+    public void Generate_WithBothTorchModuleModes_ReportsConflict()
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+        var modelPath = Path.Combine(tempRoot, "conflict.onnx");
+        File.WriteAllBytes(modelPath, new ModelProto { IrVersion = 9, Graph = new GraphProto() }.ToByteArray());
+        var driver = CreateDriver(
+            additionalFiles: [new BinaryAdditionalText(modelPath)],
+            globalOptions: new Dictionary<string, string>(StringComparer.Ordinal),
+            fileOptions: new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal)
+            {
+                [modelPath] = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["build_metadata.additionalfiles.OnnxifyModelImportType"] = "TorchModule,TorchModuleExperimental",
+                },
+            });
+
+        driver = driver.RunGenerators(CreateCompilation());
+
+        Assert.Contains(driver.GetRunResult().Diagnostics, diagnostic => diagnostic.Id == "OMG007");
+    }
+
+    [Fact]
+    public void Generate_WithUnsupportedExperimentalOperator_ReportsCompilerDiagnostic()
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+        var modelPath = Path.Combine(tempRoot, "unsupported.onnx");
+        var graph = new GraphProto { Name = "unsupported" };
+        graph.Input.Add(CreateTensorValueInfo("input", TensorProto.Types.DataType.Float, 2));
+        graph.Output.Add(CreateTensorValueInfo("output", TensorProto.Types.DataType.Float, 2));
+        graph.Node.Add(new NodeProto { OpType = "NotMapped", Input = { "input" }, Output = { "output" } });
+        var model = new ModelProto { IrVersion = 9, Graph = graph };
+        model.OpsetImport.Add(new OperatorSetIdProto { Domain = "", Version = 13 });
+        File.WriteAllBytes(modelPath, model.ToByteArray());
+        var driver = CreateDriver(
+            additionalFiles: [new BinaryAdditionalText(modelPath)],
+            globalOptions: new Dictionary<string, string>(StringComparer.Ordinal),
+            fileOptions: new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal)
+            {
+                [modelPath] = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["build_metadata.additionalfiles.OnnxifyModelImportType"] = "TorchModuleExperimental",
+                },
+            });
+
+        driver = driver.RunGenerators(CreateCompilation());
+
+        var diagnostic = Assert.Single(driver.GetRunResult().Diagnostics.Where(static item => item.Id == "OMG006"));
+        Assert.Contains("COMPILER_UNSUPPORTED", diagnostic.GetMessage());
+        Assert.DoesNotContain(driver.GetRunResult().Results.SelectMany(static result => result.GeneratedSources),
+            static generated => generated.HintName.EndsWith("TorchModule.g.cs", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Generate_ForAdditionalOnnxFile_ProducesTypedWrapper()
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), "OnnxModelGeneratorTests", Guid.NewGuid().ToString("N"));

@@ -21,13 +21,13 @@ public enum OnnxGraphCleanupFlags : byte
 /// <summary>Identifies the graph-member category represented by a cleanup item.</summary>
 public enum OnnxGraphCleanupItemType : byte
 {
-    Node,
-    Value,
-    Initializer,
-    SparseInitializer,
-    Input,
-    Output,
-    Annotation,
+    Node = 1,
+    Value = 2,
+    Initializer = 3,
+    SparseInitializer = 4,
+    Input = 5,
+    Output = 6,
+    Annotation = 7,
 }
 
 /// <summary>Describes one named graph member removed during cleanup.</summary>

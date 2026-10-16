@@ -11,11 +11,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.27.0" />
     <PackageReference Include="TorchSharp-cpu" Version="0.107.0" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Onnxify.Compiler\Onnxify.Compiler.csproj" />
     <ProjectReference Include="..\Onnxify\Onnxify.csproj" />
     <ProjectReference Include="..\Onnxify.HuggingFace\Onnxify.HuggingFace.csproj" />
     <ProjectReference Include="..\Onnxify.ProjectGenerator\Onnxify.ProjectGenerator.csproj" />
@@ -34,6 +36,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="..\Onnxify.Tests\Assets\mobilenet_v2_1.4_224.onnx" Link="Assets\mobilenet_v2_1.4_224.onnx" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Assets\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

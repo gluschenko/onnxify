@@ -1492,7 +1492,7 @@ internal static class OperatorSkillGenerator
 
     private enum ParameterKind
     {
-        Input,
-        Output,
+        Input = 1,
+        Output = 2,
     }
 }

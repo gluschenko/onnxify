@@ -1,4 +1,4 @@
-﻿namespace Onnxify.Safetensors;
+namespace Onnxify.Safetensors;
 
 /// <summary>
 /// Provides overflow-checked tensor size helpers shared by metadata validation and tensor view construction.
@@ -20,7 +20,10 @@ internal static class SafeTensorMath
     /// </remarks>
     public static ulong ComputeElementCount(IReadOnlyList<ulong> shape)
     {
-        ArgumentNullException.ThrowIfNull(shape);
+        if (shape is null)
+        {
+            throw new System.ArgumentNullException(nameof(shape));
+        }
 
         ulong n = 1;
         checked

@@ -2,6 +2,10 @@
 
 Use this glossary for internal project terms, feature code names, and shorthand used in maintenance notes, planning, generated skill content, and architecture discussions.
 
+## Compiler Intermediate Representation
+
+In compiler code, comments, and roadmap documentation, spell out **intermediate representation** instead of abbreviating it as “IR”. Keep the abbreviation when referring to the ONNX format's own versioned intermediate representation or when quoting upstream ONNX documentation.
+
 ## Deep Export
 
 `deep export` is the `Onnxify.TorchSharp` feature path that exports ONNX models by recompiling TorchSharp modules.

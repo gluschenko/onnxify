@@ -636,8 +636,8 @@ internal static class TorchSharpConverterSkillGenerator
 
     private enum ConverterKind
     {
-        DispatchEntryPoint,
-        Composite,
-        TorchOpBacked,
+        DispatchEntryPoint = 1,
+        Composite = 2,
+        TorchOpBacked = 3,
     }
 }

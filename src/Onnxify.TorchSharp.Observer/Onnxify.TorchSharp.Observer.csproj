@@ -11,9 +11,11 @@
 
   <ItemGroup>
     <PackageReference Include="TorchSharp" Version="0.107.0" />
+    <PackageReference Include="TorchVision" Version="0.107.0" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Onnxify.Compiler\Onnxify.Compiler.csproj" />
     <ProjectReference Include="..\Onnxify.ModelGenerator\Onnxify.ModelGenerator.csproj" />
     <ProjectReference Include="..\Onnxify.TorchSharp\Onnxify.TorchSharp.csproj" />
   </ItemGroup>
