@@ -1,7 +1,7 @@
 ## 0.4.0
 
-- Added .NET Standard 2.0 support and a portable `Float16` value API while retaining `System.Half` array support on modern .NET.
-- Added runtime-typed `SetTensor(...)`, portable `Float16`, and shared `Onnxify.Data.Numerics.BFloat16` support in generic `Set<T>(...)` and `Get<T>(...)` APIs.
+- Added .NET Standard 2.0 support, using `Onnxify.Data.Numerics.Float16` there and the platform `System.Half` on modern .NET.
+- Added runtime-typed `SetTensor(...)` and shared `Onnxify.Data.Numerics.BFloat16` support in generic `Set<T>(...)` and `Get<T>(...)` APIs.
 - Updated the package version for the coordinated Onnxify 0.4.0 release.
 
 ## 0.3.11

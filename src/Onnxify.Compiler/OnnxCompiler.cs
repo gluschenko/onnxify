@@ -3,6 +3,7 @@ using System.Reflection;
 using Onnxify;
 using Onnxify.Compiler.Operators;
 using Onnxify.Data.Numerics;
+using Onnxify.Helpers;
 #if NET8_0_OR_GREATER
 using Half = System.Half;
 #else
@@ -2159,77 +2160,95 @@ internal static class CompilerElementTypeMap
 {
     public static CompilerElementType FromSystemType(Type type)
     {
-        var fullName = type.FullName ?? type.Name;
-        return fullName switch
+        try
         {
-            "System.Boolean" => CompilerElementType.Boolean,
-            "System.SByte" => CompilerElementType.Int8,
-            "System.Byte" => CompilerElementType.UInt8,
-            "System.Int16" => CompilerElementType.Int16,
-            "System.UInt16" => CompilerElementType.UInt16,
-            "System.Int32" => CompilerElementType.Int32,
-            "System.UInt32" => CompilerElementType.UInt32,
-            "System.Int64" => CompilerElementType.Int64,
-            "System.UInt64" => CompilerElementType.UInt64,
-            "System.Half" => CompilerElementType.Float16,
-            "Onnxify.Data.Numerics.Float16" => CompilerElementType.Float16,
-            "System.Single" => CompilerElementType.Float32,
-            "System.Double" => CompilerElementType.Float64,
-            "System.String" => CompilerElementType.String,
-            "Onnxify.Data.Numerics.Complex64" => CompilerElementType.Complex64,
-            "Onnxify.Data.Numerics.Complex128" => CompilerElementType.Complex128,
-            "Onnxify.Data.Numerics.BFloat16" => CompilerElementType.BFloat16,
-            "Onnxify.Data.Numerics.Float8E4M3FN" => CompilerElementType.Float8E4M3FN,
-            "Onnxify.Data.Numerics.Float8E4M3FNUZ" => CompilerElementType.Float8E4M3FNUZ,
-            "Onnxify.Data.Numerics.Float8E5M2" => CompilerElementType.Float8E5M2,
-            "Onnxify.Data.Numerics.Float8E5M2FNUZ" => CompilerElementType.Float8E5M2FNUZ,
-            "Onnxify.Data.Numerics.Float4E2M1" => CompilerElementType.Float4E2M1,
-            "Onnxify.Data.Numerics.Float8E8M0" => CompilerElementType.Float8E8M0,
-            "Onnxify.Data.Numerics.UInt4" => CompilerElementType.UInt4,
-            "Onnxify.Data.Numerics.Int4" => CompilerElementType.Int4,
-            "Onnxify.Data.Numerics.UInt2" => CompilerElementType.UInt2,
-            "Onnxify.Data.Numerics.Int2" => CompilerElementType.Int2,
-            _ => throw new CompilerConversionException(
+            return FromOnnxType(OnnxElementTypeMap.GetDataType(type));
+        }
+        catch (NotImplementedException)
+        {
+            throw new CompilerConversionException(
                 CompilerDiagnosticCodes.Unsupported,
-                $"CLR tensor element type '{type.FullName}' is not supported by the compiler intermediate representation."),
-        };
+                $"CLR tensor element type '{type.FullName}' is not supported by the compiler intermediate representation.");
+        }
     }
 
     public static Type ToSystemType(CompilerElementType elementType)
     {
-        return elementType switch
+        try
         {
-            CompilerElementType.Boolean => typeof(bool),
-            CompilerElementType.Int8 => typeof(sbyte),
-            CompilerElementType.UInt8 => typeof(byte),
-            CompilerElementType.Int16 => typeof(short),
-            CompilerElementType.UInt16 => typeof(ushort),
-            CompilerElementType.Int32 => typeof(int),
-            CompilerElementType.UInt32 => typeof(uint),
-            CompilerElementType.Int64 => typeof(long),
-            CompilerElementType.UInt64 => typeof(ulong),
-            CompilerElementType.Float32 => typeof(float),
-            CompilerElementType.Float64 => typeof(double),
-            CompilerElementType.String => typeof(string),
-            CompilerElementType.Float16 => FindType("System.Half"),
-            CompilerElementType.Complex64 => typeof(Complex64),
-            CompilerElementType.Complex128 => typeof(Complex128),
-            CompilerElementType.BFloat16 => typeof(BFloat16),
-            CompilerElementType.Float8E4M3FN => typeof(Float8E4M3FN),
-            CompilerElementType.Float8E4M3FNUZ => typeof(Float8E4M3FNUZ),
-            CompilerElementType.Float8E5M2 => typeof(Float8E5M2),
-            CompilerElementType.Float8E5M2FNUZ => typeof(Float8E5M2FNUZ),
-            CompilerElementType.Float4E2M1 => typeof(Float4E2M1),
-            CompilerElementType.Float8E8M0 => typeof(Float8E8M0),
-            CompilerElementType.UInt4 => typeof(UInt4),
-            CompilerElementType.Int4 => typeof(Int4),
-            CompilerElementType.UInt2 => typeof(UInt2),
-            CompilerElementType.Int2 => typeof(Int2),
-            _ => throw new CompilerConversionException(
+            return OnnxElementTypeMap.GetSystemType(ToOnnxType(elementType));
+        }
+        catch (NotImplementedException)
+        {
+            throw new CompilerConversionException(
                 CompilerDiagnosticCodes.Unsupported,
-                $"Compiler element type '{elementType}' is not supported by Onnxify."),
-        };
+                $"Compiler element type '{elementType}' is not supported by Onnxify.");
+        }
     }
+
+    private static CompilerElementType FromOnnxType(Onnx.TensorProto.Types.DataType dataType) => dataType switch
+    {
+        Onnx.TensorProto.Types.DataType.Undefined => CompilerElementType.Unknown,
+        Onnx.TensorProto.Types.DataType.Bool => CompilerElementType.Boolean,
+        Onnx.TensorProto.Types.DataType.Int8 => CompilerElementType.Int8,
+        Onnx.TensorProto.Types.DataType.Uint8 => CompilerElementType.UInt8,
+        Onnx.TensorProto.Types.DataType.Int16 => CompilerElementType.Int16,
+        Onnx.TensorProto.Types.DataType.Uint16 => CompilerElementType.UInt16,
+        Onnx.TensorProto.Types.DataType.Int32 => CompilerElementType.Int32,
+        Onnx.TensorProto.Types.DataType.Uint32 => CompilerElementType.UInt32,
+        Onnx.TensorProto.Types.DataType.Int64 => CompilerElementType.Int64,
+        Onnx.TensorProto.Types.DataType.Uint64 => CompilerElementType.UInt64,
+        Onnx.TensorProto.Types.DataType.Float16 => CompilerElementType.Float16,
+        Onnx.TensorProto.Types.DataType.Bfloat16 => CompilerElementType.BFloat16,
+        Onnx.TensorProto.Types.DataType.Float => CompilerElementType.Float32,
+        Onnx.TensorProto.Types.DataType.Double => CompilerElementType.Float64,
+        Onnx.TensorProto.Types.DataType.String => CompilerElementType.String,
+        Onnx.TensorProto.Types.DataType.Complex64 => CompilerElementType.Complex64,
+        Onnx.TensorProto.Types.DataType.Complex128 => CompilerElementType.Complex128,
+        Onnx.TensorProto.Types.DataType.Float8E4M3Fn => CompilerElementType.Float8E4M3FN,
+        Onnx.TensorProto.Types.DataType.Float8E4M3Fnuz => CompilerElementType.Float8E4M3FNUZ,
+        Onnx.TensorProto.Types.DataType.Float8E5M2 => CompilerElementType.Float8E5M2,
+        Onnx.TensorProto.Types.DataType.Float8E5M2Fnuz => CompilerElementType.Float8E5M2FNUZ,
+        Onnx.TensorProto.Types.DataType.Float4E2M1 => CompilerElementType.Float4E2M1,
+        Onnx.TensorProto.Types.DataType.Float8E8M0 => CompilerElementType.Float8E8M0,
+        Onnx.TensorProto.Types.DataType.Uint4 => CompilerElementType.UInt4,
+        Onnx.TensorProto.Types.DataType.Int4 => CompilerElementType.Int4,
+        Onnx.TensorProto.Types.DataType.Uint2 => CompilerElementType.UInt2,
+        Onnx.TensorProto.Types.DataType.Int2 => CompilerElementType.Int2,
+        _ => throw new NotImplementedException($"ONNX element type '{dataType}' is not mapped by the compiler."),
+    };
+
+    private static Onnx.TensorProto.Types.DataType ToOnnxType(CompilerElementType elementType) => elementType switch
+    {
+        CompilerElementType.Unknown => Onnx.TensorProto.Types.DataType.Undefined,
+        CompilerElementType.Boolean => Onnx.TensorProto.Types.DataType.Bool,
+        CompilerElementType.Int8 => Onnx.TensorProto.Types.DataType.Int8,
+        CompilerElementType.UInt8 => Onnx.TensorProto.Types.DataType.Uint8,
+        CompilerElementType.Int16 => Onnx.TensorProto.Types.DataType.Int16,
+        CompilerElementType.UInt16 => Onnx.TensorProto.Types.DataType.Uint16,
+        CompilerElementType.Int32 => Onnx.TensorProto.Types.DataType.Int32,
+        CompilerElementType.UInt32 => Onnx.TensorProto.Types.DataType.Uint32,
+        CompilerElementType.Int64 => Onnx.TensorProto.Types.DataType.Int64,
+        CompilerElementType.UInt64 => Onnx.TensorProto.Types.DataType.Uint64,
+        CompilerElementType.Float16 => Onnx.TensorProto.Types.DataType.Float16,
+        CompilerElementType.BFloat16 => Onnx.TensorProto.Types.DataType.Bfloat16,
+        CompilerElementType.Float32 => Onnx.TensorProto.Types.DataType.Float,
+        CompilerElementType.Float64 => Onnx.TensorProto.Types.DataType.Double,
+        CompilerElementType.String => Onnx.TensorProto.Types.DataType.String,
+        CompilerElementType.Complex64 => Onnx.TensorProto.Types.DataType.Complex64,
+        CompilerElementType.Complex128 => Onnx.TensorProto.Types.DataType.Complex128,
+        CompilerElementType.Float8E4M3FN => Onnx.TensorProto.Types.DataType.Float8E4M3Fn,
+        CompilerElementType.Float8E4M3FNUZ => Onnx.TensorProto.Types.DataType.Float8E4M3Fnuz,
+        CompilerElementType.Float8E5M2 => Onnx.TensorProto.Types.DataType.Float8E5M2,
+        CompilerElementType.Float8E5M2FNUZ => Onnx.TensorProto.Types.DataType.Float8E5M2Fnuz,
+        CompilerElementType.Float4E2M1 => Onnx.TensorProto.Types.DataType.Float4E2M1,
+        CompilerElementType.Float8E8M0 => Onnx.TensorProto.Types.DataType.Float8E8M0,
+        CompilerElementType.UInt4 => Onnx.TensorProto.Types.DataType.Uint4,
+        CompilerElementType.Int4 => Onnx.TensorProto.Types.DataType.Int4,
+        CompilerElementType.UInt2 => Onnx.TensorProto.Types.DataType.Uint2,
+        CompilerElementType.Int2 => Onnx.TensorProto.Types.DataType.Int2,
+        _ => throw new NotImplementedException($"Compiler element type '{elementType}' has no ONNX mapping."),
+    };
 
     public static string ToCSharpTypeName(CompilerElementType elementType)
     {
@@ -2472,21 +2491,10 @@ internal static class CompilerElementTypeMap
     )
     {
         object? converted;
-        if (targetType == typeof(Float16))
+        if (targetType == typeof(Half))
         {
-            converted = Float16.FromSingle((float)ToDouble(value));
+            converted = OnnxNumericConversions.Float16FromSingle((float)ToDouble(value));
         }
-#if NET8_0_OR_GREATER
-        else if (targetType == typeof(Half))
-        {
-            converted = (Half)ToDouble(value);
-        }
-#else
-        else if (targetType == typeof(System.Half))
-        {
-            converted = new System.Half(Float16.FromSingle((float)ToDouble(value)).Value);
-        }
-#endif
         else
         {
             converted = Convert.ChangeType(value, targetType);
@@ -2503,28 +2511,10 @@ internal static class CompilerElementTypeMap
 
     private static double ToDouble(object value)
     {
-#if NET8_0_OR_GREATER
         return value switch
         {
-            Half half => (double)half,
-            Float16 portableHalf => portableHalf.ToSingle(),
+            Half half => OnnxNumericConversions.Float16ToSingle(half),
             _ => Convert.ToDouble(value),
         };
-#else
-        return value switch
-        {
-            System.Half half => Float16.FromEncoded(half.Bits).ToSingle(),
-            Half half => half.ToSingle(),
-            _ => Convert.ToDouble(value),
-        };
-#endif
-    }
-
-    private static Type FindType(string name)
-    {
-        return Type.GetType(name)
-            ?? throw new CompilerConversionException(
-                CompilerDiagnosticCodes.Unsupported,
-                $"Runtime type '{name}' is unavailable on this target framework.");
     }
 }

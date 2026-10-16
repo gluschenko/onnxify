@@ -1,4 +1,4 @@
-﻿namespace Onnxify.Safetensors;
+namespace Onnxify.Safetensors;
 
 /// <summary>
 /// Represents the validated safetensors header model used to resolve tensor names, offsets, and optional archive metadata.
@@ -38,7 +38,7 @@ public sealed class Metadata
     {
         if (tensors is null)
         {
-            throw new ArgumentNullException(nameof(tensors));
+            throw new System.ArgumentNullException(nameof(tensors));
         }
 
         _indexMap = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -79,7 +79,7 @@ public sealed class Metadata
     {
         if (name is null)
         {
-            throw new ArgumentNullException(nameof(name));
+            throw new System.ArgumentNullException(nameof(name));
         }
         return _indexMap.TryGetValue(name, out var index) ? _tensors[index] : null;
     }

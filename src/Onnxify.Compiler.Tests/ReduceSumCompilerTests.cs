@@ -38,7 +38,7 @@ public sealed class ReduceSumCompilerTests
             ModuleName = "generated-reduce-sum",
         });
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        using var module = CompileGeneratedModule(generated.SourceCode());
+        using var module = CompileGeneratedModule(generated, emitted.Value!);
 
         float[] values = [1f, -2f, 3f, 4f, 5f, -6f];
         using var eagerInput = global::TorchSharp.torch.tensor(values, [2L, 3L]);
@@ -60,8 +60,9 @@ public sealed class ReduceSumCompilerTests
         }
     }
 
-    private static IDisposable CompileGeneratedModule(string source)
+    private static IDisposable CompileGeneratedModule(CompilerResult<IFile[]> generated, OnnxModel weightsModel)
     {
+        var source = generated.SourceCode();
         var references = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))!
             .Split(Path.PathSeparator)
             .Select(static path => MetadataReference.CreateFromFile(path))
@@ -77,7 +78,7 @@ public sealed class ReduceSumCompilerTests
         assemblyBytes.Position = 0;
         var assembly = AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
         var type = assembly.GetTypes().Single(candidate => candidate.Name == "GeneratedReduceSum");
-        return (IDisposable)Activator.CreateInstance(type, "generated-reduce-sum")!;
+        return GeneratedModuleTestHelpers.CreateModule(type, generated, "generated-reduce-sum", weightsModel);
     }
 
     private static float[] ExecuteGeneratedModule(IDisposable module, float[] values)

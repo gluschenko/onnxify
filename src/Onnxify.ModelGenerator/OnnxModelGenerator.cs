@@ -6,6 +6,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Onnx;
 using Onnxify.Compiler;
+using Onnxify.Helpers;
 using CompilerFacade = Onnxify.Compiler.Compiler;
 using Onnxify.ModelGenerator.Services.TorchModuleInlineOperators;
 using Onnxify.ModelGenerator.Services;
@@ -1017,80 +1018,16 @@ public sealed class OnnxModelGenerator : IIncrementalGenerator
         out TensorProto.Types.DataType dataType
     )
     {
-        if (type == typeof(float))
+        try
         {
-            dataType = TensorProto.Types.DataType.Float;
-            return true;
+            dataType = (TensorProto.Types.DataType)(int)OnnxElementTypeMap.GetDataType(type);
+            return dataType != TensorProto.Types.DataType.Undefined;
         }
-
-        if (type == typeof(double))
+        catch (NotImplementedException)
         {
-            dataType = TensorProto.Types.DataType.Double;
-            return true;
+            dataType = default;
+            return false;
         }
-
-        if (type == typeof(byte))
-        {
-            dataType = TensorProto.Types.DataType.Uint8;
-            return true;
-        }
-
-        if (type == typeof(sbyte))
-        {
-            dataType = TensorProto.Types.DataType.Int8;
-            return true;
-        }
-
-        if (type == typeof(short))
-        {
-            dataType = TensorProto.Types.DataType.Int16;
-            return true;
-        }
-
-        if (type == typeof(int))
-        {
-            dataType = TensorProto.Types.DataType.Int32;
-            return true;
-        }
-
-        if (type == typeof(long))
-        {
-            dataType = TensorProto.Types.DataType.Int64;
-            return true;
-        }
-
-        if (type == typeof(bool))
-        {
-            dataType = TensorProto.Types.DataType.Bool;
-            return true;
-        }
-
-        if (type.FullName == "System.Half")
-        {
-            dataType = TensorProto.Types.DataType.Float16;
-            return true;
-        }
-
-        if (type.FullName == "Onnxify.Data.Numerics.BFloat16")
-        {
-            dataType = TensorProto.Types.DataType.Bfloat16;
-            return true;
-        }
-
-        if (type.FullName == "Onnxify.Data.Numerics.Complex64")
-        {
-            dataType = TensorProto.Types.DataType.Complex64;
-            return true;
-        }
-
-        if (type.FullName == "Onnxify.Data.Numerics.Complex128")
-        {
-            dataType = TensorProto.Types.DataType.Complex128;
-            return true;
-        }
-
-        dataType = default;
-        return false;
     }
 
     private static void ReportUnsupportedTorchModule(

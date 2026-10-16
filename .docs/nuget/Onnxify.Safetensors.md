@@ -19,14 +19,14 @@ Modern ML workflows often keep model weights in `.safetensors` because the forma
 
 `Onnxify.Safetensors` exists to give .NET a dedicated safetensors surface for those tasks. It lets you read metadata, deserialize archives into zero-copy tensor views, slice tensor payloads, and serialize new safetensors files in a format-compatible way.
 
-The package targets .NET Standard 2.0, .NET 8, and .NET 10. Its portable `Float16` value type preserves binary16 payloads on every target; `System.Half` arrays remain supported on modern .NET targets. Bfloat16 values use the shared `Onnxify.Data.Numerics.BFloat16` type from `Onnxify`.
+The package targets .NET Standard 2.0, .NET 8, and .NET 10. Its typed APIs use `Onnxify.Data.Numerics.Float16` on .NET Standard 2.0 and the platform `System.Half` on modern .NET. Bfloat16 values use the shared `Onnxify.Data.Numerics.BFloat16` type from `Onnxify`.
 
 ## What It Provides
 
 - Read safetensors metadata and tensor layout information.
 - Work with tensor slices and tensor-backed storage abstractions.
 - Support safetensors-related flows that integrate with the broader Onnxify toolchain.
-- Read and write supported CLR arrays through typed APIs, including exact `Float16` and bfloat16 payloads.
+- Read and write supported CLR arrays through typed APIs, including exact platform `Float16` and bfloat16 payloads.
 
 ## Code Examples
 

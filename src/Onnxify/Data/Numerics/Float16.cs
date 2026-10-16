@@ -1,3 +1,4 @@
+#if !NET5_0_OR_GREATER
 using System.Runtime.InteropServices;
 
 namespace Onnxify.Data.Numerics;
@@ -145,3 +146,4 @@ internal static class Float32Bits
 
     public static float ToSingle(int bits) => new SingleIntegerUnion { Integer = bits }.Single;
 }
+#endif

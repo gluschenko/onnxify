@@ -82,7 +82,9 @@ public sealed class CompilerWeightArtifactTests
         var binary = Assert.Single(generated.Value!.OfType<BinaryFile>());
         var weights = SafeTensors.Deserialize(binary.Data.ToArray());
         Assert.Equal(DataType.F16, weights.Tensor("weight").DataType);
-        Assert.Equal(new ushort[] { 0x3c00, 0xc000 }, weights.Get<Float16>("weight").Select(static value => value.Value));
+        Assert.Equal(
+            new ushort[] { 0x3c00, 0xc000 },
+            weights.Get<Half>("weight").Select(BitConverter.HalfToUInt16Bits));
     }
 
     [Theory]

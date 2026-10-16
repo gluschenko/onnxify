@@ -22,7 +22,7 @@ internal static class SafeTensorMath
     {
         if (shape is null)
         {
-            throw new ArgumentNullException(nameof(shape));
+            throw new System.ArgumentNullException(nameof(shape));
         }
 
         ulong n = 1;

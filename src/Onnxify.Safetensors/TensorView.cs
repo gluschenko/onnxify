@@ -52,7 +52,7 @@ public sealed class TensorView : IEquatable<TensorView>
     {
         if (shape is null)
         {
-            throw new ArgumentNullException(nameof(shape));
+            throw new System.ArgumentNullException(nameof(shape));
         }
 
         var shapeArray = shape.ToArray();
@@ -81,7 +81,7 @@ public sealed class TensorView : IEquatable<TensorView>
     {
         if (slices is null)
         {
-            throw new ArgumentNullException(nameof(slices));
+            throw new System.ArgumentNullException(nameof(slices));
         }
         return new SliceIterator(this, slices);
     }

@@ -470,7 +470,7 @@ public sealed class RuntimeControlFlowCompilerTests
         assemblyBytes.Position = 0;
         var assembly = System.Runtime.Loader.AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
         var moduleType = assembly.GetTypes().Single(type => type.Name == "GeneratedIf");
-        using var module = (IDisposable)Activator.CreateInstance(moduleType, "generated-if")!;
+        using var module = GeneratedModuleTestHelpers.CreateModule(moduleType, generated, "generated-if", source);
         foreach (var testCase in cases)
         {
             var inputTensors = new List<global::TorchSharp.torch.Tensor>();

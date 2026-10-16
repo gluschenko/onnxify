@@ -28,7 +28,7 @@ public sealed class ShapeCompilerTests
 
         var values = Enumerable.Range(0, 24).Select(static value => (float)value).ToArray();
         var expected = ExecuteOnnx(model, values);
-        Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), values));
+        Assert.Equal(expected, ExecuteGenerated(generated, values, model));
 
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.flatten(1); }";
         var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
@@ -70,7 +70,7 @@ public sealed class ShapeCompilerTests
 
             var values = Enumerable.Range(0, 24).Select(static value => (float)value).ToArray();
             var expected = ExecuteOnnx(model, values);
-            Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), values));
+            Assert.Equal(expected, ExecuteGenerated(generated, values, model));
 
             var source = $"public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) {{ return input.flatten({axis}); }}";
             var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
@@ -101,7 +101,7 @@ public sealed class ShapeCompilerTests
 
         var values = Enumerable.Range(0, 24).Select(static value => (float)value).ToArray();
         var expected = ExecuteOnnx(model, values);
-        Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), values));
+        Assert.Equal(expected, ExecuteGenerated(generated, values, model));
 
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.permute(new long[] { 1, 2, 0 }); }";
         var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
@@ -151,7 +151,7 @@ public sealed class ShapeCompilerTests
 
         var values = Enumerable.Range(0, 24).Select(static value => (float)value).ToArray();
         var expected = ExecuteOnnx(model, values);
-        Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), values));
+        Assert.Equal(expected, ExecuteGenerated(generated, values, model));
 
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.view(new long[] { 6, 4 }); }";
         var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
@@ -195,7 +195,7 @@ public sealed class ShapeCompilerTests
 
         var values = Enumerable.Range(0, 24).Select(static value => (float)value).ToArray();
         var expected = ExecuteOnnx(model, values);
-        Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), values));
+        Assert.Equal(expected, ExecuteGenerated(generated, values, model));
     }
 
     [Fact]
@@ -216,7 +216,7 @@ public sealed class ShapeCompilerTests
 
         var values = Enumerable.Range(0, 24).Select(static value => (float)value).ToArray();
         var expected = ExecuteOnnx(model, values);
-        Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), values));
+        Assert.Equal(expected, ExecuteGenerated(generated, values, model));
 
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.unsqueeze(1); }";
         var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
@@ -248,7 +248,7 @@ public sealed class ShapeCompilerTests
 
         var values = Enumerable.Range(0, 8).Select(static value => (float)value).ToArray();
         var expected = ExecuteOnnx(model, values, [2, 1, 4]);
-        Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), values, [2, 1, 4]));
+        Assert.Equal(expected, ExecuteGenerated(generated, values, model, [2, 1, 4]));
 
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.squeeze(1); }";
         var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
@@ -307,7 +307,7 @@ public sealed class ShapeCompilerTests
 
         var values = Enumerable.Range(0, 12).Select(static value => (float)value).ToArray();
         var expected = ExecuteOnnx(model, values, [1, 3, 4]);
-        Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), values, [1, 3, 4]));
+        Assert.Equal(expected, ExecuteGenerated(generated, values, model, [1, 3, 4]));
 
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.expand(new long[] { 2, 3, 4 }); }";
         var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
@@ -340,7 +340,7 @@ public sealed class ShapeCompilerTests
 
         var values = Enumerable.Range(0, 24).Select(static value => (float)value).ToArray();
         var expected = ExecuteOnnx(model, values);
-        Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), values));
+        Assert.Equal(expected, ExecuteGenerated(generated, values, model));
 
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.repeat(new long[] { 1, 2, 1 }); }";
         var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
@@ -373,7 +373,7 @@ public sealed class ShapeCompilerTests
 
         var values = Enumerable.Range(0, 24).Select(static value => (float)value).ToArray();
         var expected = ExecuteOnnx(model, values);
-        Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), values));
+        Assert.Equal(expected, ExecuteGenerated(generated, values, model));
 
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.slice(1, 1, 3, 1); }";
         var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
@@ -407,7 +407,7 @@ public sealed class ShapeCompilerTests
         var left = Enumerable.Range(0, 4).Select(static value => (float)value).ToArray();
         var right = Enumerable.Range(4, 4).Select(static value => (float)value).ToArray();
         var expected = ExecuteOnnx(model, [left, right], [[2, 2], [2, 2]]);
-        Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), [left, right], [[2, 2], [2, 2]]));
+        Assert.Equal(expected, ExecuteGenerated(generated, [left, right], model, [[2, 2], [2, 2]]));
 
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor left, global::TorchSharp.torch.Tensor right) { return torch.cat(new global::TorchSharp.torch.Tensor[] { left, right }, 1); }";
         var scanned = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
@@ -443,7 +443,7 @@ public sealed class ShapeCompilerTests
 
         var values = Enumerable.Range(0, 8).Select(static value => (float)value).ToArray();
         var expected = ExecuteOnnxOutputs(model, [values], [[2, 4]]);
-        var generatedValues = ExecuteGeneratedOutputs(generated.SourceCode(), [values], [[2L, 4L]]);
+        var generatedValues = ExecuteGeneratedOutputs(generated, [values], [[2L, 4L]], model);
         Assert.Equal(expected, generatedValues);
 
         const string source = "public (global::TorchSharp.torch.Tensor, global::TorchSharp.torch.Tensor) forward(global::TorchSharp.torch.Tensor input) { return torch.split(input, new long[] { 1, 3 }, 1); }";
@@ -503,7 +503,7 @@ public sealed class ShapeCompilerTests
         Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
         var generated = Compiler.GenerateSourceCode(imported.Value!);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Equal(expected, ExecuteGenerated(generated.SourceCode(), values, [2, 4, 3]));
+        Assert.Equal(expected, ExecuteGenerated(generated, values, emitted.Value!, [2, 4, 3]));
     }
 
     [Theory]
@@ -747,13 +747,24 @@ public sealed class ShapeCompilerTests
         return model;
     }
 
-    private static float[] ExecuteGenerated(string source, float[] values, long[]? shape = null)
+    private static float[] ExecuteGenerated(
+        CompilerResult<IFile[]> generated,
+        float[] values,
+        OnnxModel weightsModel,
+        long[]? shape = null
+    )
     {
-        return ExecuteGenerated(source, [values], [shape ?? [2L, 3L, 4L]]);
+        return ExecuteGenerated(generated, [values], weightsModel, [shape ?? [2L, 3L, 4L]]);
     }
 
-    private static float[] ExecuteGenerated(string source, float[][] values, long[][] shapes)
+    private static float[] ExecuteGenerated(
+        CompilerResult<IFile[]> generated,
+        float[][] values,
+        OnnxModel weightsModel,
+        long[][] shapes
+    )
     {
+        var source = generated.SourceCode();
         var compilation = CSharpCompilation.Create(
             $"Onnxify.Shape{Guid.NewGuid():N}",
             [CSharpSyntaxTree.ParseText(source)],
@@ -765,7 +776,7 @@ public sealed class ShapeCompilerTests
         assemblyBytes.Position = 0;
         var assembly = AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
         var moduleType = assembly.GetTypes().Single(static type => type.Name.Contains("TorchModule", StringComparison.Ordinal));
-        using var module = (IDisposable)Activator.CreateInstance(moduleType, "flatten")!;
+        using var module = GeneratedModuleTestHelpers.CreateModule(moduleType, generated, "flatten", weightsModel);
         var inputs = values
             .Select((inputValues, index) => global::TorchSharp.torch.tensor(
                 inputValues,
@@ -837,8 +848,14 @@ public sealed class ShapeCompilerTests
         }
     }
 
-    private static float[][] ExecuteGeneratedOutputs(string source, float[][] values, long[][] shapes)
+    private static float[][] ExecuteGeneratedOutputs(
+        CompilerResult<IFile[]> generated,
+        float[][] values,
+        long[][] shapes,
+        OnnxModel weightsModel
+    )
     {
+        var source = generated.SourceCode();
         var compilation = CSharpCompilation.Create(
             $"Onnxify.Shape{Guid.NewGuid():N}",
             [CSharpSyntaxTree.ParseText(source)],
@@ -850,7 +867,7 @@ public sealed class ShapeCompilerTests
         assemblyBytes.Position = 0;
         var assembly = AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
         var moduleType = assembly.GetTypes().Single(static type => type.Name.Contains("TorchModule", StringComparison.Ordinal));
-        using var module = (IDisposable)Activator.CreateInstance(moduleType, "split")!;
+        using var module = GeneratedModuleTestHelpers.CreateModule(moduleType, generated, "split", weightsModel);
         var inputs = values
             .Select((inputValues, index) => global::TorchSharp.torch.tensor(
                 inputValues,

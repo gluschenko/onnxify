@@ -1,5 +1,11 @@
 using Onnxify.Safetensors;
+using Onnxify.Helpers;
 using Onnxify.Data.Numerics;
+#if NET5_0_OR_GREATER
+using Half = System.Half;
+#else
+using Half = Onnxify.Data.Numerics.Float16;
+#endif
 
 namespace Onnxify.Compiler;
 
@@ -21,7 +27,7 @@ internal static class CompilerWeightArtifactWriter
             {
                 values = tensor.Values
                     .Cast<CompilerFloatingPointLiteral>()
-                    .Select(static value => Float16.FromSingle((float)value.Value))
+                    .Select(static value => OnnxNumericConversions.Float16FromSingle((float)value.Value))
                     .ToArray();
             }
             else if (tensor.ElementType == CompilerElementType.BFloat16)

@@ -4,7 +4,13 @@ using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
+using Onnxify.Helpers;
 using Onnxify.Data.Numerics;
+#if NET5_0_OR_GREATER
+using Half = System.Half;
+#else
+using Half = Onnxify.Data.Numerics.Float16;
+#endif
 
 namespace Onnxify.Safetensors;
 
@@ -186,7 +192,7 @@ public sealed class SafeTensors
     {
         if (path is null)
         {
-            throw new ArgumentNullException(nameof(path));
+            throw new System.ArgumentNullException(nameof(path));
         }
 
         try
@@ -219,7 +225,7 @@ public sealed class SafeTensors
     {
         if (data is null)
         {
-            throw new ArgumentNullException(nameof(data));
+            throw new System.ArgumentNullException(nameof(data));
         }
 
         var prepared = Prepare(data, metadata);
@@ -267,11 +273,11 @@ public sealed class SafeTensors
     {
         if (data is null)
         {
-            throw new ArgumentNullException(nameof(data));
+            throw new System.ArgumentNullException(nameof(data));
         }
         if (path is null)
         {
-            throw new ArgumentNullException(nameof(path));
+            throw new System.ArgumentNullException(nameof(path));
         }
 
         var prepared = Prepare(data, metadata);
@@ -316,11 +322,11 @@ public sealed class SafeTensors
     {
         if (data is null)
         {
-            throw new ArgumentNullException(nameof(data));
+            throw new System.ArgumentNullException(nameof(data));
         }
         if (path is null)
         {
-            throw new ArgumentNullException(nameof(path));
+            throw new System.ArgumentNullException(nameof(path));
         }
 
         var prepared = Prepare(data, metadata);
@@ -373,7 +379,7 @@ public sealed class SafeTensors
     /// </summary>
     /// <typeparam name="T">
     /// Supported types: <see cref="bool"/>, <see cref="byte"/>, <see cref="sbyte"/>, <see cref="short"/>,
-    /// <see cref="ushort"/>, <see cref="Float16"/>, <see cref="BFloat16"/>, <see cref="int"/>, <see cref="uint"/>, <see cref="float"/>,
+    /// <see cref="ushort"/>, the target framework's 16-bit floating-point type, <see cref="BFloat16"/>, <see cref="int"/>, <see cref="uint"/>, <see cref="float"/>,
     /// <see cref="double"/>, <see cref="long"/>, <see cref="ulong"/>, and <see cref="string"/>.
     /// </typeparam>
     /// <param name="tensorName">The tensor name to create or replace.</param>
@@ -398,75 +404,74 @@ public sealed class SafeTensors
     {
         if (tensorName is null)
         {
-            throw new ArgumentNullException(nameof(tensorName));
+            throw new System.ArgumentNullException(nameof(tensorName));
         }
         if (values is null)
         {
-            throw new ArgumentNullException(nameof(values));
+            throw new System.ArgumentNullException(nameof(values));
         }
         if (shape is null)
         {
-            throw new ArgumentNullException(nameof(shape));
+            throw new System.ArgumentNullException(nameof(shape));
         }
 
-        // Keep signed bytes ahead of the general type switch: they share the same storage width
-        // as U8, but their Safetensors dtype must remain I8.
-        if (values.GetType() == typeof(sbyte[]))
+        var elementType = values.GetType().GetElementType();
+        if (elementType == typeof(string))
         {
-            SetUnmanagedTensor(tensorName, (sbyte[])values, DataType.I8, shape);
+            if (shape.Length != 0)
+            {
+                throw new ArgumentException("String values do not support an explicit safetensors shape.", nameof(shape));
+            }
+
+            SetString(tensorName, (string[])values);
             return;
         }
 
-        switch (values)
+        var onnxType = OnnxElementTypeMap.GetDataType(elementType!);
+        var dataType = ToDataType(onnxType);
+        switch (onnxType)
         {
-            case string[] strings when shape.Length == 0:
-                SetString(tensorName, strings);
+            case Onnx.TensorProto.Types.DataType.Bool:
+                SetTensorPayload(tensorName, dataType, ShapeOrVector(values.Length, shape), BooleansToBytes((bool[])values));
                 return;
-            case string[]:
-                throw new ArgumentException("String values do not support an explicit safetensors shape.", nameof(shape));
-            case bool[] items:
-                SetTensorPayload(tensorName, DataType.Bool, ShapeOrVector(items.Length, shape), BooleansToBytes(items));
+            case Onnx.TensorProto.Types.DataType.Uint8:
+                SetTensorPayload(tensorName, dataType, ShapeOrVector(values.Length, shape), ((byte[])values).ToArray());
                 return;
-            case byte[] items:
-                SetTensorPayload(tensorName, DataType.U8, ShapeOrVector(items.Length, shape), items.ToArray());
+            case Onnx.TensorProto.Types.DataType.Int8:
+                SetUnmanagedTensor(tensorName, (sbyte[])values, dataType, shape);
                 return;
-            case short[] items:
-                SetUnmanagedTensor(tensorName, items, DataType.I16, shape);
+            case Onnx.TensorProto.Types.DataType.Int16:
+                SetUnmanagedTensor(tensorName, (short[])values, dataType, shape);
                 return;
-            case ushort[] items:
-                SetUnmanagedTensor(tensorName, items, DataType.U16, shape);
+            case Onnx.TensorProto.Types.DataType.Uint16:
+                SetUnmanagedTensor(tensorName, (ushort[])values, dataType, shape);
                 return;
-            case Float16[] items:
-                SetUnmanagedTensor(tensorName, items, DataType.F16, shape);
+            case Onnx.TensorProto.Types.DataType.Float16:
+                SetUnmanagedTensor(tensorName, (Half[])values, dataType, shape);
                 return;
-#if NET5_0_OR_GREATER
-            case Half[] items:
-                SetUnmanagedTensor(tensorName, items.Select(static value => Float16.FromEncoded(BitConverter.HalfToUInt16Bits(value))).ToArray(), DataType.F16, shape);
+            case Onnx.TensorProto.Types.DataType.Bfloat16:
+                SetUnmanagedTensor(tensorName, (BFloat16[])values, dataType, shape);
                 return;
-#endif
-            case BFloat16[] items:
-                SetUnmanagedTensor(tensorName, items, DataType.Bf16, shape);
+            case Onnx.TensorProto.Types.DataType.Int32:
+                SetUnmanagedTensor(tensorName, (int[])values, dataType, shape);
                 return;
-            case int[] items:
-                SetUnmanagedTensor(tensorName, items, DataType.I32, shape);
+            case Onnx.TensorProto.Types.DataType.Uint32:
+                SetUnmanagedTensor(tensorName, (uint[])values, dataType, shape);
                 return;
-            case uint[] items:
-                SetUnmanagedTensor(tensorName, items, DataType.U32, shape);
+            case Onnx.TensorProto.Types.DataType.Float:
+                SetUnmanagedTensor(tensorName, (float[])values, dataType, shape);
                 return;
-            case float[] items:
-                SetUnmanagedTensor(tensorName, items, DataType.F32, shape);
+            case Onnx.TensorProto.Types.DataType.Double:
+                SetUnmanagedTensor(tensorName, (double[])values, dataType, shape);
                 return;
-            case double[] items:
-                SetUnmanagedTensor(tensorName, items, DataType.F64, shape);
+            case Onnx.TensorProto.Types.DataType.Int64:
+                SetUnmanagedTensor(tensorName, (long[])values, dataType, shape);
                 return;
-            case long[] items:
-                SetUnmanagedTensor(tensorName, items, DataType.I64, shape);
-                return;
-            case ulong[] items:
-                SetUnmanagedTensor(tensorName, items, DataType.U64, shape);
+            case Onnx.TensorProto.Types.DataType.Uint64:
+                SetUnmanagedTensor(tensorName, (ulong[])values, dataType, shape);
                 return;
             default:
-                throw new NotSupportedException($"Safetensors values of type '{values.GetType().GetElementType()?.FullName}' are not supported.");
+                throw new NotSupportedException($"Safetensors values of type '{elementType?.FullName}' are not supported.");
         }
     }
 
@@ -479,7 +484,7 @@ public sealed class SafeTensors
     {
         if (tensorName is null)
         {
-            throw new ArgumentNullException(nameof(tensorName));
+            throw new System.ArgumentNullException(nameof(tensorName));
         }
 
         return _tensors.Remove(tensorName);
@@ -490,7 +495,7 @@ public sealed class SafeTensors
     /// </summary>
     /// <typeparam name="T">
     /// Supported types: <see cref="bool"/>, <see cref="byte"/>, <see cref="sbyte"/>, <see cref="short"/>,
-    /// <see cref="ushort"/>, <see cref="Float16"/>, <see cref="BFloat16"/>, <see cref="int"/>, <see cref="uint"/>, <see cref="float"/>,
+    /// <see cref="ushort"/>, the target framework's 16-bit floating-point type, <see cref="BFloat16"/>, <see cref="int"/>, <see cref="uint"/>, <see cref="float"/>,
     /// <see cref="double"/>, <see cref="long"/>, <see cref="ulong"/>, and <see cref="string"/>.
     /// </typeparam>
     /// <param name="tensorName">The tensor name to read.</param>
@@ -510,23 +515,24 @@ public sealed class SafeTensors
             return (T[])(object)ToBooleanArray(tensor.Data.Span);
         }
 
-        if (type == typeof(byte)) return (T[])(object)GetUnmanagedValue<byte>(tensorName, tensor, DataType.U8);
-        if (type == typeof(sbyte)) return (T[])(object)GetUnmanagedValue<sbyte>(tensorName, tensor, DataType.I8);
-        if (type == typeof(short)) return (T[])(object)GetUnmanagedValue<short>(tensorName, tensor, DataType.I16);
-        if (type == typeof(ushort)) return (T[])(object)GetUnmanagedValue<ushort>(tensorName, tensor, DataType.U16);
-        if (type == typeof(Float16)) return (T[])(object)GetUnmanagedValue<Float16>(tensorName, tensor, DataType.F16);
-#if NET5_0_OR_GREATER
-        if (type == typeof(Half)) return (T[])(object)GetUnmanagedValue<Half>(tensorName, tensor, DataType.F16);
-#endif
-        if (type == typeof(BFloat16)) return (T[])(object)GetUnmanagedValue<BFloat16>(tensorName, tensor, DataType.Bf16);
-        if (type == typeof(int)) return (T[])(object)GetUnmanagedValue<int>(tensorName, tensor, DataType.I32);
-        if (type == typeof(uint)) return (T[])(object)GetUnmanagedValue<uint>(tensorName, tensor, DataType.U32);
-        if (type == typeof(float)) return (T[])(object)GetUnmanagedValue<float>(tensorName, tensor, DataType.F32);
-        if (type == typeof(double)) return (T[])(object)GetUnmanagedValue<double>(tensorName, tensor, DataType.F64);
-        if (type == typeof(long)) return (T[])(object)GetUnmanagedValue<long>(tensorName, tensor, DataType.I64);
-        if (type == typeof(ulong)) return (T[])(object)GetUnmanagedValue<ulong>(tensorName, tensor, DataType.U64);
-
-        throw new NotSupportedException($"Safetensors values of type '{type.FullName}' are not supported.");
+        var onnxType = OnnxElementTypeMap.GetDataType(type);
+        var expectedType = ToDataType(onnxType);
+        return onnxType switch
+        {
+            Onnx.TensorProto.Types.DataType.Uint8 => (T[])(object)GetUnmanagedValue<byte>(tensorName, tensor, expectedType),
+            Onnx.TensorProto.Types.DataType.Int8 => (T[])(object)GetUnmanagedValue<sbyte>(tensorName, tensor, expectedType),
+            Onnx.TensorProto.Types.DataType.Int16 => (T[])(object)GetUnmanagedValue<short>(tensorName, tensor, expectedType),
+            Onnx.TensorProto.Types.DataType.Uint16 => (T[])(object)GetUnmanagedValue<ushort>(tensorName, tensor, expectedType),
+            Onnx.TensorProto.Types.DataType.Float16 => (T[])(object)GetUnmanagedValue<Half>(tensorName, tensor, expectedType),
+            Onnx.TensorProto.Types.DataType.Bfloat16 => (T[])(object)GetUnmanagedValue<BFloat16>(tensorName, tensor, expectedType),
+            Onnx.TensorProto.Types.DataType.Int32 => (T[])(object)GetUnmanagedValue<int>(tensorName, tensor, expectedType),
+            Onnx.TensorProto.Types.DataType.Uint32 => (T[])(object)GetUnmanagedValue<uint>(tensorName, tensor, expectedType),
+            Onnx.TensorProto.Types.DataType.Float => (T[])(object)GetUnmanagedValue<float>(tensorName, tensor, expectedType),
+            Onnx.TensorProto.Types.DataType.Double => (T[])(object)GetUnmanagedValue<double>(tensorName, tensor, expectedType),
+            Onnx.TensorProto.Types.DataType.Int64 => (T[])(object)GetUnmanagedValue<long>(tensorName, tensor, expectedType),
+            Onnx.TensorProto.Types.DataType.Uint64 => (T[])(object)GetUnmanagedValue<ulong>(tensorName, tensor, expectedType),
+            _ => throw new NotSupportedException($"Safetensors values of type '{type.FullName}' are not supported."),
+        };
     }
 
     /// <summary>
@@ -577,7 +583,7 @@ public sealed class SafeTensors
     {
         if (tensorName is null)
         {
-            throw new ArgumentNullException(nameof(tensorName));
+            throw new System.ArgumentNullException(nameof(tensorName));
         }
 
         if (!_tensors.TryGetValue(tensorName, out var tensor))
@@ -710,7 +716,7 @@ public sealed class SafeTensors
     {
         if (tensorName is null)
         {
-            throw new ArgumentNullException(nameof(tensorName));
+            throw new System.ArgumentNullException(nameof(tensorName));
         }
         _tensors[tensorName] = new TensorView(dataType, shape, data);
     }
@@ -761,6 +767,24 @@ public sealed class SafeTensors
         EnsureDataType(tensorName, tensor, expectedType);
         return MemoryMarshal.Cast<byte, T>(tensor.Data.Span).ToArray();
     }
+
+    private static DataType ToDataType(Onnx.TensorProto.Types.DataType dataType) => dataType switch
+    {
+        Onnx.TensorProto.Types.DataType.Bool => DataType.Bool,
+        Onnx.TensorProto.Types.DataType.Uint8 => DataType.U8,
+        Onnx.TensorProto.Types.DataType.Int8 => DataType.I8,
+        Onnx.TensorProto.Types.DataType.Int16 => DataType.I16,
+        Onnx.TensorProto.Types.DataType.Uint16 => DataType.U16,
+        Onnx.TensorProto.Types.DataType.Float16 => DataType.F16,
+        Onnx.TensorProto.Types.DataType.Bfloat16 => DataType.Bf16,
+        Onnx.TensorProto.Types.DataType.Int32 => DataType.I32,
+        Onnx.TensorProto.Types.DataType.Uint32 => DataType.U32,
+        Onnx.TensorProto.Types.DataType.Float => DataType.F32,
+        Onnx.TensorProto.Types.DataType.Double => DataType.F64,
+        Onnx.TensorProto.Types.DataType.Int64 => DataType.I64,
+        Onnx.TensorProto.Types.DataType.Uint64 => DataType.U64,
+        _ => throw new NotSupportedException($"ONNX element type '{dataType}' is not supported by Safetensors."),
+    };
 
     private static void EnsureDataType(string tensorName, TensorView tensor, DataType expectedType)
     {
@@ -1092,7 +1116,7 @@ public sealed class SafeTensors
             DataType.I8 => nameof(SByte),
             DataType.I16 => nameof(Int16),
             DataType.U16 => nameof(UInt16),
-            DataType.F16 => nameof(Float16),
+            DataType.F16 => nameof(Half),
             DataType.Bf16 => "BFloat16",
             DataType.I32 => nameof(Int32),
             DataType.U32 => nameof(UInt32),
@@ -1108,8 +1132,17 @@ public sealed class SafeTensors
     private static bool[] ToBooleanArray(ReadOnlySpan<byte> data)
         => [.. data.ToArray().Select(static x => x != 0)];
 
-    private static Float16[] ToHalfArray(ReadOnlySpan<byte> data)
-        => MemoryMarshal.Cast<byte, Float16>(data).ToArray();
+    private static Half[] ToHalfArray(ReadOnlySpan<byte> data)
+    {
+        var encoded = MemoryMarshal.Cast<byte, ushort>(data);
+        var result = new Half[encoded.Length];
+        for (var index = 0; index < result.Length; index++)
+        {
+            result[index] = OnnxNumericConversions.Float16FromBits(encoded[index]);
+        }
+
+        return result;
+    }
 
     private static float[] ToBFloat16Array(ReadOnlySpan<byte> data)
     {
@@ -1117,7 +1150,7 @@ public sealed class SafeTensors
         var result = new float[ushortValues.Length];
         for (var i = 0; i < ushortValues.Length; i++)
         {
-            result[i] = Float32Bits.ToSingle(ushortValues[i] << 16);
+            result[i] = BFloat16.FromEncoded(ushortValues[i]).ToSingle();
         }
 
         return result;

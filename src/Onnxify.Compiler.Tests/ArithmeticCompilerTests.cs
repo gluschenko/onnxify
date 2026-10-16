@@ -87,7 +87,7 @@ public sealed class ArithmeticCompilerTests
             _ => ".minimum(",
         };
         Assert.Contains(expectedGeneratedForm, generatedCSharp.SourceCode());
-        AssertClose(expectedValues, ExecuteGeneratedModule(generatedCSharp.SourceCode(), leftValues, rightValues));
+        AssertClose(expectedValues, ExecuteGeneratedModule(generatedCSharp, leftValues, rightValues));
 
         var torchSource = onnxName switch
         {
@@ -121,7 +121,7 @@ public sealed class ArithmeticCompilerTests
 
         var generated = Compiler.GenerateSourceCode(imported.Value);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Equal([3f, 4f, 5f], ExecuteGeneratedModule(generated.SourceCode(), [1f, 2f, 3f], null));
+        Assert.Equal([3f, 4f, 5f], ExecuteGeneratedModule(generated, [1f, 2f, 3f], null, emitted.Value));
     }
 
     [Fact]
@@ -165,7 +165,7 @@ public sealed class ArithmeticCompilerTests
         var generated = Compiler.GenerateSourceCode(imported.Value);
 
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        AssertClose(expected, ExecuteGeneratedModule(generated.SourceCode(), [1f, 2f, 3f], null));
+        AssertClose(expected, ExecuteGeneratedModule(generated, [1f, 2f, 3f], null, emitted.Value));
     }
 
     [Fact]
@@ -219,7 +219,7 @@ public sealed class ArithmeticCompilerTests
         Assert.True(onnxTree.IsSuccess, FormatDiagnostics(onnxTree.Diagnostics));
         var generated = Compiler.GenerateSourceCode(onnxTree.Value!);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        Assert.Equal(expected, ExecuteGeneratedBroadcastModule(generated.SourceCode(), leftValues, leftShape, rightValues, rightShape));
+        Assert.Equal(expected, ExecuteGeneratedBroadcastModule(generated, leftValues, leftShape, rightValues, rightShape));
         Assert.Equal(expected, ExecuteOnnx(onnxModel, leftValues, leftShape, rightValues, rightShape));
 
         const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor left, global::TorchSharp.torch.Tensor right) { return left + right; }";
@@ -259,7 +259,7 @@ public sealed class ArithmeticCompilerTests
         var leftValues = new[] { 1d, 2d };
         var rightValues = new[] { 10d, 20d };
         var expected = new[] { 11d, 21d, 12d, 22d };
-        Assert.Equal(expected, ExecuteGeneratedDoubleBroadcastModule(generated.SourceCode(), leftValues, rightValues));
+        Assert.Equal(expected, ExecuteGeneratedDoubleBroadcastModule(generated, leftValues, rightValues));
         Assert.Equal(expected, ExecuteOnnxDouble(model, leftValues, rightValues));
 
         var emitted = Compiler.GenerateOnnx(imported.Value!);
@@ -403,7 +403,7 @@ public sealed class ArithmeticCompilerTests
 
         var generated = Compiler.GenerateSourceCode(imported.Value);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        AssertClose(expected, ExecuteGeneratedModule(generated.SourceCode(), leftValues, rightValues));
+        AssertClose(expected, ExecuteGeneratedModule(generated, leftValues, rightValues));
     }
 
     [Fact]
@@ -458,7 +458,7 @@ public sealed class ArithmeticCompilerTests
         var leftValues = new[] { 1f, 2f, 3f, 4f, 5f, 6f };
         var rightValues = new[] { 10f, 20f, 30f };
         var expectedValues = new[] { 1f, 20f, 3f, 10f, 5f, 30f };
-        AssertClose(expectedValues, ExecuteWhereModule(source.SourceCode(), conditions, leftValues, rightValues));
+        AssertClose(expectedValues, ExecuteWhereModule(source, conditions, leftValues, rightValues));
 
         const string torchSource = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor condition, global::TorchSharp.torch.Tensor left, global::TorchSharp.torch.Tensor right) { return torch.where(condition, left, right); }";
         var torchTree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(torchSource));
@@ -488,7 +488,7 @@ public sealed class ArithmeticCompilerTests
         var generated = Compiler.GenerateSourceCode(onnxTree.Value);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
         Assert.Contains("to_type(torch.ScalarType.Int64)", generated.SourceCode());
-        Assert.Equal([1L, -2L, 3L], ExecuteGeneratedCastModule(generated.SourceCode(), [1.9f, -2.2f, 3.8f]));
+        Assert.Equal([1L, -2L, 3L], ExecuteGeneratedCastModule(generated, [1.9f, -2.2f, 3.8f]));
 
         const string torchSource = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) { return input.to_type(torch.ScalarType.Int64); }";
         var torchTree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(torchSource));
@@ -773,7 +773,7 @@ public sealed class ArithmeticCompilerTests
         Assert.Equal(onnxName, onnxOperation.Descriptor.Name);
         var generated = Compiler.GenerateSourceCode(onnxTree.Value);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
-        AssertClose(expectedValues, ExecuteGeneratedUnaryModule(generated.SourceCode(), inputValues));
+        AssertClose(expectedValues, ExecuteGeneratedUnaryModule(generated, inputValues));
 
         var expression = onnxName == "Neg" ? "-input" : $"input.{torchMethod}()";
         var torchTree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(
@@ -798,11 +798,16 @@ public sealed class ArithmeticCompilerTests
         var generated = Compiler.GenerateSourceCode(imported.Value);
         Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
         Assert.Contains("forward", generated.SourceCode(), StringComparison.Ordinal);
-        return ExecuteGeneratedComposite(generated.SourceCode(), inputValues);
+        return ExecuteGeneratedComposite(generated, inputValues, model);
     }
 
-    private static float[] ExecuteGeneratedComposite(string source, IReadOnlyList<float[]> inputValues)
+    private static float[] ExecuteGeneratedComposite(
+        CompilerResult<IFile[]> generated,
+        IReadOnlyList<float[]> inputValues,
+        OnnxModel weightsModel
+    )
     {
+        var source = generated.SourceCode();
         var assemblyName = $"Onnxify.GeneratedComposite{Guid.NewGuid():N}";
         var references = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))!
             .Split(Path.PathSeparator)
@@ -821,7 +826,7 @@ public sealed class ArithmeticCompilerTests
         assemblyBytes.Position = 0;
         var assembly = AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
         var moduleType = assembly.GetTypes().Single(static type => type.GetMethod("forward") is not null);
-        using var module = (IDisposable)Activator.CreateInstance(moduleType, "composite-round-trip")!;
+        using var module = GeneratedModuleTestHelpers.CreateModule(moduleType, generated, "composite-round-trip", weightsModel);
         var tensors = inputValues.Select(values => (IDisposable)global::TorchSharp.torch.tensor(
             values,
             [values.Length],
@@ -914,8 +919,14 @@ public sealed class ArithmeticCompilerTests
         return model;
     }
 
-    private static float[] ExecuteGeneratedModule(string source, float[] leftValues, float[]? rightValues)
+    private static float[] ExecuteGeneratedModule(
+        CompilerResult<IFile[]> generated,
+        float[] leftValues,
+        float[]? rightValues,
+        OnnxModel? weightsModel = null
+    )
     {
+        var source = generated.SourceCode();
         var compilation = CSharpCompilation.Create(
             $"Onnxify.Arithmetic{Guid.NewGuid():N}",
             [CSharpSyntaxTree.ParseText(source)],
@@ -927,7 +938,7 @@ public sealed class ArithmeticCompilerTests
         assemblyBytes.Position = 0;
         var assembly = AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
         var moduleType = assembly.GetTypes().Single(static type => type.Name.Contains("TorchModule", StringComparison.Ordinal));
-        using var module = (IDisposable)Activator.CreateInstance(moduleType, "arithmetic")!;
+        using var module = GeneratedModuleTestHelpers.CreateModule(moduleType, generated, "arithmetic", weightsModel);
         var leftShape = leftValues.Length == 6 ? new long[] { 2, 3 } : [leftValues.Length];
         using var left = global::TorchSharp.torch.tensor(leftValues, leftShape, dtype: global::TorchSharp.torch.ScalarType.Float32);
         using var right = rightValues is null
@@ -940,12 +951,13 @@ public sealed class ArithmeticCompilerTests
     }
 
     private static float[] ExecuteGeneratedBroadcastModule(
-        string source,
+        CompilerResult<IFile[]> generated,
         float[] leftValues,
         long[] leftShape,
         float[] rightValues,
         long[] rightShape)
     {
+        var source = generated.SourceCode();
         var compilation = CSharpCompilation.Create(
             $"Onnxify.Broadcast{Guid.NewGuid():N}",
             [CSharpSyntaxTree.ParseText(source)],
@@ -957,15 +969,16 @@ public sealed class ArithmeticCompilerTests
         assemblyBytes.Position = 0;
         var assembly = AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
         var moduleType = assembly.GetTypes().Single(static type => type.Name.Contains("TorchModule", StringComparison.Ordinal));
-        using var module = (IDisposable)Activator.CreateInstance(moduleType, "broadcast")!;
+        using var module = GeneratedModuleTestHelpers.CreateModule(moduleType, generated, "broadcast");
         using var left = global::TorchSharp.torch.tensor(leftValues, leftShape, dtype: global::TorchSharp.torch.ScalarType.Float32);
         using var right = global::TorchSharp.torch.tensor(rightValues, rightShape, dtype: global::TorchSharp.torch.ScalarType.Float32);
         using var output = (global::TorchSharp.torch.Tensor)moduleType.GetMethod("forward")!.Invoke(module, [left, right])!;
         return output.data<float>().ToArray();
     }
 
-    private static double[] ExecuteGeneratedDoubleBroadcastModule(string source, double[] leftValues, double[] rightValues)
+    private static double[] ExecuteGeneratedDoubleBroadcastModule(CompilerResult<IFile[]> generated, double[] leftValues, double[] rightValues)
     {
+        var source = generated.SourceCode();
         var compilation = CSharpCompilation.Create(
             $"Onnxify.DoubleBroadcast{Guid.NewGuid():N}",
             [CSharpSyntaxTree.ParseText(source)],
@@ -977,7 +990,7 @@ public sealed class ArithmeticCompilerTests
         assemblyBytes.Position = 0;
         var assembly = AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
         var moduleType = assembly.GetTypes().Single(static type => type.Name.Contains("TorchModule", StringComparison.Ordinal));
-        using var module = (IDisposable)Activator.CreateInstance(moduleType, "double_broadcast")!;
+        using var module = GeneratedModuleTestHelpers.CreateModule(moduleType, generated, "double_broadcast");
         using var left = global::TorchSharp.torch.tensor(leftValues, [2L, 1L], dtype: global::TorchSharp.torch.ScalarType.Float64);
         using var right = global::TorchSharp.torch.tensor(rightValues, [1L, 2L], dtype: global::TorchSharp.torch.ScalarType.Float64);
         using var output = (global::TorchSharp.torch.Tensor)moduleType.GetMethod("forward")!.Invoke(module, [left, right])!;
@@ -1076,8 +1089,9 @@ public sealed class ArithmeticCompilerTests
         }
     }
 
-    private static float[] ExecuteGeneratedUnaryModule(string source, float[] inputValues)
+    private static float[] ExecuteGeneratedUnaryModule(CompilerResult<IFile[]> generated, float[] inputValues)
     {
+        var source = generated.SourceCode();
         var compilation = CSharpCompilation.Create(
             $"Onnxify.UnaryArithmetic{Guid.NewGuid():N}",
             [CSharpSyntaxTree.ParseText(source)],
@@ -1089,7 +1103,7 @@ public sealed class ArithmeticCompilerTests
         assemblyBytes.Position = 0;
         var assembly = AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
         var moduleType = assembly.GetTypes().Single(static type => type.Name.Contains("TorchModule", StringComparison.Ordinal));
-        using var module = (IDisposable)Activator.CreateInstance(moduleType, "unary")!;
+        using var module = GeneratedModuleTestHelpers.CreateModule(moduleType, generated, "unary");
         using var input = global::TorchSharp.torch.tensor(inputValues, [inputValues.Length], dtype: global::TorchSharp.torch.ScalarType.Float32);
         using var output = (global::TorchSharp.torch.Tensor)moduleType.GetMethod("forward")!.Invoke(module, [input])!;
         return output.data<float>().ToArray();
@@ -1140,8 +1154,9 @@ public sealed class ArithmeticCompilerTests
         }
     }
 
-    private static float[] ExecuteWhereModule(string source, bool[] conditions, float[] leftValues, float[] rightValues)
+    private static float[] ExecuteWhereModule(CompilerResult<IFile[]> generated, bool[] conditions, float[] leftValues, float[] rightValues)
     {
+        var source = generated.SourceCode();
         var compilation = CSharpCompilation.Create(
             $"Onnxify.Where{Guid.NewGuid():N}",
             [CSharpSyntaxTree.ParseText(source)],
@@ -1153,7 +1168,7 @@ public sealed class ArithmeticCompilerTests
         assemblyBytes.Position = 0;
         var assembly = AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
         var moduleType = assembly.GetTypes().Single(static type => type.Name.Contains("TorchModule", StringComparison.Ordinal));
-        using var module = (IDisposable)Activator.CreateInstance(moduleType, "where")!;
+        using var module = GeneratedModuleTestHelpers.CreateModule(moduleType, generated, "where");
         using var condition = global::TorchSharp.torch.tensor(conditions, [2L, 3L], dtype: global::TorchSharp.torch.ScalarType.Bool);
         using var left = global::TorchSharp.torch.tensor(leftValues, [2L, 3L], dtype: global::TorchSharp.torch.ScalarType.Float32);
         using var right = global::TorchSharp.torch.tensor(rightValues, [3L], dtype: global::TorchSharp.torch.ScalarType.Float32);
@@ -1185,8 +1200,9 @@ public sealed class ArithmeticCompilerTests
         }
     }
 
-    private static long[] ExecuteGeneratedCastModule(string source, float[] values)
+    private static long[] ExecuteGeneratedCastModule(CompilerResult<IFile[]> generated, float[] values)
     {
+        var source = generated.SourceCode();
         var compilation = CSharpCompilation.Create(
             $"Onnxify.Cast{Guid.NewGuid():N}",
             [CSharpSyntaxTree.ParseText(source)],
@@ -1198,7 +1214,7 @@ public sealed class ArithmeticCompilerTests
         assemblyBytes.Position = 0;
         var assembly = AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
         var moduleType = assembly.GetTypes().Single(static type => type.Name.Contains("TorchModule", StringComparison.Ordinal));
-        using var module = (IDisposable)Activator.CreateInstance(moduleType, "cast")!;
+        using var module = GeneratedModuleTestHelpers.CreateModule(moduleType, generated, "cast");
         using var input = global::TorchSharp.torch.tensor(values, [values.Length], dtype: global::TorchSharp.torch.ScalarType.Float32);
         using var output = (global::TorchSharp.torch.Tensor)moduleType.GetMethod("forward")!.Invoke(module, [input])!;
         return output.data<long>().ToArray();

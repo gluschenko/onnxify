@@ -49,7 +49,7 @@ public sealed class BooleanPointwiseCompilerTests
 
         var generatedSource = Compiler.GenerateSourceCode(onnxTree.Value);
         Assert.True(generatedSource.IsSuccess, FormatDiagnostics(generatedSource.Diagnostics));
-        Assert.True(expected.SequenceEqual(ExecuteGeneratedModule(generatedSource.SourceCode(), leftValues, rightValues)));
+        Assert.True(expected.SequenceEqual(ExecuteGeneratedModule(generatedSource, leftValues, rightValues)));
 
         var torchSource = CreateTorchSource(torchName);
         var torchTree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(torchSource));
@@ -86,7 +86,7 @@ public sealed class BooleanPointwiseCompilerTests
 
         var generatedSource = Compiler.GenerateSourceCode(onnxTree.Value);
         Assert.True(generatedSource.IsSuccess, FormatDiagnostics(generatedSource.Diagnostics));
-        Assert.True(expected.SequenceEqual(ExecuteGeneratedModule(generatedSource.SourceCode(), leftValues, rightValues)));
+        Assert.True(expected.SequenceEqual(ExecuteGeneratedModule(generatedSource, leftValues, rightValues)));
 
         var torchSource = CreateTorchSource(torchName);
         var torchTree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(torchSource));
@@ -237,7 +237,7 @@ public sealed class BooleanPointwiseCompilerTests
         Assert.Equal(CompilerOperationCapability.Bidirectional, onnxStep.Descriptor.Capability);
         var generatedSource = Compiler.GenerateSourceCode(onnxTree.Value);
         Assert.True(generatedSource.IsSuccess, FormatDiagnostics(generatedSource.Diagnostics));
-        Assert.Equal(expected, ExecuteGeneratedUnaryModule(generatedSource.SourceCode(), inputValues));
+        Assert.Equal(expected, ExecuteGeneratedUnaryModule(generatedSource, inputValues));
 
         var torchSource = $"public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) {{ return {torchExpression}; }}";
         var torchTree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(torchSource));
@@ -305,8 +305,9 @@ public sealed class BooleanPointwiseCompilerTests
         return result;
     }
 
-    private static bool[] ExecuteGeneratedModule(string source, float[] left, float[] right)
+    private static bool[] ExecuteGeneratedModule(CompilerResult<IFile[]> generated, float[] left, float[] right)
     {
+        var source = generated.SourceCode();
         var compilation = CSharpCompilation.Create(
             $"Onnxify.BooleanPointwise{Guid.NewGuid():N}",
             [CSharpSyntaxTree.ParseText(source)],
@@ -318,15 +319,16 @@ public sealed class BooleanPointwiseCompilerTests
         assemblyBytes.Position = 0;
         var assembly = AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
         var moduleType = assembly.GetTypes().Single(static type => type.Name.Contains("TorchModule", StringComparison.Ordinal));
-        using var module = (IDisposable)Activator.CreateInstance(moduleType, "pointwise")!;
+        using var module = GeneratedModuleTestHelpers.CreateModule(moduleType, generated, "pointwise");
         using var leftTensor = global::TorchSharp.torch.tensor(left, [2L, 3L], dtype: global::TorchSharp.torch.ScalarType.Float32);
         using var rightTensor = global::TorchSharp.torch.tensor(right, [3L], dtype: global::TorchSharp.torch.ScalarType.Float32);
         using var output = (global::TorchSharp.torch.Tensor)moduleType.GetMethod("forward")!.Invoke(module, [leftTensor, rightTensor])!;
         return output.data<bool>().ToArray();
     }
 
-    private static bool[] ExecuteGeneratedModule(string source, bool[] left, bool[] right)
+    private static bool[] ExecuteGeneratedModule(CompilerResult<IFile[]> generated, bool[] left, bool[] right)
     {
+        var source = generated.SourceCode();
         var compilation = CSharpCompilation.Create(
             $"Onnxify.BooleanPointwise{Guid.NewGuid():N}",
             [CSharpSyntaxTree.ParseText(source)],
@@ -338,7 +340,7 @@ public sealed class BooleanPointwiseCompilerTests
         assemblyBytes.Position = 0;
         var assembly = AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
         var moduleType = assembly.GetTypes().Single(static type => type.Name.Contains("TorchModule", StringComparison.Ordinal));
-        using var module = (IDisposable)Activator.CreateInstance(moduleType, "pointwise")!;
+        using var module = GeneratedModuleTestHelpers.CreateModule(moduleType, generated, "pointwise");
         using var leftTensor = global::TorchSharp.torch.tensor(left, [2L, 3L], dtype: global::TorchSharp.torch.ScalarType.Bool);
         using var rightTensor = global::TorchSharp.torch.tensor(right, [3L], dtype: global::TorchSharp.torch.ScalarType.Bool);
         using var output = (global::TorchSharp.torch.Tensor)moduleType.GetMethod("forward")!.Invoke(module, [leftTensor, rightTensor])!;
@@ -378,8 +380,9 @@ public sealed class BooleanPointwiseCompilerTests
         }
     }
 
-    private static bool[] ExecuteGeneratedUnaryModule<TInput>(string source, TInput[] inputValues)
+    private static bool[] ExecuteGeneratedUnaryModule<TInput>(CompilerResult<IFile[]> generated, TInput[] inputValues)
     {
+        var source = generated.SourceCode();
         var compilation = CSharpCompilation.Create(
             $"Onnxify.BooleanUnary{Guid.NewGuid():N}",
             [CSharpSyntaxTree.ParseText(source)],
@@ -391,7 +394,7 @@ public sealed class BooleanPointwiseCompilerTests
         assemblyBytes.Position = 0;
         var assembly = AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
         var moduleType = assembly.GetTypes().Single(static type => type.Name.Contains("TorchModule", StringComparison.Ordinal));
-        using var module = (IDisposable)Activator.CreateInstance(moduleType, "boolean_unary")!;
+        using var module = GeneratedModuleTestHelpers.CreateModule(moduleType, generated, "boolean_unary");
         using var input = CreateTorchTensor(inputValues);
         using var output = (global::TorchSharp.torch.Tensor)moduleType.GetMethod("forward")!.Invoke(module, [input])!;
         return output.data<bool>().ToArray();

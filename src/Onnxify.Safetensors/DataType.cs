@@ -123,7 +123,7 @@ public static class DataTypeExtensions
             DataType.F64 => 64,
             DataType.I64 => 64,
             DataType.U64 => 64,
-            _ => throw new ArgumentOutOfRangeException(nameof(dtype), dtype, null),
+            _ => throw new System.ArgumentOutOfRangeException(nameof(dtype), dtype, null),
         };
     }
 
@@ -162,7 +162,7 @@ public static class DataTypeExtensions
             DataType.F64 => "F64",
             DataType.I64 => "I64",
             DataType.U64 => "U64",
-            _ => throw new ArgumentOutOfRangeException(nameof(dtype), dtype, null),
+            _ => throw new System.ArgumentOutOfRangeException(nameof(dtype), dtype, null),
         };
     }
 
@@ -180,7 +180,7 @@ public static class DataTypeExtensions
     {
         if (name is null)
         {
-            throw new ArgumentNullException(nameof(name));
+            throw new System.ArgumentNullException(nameof(name));
         }
 
         return name switch

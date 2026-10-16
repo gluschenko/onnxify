@@ -1,6 +1,7 @@
 ﻿using System.Buffers.Binary;
 using System.Text;
 using Onnxify.Data.Numerics;
+using Onnxify.Helpers;
 using Onnxify.Safetensors;
 using SafeTensors = Onnxify.Safetensors.SafeTensors;
 
@@ -8,6 +9,50 @@ namespace Onnxify.Tests;
 
 public class SafetensorsTests
 {
+    [Fact]
+    public void OnnxElementTypeMap_MapsSharedClrTypesBidirectionally()
+    {
+        var mappings = new (Type ClrType, Onnx.TensorProto.Types.DataType OnnxType)[]
+        {
+            (typeof(bool), Onnx.TensorProto.Types.DataType.Bool),
+            (typeof(sbyte), Onnx.TensorProto.Types.DataType.Int8),
+            (typeof(byte), Onnx.TensorProto.Types.DataType.Uint8),
+            (typeof(short), Onnx.TensorProto.Types.DataType.Int16),
+            (typeof(ushort), Onnx.TensorProto.Types.DataType.Uint16),
+            (typeof(Half), Onnx.TensorProto.Types.DataType.Float16),
+            (typeof(BFloat16), Onnx.TensorProto.Types.DataType.Bfloat16),
+            (typeof(float), Onnx.TensorProto.Types.DataType.Float),
+            (typeof(double), Onnx.TensorProto.Types.DataType.Double),
+            (typeof(uint), Onnx.TensorProto.Types.DataType.Uint32),
+            (typeof(int), Onnx.TensorProto.Types.DataType.Int32),
+            (typeof(long), Onnx.TensorProto.Types.DataType.Int64),
+            (typeof(ulong), Onnx.TensorProto.Types.DataType.Uint64),
+            (typeof(string), Onnx.TensorProto.Types.DataType.String),
+            (typeof(Complex64), Onnx.TensorProto.Types.DataType.Complex64),
+            (typeof(Complex128), Onnx.TensorProto.Types.DataType.Complex128),
+            (typeof(Float8E4M3FN), Onnx.TensorProto.Types.DataType.Float8E4M3Fn),
+            (typeof(Float8E4M3FNUZ), Onnx.TensorProto.Types.DataType.Float8E4M3Fnuz),
+            (typeof(Float8E5M2), Onnx.TensorProto.Types.DataType.Float8E5M2),
+            (typeof(Float8E5M2FNUZ), Onnx.TensorProto.Types.DataType.Float8E5M2Fnuz),
+            (typeof(Float4E2M1), Onnx.TensorProto.Types.DataType.Float4E2M1),
+            (typeof(Float8E8M0), Onnx.TensorProto.Types.DataType.Float8E8M0),
+            (typeof(UInt4), Onnx.TensorProto.Types.DataType.Uint4),
+            (typeof(Int4), Onnx.TensorProto.Types.DataType.Int4),
+            (typeof(UInt2), Onnx.TensorProto.Types.DataType.Uint2),
+            (typeof(Int2), Onnx.TensorProto.Types.DataType.Int2),
+            (typeof(object), Onnx.TensorProto.Types.DataType.Undefined),
+        };
+
+        foreach (var (clrType, onnxType) in mappings)
+        {
+            Assert.Equal(onnxType, OnnxElementTypeMap.GetDataType(clrType));
+            Assert.Equal(clrType, OnnxElementTypeMap.GetSystemType(onnxType));
+        }
+
+        var encoded = OnnxNumericConversions.Float16FromSingle(-2f);
+        Assert.Equal(-2f, OnnxNumericConversions.Float16ToSingle(encoded));
+    }
+
     [Fact]
     public void ValueApi_SetGetRemove_RoundTripsUserFriendlyValues()
     {
@@ -40,12 +85,6 @@ public class SafetensorsTests
         AssertValueRoundTrip("shorts", DataType.I16, new short[] { -300, 0, 300 });
         AssertValueRoundTrip("ushorts", DataType.U16, new ushort[] { 0, 300, 600 });
         AssertValueRoundTrip("halfs", DataType.F16, new[] { (Half)1.25f, (Half)(-2.5f), (Half)3.75f });
-        AssertValueRoundTrip("portable-halfs", DataType.F16, new[]
-        {
-            Float16.FromSingle(1.25f),
-            Float16.FromSingle(-2.5f),
-            Float16.FromSingle(3.75f),
-        });
         AssertValueRoundTrip("ints", DataType.I32, new[] { -1000, 0, 1000 });
         AssertValueRoundTrip("uints", DataType.U32, new uint[] { 0, 1000, 2000 });
         AssertValueRoundTrip("floats", DataType.F32, new[] { 1.2f, 3.4f, 5.6f });
@@ -91,26 +130,27 @@ public class SafetensorsTests
     [Fact]
     public void ValueApi_Float16_PreservesEncodedValuesAndConvertsWithIeeeRounding()
     {
-        var values = new[]
+        var encodedValues = new ushort[]
         {
-            Float16.FromEncoded(0x0001),
-            Float16.FromEncoded(0x3c00),
-            Float16.FromEncoded(0xc000),
-            Float16.FromEncoded(0x7c00),
+            0x0001,
+            0x3c00,
+            0xc000,
+            0x7c00,
         };
+        var values = encodedValues.Select(BitConverter.UInt16BitsToHalf).ToArray();
         var archive = new SafeTensors();
         archive.Set("half", values, 2, 2);
 
         var loaded = SafeTensors.Deserialize(archive.Serialize());
         Assert.Equal(DataType.F16, loaded.Tensor("half").DataType);
         Assert.Equal(new ulong[] { 2, 2 }, loaded.Tensor("half").Shape);
-        Assert.Equal(values, loaded.Get<Float16>("half"));
-        Assert.Equal(0x3c00, Float16.FromSingle(1f).Value);
-        Assert.Equal(0xc000, Float16.FromSingle(-2f).Value);
-        Assert.Equal(0x0000, Float16.FromSingle((float)Math.Pow(2, -25)).Value);
-        Assert.Equal(0x0002, Float16.FromSingle(3f * (float)Math.Pow(2, -25)).Value);
-        Assert.Equal(1f, loaded.Get<Float16>("half")[1].ToSingle());
-        Assert.Equal(float.PositiveInfinity, loaded.Get<Float16>("half")[3].ToSingle());
+        Assert.Equal(encodedValues, loaded.Get<Half>("half").Select(BitConverter.HalfToUInt16Bits));
+        Assert.Equal(0x3c00, BitConverter.HalfToUInt16Bits((Half)1f));
+        Assert.Equal(0xc000, BitConverter.HalfToUInt16Bits((Half)(-2f)));
+        Assert.Equal(0x0000, BitConverter.HalfToUInt16Bits((Half)Math.Pow(2, -25)));
+        Assert.Equal(0x0002, BitConverter.HalfToUInt16Bits((Half)(3f * (float)Math.Pow(2, -25))));
+        Assert.Equal(1f, (float)loaded.Get<Half>("half")[1]);
+        Assert.Equal(float.PositiveInfinity, (float)loaded.Get<Half>("half")[3]);
     }
 
     [Fact]
