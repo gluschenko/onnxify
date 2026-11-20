@@ -6,6 +6,7 @@ internal static class CompilerOperatorRegistry
 {
     private static readonly CompilerOperator[] _operators =
     [
+        new FloorDivideOperator(),
         new AbsOperator(),
         new AddOperator(),
         new AddCdivOperator(),
@@ -28,6 +29,7 @@ internal static class CompilerOperatorRegistry
         new Exp2Operator(),
         new ExpandOperator(),
         new FloorOperator(),
+        new FracOperator(),
         new FlattenOperator(),
         new GlobalAveragePoolOperator(),
         new GatherOperator(),
@@ -74,6 +76,7 @@ internal static class CompilerOperatorRegistry
         new OrOperator(),
         new XorOperator(),
         new NotOperator(),
+        new NotEqualOperator(),
         new WhereOperator(),
         new ReciprocalOperator(),
         new Rad2DegOperator(),
@@ -82,11 +85,21 @@ internal static class CompilerOperatorRegistry
         new SqueezeOperator(),
         new UnsqueezeOperator(),
         new RoundOperator(),
+        RoundDecimalsOperator.Instance,
+        new SincOperator(),
         new SignOperator(),
         new TruncOperator(),
+        new FmodOperator(),
         new ErfOperator(),
+        new ErfcOperator(),
+        new Expm1Operator(),
         new IsNaNOperator(),
         new IsInfOperator(),
+        new IsFiniteOperator(),
+        new HeavisideOperator(),
+        new XLogYOperator(),
+        new LogitOperator(),
+        new IsCloseOperator(),
         new CeluOperator(),
         new EluOperator(),
         new GeluOperator(),
@@ -203,7 +216,7 @@ internal static class CompilerOperatorRegistry
 
         compilerOperator = null;
         if (target is CompilerMemberAccessExpression member
-            && member.Target is CompilerReferenceExpression
+            && member.Target is CompilerReferenceExpression or CompilerMemberAccessExpression
             && TryGetTorchSharp($"Tensor.{member.MemberName}", out compilerOperator))
         {
             receiver = member.Target;

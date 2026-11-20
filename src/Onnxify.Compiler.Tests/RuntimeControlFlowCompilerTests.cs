@@ -10,6 +10,95 @@ namespace Onnxify.Compiler.Tests;
 public sealed class RuntimeControlFlowCompilerTests
 {
     [Fact]
+    public void RuntimeIfSupportsEarlyReturnWhenBothBranchesReturn()
+    {
+        var tree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(
+            """
+            public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor condition, global::TorchSharp.torch.Tensor data)
+            {
+                if (condition > 0f)
+                {
+                    return data;
+                }
+                else
+                {
+                    return -data;
+                }
+            }
+            """));
+        Assert.True(tree.IsSuccess, string.Join(Environment.NewLine, tree.Diagnostics.Select(x => x.Message)));
+
+        var emitted = Compiler.GenerateOnnx(tree.Value!);
+        Assert.True(emitted.IsSuccess, string.Join(Environment.NewLine, emitted.Diagnostics.Select(x => x.Message)));
+        var path = Path.Combine(Path.GetTempPath(), $"oxy042-early-return-{Guid.NewGuid():N}.onnx");
+        try
+        {
+            emitted.Value!.Save(path, overwrite: true);
+            using var session = new InferenceSession(path);
+            foreach (var (condition, expected) in new[]
+            {
+                (1f, new[] { 1f, -2f }),
+                (-1f, new[] { -1f, 2f }),
+            })
+            {
+                using var result = session.Run(
+                [
+                    NamedOnnxValue.CreateFromTensor("condition", new DenseTensor<float>(new[] { condition }, new int[0])),
+                    NamedOnnxValue.CreateFromTensor("data", new DenseTensor<float>(new[] { 1f, -2f }, new[] { 2 })),
+                ]);
+                Assert.Equal(expected, result.Single().AsTensor<float>().ToArray());
+            }
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void RuntimeIfSupportsEarlyReturnWithFallthroughContinuation()
+    {
+        var tree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(
+            """
+            public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor condition, global::TorchSharp.torch.Tensor data)
+            {
+                if (condition > 0f)
+                {
+                    return data;
+                }
+                return -data;
+            }
+            """));
+        Assert.True(tree.IsSuccess, string.Join(Environment.NewLine, tree.Diagnostics.Select(x => x.Message)));
+
+        var emitted = Compiler.GenerateOnnx(tree.Value!);
+        Assert.True(emitted.IsSuccess, string.Join(Environment.NewLine, emitted.Diagnostics.Select(x => x.Message)));
+        var path = Path.Combine(Path.GetTempPath(), $"oxy042-early-return-fallthrough-{Guid.NewGuid():N}.onnx");
+        try
+        {
+            emitted.Value!.Save(path, overwrite: true);
+            using var session = new InferenceSession(path);
+            foreach (var (condition, expected) in new[]
+            {
+                (1f, new[] { 1f, -2f }),
+                (-1f, new[] { -1f, 2f }),
+            })
+            {
+                using var result = session.Run(
+                [
+                    NamedOnnxValue.CreateFromTensor("condition", new DenseTensor<float>(new[] { condition }, new int[0])),
+                    NamedOnnxValue.CreateFromTensor("data", new DenseTensor<float>(new[] { 1f, -2f }, new[] { 2 })),
+                ]);
+                Assert.Equal(expected, result.Single().AsTensor<float>().ToArray());
+            }
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void RuntimeCSharpIfLowersToOnnxIfWithCapturedValues()
     {
         var tree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(
@@ -185,6 +274,64 @@ public sealed class RuntimeControlFlowCompilerTests
     }
 
     [Fact]
+    public void RuntimeLoopSupportsEarlyReturnAndFallthrough()
+    {
+        const string source =
+            """
+            public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input, float condition)
+            {
+                var index = 0;
+                while (index < 3)
+                {
+                    if (condition > 0f)
+                    {
+                        return input;
+                    }
+                    index++;
+                }
+                return -input;
+            }
+            """;
+        var tree = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
+        Assert.True(tree.IsSuccess, string.Join(Environment.NewLine, tree.Diagnostics.Select(x => x.Message)));
+        var generated = Compiler.GenerateSourceCode(tree.Value!, new CompilerCSharpGenerationOptions
+        {
+            Namespace = "Onnxify.GeneratedLoopReturn",
+            ClassName = "GeneratedLoopReturn",
+            ModuleName = "generated-loop-return",
+        });
+        Assert.True(generated.IsSuccess, string.Join(Environment.NewLine, generated.Diagnostics.Select(x => x.Message)));
+        using var module = CompileGeneratedSyntaxModule(generated.SourceCode(), "GeneratedLoopReturn");
+        var emitted = Compiler.GenerateOnnx(tree.Value!);
+        Assert.True(emitted.IsSuccess, string.Join(Environment.NewLine, emitted.Diagnostics.Select(x => x.Message)));
+        var path = Path.Combine(Path.GetTempPath(), $"oxy042-loop-return-{Guid.NewGuid():N}.onnx");
+        try
+        {
+            emitted.Value!.Save(path, overwrite: true);
+            using var session = new InferenceSession(path);
+            foreach (var (input, condition, expected) in new[] { (3f, 2f, 3f), (-3f, -2f, 3f) })
+            {
+                using var result = session.Run(
+                [
+                    NamedOnnxValue.CreateFromTensor("input", new DenseTensor<float>(new[] { input }, new[] { 1 })),
+                    NamedOnnxValue.CreateFromTensor("condition", new DenseTensor<float>(new[] { condition }, new int[0])),
+                ]);
+                Assert.Equal(expected, result.Single().AsTensor<float>().ToArray().Single());
+
+                using var inputTensor = global::TorchSharp.torch.tensor(
+                    new[] { input }, new long[] { 1 }, dtype: global::TorchSharp.torch.ScalarType.Float32);
+                using var torchResult = (global::TorchSharp.torch.Tensor)module.GetType().GetMethod("forward")!
+                    .Invoke(module, [inputTensor, condition])!;
+                Assert.Equal(expected, torchResult.data<float>().Single());
+            }
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void ConditionalBreakAndContinueAreLoweredAsLoopControlState()
     {
         AssertRuntimeLoopOutput(
@@ -240,6 +387,27 @@ public sealed class RuntimeControlFlowCompilerTests
         {
             if (File.Exists(path)) File.Delete(path);
         }
+    }
+
+    private static IDisposable CompileGeneratedSyntaxModule(string source, string className)
+    {
+        var references = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))!
+            .Split(Path.PathSeparator)
+            .Select(static path => MetadataReference.CreateFromFile(path))
+            .Append(MetadataReference.CreateFromFile(typeof(global::TorchSharp.torch.Tensor).Assembly.Location));
+        var compilation = CSharpCompilation.Create(
+            $"{className}{Guid.NewGuid():N}",
+            [CSharpSyntaxTree.ParseText(source)],
+            references,
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        using var assemblyBytes = new MemoryStream();
+        var result = compilation.Emit(assemblyBytes);
+        Assert.True(result.Success, string.Join(Environment.NewLine,
+            result.Diagnostics.Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)));
+        assemblyBytes.Position = 0;
+        var assembly = System.Runtime.Loader.AssemblyLoadContext.Default.LoadFromStream(assemblyBytes);
+        var type = assembly.GetTypes().Single(candidate => candidate.Name == className);
+        return (IDisposable)Activator.CreateInstance(type, "generated-loop-return")!;
     }
 
     [Fact]

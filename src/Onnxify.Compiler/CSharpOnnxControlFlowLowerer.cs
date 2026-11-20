@@ -10,6 +10,7 @@ internal sealed class CSharpOnnxControlFlowLowerer
     private readonly List<CompilerDiagnostic> _diagnostics;
     private readonly string? _caller;
     private readonly Dictionary<string, CompilerType> _types;
+    private readonly Dictionary<CompilerInvocationExpression, IReadOnlyList<string>> _invocationOutputs = [];
     private int _sequence;
 
     public CSharpOnnxControlFlowLowerer(
@@ -56,8 +57,35 @@ internal sealed class CSharpOnnxControlFlowLowerer
         switch (statement)
         {
             case CompilerBlockStatement block:
-                foreach (var child in block.Statements)
+                for (var index = 0; index < block.Statements.Count; index++)
                 {
+                    var child = block.Statements[index];
+                    if (child is CompilerRuntimeIfStatement earlyReturnIf && ContainsReturn(earlyReturnIf))
+                    {
+                        if (loopContext is null)
+                        {
+                            LowerIfWithContinuation(
+                                earlyReturnIf,
+                                block.Statements.Skip(index + 1).ToArray(),
+                                graph,
+                                environment,
+                                loopContext);
+                            return Flow.Return;
+                        }
+                    }
+
+                    if (loopContext is null
+                        && child is CompilerRuntimeLoopStatement earlyReturnLoop
+                        && ContainsReturn(earlyReturnLoop.Body))
+                    {
+                        LowerLoopWithContinuation(
+                            earlyReturnLoop,
+                            block.Statements.Skip(index + 1).ToArray(),
+                            graph,
+                            environment);
+                        return Flow.Return;
+                    }
+
                     var flow = loopContext is not null && child is not (CompilerBreakStatement or CompilerContinueStatement)
                         ? LowerIf(new CompilerRuntimeIfStatement(
                             new CompilerReferenceExpression(loopContext.ActiveName),
@@ -107,23 +135,48 @@ internal sealed class CSharpOnnxControlFlowLowerer
                 return Flow.Normal;
             case CompilerReturnStatement { Expression: not null } ret:
                 var returns = ret.Expression is CompilerTupleExpression tuple ? tuple.Items : [ret.Expression];
-                if (graph == _graph)
+                if (returns.Count != _tree.Outputs.Count)
+                    throw Unsupported(ret, "Return value count does not match the declared ONNX outputs.");
+                if (loopContext is not null)
                 {
-                    if (returns.Count != _tree.Outputs.Count)
-                        throw Unsupported(ret, "Return value count does not match the declared ONNX outputs.");
                     for (var i = 0; i < returns.Count; i++)
                     {
                         var value = LowerExpression(returns[i], graph, environment);
                         var output = _tree.Outputs[i];
-                        if (value != output.Name) EmitIdentity(graph, value, output.Name, output.Type, "return");
+                        environment[output.Name] = new Binding(value, output.Type);
+                    }
+                    environment[loopContext.ReturnedName!] = new Binding(
+                        AddScalar(graph, true, new CompilerScalarType(CompilerElementType.Boolean)),
+                        new CompilerScalarType(CompilerElementType.Boolean));
+                    environment[loopContext.ActiveName] = new Binding(
+                        AddScalar(graph, false, new CompilerScalarType(CompilerElementType.Boolean)),
+                        new CompilerScalarType(CompilerElementType.Boolean));
+                    environment[loopContext.BreakingName] = new Binding(
+                        AddScalar(graph, true, new CompilerScalarType(CompilerElementType.Boolean)),
+                        new CompilerScalarType(CompilerElementType.Boolean));
+                    return Flow.Normal;
+                }
+                if (graph != _graph)
+                {
+                    for (var i = 0; i < returns.Count; i++)
+                    {
+                        var value = LowerExpression(returns[i], graph, environment);
+                        var output = _tree.Outputs[i];
+                        AddBranchOutput(graph, value, output.Name, output.Type);
                     }
                     return Flow.Return;
                 }
-                throw Unsupported(ret, "Early returns from an ONNX control-flow subgraph are not supported.");
+                for (var i = 0; i < returns.Count; i++)
+                {
+                    var value = LowerExpression(returns[i], graph, environment);
+                    var output = _tree.Outputs[i];
+                    if (value != output.Name) EmitIdentity(graph, value, output.Name, output.Type, "return");
+                }
+                return Flow.Return;
             case CompilerRuntimeIfStatement conditional:
                 return LowerIf(conditional, graph, environment, loopContext);
             case CompilerRuntimeLoopStatement loop:
-                LowerLoop(loop, graph, environment);
+                _ = LowerLoop(loop, graph, environment);
                 return Flow.Normal;
             case CompilerBreakStatement when loopContext is not null:
                 environment[loopContext.ActiveName] = new Binding(
@@ -171,9 +224,10 @@ internal sealed class CSharpOnnxControlFlowLowerer
         LoopContext? loopContext)
     {
         var condition = LowerExpression(conditional.Condition, graph, environment);
-        var assigned = AssignedNames(conditional.WhenTrue)
-            .Concat(conditional.WhenFalse is null ? [] : AssignedNames(conditional.WhenFalse))
+        var assigned = AssignedNames(conditional.WhenTrue, _tree.Outputs)
+            .Concat(conditional.WhenFalse is null ? [] : AssignedNames(conditional.WhenFalse, _tree.Outputs))
             .Concat(loopContext is null ? [] : [loopContext.ActiveName, loopContext.BreakingName])
+            .Concat(loopContext?.ReturnedName is { } returnedName ? [returnedName] : [])
             .Where(environment.ContainsKey)
             .Distinct(StringComparer.Ordinal).ToArray();
         var thenGraph = OnnxModel.Create().Graph;
@@ -186,8 +240,16 @@ internal sealed class CSharpOnnxControlFlowLowerer
         var elseFlow = Flow.Normal;
         if (conditional.WhenFalse is not null)
             elseFlow = LowerStatement(conditional.WhenFalse, elseGraph, elseEnvironment, loopContext);
+        if (thenFlow == Flow.Return && elseFlow == Flow.Return)
+        {
+            graph.AddNode(Next("if"), "If", string.Empty, string.Empty,
+                [new OnnxEdge(condition)],
+                _tree.Outputs.Select(static output => (IOnnxGraphEdge)new OnnxEdge(output.Name)),
+                [new OnnxAttribute<OnnxGraph>("then_branch", thenGraph), new OnnxAttribute<OnnxGraph>("else_branch", elseGraph)]);
+            return Flow.Return;
+        }
         if (thenFlow != Flow.Normal || elseFlow != Flow.Normal)
-            throw Unsupported(conditional, "break, continue, and early return inside a runtime if require conditional control-state lowering.");
+            throw Unsupported(conditional, "A runtime if with an early return must return from both branches; mixed return and fallthrough branches are not yet supported.");
 
         var resultNames = new List<string>();
         var resultTypes = new List<CompilerType>();
@@ -214,7 +276,79 @@ internal sealed class CSharpOnnxControlFlowLowerer
         return Flow.Normal;
     }
 
-    private void LowerLoop(
+    private void LowerIfWithContinuation(
+        CompilerRuntimeIfStatement conditional,
+        IReadOnlyList<CompilerStatement> continuation,
+        OnnxGraph graph,
+        Dictionary<string, Binding> environment,
+        LoopContext? loopContext)
+    {
+        var condition = LowerExpression(conditional.Condition, graph, environment);
+        var thenGraph = OnnxModel.Create().Graph;
+        thenGraph.Name = Next("if_return_then");
+        var elseGraph = OnnxModel.Create().Graph;
+        elseGraph.Name = Next("if_return_else");
+        var thenEnvironment = new Dictionary<string, Binding>(environment, StringComparer.Ordinal);
+        var elseEnvironment = new Dictionary<string, Binding>(environment, StringComparer.Ordinal);
+        var thenFlow = LowerStatement(conditional.WhenTrue, thenGraph, thenEnvironment, loopContext);
+        var elseFlow = conditional.WhenFalse is null
+            ? Flow.Normal
+            : LowerStatement(conditional.WhenFalse, elseGraph, elseEnvironment, loopContext);
+
+        if (thenFlow == Flow.Normal)
+            thenFlow = LowerStatement(new CompilerBlockStatement(continuation), thenGraph, thenEnvironment, loopContext);
+        if (elseFlow == Flow.Normal)
+            elseFlow = LowerStatement(new CompilerBlockStatement(continuation), elseGraph, elseEnvironment, loopContext);
+
+        if (thenFlow != Flow.Return || elseFlow != Flow.Return)
+            throw Unsupported(conditional, "Every path after an early-return runtime if must end in a return statement.");
+
+        graph.AddNode(Next("if"), "If", string.Empty, string.Empty,
+            [new OnnxEdge(condition)],
+            _tree.Outputs.Select(static output => (IOnnxGraphEdge)new OnnxEdge(output.Name)),
+            [new OnnxAttribute<OnnxGraph>("then_branch", thenGraph), new OnnxAttribute<OnnxGraph>("else_branch", elseGraph)]);
+    }
+
+    private static bool ContainsReturn(CompilerStatement statement) => statement switch
+    {
+        CompilerReturnStatement { Expression: not null } => true,
+        CompilerBlockStatement block => block.Statements.Any(ContainsReturn),
+        CompilerRuntimeIfStatement conditional => ContainsReturn(conditional.WhenTrue)
+            || conditional.WhenFalse is not null && ContainsReturn(conditional.WhenFalse),
+        _ => false,
+    };
+
+    private void LowerLoopWithContinuation(
+        CompilerRuntimeLoopStatement loop,
+        IReadOnlyList<CompilerStatement> continuation,
+        OnnxGraph graph,
+        Dictionary<string, Binding> environment)
+    {
+        var returnedName = LowerLoop(loop, graph, environment)
+            ?? throw Unsupported(loop, "Loop return state was not produced by the loop lowering pass.");
+        var returnFlag = environment[returnedName];
+        var thenGraph = OnnxModel.Create().Graph;
+        thenGraph.Name = Next("loop_return_then");
+        var elseGraph = OnnxModel.Create().Graph;
+        elseGraph.Name = Next("loop_return_else");
+        for (var index = 0; index < _tree.Outputs.Count; index++)
+        {
+            var output = _tree.Outputs[index];
+            var value = environment.TryGetValue(output.Name, out var binding) ? binding.Name : output.Name;
+            AddBranchOutput(thenGraph, value, output.Name, output.Type);
+        }
+        var elseEnvironment = new Dictionary<string, Binding>(environment, StringComparer.Ordinal);
+        var elseFlow = LowerStatement(new CompilerBlockStatement(continuation), elseGraph, elseEnvironment, loopContext: null);
+        if (elseFlow != Flow.Return)
+            throw Unsupported(loop, "A loop with an early return must be followed by a return on its fallthrough path.");
+
+        graph.AddNode(Next("loop_return"), "If", string.Empty, string.Empty,
+            [new OnnxEdge(returnFlag.Name)],
+            _tree.Outputs.Select(static output => (IOnnxGraphEdge)new OnnxEdge(output.Name)),
+            [new OnnxAttribute<OnnxGraph>("then_branch", thenGraph), new OnnxAttribute<OnnxGraph>("else_branch", elseGraph)]);
+    }
+
+    private string? LowerLoop(
         CompilerRuntimeLoopStatement loop,
         OnnxGraph graph,
         Dictionary<string, Binding> environment)
@@ -222,9 +356,28 @@ internal sealed class CSharpOnnxControlFlowLowerer
         foreach (var initializer in loop.Initializers)
             LowerStatement(initializer, graph, environment, loopContext: null);
 
-        var carriedNames = AssignedNames(loop.Body)
+        var hasReturn = ContainsReturn(loop.Body);
+        var returnedName = hasReturn ? Next("loop_returned") : null;
+        if (hasReturn)
+        {
+            foreach (var output in _tree.Outputs)
+            {
+                if (environment.ContainsKey(output.Name))
+                    continue;
+                var fallback = environment.Values.FirstOrDefault(binding => binding.Type.Equals(output.Type));
+                if (fallback is null)
+                    throw Unsupported(loop, $"Loop return output '{output.Name}' has no input or local value with a matching type to carry before the first return.");
+                environment[output.Name] = fallback;
+            }
+            environment[returnedName!] = new Binding(
+                AddScalar(graph, false, new CompilerScalarType(CompilerElementType.Boolean)),
+                new CompilerScalarType(CompilerElementType.Boolean));
+        }
+
+        var carriedNames = AssignedNames(loop.Body, _tree.Outputs)
             .Concat(loop.Increments.SelectMany(ReferencedNames))
             .Concat(loop.Condition is null ? [] : ReferencedNames(loop.Condition))
+            .Concat(hasReturn ? _tree.Outputs.Select(static output => output.Name).Append(returnedName!) : [])
             .Distinct(StringComparer.Ordinal)
             .Where(environment.ContainsKey)
             .ToArray();
@@ -252,10 +405,10 @@ internal sealed class CSharpOnnxControlFlowLowerer
         var booleanType = new CompilerScalarType(CompilerElementType.Boolean);
         bodyEnvironment[activeName] = new Binding(AddScalar(body, true, booleanType), booleanType);
         bodyEnvironment[breakingName] = new Binding(AddScalar(body, false, booleanType), booleanType);
-        var context = new LoopContext(activeName, breakingName);
+        var context = new LoopContext(activeName, breakingName, returnedName);
         var bodyFlow = LowerStatement(loop.Body, body, bodyEnvironment, context);
         if (bodyFlow == Flow.Return)
-            throw Unsupported(loop, "A return from inside a runtime loop cannot be represented by the current ONNX loop-carried contract.");
+            throw Unsupported(loop, "A return from inside a runtime loop could not be converted to loop-carried return state.");
         if (loop.Increments.Count > 0)
         {
             var incrementStatements = new CompilerBlockStatement(
@@ -308,6 +461,7 @@ internal sealed class CSharpOnnxControlFlowLowerer
         for (var index = 0; index < carriedNames.Length; index++)
             environment[carriedNames[index]] = new Binding(outputNames[index], carried[index].Type);
         _ = iterationName;
+        return returnedName;
     }
 
     private string LowerExpression(CompilerExpression expression, OnnxGraph graph, Dictionary<string, Binding> environment)
@@ -318,6 +472,30 @@ internal sealed class CSharpOnnxControlFlowLowerer
                 return environment.TryGetValue(reference.Name, out var binding)
                     ? binding.Name
                     : reference.Name;
+            case CompilerMemberAccessExpression member:
+            {
+                if (member.Target is CompilerInvocationExpression tupleCall
+                    && member.MemberName.StartsWith("Item", StringComparison.Ordinal)
+                    && int.TryParse(member.MemberName.Substring(4), out var tupleIndex)
+                    && tupleIndex > 0)
+                {
+                    var tupleOutputs = LowerInvocation(tupleCall, graph, environment);
+                    if (tupleIndex > tupleOutputs.Count)
+                    {
+                        throw Unsupported(member, $"Tuple output '{member.MemberName}' is not present on the mapped operator.");
+                    }
+
+                    return tupleOutputs[tupleIndex - 1];
+                }
+
+                var stateName = DescribeInvocationTarget(member);
+                if (_tree.Initializers.Any(initializer => string.Equals(initializer.Name, stateName, StringComparison.Ordinal)))
+                {
+                    return stateName;
+                }
+
+                throw Unsupported(member, $"Member access '{stateName}' does not refer to a captured ONNX initializer.");
+            }
             case CompilerLiteralExpression { Literal: CompilerBooleanLiteral boolean }:
                 return AddScalar(graph, boolean.Value, new CompilerScalarType(boolean.ElementType));
             case CompilerLiteralExpression { Literal: CompilerSignedIntegerLiteral integer }:
@@ -360,49 +538,194 @@ internal sealed class CSharpOnnxControlFlowLowerer
                     && member.MemberName == "item"
                     && member.Target is CompilerReferenceExpression itemTarget)
                     return LowerExpression(itemTarget, graph, environment);
-                if (!CompilerOperatorRegistry.TryGetTorchSharpCall(invocation.Target, out var mapping, out var receiver)
-                    || mapping is null)
-                    throw Unsupported(invocation, "Invocation has no registered ONNX operator mapping.");
-                var args = new List<string>();
-                if (receiver is not null) args.Add(LowerExpression(receiver, graph, environment));
-                var argumentInputs = mapping.InputCount - args.Count;
-                if (argumentInputs < 0 || invocation.Arguments.Count < argumentInputs)
-                    throw Unsupported(invocation, $"Call to '{mapping.TorchSharpNames.FirstOrDefault()}' has too few tensor inputs.");
-                args.AddRange(invocation.Arguments.Take(argumentInputs).Select(argument => LowerExpression(argument, graph, environment)));
-                var output = Next("value");
-                var attrs = new List<CompilerAttribute>();
-                foreach (var (attributeName, index) in mapping.AttributeNames.Select((name, index) => (name, index)))
-                {
-                    var arg = invocation.Arguments.ElementAtOrDefault(argumentInputs + index);
-                    if (arg is CompilerLiteralExpression literal)
-                        attrs.Add(new CompilerAttribute(attributeName, literal.Literal));
-                }
-                var operation = mapping.CreateNode(Next(mapping.OnnxName), args.Take(mapping.InputCount).Select(name => new CompilerValueReference(name)),
-                    [new CompilerValueReference(output)], attributes: attrs, span: invocation.Span);
-                graph.AddNode(operation.Node);
-                return output;
+                return LowerInvocation(invocation, graph, environment)[0];
             }
             default:
                 throw Unsupported(expression, $"Expression '{expression.GetType().Name}' cannot be lowered to ONNX.");
         }
     }
 
-    private static IEnumerable<string> AssignedNames(CompilerStatement statement)
+    private IReadOnlyList<string> LowerInvocation(
+        CompilerInvocationExpression invocation,
+        OnnxGraph graph,
+        Dictionary<string, Binding> environment)
+    {
+        if (_invocationOutputs.TryGetValue(invocation, out var priorOutputs))
+        {
+            return priorOutputs;
+        }
+
+        if (!CompilerOperatorRegistry.TryGetTorchSharpCall(invocation.Target, out var mapping, out var receiver)
+            || mapping is null)
+        {
+            throw Unsupported(invocation, $"Invocation '{DescribeInvocationTarget(invocation.Target)}' has no registered ONNX operator mapping.");
+        }
+
+        var args = new List<string>();
+        if (receiver is not null) args.Add(LowerExpression(receiver, graph, environment));
+        var isLstm = mapping.OnnxName == "LSTM";
+        var isLinear = mapping.OnnxName == "Gemm"
+            && string.Equals(DescribeInvocationTarget(invocation.Target), "torch.nn.functional.linear", StringComparison.Ordinal);
+        var isReduceSum = mapping.OnnxName == "ReduceSum"
+            && string.Equals(DescribeInvocationTarget(invocation.Target), "torch.sum", StringComparison.Ordinal);
+        var isIndexSelect = mapping.OnnxName == "Gather"
+            && invocation.Target is CompilerMemberAccessExpression { MemberName: "index_select" }
+            && receiver is not null;
+        var argumentInputs = isLstm ? 4
+            : isLinear ? Math.Min(3, invocation.Arguments.Count)
+            : isIndexSelect ? 1
+            : isReduceSum ? 1
+            : mapping.InputCount - args.Count;
+        if (argumentInputs < 0 || invocation.Arguments.Count < argumentInputs)
+            throw Unsupported(invocation, $"Call to '{mapping.TorchSharpNames.FirstOrDefault()}' has too few tensor inputs.");
+        if (isIndexSelect)
+        {
+            if (invocation.Arguments.Count != 2)
+                throw Unsupported(invocation, "Tensor.index_select requires an axis and an indices tensor.");
+            args.Add(LowerExpression(invocation.Arguments[1], graph, environment));
+        }
+        else
+        {
+            args.AddRange(invocation.Arguments.Take(argumentInputs).Select(argument => LowerExpression(argument, graph, environment)));
+        }
+
+        var outputCount = isLstm ? 3 : mapping.MinimumOutputCount;
+        var outputs = Enumerable.Range(0, outputCount)
+            .Select(_ => new CompilerValueReference(Next("value")))
+            .ToArray();
+        var attrs = new List<CompilerAttribute>();
+        if (isLstm)
+        {
+            var hiddenSize = ReadIntegerArgument(invocation, 4, "LSTM hidden_size");
+            var direction = invocation.Arguments.ElementAtOrDefault(5) is CompilerLiteralExpression { Literal: CompilerStringLiteral directionLiteral }
+                ? directionLiteral.Value
+                : "forward";
+            var inputForget = invocation.Arguments.ElementAtOrDefault(6) is CompilerLiteralExpression
+                { Literal: CompilerSignedIntegerLiteral inputForgetLiteral }
+                    ? inputForgetLiteral.Value
+                    : 0;
+            attrs.Add(new CompilerAttribute("hidden_size", new CompilerSignedIntegerLiteral(CompilerElementType.Int64, hiddenSize)));
+            attrs.Add(new CompilerAttribute("direction", new CompilerStringLiteral(direction)));
+            attrs.Add(new CompilerAttribute("input_forget", new CompilerSignedIntegerLiteral(CompilerElementType.Int64, inputForget)));
+        }
+        else if (isLinear)
+        {
+            attrs.Add(new CompilerAttribute("transB", new CompilerSignedIntegerLiteral(CompilerElementType.Int64, 1)));
+        }
+        else if (isIndexSelect)
+        {
+            attrs.Add(new CompilerAttribute("axis", new CompilerSignedIntegerLiteral(
+                CompilerElementType.Int64,
+                ReadIntegerArgument(invocation, 0, "Gather axis"))));
+        }
+        else if (isReduceSum)
+        {
+            if (invocation.Arguments.Count > 3)
+                throw Unsupported(invocation, "torch.sum supports an input, an optional static axis, and an optional keepdim flag in ONNX lowering.");
+            if (invocation.Arguments.Count > 1)
+            {
+                var axis = ReadIntegerArgument(invocation, 1, "ReduceSum axis");
+                var axesName = Next("reduce_sum_axes");
+                graph.AddTensor(axesName, [1], [axis]);
+                args.Add(axesName);
+            }
+
+            var keepDims = invocation.Arguments.ElementAtOrDefault(2) is CompilerLiteralExpression
+            {
+                Literal: CompilerBooleanLiteral { Value: true },
+            };
+            attrs.Add(new CompilerAttribute("keepdims", new CompilerSignedIntegerLiteral(CompilerElementType.Int64, keepDims ? 1 : 0)));
+        }
+        else
+        {
+            foreach (var (attributeName, index) in mapping.AttributeNames.Select((name, index) => (name, index)))
+            {
+                var arg = invocation.Arguments.ElementAtOrDefault(argumentInputs + index);
+                if (arg is CompilerLiteralExpression literal)
+                    attrs.Add(new CompilerAttribute(attributeName, literal.Literal));
+            }
+        }
+
+        var operationInputs = args.Take(isLstm ? 4 : isReduceSum ? args.Count : mapping.InputCount)
+            .Select(name => new CompilerValueReference(name));
+        var inputName = args[0];
+        var batchFirst = isLstm && string.Equals(DescribeInvocationTarget(invocation.Target), "torch.nn.functional.lstm_batch_first", StringComparison.Ordinal);
+        if (batchFirst)
+        {
+            var transposedInput = Next("lstm_input_transpose");
+            graph.AddNode(new Onnxify.Transpose(
+                Next("Transpose"),
+                new Onnxify.TransposeInputOutputOptions
+                {
+                    Data = new OnnxEdge(inputName),
+                    Perm = [1, 0, 2],
+                    Transposed = new OnnxEdge(transposedInput),
+                }));
+            operationInputs = [new CompilerValueReference(transposedInput), .. args.Skip(1).Take(3).Select(name => new CompilerValueReference(name))];
+        }
+
+        var operation = mapping.CreateNode(Next(mapping.OnnxName), operationInputs, outputs, attributes: attrs, span: invocation.Span);
+        graph.AddNode(operation.Node);
+        IReadOnlyList<string> result = outputs.Select(output => output.Name).ToArray();
+        if (batchFirst)
+        {
+            var transposedOutput = Next("lstm_output_transpose");
+            graph.AddNode(new Onnxify.Transpose(
+                Next("Transpose"),
+                new Onnxify.TransposeInputOutputOptions
+                {
+                    Data = new OnnxEdge(outputs[0].Name),
+                    Perm = [2, 0, 1, 3],
+                    Transposed = new OnnxEdge(transposedOutput),
+                }));
+            var reshapeShape = Next("lstm_output_shape");
+            graph.AddTensor(reshapeShape, [3], [0L, 0L, -1L]);
+            var batchFirstOutput = Next("lstm_batch_first_output");
+            graph.AddNode(new Onnxify.Reshape(
+                Next("Reshape"),
+                new Onnxify.ReshapeInputOutputOptions
+                {
+                    Data = new OnnxEdge(transposedOutput),
+                    Shape = new OnnxEdge(reshapeShape),
+                    Allowzero = 0,
+                    Reshaped = new OnnxEdge(batchFirstOutput),
+                }));
+            result = [batchFirstOutput, outputs[1].Name, outputs[2].Name];
+        }
+        _invocationOutputs.Add(invocation, result);
+        return result;
+    }
+
+    private static long ReadIntegerArgument(CompilerInvocationExpression invocation, int index, string name) =>
+        invocation.Arguments.ElementAtOrDefault(index) is CompilerLiteralExpression
+        {
+            Literal: CompilerSignedIntegerLiteral integer,
+        }
+            ? integer.Value
+            : throw Unsupported(invocation, $"{name} must be an integer literal.");
+
+    private static IEnumerable<string> AssignedNames(
+        CompilerStatement statement,
+        IReadOnlyList<CompilerValue>? outputs = null
+    )
     {
         switch (statement)
         {
             case CompilerDeclarationStatement declaration: yield return declaration.Name; break;
             case CompilerAssignmentStatement { Target: CompilerReferenceExpression reference }: yield return reference.Name; break;
+            case CompilerReturnStatement { Expression: not null }:
+                foreach (var output in outputs ?? []) yield return output.Name;
+                break;
             case CompilerBlockStatement block:
-                foreach (var name in block.Statements.SelectMany(AssignedNames)) yield return name;
+                foreach (var name in block.Statements.SelectMany(child => AssignedNames(child, outputs))) yield return name;
                 break;
             case CompilerRuntimeIfStatement conditional:
-                foreach (var name in AssignedNames(conditional.WhenTrue)) yield return name;
+                foreach (var name in AssignedNames(conditional.WhenTrue, outputs)) yield return name;
                 if (conditional.WhenFalse is not null)
-                    foreach (var name in AssignedNames(conditional.WhenFalse)) yield return name;
+                    foreach (var name in AssignedNames(conditional.WhenFalse, outputs)) yield return name;
                 break;
             case CompilerRuntimeLoopStatement loop:
-                foreach (var name in AssignedNames(loop.Body)) yield return name;
+                foreach (var name in AssignedNames(loop.Body, outputs)) yield return name;
                 break;
             case CompilerExpressionStatement { Expression: CompilerUnaryExpression { Operator: "++" or "--", Expression: CompilerReferenceExpression reference } }:
                 yield return reference.Name;
@@ -519,6 +842,13 @@ internal sealed class CSharpOnnxControlFlowLowerer
     };
 
     private string Next(string prefix) => _graph.NextName($"__oxy042_{prefix}_{_sequence++}");
+    private static string DescribeInvocationTarget(CompilerExpression expression) => expression switch
+    {
+        CompilerReferenceExpression reference => reference.Name,
+        CompilerMemberAccessExpression member => $"{DescribeInvocationTarget(member.Target)}.{member.MemberName}",
+        _ => expression.GetType().Name,
+    };
+
     private static CompilerConversionException Unsupported(CompilerStatement node, string message) =>
         new(CompilerDiagnosticCodes.Unsupported, message);
     private static CompilerConversionException Unsupported(CompilerExpression node, string message) =>
@@ -529,9 +859,10 @@ internal sealed class CSharpOnnxControlFlowLowerer
     private sealed record Binding(string Name, CompilerType Type);
     private enum Flow { Normal, Return }
 
-    private sealed class LoopContext(string activeName, string breakingName)
+    private sealed class LoopContext(string activeName, string breakingName, string? returnedName)
     {
         public string ActiveName { get; } = activeName;
         public string BreakingName { get; } = breakingName;
+        public string? ReturnedName { get; } = returnedName;
     }
 }

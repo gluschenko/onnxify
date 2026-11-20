@@ -13,6 +13,15 @@ internal sealed class NotOperator() : UnaryOperator<Onnxify.Not>("Not", "logical
         CompilerTorchSharpForm.Call("Tensor.logical_not"),
         CompilerTorchSharpForm.Unary("!"),
     ];
+    public override string? ValidateOnnxNode(OnnxNode node, IReadOnlyDictionary<string, CompilerType> knownTypes)
+    {
+        return ValidateKnownInputElementTypes(
+            node,
+            knownTypes,
+            PointwiseSupportedElementTypes.Boolean,
+            "the ONNX Runtime CPU logical kernel accepts Boolean inputs only.");
+    }
+
     protected override string PrintTorchSharp(Onnxify.Not node, CompilerSourceSpan? span)
     {
         return $"torch.logical_not({node.Inputs[0].Name})";

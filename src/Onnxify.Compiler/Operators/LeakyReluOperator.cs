@@ -3,7 +3,7 @@ using Onnxify;
 namespace Onnxify.Compiler.Operators;
 
 [CompilerTorchOperator("aten::leaky_relu")]
-internal sealed class LeakyReluOperator() : ActivationOperator<Onnxify.LeakyRelu>("LeakyRelu", "torch.nn.functional.leaky_relu", ["alpha"])
+internal sealed class LeakyReluOperator() : ActivationOperator<Onnxify.LeakyRelu>("LeakyRelu", "torch.nn.functional.leaky_relu", ["alpha"], supportedInputTypes: PointwiseSupportedElementTypes.LeakyReluCpu)
 {
     protected override string PrintTorchSharp(Onnxify.LeakyRelu node, CompilerSourceSpan? span)
     {

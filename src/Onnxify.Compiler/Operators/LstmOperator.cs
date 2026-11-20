@@ -14,7 +14,7 @@ internal sealed class LstmOperator : CompilerOperator
     // This is the compiler's canonical functional form. It deliberately describes ONNX LSTM
     // tensors directly, rather than routing the operator through Deep Export's module exporter.
     public override IReadOnlyCollection<CompilerTorchSharpForm> TorchSharpForms { get; } =
-        [CompilerTorchSharpForm.Call("torch.nn.functional.lstm")];
+        [CompilerTorchSharpForm.Call("torch.nn.functional.lstm"), CompilerTorchSharpForm.Call("torch.nn.functional.lstm_batch_first")];
     public override CompilerOperationCapability Capability => CompilerOperationCapability.Bidirectional;
     public override int MinimumInputCount => 3;
     public override int MaximumInputCount => 8;
@@ -26,6 +26,12 @@ internal sealed class LstmOperator : CompilerOperator
 
     public override bool TryScanTorchSharp(TorchSharpOperatorScanContext context, CompilerExpression expression)
     {
+        if (context.CallName == "torch.nn.functional.lstm_batch_first")
+        {
+            throw context.Unsupported(expression,
+                "The batch-first LSTM module form is lowered through runtime C# control flow and cannot be scanned as a standalone ONNX LSTM call.");
+        }
+
         if (context.CallName != "torch.nn.functional.lstm"
             || context.Receiver is not null
             || context.Invocation is not { Arguments.Count: >= 4 and <= 7 } invocation)

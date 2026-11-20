@@ -299,9 +299,13 @@ internal static class CSharpCompilerFrontend
         var parseError = tree.GetDiagnostics().FirstOrDefault(x => x.Severity == DiagnosticSeverity.Error);
         if (parseError is not null)
         {
+            var errorLine = parseError.Location.GetLineSpan().StartLinePosition.Line;
+            var sourceLine = sourceText.Split('\n').ElementAtOrDefault(errorLine)?.Trim();
             throw new CSharpCompilerDiagnosticException(
                 code: CompilerDiagnosticCodes.InvalidSource,
-                message: parseError.GetMessage(),
+                message: string.IsNullOrWhiteSpace(sourceLine)
+                    ? parseError.GetMessage()
+                    : $"{parseError.GetMessage()} Source: '{sourceLine}'",
                 stage: CompilerDiagnosticStage.Parse,
                 span: Span(document, parseError.Location));
         }
@@ -391,6 +395,7 @@ internal sealed class CompiledModuleMethodRewriter : CSharpSyntaxRewriter
 {
     private readonly string _generatedName;
     private readonly HashSet<string> _helperNames;
+    private readonly IReadOnlyDictionary<string, CompilerTorchSharpChildModuleDescriptor> _childModules;
     private readonly IReadOnlyDictionary<string, string> _childModuleNames;
     private readonly string _prefix;
 
@@ -404,6 +409,7 @@ internal sealed class CompiledModuleMethodRewriter : CSharpSyntaxRewriter
         _generatedName = generatedName;
         _prefix = prefix;
         _helperNames = new HashSet<string>(helperNames, StringComparer.Ordinal);
+        _childModules = childModules.ToDictionary(child => child.Name, StringComparer.Ordinal);
         _childModuleNames = childModules.ToDictionary(
             child => child.Name,
             child => CSharpCompilerFrontend.GetBlockName(_prefix + child.BlockName + "__", "forward"),
@@ -436,6 +442,87 @@ internal sealed class CompiledModuleMethodRewriter : CSharpSyntaxRewriter
                 && TryGetMemberPath(member.Expression, out var childPath)
                 && _childModuleNames.TryGetValue(NormalizeChildPath(childPath), out var childMethodName))
             {
+                var childName = NormalizeChildPath(childPath);
+                if (_childModules.TryGetValue(childName, out var childModule)
+                    && childModule.TypeName.EndsWith(".Embedding", StringComparison.Ordinal)
+                    && node.ArgumentList.Arguments.Count >= 1)
+                {
+                    var weight = SyntaxFactory.MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        SyntaxFactory.IdentifierName(childName),
+                        SyntaxFactory.IdentifierName("weight"));
+                    var indexSelect = SyntaxFactory.MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        weight,
+                        SyntaxFactory.IdentifierName("index_select"));
+                    var axis = SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(
+                        SyntaxKind.NumericLiteralExpression,
+                        SyntaxFactory.Literal(0)));
+                    expression = indexSelect;
+                    return base.VisitInvocationExpression(node.WithExpression(expression).WithArgumentList(
+                        SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(new[]
+                        {
+                            axis,
+                            node.ArgumentList.Arguments[0],
+                        }))));
+                }
+
+                if (_childModules.TryGetValue(childName, out childModule)
+                    && childModule.TypeName.EndsWith(".LSTM", StringComparison.Ordinal)
+                    && childModule.Module is not null
+                    && node.ArgumentList.Arguments.Count >= 1
+                    && TryGetIntegerSetting(childModule.Module, "_hidden_size", out var hiddenSize)
+                    && TryGetIntegerSetting(childModule.Module, "_num_layers", out var layerCount)
+                    && layerCount == 1
+                    && TryGetBooleanSetting(childModule.Module, "_bidirectional", out var bidirectional)
+                    && TryGetBooleanSetting(childModule.Module, "_batch_first", out var batchFirst))
+                {
+                    var arguments = new List<ArgumentSyntax>
+                    {
+                        node.ArgumentList.Arguments[0],
+                        SyntaxFactory.Argument(SyntaxFactory.ParseExpression($"{childName}.__oxy_W")),
+                        SyntaxFactory.Argument(SyntaxFactory.ParseExpression($"{childName}.__oxy_R")),
+                        SyntaxFactory.Argument(SyntaxFactory.ParseExpression($"{childName}.__oxy_B")),
+                        SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(
+                            SyntaxKind.NumericLiteralExpression,
+                            SyntaxFactory.Literal(hiddenSize))),
+                        SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(
+                            SyntaxKind.StringLiteralExpression,
+                            SyntaxFactory.Literal(bidirectional ? "bidirectional" : "forward"))),
+                        SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(0))),
+                    };
+                    var target = batchFirst
+                        ? "torch.nn.functional.lstm_batch_first"
+                        : "torch.nn.functional.lstm";
+                    return base.VisitInvocationExpression(node
+                        .WithExpression(SyntaxFactory.ParseExpression(target))
+                        .WithArgumentList(SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(arguments))));
+                }
+
+                if (_childModules.TryGetValue(childName, out childModule)
+                    && childModule.TypeName.EndsWith(".Linear", StringComparison.Ordinal)
+                    && node.ArgumentList.Arguments.Count >= 1)
+                {
+                    var product = SyntaxFactory.InvocationExpression(
+                        SyntaxFactory.ParseExpression("torch.matmul"),
+                        SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(new[]
+                        {
+                            node.ArgumentList.Arguments[0],
+                            SyntaxFactory.Argument(SyntaxFactory.ParseExpression($"{childName}.__oxy_W")),
+                        })));
+                    ExpressionSyntax result = product;
+                    if (childModule.Module is not null
+                        && childModule.Module.StateMembers.Any(state => string.Equals(state.Name, "bias", StringComparison.Ordinal)))
+                    {
+                        result = SyntaxFactory.BinaryExpression(
+                            SyntaxKind.AddExpression,
+                            product,
+                            SyntaxFactory.ParseExpression($"{childName}.bias"));
+                    }
+
+                    return base.Visit(result);
+                }
+
                 expression = SyntaxFactory.IdentifierName(childMethodName);
             }
         }
@@ -468,6 +555,32 @@ internal sealed class CompiledModuleMethodRewriter : CSharpSyntaxRewriter
         return path.StartsWith(THIS_PREFIX, StringComparison.Ordinal)
             ? path.Substring(THIS_PREFIX.Length)
             : path;
+    }
+
+    private static bool TryGetIntegerSetting(CompilerTorchSharpModuleDescriptor descriptor, string name, out int value)
+    {
+        var setting = descriptor.StateMembers.FirstOrDefault(member => string.Equals(member.Name, name, StringComparison.Ordinal));
+        if (setting?.Value is CompilerSignedIntegerLiteral integer)
+        {
+            value = checked((int)integer.Value);
+            return true;
+        }
+
+        value = 0;
+        return false;
+    }
+
+    private static bool TryGetBooleanSetting(CompilerTorchSharpModuleDescriptor descriptor, string name, out bool value)
+    {
+        var setting = descriptor.StateMembers.FirstOrDefault(member => string.Equals(member.Name, name, StringComparison.Ordinal));
+        if (setting?.Value is CompilerBooleanLiteral boolean)
+        {
+            value = boolean.Value;
+            return true;
+        }
+
+        value = false;
+        return false;
     }
 }
 

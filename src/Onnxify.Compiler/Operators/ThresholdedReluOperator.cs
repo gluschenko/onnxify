@@ -2,7 +2,7 @@ using Onnxify;
 
 namespace Onnxify.Compiler.Operators;
 
-internal sealed class ThresholdedReluOperator() : ActivationOperator<Onnxify.ThresholdedRelu>("ThresholdedRelu", "torch.nn.functional.threshold", ["alpha"], fixedArguments: [0f])
+internal sealed class ThresholdedReluOperator() : ActivationOperator<Onnxify.ThresholdedRelu>("ThresholdedRelu", "torch.nn.functional.threshold", ["alpha"], fixedArguments: [0f], supportedInputTypes: PointwiseSupportedElementTypes.Float32ActivationCpu)
 {
     protected override string PrintTorchSharp(Onnxify.ThresholdedRelu node, CompilerSourceSpan? span)
     {

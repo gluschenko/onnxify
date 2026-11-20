@@ -3,7 +3,7 @@ using Onnxify;
 namespace Onnxify.Compiler.Operators;
 
 [CompilerTorchOperator("aten::gelu")]
-internal sealed class GeluOperator() : ActivationOperator<Onnxify.Gelu>("Gelu", "torch.nn.functional.gelu", ["approximate"])
+internal sealed class GeluOperator() : ActivationOperator<Onnxify.Gelu>("Gelu", "torch.nn.functional.gelu", ["approximate"], supportedInputTypes: PointwiseSupportedElementTypes.Float32ActivationCpu)
 {
     protected override string PrintTorchSharp(Onnxify.Gelu node, CompilerSourceSpan? span)
     {

@@ -173,6 +173,55 @@ internal abstract class CompilerOperator
         return null;
     }
 
+    protected static string? ValidateKnownInputElementTypes(
+        OnnxNode node,
+        IReadOnlyDictionary<string, CompilerType> knownTypes,
+        IReadOnlyCollection<CompilerElementType> supportedTypes,
+        string unsupportedTypeReason,
+        bool requireMatchingTypes = true)
+    {
+        return ValidateKnownElementTypes(
+            node.OpType,
+            node.Inputs.Select(static input => input.Name),
+            knownTypes,
+            supportedTypes,
+            unsupportedTypeReason,
+            requireMatchingTypes);
+    }
+
+    protected static string? ValidateKnownElementTypes(
+        string operatorName,
+        IEnumerable<string> inputNames,
+        IReadOnlyDictionary<string, CompilerType> knownTypes,
+        IReadOnlyCollection<CompilerElementType> supportedTypes,
+        string unsupportedTypeReason,
+        bool requireMatchingTypes = true)
+    {
+        CompilerElementType? firstInputType = null;
+        foreach (var inputName in inputNames)
+        {
+            if (!knownTypes.TryGetValue(inputName, out var inputType)
+                || inputType is not CompilerTensorType tensorType)
+            {
+                continue;
+            }
+
+            if (!supportedTypes.Contains(tensorType.ElementType))
+            {
+                return $"ONNX {operatorName} with element type '{tensorType.ElementType}' is unsupported: {unsupportedTypeReason}";
+            }
+
+            if (requireMatchingTypes && firstInputType is { } firstType && firstType != tensorType.ElementType)
+            {
+                return $"ONNX {operatorName} requires matching input element types; found '{firstType}' and '{tensorType.ElementType}'.";
+            }
+
+            firstInputType ??= tensorType.ElementType;
+        }
+
+        return null;
+    }
+
     protected static string Float(float value)
     {
         return value.ToString("R", CultureInfo.InvariantCulture) + "f";

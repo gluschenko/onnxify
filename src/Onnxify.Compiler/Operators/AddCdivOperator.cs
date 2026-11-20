@@ -6,6 +6,8 @@ namespace Onnxify.Compiler.Operators;
 internal sealed class AddCdivOperator() : TorchSharpCompositeOperator("AddCdiv", "com.onnxify.compiler", "torch.addcdiv")
 {
     public override CompilerOperationCapability Capability => CompilerOperationCapability.Bidirectional;
+    protected override IReadOnlyCollection<CompilerElementType> SupportedTensorInputTypes =>
+    [CompilerElementType.Float16, CompilerElementType.Float32, CompilerElementType.Float64];
 
     public override int MinimumInputCount => 4;
     public override int MaximumInputCount => 4;

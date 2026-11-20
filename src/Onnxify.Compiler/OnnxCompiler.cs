@@ -912,6 +912,19 @@ internal static class OnnxCompilerFrontend
                     out var consumedNodeCount)
                 && compositeOperation is not null)
             {
+                if (CompilerOperatorRegistry.TryGetOnnx(compositeOperation.Node, out var compositeMapping)
+                    && compositeMapping is not null
+                    && compositeMapping.ValidateOnnxNode(compositeOperation.Node, knownTypes) is { } compositeValidationMessage)
+                {
+                    diagnostics.Add(new CompilerDiagnostic(
+                        code: CompilerDiagnosticCodes.Unsupported,
+                        message: compositeValidationMessage,
+                        stage: CompilerDiagnosticStage.Analyze,
+                        severity: CompilerDiagnosticSeverity.Error,
+                        span: compositeOperation.Span,
+                        context: new CompilerDiagnosticContext(caller, compositeOperation.Descriptor.Name)));
+                }
+
                 builder.AddOperation(compositeOperation);
                 nodeIndex += consumedNodeCount - 1;
                 continue;
@@ -1783,6 +1796,12 @@ internal static class OnnxCompilerBackend
         {
             case CompilerTensorLiteral tensor:
                 AddTensor(graph, initializer.Name, tensor);
+                break;
+            case CompilerScalarLiteral scalar:
+                AddTensor(
+                    graph,
+                    initializer.Name,
+                    new CompilerTensorLiteral(scalar.ElementType, Array.Empty<CompilerDimension>(), [scalar]));
                 break;
             case CompilerSparseTensorLiteral sparse:
                 AddSparseTensor(graph, initializer.Name, sparse);

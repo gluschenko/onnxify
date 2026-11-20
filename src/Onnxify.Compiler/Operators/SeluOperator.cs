@@ -3,7 +3,7 @@ using Onnxify;
 namespace Onnxify.Compiler.Operators;
 
 [CompilerTorchOperator("aten::selu")]
-internal sealed class SeluOperator() : ActivationOperator<Onnxify.Selu>("Selu", "torch.nn.functional.selu", ["alpha", "gamma"])
+internal sealed class SeluOperator() : ActivationOperator<Onnxify.Selu>("Selu", "torch.nn.functional.selu", ["alpha", "gamma"], supportedInputTypes: PointwiseSupportedElementTypes.Float32ActivationCpu)
 {
     private const float DEFAULT_ALPHA = 1.6732631921768188f;
     private const float DEFAULT_GAMMA = 1.0507010221481323f;

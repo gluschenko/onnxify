@@ -6,6 +6,11 @@ namespace Onnxify.Compiler.Operators;
 internal sealed class AddCmulOperator() : TorchSharpCompositeOperator("AddCmul", "com.onnxify.compiler", "torch.addcmul")
 {
     public override CompilerOperationCapability Capability => CompilerOperationCapability.Bidirectional;
+    protected override IReadOnlyCollection<CompilerElementType> SupportedTensorInputTypes =>
+    [
+        CompilerElementType.Float16, CompilerElementType.Float32, CompilerElementType.Float64,
+        CompilerElementType.Int8, CompilerElementType.Int16, CompilerElementType.Int32, CompilerElementType.Int64,
+    ];
 
     public override int MinimumInputCount => 4;
     public override int MaximumInputCount => 4;

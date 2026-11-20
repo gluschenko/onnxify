@@ -116,15 +116,63 @@ public sealed class ActivationCompilerTests
         Assert.Contains(imported.Diagnostics, diagnostic => diagnostic.Code == CompilerDiagnosticCodes.Unsupported);
     }
 
-    private static OnnxModel CreateModel(string opType, object? firstAttribute, object? secondAttribute)
+    [Theory]
+    [InlineData("Celu", "Int32")]
+    [InlineData("Elu", "Float64")]
+    [InlineData("Gelu", "Float64")]
+    [InlineData("LeakyRelu", "Float64")]
+    [InlineData("PRelu", "Float64")]
+    [InlineData("Sigmoid", "Float16")]
+    [InlineData("Softplus", "Float64")]
+    [InlineData("Tanh", "Float16")]
+    public void ActivationImportRejectsTypesOutsideCpuAndTorchLibIntersection(string opType, string elementTypeName)
+    {
+        var model = CreateModel(opType, null, null, elementTypeName);
+
+        var result = Compiler.CreateTreeFromOnnx(model);
+
+        Assert.False(result.IsSuccess);
+        Assert.Contains(result.Diagnostics, diagnostic =>
+            diagnostic.Code == CompilerDiagnosticCodes.Unsupported
+            && diagnostic.Message.Contains("intersection does not include this type", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("LeakyRelu", 0.01f)]
+    [InlineData("Relu", null)]
+    public void ActivationImportAcceptsFloat16ForRegisteredCpuKernels(string opType, float? alpha)
+    {
+        var model = CreateModel(opType, alpha, null, "Float16");
+
+        var result = Compiler.CreateTreeFromOnnx(model);
+
+        Assert.True(result.IsSuccess, FormatDiagnostics(result.Diagnostics));
+    }
+
+    private static OnnxModel CreateModel(string opType, object? firstAttribute, object? secondAttribute, string elementTypeName = "Float32")
     {
         var model = OnnxModel.Create(new OnnxModelCreationOptions { Opset = 25 });
-        var input = model.Graph.AddInput("input", OnnxTensorType.Create<float>([4]));
-        var output = model.Graph.AddOutput("output", OnnxTensorType.Create<float>([4]));
+        var inputType = elementTypeName switch
+        {
+            "Float16" => OnnxTensorType.Create<Half>([4]),
+            "Float32" => OnnxTensorType.Create<float>([4]),
+            "Float64" => OnnxTensorType.Create<double>([4]),
+            "Int32" => OnnxTensorType.Create<int>([4]),
+            "UInt8" => OnnxTensorType.Create<byte>([4]),
+            _ => throw new ArgumentOutOfRangeException(nameof(elementTypeName), elementTypeName, "Unsupported activation test fixture type."),
+        };
+        var input = model.Graph.AddInput("input", inputType);
+        var output = model.Graph.AddOutput("output", inputType);
         var inputs = new List<IOnnxGraphEdge> { input };
         if (opType == "PRelu")
         {
-            var slope = model.Graph.AddInput("slope", OnnxTensorType.Create<float>([1]));
+            var slopeType = elementTypeName switch
+            {
+                "Float32" => OnnxTensorType.Create<float>([1]),
+                "Float64" => OnnxTensorType.Create<double>([1]),
+                _ => throw new ArgumentOutOfRangeException(nameof(elementTypeName), elementTypeName, "Unsupported PRelu fixture type."),
+            };
+            var slope = model.Graph.AddInput("slope", slopeType);
             inputs.Add(slope);
         }
 

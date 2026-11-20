@@ -11,7 +11,8 @@ internal abstract class ActivationOperator<TNode> : CompilerOperator<TNode>
         IEnumerable<string>? attributes = null,
         bool includeInstance = false,
         int inputCount = 1,
-        IEnumerable<float>? fixedArguments = null)
+        IEnumerable<float>? fixedArguments = null,
+        IReadOnlyCollection<CompilerElementType>? supportedInputTypes = null)
         : base(CompilerOperatorIdentity.Onnx(name))
     {
         IEnumerable<string> names = includeInstance ? new[] { form, $"Tensor.{name.ToLowerInvariant()}" } : new[] { form };
@@ -20,6 +21,7 @@ internal abstract class ActivationOperator<TNode> : CompilerOperator<TNode>
         MinimumInputCount = inputCount;
         MaximumInputCount = inputCount;
         FixedTorchSharpArguments = fixedArguments?.ToArray() ?? Array.Empty<float>();
+        SupportedInputTypes = supportedInputTypes;
     }
 
     public override IReadOnlyCollection<CompilerTorchSharpForm> TorchSharpForms { get; }
@@ -27,6 +29,24 @@ internal abstract class ActivationOperator<TNode> : CompilerOperator<TNode>
     public override int MinimumInputCount { get; }
     public override int MaximumInputCount { get; }
     public override IReadOnlyList<float> FixedTorchSharpArguments { get; }
+    private IReadOnlyCollection<CompilerElementType>? SupportedInputTypes { get; }
+
+    public override string? ValidateOnnxNode(OnnxNode node, IReadOnlyDictionary<string, CompilerType> knownTypes)
+    {
+        var baseError = base.ValidateOnnxNode(node, knownTypes);
+        if (baseError is not null || SupportedInputTypes is null)
+        {
+            return baseError;
+        }
+
+        return ValidateKnownElementTypes(
+            node.OpType,
+            node.Inputs.Take(InputCount).Select(static input => input.Name),
+            knownTypes,
+            SupportedInputTypes,
+            "the ONNX Runtime CPU kernel and TorchLib converter intersection does not include this type.");
+    }
+
     public override bool TryScanTorchSharp(TorchSharpOperatorScanContext context, CompilerExpression expression)
     {
         if (expression is not CompilerInvocationExpression invocation)

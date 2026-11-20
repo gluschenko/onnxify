@@ -117,6 +117,132 @@ public sealed class NeuralNetworkOperatorTests
         Assert.Equal(torchOutput.data<float>().ToArray(), ExecuteClip(exported.Value!, values));
     }
 
+    [Theory]
+    [InlineData("torch.clamp_min(input, -1f)", true)]
+    [InlineData("input.clamp_min(-1f)", true)]
+    [InlineData("torch.clamp_max(input, 2f)", false)]
+    [InlineData("input.clamp_max(2f)", false)]
+    public void ClipScansClampMinAndClampMaxScalarForms(string expression, bool clampMinimum)
+    {
+        // TorchLib cases: third_party/onnxscript/onnxscript/function_libs/torch_lib/ops/core.py::aten_clamp_min/aten_clamp_max.
+        // ONNX Runtime: third_party/onnxruntime/onnxruntime/test/providers/cpu/math/clip_test.cc.
+        var source = $"public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input) {{ return {expression}; }}";
+        var imported = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
+        Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
+        var operation = Assert.IsType<CompilerOnnxStep>(Assert.Single(imported.Value!.Operations));
+        Assert.IsType<Clip>(operation.Node);
+        var exported = Compiler.GenerateOnnx(imported.Value);
+        Assert.True(exported.IsSuccess, FormatDiagnostics(exported.Diagnostics));
+        Assert.IsType<Clip>(Assert.Single(exported.Value!.Graph.Nodes));
+        var onnxImported = Compiler.CreateTreeFromOnnx(exported.Value);
+        Assert.True(onnxImported.IsSuccess, FormatDiagnostics(onnxImported.Diagnostics));
+        var onnxOperation = Assert.IsType<CompilerOnnxStep>(Assert.Single(onnxImported.Value!.Operations));
+        Assert.Equal("Clip", onnxOperation.Descriptor.Name);
+        Assert.Equal(CompilerOperationCapability.Bidirectional, onnxOperation.Descriptor.Capability);
+        var generated = Compiler.GenerateSourceCode(onnxImported.Value);
+        Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
+        Assert.Contains(".clamp(", generated.SourceCode(), StringComparison.Ordinal);
+
+        var values = new[] { -3f, 0f, 4f };
+        var expected = clampMinimum ? new[] { -1f, 0f, 4f } : new[] { -3f, 0f, 2f };
+        Assert.Equal(expected, ExecuteClip(exported.Value, values));
+    }
+
+    [Fact]
+    public void ClampTensorBoundsLowerToBroadcastableMaxThenMin()
+    {
+        // TorchLib case: third_party/onnxscript/onnxscript/function_libs/torch_lib/ops/core.py::aten_clamp_tensor.
+        // ONNX Runtime cases: third_party/onnxruntime/onnxruntime/test/providers/cpu/math/element_wise_ops_test.cc (Max/Min).
+        const string source = "public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input, global::TorchSharp.torch.Tensor minimum, global::TorchSharp.torch.Tensor maximum) { return input.clamp(minimum, maximum); }";
+        var imported = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
+        Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
+        Assert.Equal(["Max", "Min"], imported.Value!.Operations
+            .Cast<CompilerOnnxStep>()
+            .Select(static operation => operation.Descriptor.Name));
+
+        var exported = Compiler.GenerateOnnx(imported.Value);
+        Assert.True(exported.IsSuccess, FormatDiagnostics(exported.Diagnostics));
+        Assert.Equal(["Max", "Min"], exported.Value!.Graph.Nodes.Select(static node => node.OpType));
+
+        var inputValues = new[] { -1f, 3f, 5f, 10f };
+        var minimumValues = new[] { 0f, 9f };
+        var maximumValues = new[] { 2f, 8f };
+        using var inputTensor = global::TorchSharp.torch.tensor(inputValues, [2L, 2L], dtype: global::TorchSharp.torch.ScalarType.Float32);
+        using var minimumTensor = global::TorchSharp.torch.tensor(minimumValues, [2L, 1L], dtype: global::TorchSharp.torch.ScalarType.Float32);
+        using var maximumTensor = global::TorchSharp.torch.tensor(maximumValues, [1L, 2L], dtype: global::TorchSharp.torch.ScalarType.Float32);
+        using var torchOutput = inputTensor.clamp(minimumTensor, maximumTensor);
+        var actual = ExecuteOnnx(exported.Value,
+        [
+            NamedOnnxValue.CreateFromTensor("input", new DenseTensor<float>(inputValues, [2, 2])),
+            NamedOnnxValue.CreateFromTensor("minimum", new DenseTensor<float>(minimumValues, [2, 1])),
+            NamedOnnxValue.CreateFromTensor("maximum", new DenseTensor<float>(maximumValues, [1, 2])),
+        ]);
+        Assert.Equal(torchOutput.data<float>().ToArray(), actual);
+
+        var onnxImported = Compiler.CreateTreeFromOnnx(exported.Value);
+        Assert.True(onnxImported.IsSuccess, FormatDiagnostics(onnxImported.Diagnostics));
+        Assert.Equal(new[] { "Max", "Min" }, onnxImported.Value!.Operations
+            .Cast<CompilerOnnxStep>()
+            .Select(static operation => operation.Descriptor.Name));
+        var generated = Compiler.GenerateSourceCode(onnxImported.Value, new CompilerCSharpGenerationOptions
+        {
+            Namespace = "Onnxify.GeneratedTensorClamp",
+            ClassName = "GeneratedLstmOperator",
+            ModuleName = "generated-lstm-operator",
+        });
+        Assert.True(generated.IsSuccess, FormatDiagnostics(generated.Diagnostics));
+        using var module = CompileGeneratedModule(generated.SourceCode());
+        using var generatedOutput = (global::TorchSharp.torch.Tensor)module.GetType().GetMethod("forward")!
+            .Invoke(module, [inputTensor, minimumTensor, maximumTensor])!;
+        Assert.Equal(actual, generatedOutput.data<float>().ToArray());
+    }
+
+    [Theory]
+    [InlineData("input.clamp_min(bound)", "Max")]
+    [InlineData("torch.clamp_min(input, bound)", "Max")]
+    [InlineData("input.clamp_max(bound)", "Min")]
+    [InlineData("torch.clamp_max(input, bound)", "Min")]
+    public void ClampMinMaxTensorFormsUsePointwiseMappings(string expression, string expectedOperator)
+    {
+        var source = $"public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input, global::TorchSharp.torch.Tensor bound) {{ return {expression}; }}";
+        var imported = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
+        Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics));
+        Assert.Equal(expectedOperator, Assert.IsType<CompilerOnnxStep>(Assert.Single(imported.Value!.Operations)).Descriptor.Name);
+
+        var exported = Compiler.GenerateOnnx(imported.Value);
+        Assert.True(exported.IsSuccess, FormatDiagnostics(exported.Diagnostics));
+        Assert.Equal(expectedOperator, Assert.Single(exported.Value!.Graph.Nodes).OpType);
+
+        var inputValues = new[] { -1f, 3f, 5f };
+        var boundValues = new[] { 0f, 2f, 6f };
+        using var inputTensor = global::TorchSharp.torch.tensor(inputValues, [3L], dtype: global::TorchSharp.torch.ScalarType.Float32);
+        using var boundTensor = global::TorchSharp.torch.tensor(boundValues, [3L], dtype: global::TorchSharp.torch.ScalarType.Float32);
+        using var expected = expectedOperator == "Max"
+            ? global::TorchSharp.torch.maximum(inputTensor, boundTensor)
+            : global::TorchSharp.torch.minimum(inputTensor, boundTensor);
+        var actual = ExecuteOnnx(exported.Value,
+        [
+            NamedOnnxValue.CreateFromTensor("input", new DenseTensor<float>(inputValues, [3])),
+            NamedOnnxValue.CreateFromTensor("bound", new DenseTensor<float>(boundValues, [3])),
+        ]);
+        Assert.Equal(expected.data<float>().ToArray(), actual);
+    }
+
+    [Theory]
+    [InlineData("input.clamp(minimum, 2f)")]
+    [InlineData("input.clamp(-1f, maximum)")]
+    public void TorchSharpClampRejectsMixedTensorAndScalarBounds(string expression)
+    {
+        var source = $"public global::TorchSharp.torch.Tensor forward(global::TorchSharp.torch.Tensor input, global::TorchSharp.torch.Tensor minimum, global::TorchSharp.torch.Tensor maximum) {{ return {expression}; }}";
+        var result = Compiler.CreateTreeFromTorchSharp(new CSharpTorchSharpSource(source));
+
+        Assert.False(result.IsSuccess);
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(CompilerDiagnosticCodes.Unsupported, diagnostic.Code);
+        Assert.Contains("Tensor clamp overloads", diagnostic.Message, StringComparison.Ordinal);
+        Assert.NotNull(diagnostic.Span);
+    }
+
     [Fact]
     public void ConvScansTorchSharpAndExportsTypedNode()
     {

@@ -2,7 +2,7 @@ using Onnxify;
 
 namespace Onnxify.Compiler.Operators;
 
-internal sealed class SoftsignOperator() : ActivationOperator<Onnxify.Softsign>("Softsign", "torch.nn.functional.softsign")
+internal sealed class SoftsignOperator() : ActivationOperator<Onnxify.Softsign>("Softsign", "torch.nn.functional.softsign", supportedInputTypes: PointwiseSupportedElementTypes.Float32ActivationCpu)
 {
     protected override string PrintTorchSharp(Onnxify.Softsign node, CompilerSourceSpan? span)
     {

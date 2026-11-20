@@ -3,7 +3,7 @@ using Onnxify;
 namespace Onnxify.Compiler.Operators;
 
 [CompilerTorchOperator("aten::softplus")]
-internal sealed class SoftplusOperator() : ActivationOperator<Onnxify.Softplus>("Softplus", "torch.nn.functional.softplus", includeInstance: true)
+internal sealed class SoftplusOperator() : ActivationOperator<Onnxify.Softplus>("Softplus", "torch.nn.functional.softplus", includeInstance: true, supportedInputTypes: PointwiseSupportedElementTypes.Float32ActivationCpu)
 {
     protected override string PrintTorchSharp(Onnxify.Softplus node, CompilerSourceSpan? span)
     {

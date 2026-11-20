@@ -4,11 +4,78 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using Onnxify.Compiler;
+using Onnxify.Examples.Models;
+using Onnxify.TorchSharp;
 
 namespace Onnxify.Compiler.Tests;
 
 public sealed class PanlingoLstmRoundTripTests
 {
+    [Fact]
+    public void PanlingoLstmTorchSharpModuleCompilesThroughCompilerOnnxBackend()
+    {
+        var characterToIndex = new Dictionary<string, int>
+        {
+            ["PAD"] = 0,
+            ["a"] = 1,
+            ["b"] = 2,
+            ["c"] = 3,
+            ["d"] = 4,
+            ["e"] = 5,
+        };
+        var languageToIndex = new Dictionary<string, int>
+        {
+            ["en"] = 0,
+            ["de"] = 1,
+            ["fr"] = 2,
+        };
+        using var module = new LSTMLIDModel(
+            characterToIndex,
+            languageToIndex,
+            numClasses: languageToIndex.Count,
+            embeddingDim: 4,
+            hiddenDim: 5,
+            layers: 1);
+
+        var source = TorchSharpCompilerAdapter.CreateSource(module);
+        var imported = Compiler.CreateTreeFromTorchSharp(source);
+        Assert.True(imported.IsSuccess, FormatDiagnostics(imported.Diagnostics) + Environment.NewLine
+            + string.Join(Environment.NewLine, imported.Diagnostics.Select(diagnostic =>
+                $"{diagnostic.Span?.Document}:{diagnostic.Span?.StartLine}:{diagnostic.Span?.StartColumn}")));
+        var tree = Assert.IsType<CompilerComputationTree>(imported.Value);
+        Assert.Contains(tree.Initializers, initializer => initializer.Name.Contains("charEmbeddings", StringComparison.Ordinal));
+        Assert.Contains(tree.Initializers, initializer => initializer.Name.Contains("lstm", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(tree.Initializers, initializer => initializer.Name.Contains("hidden2Lang", StringComparison.Ordinal));
+
+        var emitted = Compiler.GenerateOnnx(tree);
+        Assert.True(emitted.IsSuccess, FormatDiagnostics(emitted.Diagnostics) + Environment.NewLine
+            + "Initializers: " + string.Join(", ", tree.Initializers.Select(initializer => initializer.Name)) + Environment.NewLine
+            + "Child modules: " + string.Join(", ", source.Module!.ChildModules.Select(child =>
+                $"{child.Name}={child.TypeName}[{string.Join(";", child.Module?.StateMembers.Select(state => $"{state.Name}:{state.Value switch { CompilerSignedIntegerLiteral signed => signed.Value.ToString(), CompilerBooleanLiteral boolean => boolean.Value.ToString(), CompilerFloatingPointLiteral floating => floating.Value.ToString(), _ => state.Value?.GetType().Name }}") ?? [])}]")));
+
+        var emittedPath = Path.Combine(Path.GetTempPath(), $"oxy042-panlingo-{Guid.NewGuid():N}.onnx");
+        try
+        {
+            emitted.Value!.Save(emittedPath, overwrite: true);
+            foreach (var (batchSize, sequenceLength) in new[] { (1, 5), (2, 3) })
+            {
+                var ids = Enumerable.Range(0, batchSize * sequenceLength)
+                    .Select(index => (long)(index % characterToIndex.Count))
+                    .ToArray();
+                using var input = global::TorchSharp.torch.tensor(
+                    ids,
+                    [(long)batchSize, sequenceLength],
+                    dtype: global::TorchSharp.torch.ScalarType.Int64);
+                using var expected = module.forward(input);
+                AssertOutputsClose(expected.data<float>().ToArray(), RunOnnx(emittedPath, ids, [batchSize, sequenceLength]));
+            }
+        }
+        finally
+        {
+            if (File.Exists(emittedPath)) File.Delete(emittedPath);
+        }
+    }
+
     [Fact]
     public void PanlingoLstmRunsThroughGeneratedTorchSharpAndOnnxRuntime()
     {
@@ -128,6 +195,6 @@ public sealed class PanlingoLstmRoundTripTests
 
     private static string FormatDiagnostics(IReadOnlyList<CompilerDiagnostic> diagnostics) => string.Join(
         Environment.NewLine,
-        diagnostics.Select(static diagnostic => $"{diagnostic.Severity} {diagnostic.Code}: {diagnostic.Message}"));
+        diagnostics.Select(static diagnostic => $"{diagnostic.Severity} {diagnostic.Code}: {diagnostic.Message} ({diagnostic.Span?.Document}:{diagnostic.Span?.StartLine}:{diagnostic.Span?.StartColumn})"));
 
 }

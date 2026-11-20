@@ -3,7 +3,7 @@ using Onnxify;
 namespace Onnxify.Compiler.Operators;
 
 [CompilerTorchOperator("aten::hardsigmoid")]
-internal sealed class HardSigmoidOperator() : ActivationOperator<Onnxify.HardSigmoid>("HardSigmoid", "torch.nn.functional.hardsigmoid", ["alpha", "beta"])
+internal sealed class HardSigmoidOperator() : ActivationOperator<Onnxify.HardSigmoid>("HardSigmoid", "torch.nn.functional.hardsigmoid", ["alpha", "beta"], supportedInputTypes: PointwiseSupportedElementTypes.Float32ActivationCpu)
 {
     protected override string PrintTorchSharp(Onnxify.HardSigmoid node, CompilerSourceSpan? span)
     {

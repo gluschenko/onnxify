@@ -4,6 +4,10 @@ namespace Onnxify.Compiler.Operators;
 
 [CompilerTorchOperator("aten::clamp")]
 [CompilerTorchOperator("aten::clamp.Tensor")]
+[CompilerTorchOperator("aten::clamp_min")]
+[CompilerTorchOperator("aten::clamp_min.Tensor")]
+[CompilerTorchOperator("aten::clamp_max")]
+[CompilerTorchOperator("aten::clamp_max.Tensor")]
 internal sealed class ClipOperator() : CompilerOperator<Onnxify.Clip>(CompilerOperatorIdentity.Onnx("Clip"))
 {
     public override CompilerOperationCapability Capability => CompilerOperationCapability.Bidirectional;
@@ -14,6 +18,10 @@ internal sealed class ClipOperator() : CompilerOperator<Onnxify.Clip>(CompilerOp
     [
         CompilerTorchSharpForm.Call("torch.clamp"),
         CompilerTorchSharpForm.Call("Tensor.clamp"),
+        CompilerTorchSharpForm.Call("torch.clamp_min"),
+        CompilerTorchSharpForm.Call("Tensor.clamp_min"),
+        CompilerTorchSharpForm.Call("torch.clamp_max"),
+        CompilerTorchSharpForm.Call("Tensor.clamp_max"),
     ];
 
     public override bool TryScanTorchSharp(TorchSharpOperatorScanContext context, CompilerExpression expression)
@@ -28,7 +36,14 @@ internal sealed class ClipOperator() : CompilerOperator<Onnxify.Clip>(CompilerOp
                 : [context.Receiver])
             .Concat(invocation.Arguments)
             .ToArray();
-        if (operands.Length != 3)
+        var clampMinimum = context.CallName is "torch.clamp_min" or "Tensor.clamp_min";
+        var clampMaximum = context.CallName is "torch.clamp_max" or "Tensor.clamp_max";
+        if ((clampMinimum || clampMaximum) && operands.Length != 2)
+        {
+            throw context.Unsupported(expression, "TorchSharp clamp_min and clamp_max require an input and exactly one bound.");
+        }
+
+        if (!clampMinimum && !clampMaximum && operands.Length != 3)
         {
             throw context.Unsupported(
                 expression,
@@ -36,8 +51,38 @@ internal sealed class ClipOperator() : CompilerOperator<Onnxify.Clip>(CompilerOp
         }
 
         var input = context.RequireTensorReference(operands[0], OnnxName);
-        var minimum = AddBound(operands[1], "min");
-        var maximum = AddBound(operands[2], "max");
+        CompilerExpression? minimumExpression = null;
+        CompilerExpression? maximumExpression = null;
+        if (clampMinimum)
+        {
+            minimumExpression = operands[1];
+        }
+        else if (clampMaximum)
+        {
+            maximumExpression = operands[1];
+        }
+        else
+        {
+            minimumExpression = operands[1];
+            maximumExpression = operands[2];
+        }
+
+        var minimumTensor = TryGetTensorReference(minimumExpression);
+        var maximumTensor = TryGetTensorReference(maximumExpression);
+        if (minimumTensor is not null || maximumTensor is not null)
+        {
+            if ((minimumExpression is not null && minimumTensor is null && !IsNull(minimumExpression))
+                || (maximumExpression is not null && maximumTensor is null && !IsNull(maximumExpression)))
+            {
+                throw context.Unsupported(expression, "Tensor clamp overloads require tensor bounds or null; scalar clamp overloads require scalar bounds.");
+            }
+
+            AddTensorClampOperations(input, minimumTensor, maximumTensor);
+            return true;
+        }
+
+        var minimum = clampMinimum ? AddBound(operands[1], "min") : clampMaximum ? null : AddBound(operands[1], "min");
+        var maximum = clampMaximum ? AddBound(operands[1], "max") : clampMinimum ? null : AddBound(operands[2], "max");
         var node = new Onnxify.Clip(
             OnnxName.ToLowerInvariant(),
             new Onnxify.ClipInputOutputOptions
@@ -49,6 +94,74 @@ internal sealed class ClipOperator() : CompilerOperator<Onnxify.Clip>(CompilerOp
             });
         context.AddOperation(this, node, expression.Span);
         return true;
+
+        CompilerValueReference? TryGetTensorReference(CompilerExpression? bound)
+        {
+            if (bound is CompilerReferenceExpression reference
+                && context.Inputs.Any(input => string.Equals(input.Name, reference.Name, StringComparison.Ordinal)
+                    && input.Type is CompilerTensorType))
+            {
+                return new CompilerValueReference(reference.Name);
+            }
+
+            return null;
+        }
+
+        bool IsNull(CompilerExpression bound) => bound is CompilerLiteralExpression { Literal: CompilerNullLiteral };
+
+        void AddTensorClampOperations(
+            CompilerValueReference inputReference,
+            CompilerValueReference? minReference,
+            CompilerValueReference? maxReference)
+        {
+            var inputType = context.Inputs
+                .First(input => string.Equals(input.Name, inputReference.Name, StringComparison.Ordinal))
+                .Type;
+            var current = inputReference;
+
+            if (minReference is not null)
+            {
+                current = AddOperation(
+                    new MaxOperator(),
+                    "min",
+                    current,
+                    minReference,
+                    maxReference is null ? context.Outputs[0].Name : $"{context.Outputs[0].Name}__after_min",
+                    inputType);
+            }
+
+            if (maxReference is not null)
+            {
+                AddOperation(
+                    new MinOperator(),
+                    "max",
+                    current,
+                    maxReference,
+                    context.Outputs[0].Name,
+                    inputType);
+            }
+        }
+
+        CompilerValueReference AddOperation(
+            CompilerOperator compilerOperator,
+            string suffix,
+            CompilerValueReference left,
+            CompilerValueReference right,
+            string outputName,
+            CompilerType outputType)
+        {
+            if (!context.Builder.HasOutput(outputName))
+            {
+                context.Builder.AddIntermediateValue(new CompilerValue(outputName, outputType, expression.Span));
+            }
+
+            context.Builder.AddOperation(compilerOperator.CreateNode(
+                $"{outputName}__{suffix}",
+                [left, right],
+                [new CompilerValueReference(outputName)],
+                span: expression.Span));
+            return new CompilerValueReference(outputName);
+        }
 
         OnnxEdge? AddBound(CompilerExpression bound, string label)
         {
@@ -181,6 +294,11 @@ internal sealed class ClipOperator() : CompilerOperator<Onnxify.Clip>(CompilerOp
             return "ONNX Clip requires its input tensor.";
         }
 
+        CompilerElementType? inputElementType = knownTypes.TryGetValue(clip.Input.Name, out var inputType)
+            && inputType is CompilerTensorType inputTensor
+                ? inputTensor.ElementType
+                : null;
+
         foreach (var bound in new[] { clip.Min, clip.Max })
         {
             if (bound is null || !knownTypes.TryGetValue(bound.Name, out var type))
@@ -194,6 +312,11 @@ internal sealed class ClipOperator() : CompilerOperator<Onnxify.Clip>(CompilerOp
                 || tensorType.Dimensions.Any(static dimension => dimension is not CompilerFixedDimension { Value: 1 }))
             {
                 return "Compiler Clip supports Float32 scalar or statically known single-element min and max inputs only.";
+            }
+
+            if (inputElementType is { } knownInputElementType && knownInputElementType != CompilerElementType.Float32)
+            {
+                return $"Compiler Clip scalar bounds are Float32, but the input tensor is '{knownInputElementType}'.";
             }
         }
 
