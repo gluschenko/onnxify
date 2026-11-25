@@ -1,9 +1,16 @@
-﻿using System.Buffers;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
+using Onnxify.Helpers;
+using Onnxify.Data.Numerics;
+#if NET5_0_OR_GREATER
+using Half = System.Half;
+#else
+using Half = Onnxify.Data.Numerics.Float16;
+#endif
 
 namespace Onnxify.Safetensors;
 
@@ -26,9 +33,14 @@ public sealed class SafeTensors
     public SafeTensors(IReadOnlyDictionary<string, string>? metadata = null)
     {
         _tensors = new Dictionary<string, TensorView>(StringComparer.Ordinal);
-        _metadataEntries = metadata is null
-            ? new Dictionary<string, string>(StringComparer.Ordinal)
-            : new Dictionary<string, string>(metadata, StringComparer.Ordinal);
+        _metadataEntries = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (metadata is not null)
+        {
+            foreach (var pair in metadata)
+            {
+                _metadataEntries.Add(pair.Key, pair.Value);
+            }
+        }
     }
 
     private SafeTensors(Metadata metadata, ReadOnlyMemory<byte> data)
@@ -68,7 +80,7 @@ public sealed class SafeTensors
             throw SafeTensorException.HeaderTooSmall();
         }
 
-        var headerLengthRaw = BinaryPrimitives.ReadUInt64LittleEndian(buffer.Span[..LENGTH_PREFIX_SIZE]);
+        var headerLengthRaw = BinaryPrimitives.ReadUInt64LittleEndian(buffer.Span.Slice(0, LENGTH_PREFIX_SIZE));
         if (headerLengthRaw > MAX_HEADER_SIZE)
         {
             throw SafeTensorException.HeaderTooLarge();
@@ -104,7 +116,7 @@ public sealed class SafeTensors
         string headerText;
         try
         {
-            headerText = _strictUtf8.GetString(headerBytes);
+            headerText = _strictUtf8.GetString(headerBytes.ToArray());
         }
         catch (DecoderFallbackException ex)
         {
@@ -178,12 +190,17 @@ public sealed class SafeTensors
         CancellationToken cancellationToken = default
     )
     {
-        ArgumentNullException.ThrowIfNull(path);
+        if (path is null)
+        {
+            throw new System.ArgumentNullException(nameof(path));
+        }
 
         try
         {
-            var raw = await File.ReadAllBytesAsync(path, cancellationToken);
-            return Deserialize(raw);
+            using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
+            using var buffer = new MemoryStream();
+            await file.CopyToAsync(buffer, 81920, cancellationToken).ConfigureAwait(false);
+            return Deserialize(buffer.ToArray());
         }
         catch (IOException ex)
         {
@@ -206,7 +223,10 @@ public sealed class SafeTensors
         IReadOnlyDictionary<string, string>? metadata = null
     )
     {
-        ArgumentNullException.ThrowIfNull(data);
+        if (data is null)
+        {
+            throw new System.ArgumentNullException(nameof(data));
+        }
 
         var prepared = Prepare(data, metadata);
         if (prepared.HeaderBytes.Length > MAX_HEADER_SIZE)
@@ -251,8 +271,14 @@ public sealed class SafeTensors
         string path
     )
     {
-        ArgumentNullException.ThrowIfNull(data);
-        ArgumentNullException.ThrowIfNull(path);
+        if (data is null)
+        {
+            throw new System.ArgumentNullException(nameof(data));
+        }
+        if (path is null)
+        {
+            throw new System.ArgumentNullException(nameof(path));
+        }
 
         var prepared = Prepare(data, metadata);
         if (prepared.HeaderBytes.Length > MAX_HEADER_SIZE)
@@ -263,14 +289,15 @@ public sealed class SafeTensors
         try
         {
             using var file = File.Create(path);
-            Span<byte> headerLength = stackalloc byte[LENGTH_PREFIX_SIZE];
+            var headerLength = new byte[LENGTH_PREFIX_SIZE];
             BinaryPrimitives.WriteUInt64LittleEndian(headerLength, (ulong)prepared.HeaderBytes.Length);
-            file.Write(headerLength);
-            file.Write(prepared.HeaderBytes);
+            file.Write(headerLength, 0, headerLength.Length);
+            file.Write(prepared.HeaderBytes, 0, prepared.HeaderBytes.Length);
 
             foreach (var tensor in prepared.Tensors)
             {
-                file.Write(tensor.Value.Data.Span);
+                var tensorBytes = tensor.Value.Data.ToArray();
+                file.Write(tensorBytes, 0, tensorBytes.Length);
             }
         }
         catch (IOException ex)
@@ -293,8 +320,14 @@ public sealed class SafeTensors
         CancellationToken cancellationToken = default
     )
     {
-        ArgumentNullException.ThrowIfNull(data);
-        ArgumentNullException.ThrowIfNull(path);
+        if (data is null)
+        {
+            throw new System.ArgumentNullException(nameof(data));
+        }
+        if (path is null)
+        {
+            throw new System.ArgumentNullException(nameof(path));
+        }
 
         var prepared = Prepare(data, metadata);
         if (prepared.HeaderBytes.Length > MAX_HEADER_SIZE)
@@ -304,15 +337,16 @@ public sealed class SafeTensors
 
         try
         {
-            await using var file = File.Create(path);
+            using var file = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
             var headerLength = new byte[LENGTH_PREFIX_SIZE];
             BinaryPrimitives.WriteUInt64LittleEndian(headerLength, (ulong)prepared.HeaderBytes.Length);
-            await file.WriteAsync(headerLength, cancellationToken);
-            await file.WriteAsync(prepared.HeaderBytes, cancellationToken);
+            await file.WriteAsync(headerLength, 0, headerLength.Length, cancellationToken).ConfigureAwait(false);
+            await file.WriteAsync(prepared.HeaderBytes, 0, prepared.HeaderBytes.Length, cancellationToken).ConfigureAwait(false);
 
             foreach (var tensor in prepared.Tensors)
             {
-                await file.WriteAsync(tensor.Value.Data, cancellationToken);
+                var tensorBytes = tensor.Value.Data.ToArray();
+                await file.WriteAsync(tensorBytes, 0, tensorBytes.Length, cancellationToken).ConfigureAwait(false);
             }
         }
         catch (IOException ex)
@@ -345,7 +379,7 @@ public sealed class SafeTensors
     /// </summary>
     /// <typeparam name="T">
     /// Supported types: <see cref="bool"/>, <see cref="byte"/>, <see cref="sbyte"/>, <see cref="short"/>,
-    /// <see cref="ushort"/>, <see cref="Half"/>, <see cref="int"/>, <see cref="uint"/>, <see cref="float"/>,
+    /// <see cref="ushort"/>, the target framework's 16-bit floating-point type, <see cref="BFloat16"/>, <see cref="int"/>, <see cref="uint"/>, <see cref="float"/>,
     /// <see cref="double"/>, <see cref="long"/>, <see cref="ulong"/>, and <see cref="string"/>.
     /// </typeparam>
     /// <param name="tensorName">The tensor name to create or replace.</param>
@@ -353,84 +387,91 @@ public sealed class SafeTensors
     /// <param name="shape">Optional tensor shape. When omitted, the value is stored as a one-dimensional vector.</param>
     public void Set<T>(string tensorName, T[] values, params ulong[] shape)
     {
-        ArgumentNullException.ThrowIfNull(tensorName);
-        ArgumentNullException.ThrowIfNull(values);
+        if (typeof(T) == typeof(sbyte))
+        {
+            SetUnmanagedTensor(tensorName, (sbyte[])(object)values, DataType.I8, shape);
+            return;
+        }
 
-        if (typeof(T) == typeof(string))
+        SetTensor(tensorName, values, shape);
+    }
+
+    /// <summary>Stores a supported CLR array and infers its Safetensors dtype from the element type.</summary>
+    /// <param name="tensorName">The tensor name to create or replace.</param>
+    /// <param name="values">The typed tensor values.</param>
+    /// <param name="shape">Optional tensor shape. When omitted, values are stored as a one-dimensional vector.</param>
+    public void SetTensor(string tensorName, Array values, params ulong[] shape)
+    {
+        if (tensorName is null)
+        {
+            throw new System.ArgumentNullException(nameof(tensorName));
+        }
+        if (values is null)
+        {
+            throw new System.ArgumentNullException(nameof(values));
+        }
+        if (shape is null)
+        {
+            throw new System.ArgumentNullException(nameof(shape));
+        }
+
+        var elementType = values.GetType().GetElementType();
+        if (elementType == typeof(string))
         {
             if (shape.Length != 0)
             {
                 throw new ArgumentException("String values do not support an explicit safetensors shape.", nameof(shape));
             }
 
-            SetString(tensorName, (string[])(object)values);
+            SetString(tensorName, (string[])values);
             return;
         }
 
-        var type = typeof(T);
-        if (type == typeof(bool))
+        var onnxType = OnnxElementTypeMap.GetDataType(elementType!);
+        var dataType = ToDataType(onnxType);
+        switch (onnxType)
         {
-            var typedValues = (bool[])(object)values;
-            SetTensor(tensorName, DataType.Bool, ShapeOrVector(typedValues.Length, shape), BooleansToBytes(typedValues));
-        }
-        else if (type == typeof(byte))
-        {
-            var typedValues = (byte[])(object)values;
-            SetTensor(tensorName, DataType.U8, ShapeOrVector(typedValues.Length, shape), typedValues.ToArray());
-        }
-        else if (type == typeof(sbyte))
-        {
-            var typedValues = (sbyte[])(object)values;
-            SetTensor(tensorName, DataType.I8, ShapeOrVector(typedValues.Length, shape), CopyBytes<sbyte>(typedValues));
-        }
-        else if (type == typeof(short))
-        {
-            var typedValues = (short[])(object)values;
-            SetTensor(tensorName, DataType.I16, ShapeOrVector(typedValues.Length, shape), CopyBytes<short>(typedValues));
-        }
-        else if (type == typeof(ushort))
-        {
-            var typedValues = (ushort[])(object)values;
-            SetTensor(tensorName, DataType.U16, ShapeOrVector(typedValues.Length, shape), CopyBytes<ushort>(typedValues));
-        }
-        else if (type == typeof(Half))
-        {
-            var typedValues = (Half[])(object)values;
-            SetTensor(tensorName, DataType.F16, ShapeOrVector(typedValues.Length, shape), CopyBytes<Half>(typedValues));
-        }
-        else if (type == typeof(int))
-        {
-            var typedValues = (int[])(object)values;
-            SetTensor(tensorName, DataType.I32, ShapeOrVector(typedValues.Length, shape), CopyBytes<int>(typedValues));
-        }
-        else if (type == typeof(uint))
-        {
-            var typedValues = (uint[])(object)values;
-            SetTensor(tensorName, DataType.U32, ShapeOrVector(typedValues.Length, shape), CopyBytes<uint>(typedValues));
-        }
-        else if (type == typeof(float))
-        {
-            var typedValues = (float[])(object)values;
-            SetTensor(tensorName, DataType.F32, ShapeOrVector(typedValues.Length, shape), CopyBytes<float>(typedValues));
-        }
-        else if (type == typeof(double))
-        {
-            var typedValues = (double[])(object)values;
-            SetTensor(tensorName, DataType.F64, ShapeOrVector(typedValues.Length, shape), CopyBytes<double>(typedValues));
-        }
-        else if (type == typeof(long))
-        {
-            var typedValues = (long[])(object)values;
-            SetTensor(tensorName, DataType.I64, ShapeOrVector(typedValues.Length, shape), CopyBytes<long>(typedValues));
-        }
-        else if (type == typeof(ulong))
-        {
-            var typedValues = (ulong[])(object)values;
-            SetTensor(tensorName, DataType.U64, ShapeOrVector(typedValues.Length, shape), CopyBytes<ulong>(typedValues));
-        }
-        else
-        {
-            throw new NotSupportedException($"Safetensors values of type '{type.FullName}' are not supported.");
+            case Onnx.TensorProto.Types.DataType.Bool:
+                SetTensorPayload(tensorName, dataType, ShapeOrVector(values.Length, shape), BooleansToBytes((bool[])values));
+                return;
+            case Onnx.TensorProto.Types.DataType.Uint8:
+                SetTensorPayload(tensorName, dataType, ShapeOrVector(values.Length, shape), ((byte[])values).ToArray());
+                return;
+            case Onnx.TensorProto.Types.DataType.Int8:
+                SetUnmanagedTensor(tensorName, (sbyte[])values, dataType, shape);
+                return;
+            case Onnx.TensorProto.Types.DataType.Int16:
+                SetUnmanagedTensor(tensorName, (short[])values, dataType, shape);
+                return;
+            case Onnx.TensorProto.Types.DataType.Uint16:
+                SetUnmanagedTensor(tensorName, (ushort[])values, dataType, shape);
+                return;
+            case Onnx.TensorProto.Types.DataType.Float16:
+                SetUnmanagedTensor(tensorName, (Half[])values, dataType, shape);
+                return;
+            case Onnx.TensorProto.Types.DataType.Bfloat16:
+                SetUnmanagedTensor(tensorName, (BFloat16[])values, dataType, shape);
+                return;
+            case Onnx.TensorProto.Types.DataType.Int32:
+                SetUnmanagedTensor(tensorName, (int[])values, dataType, shape);
+                return;
+            case Onnx.TensorProto.Types.DataType.Uint32:
+                SetUnmanagedTensor(tensorName, (uint[])values, dataType, shape);
+                return;
+            case Onnx.TensorProto.Types.DataType.Float:
+                SetUnmanagedTensor(tensorName, (float[])values, dataType, shape);
+                return;
+            case Onnx.TensorProto.Types.DataType.Double:
+                SetUnmanagedTensor(tensorName, (double[])values, dataType, shape);
+                return;
+            case Onnx.TensorProto.Types.DataType.Int64:
+                SetUnmanagedTensor(tensorName, (long[])values, dataType, shape);
+                return;
+            case Onnx.TensorProto.Types.DataType.Uint64:
+                SetUnmanagedTensor(tensorName, (ulong[])values, dataType, shape);
+                return;
+            default:
+                throw new NotSupportedException($"Safetensors values of type '{elementType?.FullName}' are not supported.");
         }
     }
 
@@ -441,7 +482,10 @@ public sealed class SafeTensors
     /// <returns><see langword="true"/> when a value was removed; otherwise <see langword="false"/>.</returns>
     public bool Remove(string tensorName)
     {
-        ArgumentNullException.ThrowIfNull(tensorName);
+        if (tensorName is null)
+        {
+            throw new System.ArgumentNullException(nameof(tensorName));
+        }
 
         return _tensors.Remove(tensorName);
     }
@@ -451,7 +495,7 @@ public sealed class SafeTensors
     /// </summary>
     /// <typeparam name="T">
     /// Supported types: <see cref="bool"/>, <see cref="byte"/>, <see cref="sbyte"/>, <see cref="short"/>,
-    /// <see cref="ushort"/>, <see cref="Half"/>, <see cref="int"/>, <see cref="uint"/>, <see cref="float"/>,
+    /// <see cref="ushort"/>, the target framework's 16-bit floating-point type, <see cref="BFloat16"/>, <see cref="int"/>, <see cref="uint"/>, <see cref="float"/>,
     /// <see cref="double"/>, <see cref="long"/>, <see cref="ulong"/>, and <see cref="string"/>.
     /// </typeparam>
     /// <param name="tensorName">The tensor name to read.</param>
@@ -471,19 +515,24 @@ public sealed class SafeTensors
             return (T[])(object)ToBooleanArray(tensor.Data.Span);
         }
 
-        if (type == typeof(byte)) return (T[])(object)GetUnmanagedValue<byte>(tensorName, tensor, DataType.U8);
-        if (type == typeof(sbyte)) return (T[])(object)GetUnmanagedValue<sbyte>(tensorName, tensor, DataType.I8);
-        if (type == typeof(short)) return (T[])(object)GetUnmanagedValue<short>(tensorName, tensor, DataType.I16);
-        if (type == typeof(ushort)) return (T[])(object)GetUnmanagedValue<ushort>(tensorName, tensor, DataType.U16);
-        if (type == typeof(Half)) return (T[])(object)GetUnmanagedValue<Half>(tensorName, tensor, DataType.F16);
-        if (type == typeof(int)) return (T[])(object)GetUnmanagedValue<int>(tensorName, tensor, DataType.I32);
-        if (type == typeof(uint)) return (T[])(object)GetUnmanagedValue<uint>(tensorName, tensor, DataType.U32);
-        if (type == typeof(float)) return (T[])(object)GetUnmanagedValue<float>(tensorName, tensor, DataType.F32);
-        if (type == typeof(double)) return (T[])(object)GetUnmanagedValue<double>(tensorName, tensor, DataType.F64);
-        if (type == typeof(long)) return (T[])(object)GetUnmanagedValue<long>(tensorName, tensor, DataType.I64);
-        if (type == typeof(ulong)) return (T[])(object)GetUnmanagedValue<ulong>(tensorName, tensor, DataType.U64);
-
-        throw new NotSupportedException($"Safetensors values of type '{type.FullName}' are not supported.");
+        var onnxType = OnnxElementTypeMap.GetDataType(type);
+        var expectedType = ToDataType(onnxType);
+        return onnxType switch
+        {
+            Onnx.TensorProto.Types.DataType.Uint8 => (T[])(object)GetUnmanagedValue<byte>(tensorName, tensor, expectedType),
+            Onnx.TensorProto.Types.DataType.Int8 => (T[])(object)GetUnmanagedValue<sbyte>(tensorName, tensor, expectedType),
+            Onnx.TensorProto.Types.DataType.Int16 => (T[])(object)GetUnmanagedValue<short>(tensorName, tensor, expectedType),
+            Onnx.TensorProto.Types.DataType.Uint16 => (T[])(object)GetUnmanagedValue<ushort>(tensorName, tensor, expectedType),
+            Onnx.TensorProto.Types.DataType.Float16 => (T[])(object)GetUnmanagedValue<Half>(tensorName, tensor, expectedType),
+            Onnx.TensorProto.Types.DataType.Bfloat16 => (T[])(object)GetUnmanagedValue<BFloat16>(tensorName, tensor, expectedType),
+            Onnx.TensorProto.Types.DataType.Int32 => (T[])(object)GetUnmanagedValue<int>(tensorName, tensor, expectedType),
+            Onnx.TensorProto.Types.DataType.Uint32 => (T[])(object)GetUnmanagedValue<uint>(tensorName, tensor, expectedType),
+            Onnx.TensorProto.Types.DataType.Float => (T[])(object)GetUnmanagedValue<float>(tensorName, tensor, expectedType),
+            Onnx.TensorProto.Types.DataType.Double => (T[])(object)GetUnmanagedValue<double>(tensorName, tensor, expectedType),
+            Onnx.TensorProto.Types.DataType.Int64 => (T[])(object)GetUnmanagedValue<long>(tensorName, tensor, expectedType),
+            Onnx.TensorProto.Types.DataType.Uint64 => (T[])(object)GetUnmanagedValue<ulong>(tensorName, tensor, expectedType),
+            _ => throw new NotSupportedException($"Safetensors values of type '{type.FullName}' are not supported."),
+        };
     }
 
     /// <summary>
@@ -532,7 +581,10 @@ public sealed class SafeTensors
     /// </remarks>
     public TensorView Tensor(string tensorName)
     {
-        ArgumentNullException.ThrowIfNull(tensorName);
+        if (tensorName is null)
+        {
+            throw new System.ArgumentNullException(nameof(tensorName));
+        }
 
         if (!_tensors.TryGetValue(tensorName, out var tensor))
         {
@@ -626,7 +678,10 @@ public sealed class SafeTensors
         if (alignedLength != originalLength)
         {
             Array.Resize(ref headerBytes, alignedLength);
-            Array.Fill(headerBytes, (byte)' ', originalLength, alignedLength - originalLength);
+            for (var index = originalLength; index < alignedLength; index++)
+            {
+                headerBytes[index] = (byte)' ';
+            }
         }
 
         return new PreparedSafetensorsData(headerBytes, sorted);
@@ -657,9 +712,12 @@ public sealed class SafeTensors
         return new Metadata(metadataEntries, tensors);
     }
 
-    private void SetTensor(string tensorName, DataType dataType, ulong[] shape, byte[] data)
+    private void SetTensorPayload(string tensorName, DataType dataType, ulong[] shape, byte[] data)
     {
-        ArgumentNullException.ThrowIfNull(tensorName);
+        if (tensorName is null)
+        {
+            throw new System.ArgumentNullException(nameof(tensorName));
+        }
         _tensors[tensorName] = new TensorView(dataType, shape, data);
     }
 
@@ -674,7 +732,7 @@ public sealed class SafeTensors
     {
         var tensor = Tensor(tensorName);
         EnsureDataType(tensorName, tensor, DataType.U8);
-        var json = Encoding.UTF8.GetString(tensor.Data.Span);
+        var json = Encoding.UTF8.GetString(tensor.Data.ToArray());
         return JsonSerializer.Deserialize<string[]>(json) ?? [];
     }
 
@@ -683,6 +741,10 @@ public sealed class SafeTensors
 
     private static ulong[] ShapeOrVector(int valueCount, ulong[] shape)
         => shape.Length == 0 ? [(ulong)valueCount] : shape;
+
+    private void SetUnmanagedTensor<T>(string name, T[] values, DataType dataType, ulong[] shape)
+        where T : unmanaged
+        => SetTensorPayload(name, dataType, ShapeOrVector(values.Length, shape), CopyBytes<T>(values));
 
     private static byte[] BooleansToBytes(ReadOnlySpan<bool> values)
     {
@@ -706,6 +768,24 @@ public sealed class SafeTensors
         return MemoryMarshal.Cast<byte, T>(tensor.Data.Span).ToArray();
     }
 
+    private static DataType ToDataType(Onnx.TensorProto.Types.DataType dataType) => dataType switch
+    {
+        Onnx.TensorProto.Types.DataType.Bool => DataType.Bool,
+        Onnx.TensorProto.Types.DataType.Uint8 => DataType.U8,
+        Onnx.TensorProto.Types.DataType.Int8 => DataType.I8,
+        Onnx.TensorProto.Types.DataType.Int16 => DataType.I16,
+        Onnx.TensorProto.Types.DataType.Uint16 => DataType.U16,
+        Onnx.TensorProto.Types.DataType.Float16 => DataType.F16,
+        Onnx.TensorProto.Types.DataType.Bfloat16 => DataType.Bf16,
+        Onnx.TensorProto.Types.DataType.Int32 => DataType.I32,
+        Onnx.TensorProto.Types.DataType.Uint32 => DataType.U32,
+        Onnx.TensorProto.Types.DataType.Float => DataType.F32,
+        Onnx.TensorProto.Types.DataType.Double => DataType.F64,
+        Onnx.TensorProto.Types.DataType.Int64 => DataType.I64,
+        Onnx.TensorProto.Types.DataType.Uint64 => DataType.U64,
+        _ => throw new NotSupportedException($"ONNX element type '{dataType}' is not supported by Safetensors."),
+    };
+
     private static void EnsureDataType(string tensorName, TensorView tensor, DataType expectedType)
     {
         if (tensor.DataType != expectedType)
@@ -713,26 +793,6 @@ public sealed class SafeTensors
             throw new InvalidOperationException(
                 $"Tensor '{tensorName}' has dtype {tensor.DataType.ToWireName()}, not {expectedType.ToWireName()}.");
         }
-    }
-
-    private static DataType GetDataType<T>()
-        where T : unmanaged
-    {
-        var type = typeof(T);
-        if (type == typeof(bool)) return DataType.Bool;
-        if (type == typeof(byte)) return DataType.U8;
-        if (type == typeof(sbyte)) return DataType.I8;
-        if (type == typeof(short)) return DataType.I16;
-        if (type == typeof(ushort)) return DataType.U16;
-        if (type == typeof(Half)) return DataType.F16;
-        if (type == typeof(int)) return DataType.I32;
-        if (type == typeof(uint)) return DataType.U32;
-        if (type == typeof(float)) return DataType.F32;
-        if (type == typeof(double)) return DataType.F64;
-        if (type == typeof(long)) return DataType.I64;
-        if (type == typeof(ulong)) return DataType.U64;
-
-        throw new NotSupportedException($"Safetensors values of type '{type.FullName}' are not supported.");
     }
 
     /// <summary>
@@ -860,47 +920,48 @@ public sealed class SafeTensors
     /// </remarks>
     private static byte[] SerializeMetadata(Metadata metadata)
     {
-        var buffer = new ArrayBufferWriter<byte>();
-        using var writer = new Utf8JsonWriter(buffer);
-
-        writer.WriteStartObject();
-
-        if (metadata.MetadataEntries is not null)
+        using var buffer = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(buffer))
         {
-            writer.WritePropertyName("__metadata__");
             writer.WriteStartObject();
-            foreach (var pair in metadata.MetadataEntries)
+
+            if (metadata.MetadataEntries is not null)
             {
-                writer.WriteString(pair.Key, pair.Value);
+                writer.WritePropertyName("__metadata__");
+                writer.WriteStartObject();
+                foreach (var pair in metadata.MetadataEntries)
+                {
+                    writer.WriteString(pair.Key, pair.Value);
+                }
+                writer.WriteEndObject();
             }
+
+            foreach (var name in metadata.OffsetKeys())
+            {
+                var info = metadata.Info(name)!;
+                writer.WritePropertyName(name);
+                writer.WriteStartObject();
+                writer.WriteString("dtype", info.DataType.ToWireName());
+                writer.WritePropertyName("shape");
+                writer.WriteStartArray();
+                foreach (var dim in info.Shape)
+                {
+                    writer.WriteNumberValue(dim);
+                }
+                writer.WriteEndArray();
+                writer.WritePropertyName("data_offsets");
+                writer.WriteStartArray();
+                writer.WriteNumberValue(info.DataOffsets.Start);
+                writer.WriteNumberValue(info.DataOffsets.End);
+                writer.WriteEndArray();
+                writer.WriteEndObject();
+            }
+
             writer.WriteEndObject();
+            writer.Flush();
         }
 
-        foreach (var name in metadata.OffsetKeys())
-        {
-            var info = metadata.Info(name)!;
-            writer.WritePropertyName(name);
-            writer.WriteStartObject();
-            writer.WriteString("dtype", info.DataType.ToWireName());
-            writer.WritePropertyName("shape");
-            writer.WriteStartArray();
-            foreach (var dim in info.Shape)
-            {
-                writer.WriteNumberValue(dim);
-            }
-            writer.WriteEndArray();
-            writer.WritePropertyName("data_offsets");
-            writer.WriteStartArray();
-            writer.WriteNumberValue(info.DataOffsets.Start);
-            writer.WriteNumberValue(info.DataOffsets.End);
-            writer.WriteEndArray();
-            writer.WriteEndObject();
-        }
-
-        writer.WriteEndObject();
-        writer.Flush();
-
-        return buffer.WrittenMemory.ToArray();
+        return buffer.ToArray();
     }
 
     /// <summary>
@@ -1073,11 +1134,11 @@ public sealed class SafeTensors
 
     private static Half[] ToHalfArray(ReadOnlySpan<byte> data)
     {
-        var ushortValues = MemoryMarshal.Cast<byte, ushort>(data);
-        var result = new Half[ushortValues.Length];
-        for (var i = 0; i < ushortValues.Length; i++)
+        var encoded = MemoryMarshal.Cast<byte, ushort>(data);
+        var result = new Half[encoded.Length];
+        for (var index = 0; index < result.Length; index++)
         {
-            result[i] = BitConverter.UInt16BitsToHalf(ushortValues[i]);
+            result[index] = OnnxNumericConversions.Float16FromBits(encoded[index]);
         }
 
         return result;
@@ -1089,7 +1150,7 @@ public sealed class SafeTensors
         var result = new float[ushortValues.Length];
         for (var i = 0; i < ushortValues.Length; i++)
         {
-            result[i] = BitConverter.Int32BitsToSingle(ushortValues[i] << 16);
+            result[i] = BFloat16.FromEncoded(ushortValues[i]).ToSingle();
         }
 
         return result;

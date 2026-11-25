@@ -209,7 +209,7 @@ public sealed class SafetensorsExternalDataProvider : ExternalDataProvider
             : type == typeof(short) ? DataType.I16
             : type == typeof(ushort) ? DataType.U16
             : type == typeof(Half) ? DataType.F16
-            : type == typeof(BFloat16) ? DataType.Bf16
+            : type == typeof(Onnxify.Data.Numerics.BFloat16) ? DataType.Bf16
             : type == typeof(int) ? DataType.I32
             : type == typeof(uint) ? DataType.U32
             : type == typeof(float) ? DataType.F32

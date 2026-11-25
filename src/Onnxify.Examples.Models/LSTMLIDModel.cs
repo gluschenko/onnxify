@@ -9,6 +9,8 @@ namespace Onnxify.Examples.Models;
 /// https://github.com/AU-DIS/LSTM_langid/blob/main/src/LSTMLID.py
 /// https://github.com/dotnet/TorchSharp/blob/main/test/TorchSharpTest/TestSaveSD.cs
 /// </summary>
+[ModuleInput("input", global::TorchSharp.torch.ScalarType.Int64, "batch", "seq")]
+[ModuleOutput("output", global::TorchSharp.torch.ScalarType.Float32, "batch", "classes")]
 public class LSTMLIDModel : torch.nn.Module<Tensor, Tensor>
 {
     private readonly Dictionary<string, int> _charToIdx;

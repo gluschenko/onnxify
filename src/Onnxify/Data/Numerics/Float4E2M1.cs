@@ -24,6 +24,14 @@ public readonly struct Float4E2M1
         Value = Encode(value);
     }
 
+    /// <summary>Creates a value from its encoded ONNX payload.</summary>
+    public static Float4E2M1 FromEncoded(byte value) => new(value, encoded: true);
+
+    private Float4E2M1(byte value, bool encoded)
+    {
+        Value = value;
+    }
+
     /// <summary>
     /// Expands the encoded e2m1 value to a single-precision approximation.
     /// </summary>

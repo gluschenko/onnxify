@@ -19,6 +19,7 @@ The repository currently implements the following NuGet packages. Package-specif
 | Labrary                                                               | NuGet Package                                                                                                                            |
 | --------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------- |
 | [`Onnxify`](.docs/nuget/Onnxify.md)                                   | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify)](https://www.nuget.org/packages/Onnxify/)                                   |
+| [`Onnxify.Compiler`](.docs/nuget/Onnxify.Compiler.md)                 | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.Compiler)](https://www.nuget.org/packages/Onnxify.Compiler/)                 |
 | [`Onnxify.TorchSharp`](.docs/nuget/Onnxify.TorchSharp.md)             | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.TorchSharp)](https://www.nuget.org/packages/Onnxify.TorchSharp/)             |
 | [`Onnxify.Safetensors`](.docs/nuget/Onnxify.Safetensors.md)           | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.Safetensors)](https://www.nuget.org/packages/Onnxify.Safetensors/)           |
 | [`Onnxify.ProjectGenerator`](.docs/nuget/Onnxify.ProjectGenerator.md) | [![NuGet Version](https://img.shields.io/nuget/vpre/Onnxify.ProjectGenerator)](https://www.nuget.org/packages/Onnxify.ProjectGenerator/) |

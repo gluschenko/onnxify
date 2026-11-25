@@ -60,10 +60,11 @@ The packaged `.targets` file forwards `OnnxModel` items to Roslyn as additional 
 
 `OnnxifyModelImportType` controls which generated source shape is emitted for each `OnnxModel` item. The metadata value is case-insensitive and accepts one or more comma-separated values.
 
-There are two import types:
+Import types:
 
 - `OnnxRuntimeInference` generates a typed ONNX Runtime inference wrapper.
 - `TorchModule` generates a graph-shaped TorchSharp module that reconstructs supported ONNX graphs as idiomatic `torch.nn.Module` code.
+- `TorchModuleExperimental` uses `Onnxify.Compiler` mappings to generate the same `{ModelName}TorchModule` type. This path is experimental and supports only compiler-mapped operations.
 
 If `OnnxifyModelImportType` is omitted or empty, the generator uses `OnnxRuntimeInference`.
 
@@ -131,6 +132,15 @@ Use both values when the same model should generate both APIs:
 ```
 
 This is a strong default while evaluating a model integration: use the ONNX Runtime wrapper for deployment-style inference and the TorchSharp module for experiments, adaptation, debugging, or weight transfer.
+
+`TorchModuleExperimental` can be combined with `OnnxRuntimeInference`:
+
+```xml
+<OnnxModel Include="Models\sample-classifier.onnx"
+           OnnxifyModelImportType="OnnxRuntimeInference,TorchModuleExperimental" />
+```
+
+The experimental path reports unsupported compiler operations as build diagnostics and never falls back to the legacy TorchModule printer. `TorchModule` and `TorchModuleExperimental` are mutually exclusive for one model because they emit the same type name.
 
 With the configuration above, the generator emits types like:
 

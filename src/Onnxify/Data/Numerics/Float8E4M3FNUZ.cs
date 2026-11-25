@@ -23,6 +23,14 @@ public readonly struct Float8E4M3FNUZ
         Value = new Float8E4M3FN(value).Value;
     }
 
+    /// <summary>Creates a value from its encoded ONNX payload.</summary>
+    public static Float8E4M3FNUZ FromEncoded(byte value) => new(value, encoded: true);
+
+    private Float8E4M3FNUZ(byte value, bool encoded)
+    {
+        Value = value;
+    }
+
     /// <summary>
     /// Expands the stored value to the closest single-precision representation supported by this wrapper.
     /// </summary>

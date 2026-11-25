@@ -1,4 +1,4 @@
-﻿namespace Onnxify.Safetensors;
+namespace Onnxify.Safetensors;
 
 /// <summary>
 /// Represents a validated zero-copy tensor payload view together with the data type and shape needed to interpret it.
@@ -50,7 +50,10 @@ public sealed class TensorView : IEquatable<TensorView>
     /// </remarks>
     public TensorView(DataType dtype, IEnumerable<ulong> shape, ReadOnlyMemory<byte> data)
     {
-        ArgumentNullException.ThrowIfNull(shape);
+        if (shape is null)
+        {
+            throw new System.ArgumentNullException(nameof(shape));
+        }
 
         var shapeArray = shape.ToArray();
         var expectedSize = SafeTensorMath.ComputeSizeInBytes(dtype, shapeArray, allowMisaligned: false);
@@ -76,7 +79,10 @@ public sealed class TensorView : IEquatable<TensorView>
     /// </remarks>
     public SliceIterator Slice(params TensorIndexer[] slices)
     {
-        ArgumentNullException.ThrowIfNull(slices);
+        if (slices is null)
+        {
+            throw new System.ArgumentNullException(nameof(slices));
+        }
         return new SliceIterator(this, slices);
     }
 
@@ -122,14 +128,17 @@ public sealed class TensorView : IEquatable<TensorView>
     /// </remarks>
     public override int GetHashCode()
     {
-        var hash = new HashCode();
-        hash.Add(DataType);
-        hash.Add(Data.Length);
-        foreach (var dim in _shape)
+        unchecked
         {
-            hash.Add(dim);
-        }
+            var hash = 17;
+            hash = (hash * 31) + (int)DataType;
+            hash = (hash * 31) + Data.Length;
+            foreach (var dim in _shape)
+            {
+                hash = (hash * 31) + dim.GetHashCode();
+            }
 
-        return hash.ToHashCode();
+            return hash;
+        }
     }
 }

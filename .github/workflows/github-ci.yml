@@ -128,6 +128,8 @@ jobs:
         package:
           - id: Onnxify
             project: src/Onnxify/Onnxify.csproj
+          - id: Onnxify.Compiler
+            project: src/Onnxify.Compiler/Onnxify.Compiler.csproj
           - id: Onnxify.Safetensors
             project: src/Onnxify.Safetensors/Onnxify.Safetensors.csproj
           - id: Onnxify.TorchSharp

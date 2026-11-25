@@ -24,27 +24,6 @@ namespace System.Runtime.CompilerServices
     internal sealed class SetsRequiredMembersAttribute : Attribute { }
 }
 
-namespace System
-{
-    public readonly struct Half : IEquatable<Half>
-    {
-        public ushort Bits { get; }
-
-        public Half(ushort bits)
-        {
-            Bits = bits;
-        }
-
-        public bool Equals(Half other) => Bits == other.Bits;
-
-        public override bool Equals(object? obj) => obj is Half other && Equals(other);
-
-        public override int GetHashCode() => Bits.GetHashCode();
-
-        public override string ToString() => $"0x{Bits:x4}";
-    }
-}
-
 namespace System.Linq
 {
     internal static class EnumerableCompatibilityExtensions

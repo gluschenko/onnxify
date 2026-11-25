@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.3.11</Version>
+    <Version>0.4.0</Version>
     <RepositoryUrl>https://github.com/gluschenko/onnxify</RepositoryUrl>
     <Authors>Alexander Gluschenko</Authors>
     <Copyright>© 2026 Alexander Gluschenko</Copyright>
@@ -50,6 +50,7 @@
   </Target>
 
   <ItemGroup>
+    <ProjectReference Include="..\Onnxify.Compiler\Onnxify.Compiler.csproj" />
     <ProjectReference Include="..\Onnxify\Onnxify.csproj" PrivateAssets="all" />
   </ItemGroup>
 
@@ -59,6 +60,16 @@
     <PackageReference Include="Grpc.Tools" Version="2.78.0" PrivateAssets="all" />
     <PackageReference Include="Google.Protobuf" Version="3.34.0" PrivateAssets="all" GeneratePathProperty="true" />
     <PackageReference Include="System.Collections.Immutable" Version="9.0.0" PrivateAssets="all" GeneratePathProperty="true" />
+    <PackageReference Include="ICSharpCode.Decompiler" Version="10.0.1.8346" PrivateAssets="all" GeneratePathProperty="true" />
+    <PackageReference Include="System.Memory" Version="4.6.3" PrivateAssets="all" GeneratePathProperty="true" />
+    <PackageReference Include="System.Buffers" Version="4.6.1" PrivateAssets="all" GeneratePathProperty="true" />
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.1.2" PrivateAssets="all" GeneratePathProperty="true" />
+    <PackageReference Include="System.Text.Json" Version="10.0.9" PrivateAssets="all" GeneratePathProperty="true" />
+    <PackageReference Include="System.Text.Encodings.Web" Version="10.0.9" PrivateAssets="all" GeneratePathProperty="true" />
+    <PackageReference Include="System.Numerics.Vectors" Version="4.6.1" PrivateAssets="all" GeneratePathProperty="true" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.9" PrivateAssets="all" GeneratePathProperty="true" />
+    <PackageReference Include="System.IO.Pipelines" Version="10.0.9" PrivateAssets="all" GeneratePathProperty="true" />
+    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.6.3" PrivateAssets="all" GeneratePathProperty="true" />
   </ItemGroup>
 
   <ItemGroup Condition="Exists('$(ProtoOnnxMLSourcePath)')">
@@ -82,6 +93,24 @@
       <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.dll" Condition="Exists('$(TargetDir)Onnxify.dll')" />
       <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.pdb" Condition="Exists('$(TargetDir)Onnxify.pdb')" />
       <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.xml" Condition="Exists('$(TargetDir)Onnxify.xml')" />
+      <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.Compiler.dll" Condition="Exists('$(TargetDir)Onnxify.Compiler.dll')" />
+      <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.Compiler.pdb" Condition="Exists('$(TargetDir)Onnxify.Compiler.pdb')" />
+      <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.Compiler.xml" Condition="Exists('$(TargetDir)Onnxify.Compiler.xml')" />
+      <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.Safetensors.dll" Condition="Exists('$(TargetDir)Onnxify.Safetensors.dll')" />
+      <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.Safetensors.pdb" Condition="Exists('$(TargetDir)Onnxify.Safetensors.pdb')" />
+      <AnalyzerRuntimeDependency Include="$(TargetDir)Onnxify.Safetensors.xml" Condition="Exists('$(TargetDir)Onnxify.Safetensors.xml')" />
+      <AnalyzerRuntimeDependency Include="$(PkgSystem_Memory)\lib\netstandard2.0\System.Memory.dll" Condition="Exists('$(PkgSystem_Memory)\lib\netstandard2.0\System.Memory.dll')" />
+      <AnalyzerRuntimeDependency Include="$(PkgSystem_Buffers)\lib\netstandard2.0\System.Buffers.dll" Condition="Exists('$(PkgSystem_Buffers)\lib\netstandard2.0\System.Buffers.dll')" />
+      <AnalyzerRuntimeDependency Include="$(PkgSystem_Runtime_CompilerServices_Unsafe)\lib\netstandard2.0\System.Runtime.CompilerServices.Unsafe.dll" Condition="Exists('$(PkgSystem_Runtime_CompilerServices_Unsafe)\lib\netstandard2.0\System.Runtime.CompilerServices.Unsafe.dll')" />
+      <AnalyzerRuntimeDependency Include="$(PkgSystem_Text_Json)\lib\netstandard2.0\System.Text.Json.dll" Condition="Exists('$(PkgSystem_Text_Json)\lib\netstandard2.0\System.Text.Json.dll')" />
+      <AnalyzerRuntimeDependency Include="$(PkgSystem_Text_Encodings_Web)\lib\netstandard2.0\System.Text.Encodings.Web.dll" Condition="Exists('$(PkgSystem_Text_Encodings_Web)\lib\netstandard2.0\System.Text.Encodings.Web.dll')" />
+      <AnalyzerRuntimeDependency Include="$(PkgSystem_Numerics_Vectors)\lib\netstandard2.0\System.Numerics.Vectors.dll" Condition="Exists('$(PkgSystem_Numerics_Vectors)\lib\netstandard2.0\System.Numerics.Vectors.dll')" />
+      <AnalyzerRuntimeDependency Include="$(PkgMicrosoft_Bcl_AsyncInterfaces)\lib\netstandard2.0\Microsoft.Bcl.AsyncInterfaces.dll" Condition="Exists('$(PkgMicrosoft_Bcl_AsyncInterfaces)\lib\netstandard2.0\Microsoft.Bcl.AsyncInterfaces.dll')" />
+      <AnalyzerRuntimeDependency Include="$(PkgSystem_IO_Pipelines)\lib\netstandard2.0\System.IO.Pipelines.dll" Condition="Exists('$(PkgSystem_IO_Pipelines)\lib\netstandard2.0\System.IO.Pipelines.dll')" />
+      <AnalyzerRuntimeDependency Include="$(PkgSystem_Threading_Tasks_Extensions)\lib\netstandard2.0\System.Threading.Tasks.Extensions.dll" Condition="Exists('$(PkgSystem_Threading_Tasks_Extensions)\lib\netstandard2.0\System.Threading.Tasks.Extensions.dll')" />
+      <AnalyzerRuntimeDependency Include="$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.dll" Condition="Exists('$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.dll')" />
+      <AnalyzerRuntimeDependency Include="$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.pdb" Condition="Exists('$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.pdb')" />
+      <AnalyzerRuntimeDependency Include="$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.xml" Condition="Exists('$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.xml')" />
     </ItemGroup>
 
     <Copy
@@ -110,6 +139,24 @@
       <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.dll')" />
       <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.pdb" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.pdb')" />
       <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.xml" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.xml')" />
+      <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.Compiler.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.Compiler.dll')" />
+      <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.Compiler.pdb" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.Compiler.pdb')" />
+      <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.Compiler.xml" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.Compiler.xml')" />
+      <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.Safetensors.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.Safetensors.dll')" />
+      <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.Safetensors.pdb" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.Safetensors.pdb')" />
+      <TfmSpecificPackageFile Include="$(TargetDir)Onnxify.Safetensors.xml" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Onnxify.Safetensors.xml')" />
+      <TfmSpecificPackageFile Include="$(PkgSystem_Memory)\lib\netstandard2.0\System.Memory.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(PkgSystem_Memory)\lib\netstandard2.0\System.Memory.dll')" />
+      <TfmSpecificPackageFile Include="$(PkgSystem_Buffers)\lib\netstandard2.0\System.Buffers.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(PkgSystem_Buffers)\lib\netstandard2.0\System.Buffers.dll')" />
+      <TfmSpecificPackageFile Include="$(PkgSystem_Runtime_CompilerServices_Unsafe)\lib\netstandard2.0\System.Runtime.CompilerServices.Unsafe.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(PkgSystem_Runtime_CompilerServices_Unsafe)\lib\netstandard2.0\System.Runtime.CompilerServices.Unsafe.dll')" />
+      <TfmSpecificPackageFile Include="$(PkgSystem_Text_Json)\lib\netstandard2.0\System.Text.Json.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(PkgSystem_Text_Json)\lib\netstandard2.0\System.Text.Json.dll')" />
+      <TfmSpecificPackageFile Include="$(PkgSystem_Text_Encodings_Web)\lib\netstandard2.0\System.Text.Encodings.Web.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(PkgSystem_Text_Encodings_Web)\lib\netstandard2.0\System.Text.Encodings.Web.dll')" />
+      <TfmSpecificPackageFile Include="$(PkgSystem_Numerics_Vectors)\lib\netstandard2.0\System.Numerics.Vectors.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(PkgSystem_Numerics_Vectors)\lib\netstandard2.0\System.Numerics.Vectors.dll')" />
+      <TfmSpecificPackageFile Include="$(PkgMicrosoft_Bcl_AsyncInterfaces)\lib\netstandard2.0\Microsoft.Bcl.AsyncInterfaces.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(PkgMicrosoft_Bcl_AsyncInterfaces)\lib\netstandard2.0\Microsoft.Bcl.AsyncInterfaces.dll')" />
+      <TfmSpecificPackageFile Include="$(PkgSystem_IO_Pipelines)\lib\netstandard2.0\System.IO.Pipelines.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(PkgSystem_IO_Pipelines)\lib\netstandard2.0\System.IO.Pipelines.dll')" />
+      <TfmSpecificPackageFile Include="$(PkgSystem_Threading_Tasks_Extensions)\lib\netstandard2.0\System.Threading.Tasks.Extensions.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(PkgSystem_Threading_Tasks_Extensions)\lib\netstandard2.0\System.Threading.Tasks.Extensions.dll')" />
+      <TfmSpecificPackageFile Include="$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.dll')" />
+      <TfmSpecificPackageFile Include="$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.pdb" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.pdb')" />
+      <TfmSpecificPackageFile Include="$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.xml" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(PkgICSharpCode_Decompiler)\lib\netstandard2.0\ICSharpCode.Decompiler.xml')" />
       <TfmSpecificPackageFile Include="$(TargetDir)Google.Protobuf.dll" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Google.Protobuf.dll')" />
       <TfmSpecificPackageFile Include="$(TargetDir)Google.Protobuf.pdb" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Google.Protobuf.pdb')" />
       <TfmSpecificPackageFile Include="$(TargetDir)Google.Protobuf.xml" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)Google.Protobuf.xml')" />

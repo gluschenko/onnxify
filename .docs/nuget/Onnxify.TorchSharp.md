@@ -226,6 +226,8 @@ The default comparer is intended for deterministic numeric tensor outputs. It re
 
 `ExportOnnxModel(...)` decompiles a model's `forward(Tensor)` method, walks the supported syntax tree, and lowers the recognized data flow into an `OnnxModel`. It can handle supported module calls, recursively deep-export some user-defined child modules, and lower a focused set of tensor operations and statically resolvable branches.
 
+The implementation first tries `Onnxify.Compiler` when the method and declared input/output tensor contracts are fully supported and match the requested export contract. Otherwise it uses the existing compatibility exporter, which remains necessary for module/state export paths and operators not yet represented by compiler mappings. Direct `TorchModule.Export(graph, input)` operator exporters also remain the compatibility path for stateful modules.
+
 ```csharp
 using Onnxify;
 using Onnxify.TorchSharp;

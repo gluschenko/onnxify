@@ -1,6 +1,11 @@
 ﻿using System.Runtime.InteropServices;
 using Google.Protobuf;
 using Onnxify.Data.Numerics;
+#if NET5_0_OR_GREATER
+using Half = System.Half;
+#else
+using Half = Onnxify.Data.Numerics.Float16;
+#endif
 
 namespace Onnxify.Helpers;
 
@@ -375,11 +380,7 @@ public static class BinaryHelper
 
         for (var i = 0; i < ushortSpan.Length; i++)
         {
-#if NETSTANDARD2_0
-            result[i] = new Half(ushortSpan[i]);
-#else
-            result[i] = BitConverter.UInt16BitsToHalf(ushortSpan[i]);
-#endif
+            result[i] = OnnxNumericConversions.Float16FromBits(ushortSpan[i]);
         }
 
         return result;
@@ -391,11 +392,7 @@ public static class BinaryHelper
 
         for (var i = 0; i < data.Length; i++)
         {
-#if NETSTANDARD2_0
-            var bits = data[i].Bits;
-#else
-            var bits = BitConverter.HalfToUInt16Bits(data[i]);
-#endif
+            var bits = OnnxNumericConversions.Float16ToBits(data[i]);
             buffer[i * 2] = (byte)(bits & 0xFF);
             buffer[i * 2 + 1] = (byte)(bits >> 8);
         }

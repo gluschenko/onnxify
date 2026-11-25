@@ -6,6 +6,46 @@ namespace Onnxify.Tests;
 public sealed class DeepImportExportParityTests
 {
     [Fact]
+    public void RoundTrip_ForPanlingoLstm_UsesTypedLstmExporter()
+    {
+        var modelPath = Path.Combine(AppContext.BaseDirectory, "Assets", "panlingo-lstm.onnx");
+        var model = OnnxModel.FromFile(
+            modelPath,
+            new OnnxModelBaseOptions
+            {
+                NodeTypeResolutionStrategy = NodeTypeResolutionStrategy.IgnoreIncompatible,
+            });
+
+        // Deep Import constructs a TorchSharp.Modules.LSTM child. Deep Export dispatches its
+        // forward call to TorchModuleExtensions.Export(LSTM, ...), which reads state_dict()
+        // and emits ONNX weights without decompiling TorchSharp's native LSTM.forward body.
+        var roundTrippedModel = DeepImportExportParity.AssertRoundTripExports(
+            model,
+            modelFileName: "panlingo-lstm.onnx");
+        var ids = Enumerable.Range(0, 2 * 16)
+            .Select(static index => (long)(index % 32))
+            .ToArray();
+        var input = new DenseTensor<long>(ids, [2, 16]);
+        var original = RunLongInputFloatOutput(modelPath, input);
+        var tempPath = Path.Combine(Path.GetTempPath(), $"panlingo-lstm-{Guid.NewGuid():N}.onnx");
+        try
+        {
+            roundTrippedModel.Save(tempPath, overwrite: true);
+            var roundTripped = RunLongInputFloatOutput(tempPath, input);
+            Assert.Equal(original.Dimensions.ToArray(), roundTripped.Dimensions.ToArray());
+            Assert.Equal(original.Length, roundTripped.Length);
+            for (var index = 0; index < original.Length; index++)
+            {
+                Assert.InRange(MathF.Abs(original.Buffer.Span[index] - roundTripped.Buffer.Span[index]), 0f, 0.002f);
+            }
+        }
+        finally
+        {
+            if (File.Exists(tempPath)) File.Delete(tempPath);
+        }
+    }
+
+    [Fact]
     public void RoundTrip_ForMobileNetClassifierHeadOperators_PreservesOutput()
     {
         var model = CreateClassifierHeadModel();
@@ -203,6 +243,15 @@ public sealed class DeepImportExportParityTests
         );
 
         return model;
+    }
+
+    private static DenseTensor<float> RunLongInputFloatOutput(string modelPath, DenseTensor<long> input)
+    {
+        using var session = new InferenceSession(modelPath);
+        var inputName = session.InputMetadata.Keys.Single();
+        using var results = session.Run([NamedOnnxValue.CreateFromTensor(inputName, input)]);
+        var output = results.Single().AsTensor<float>();
+        return new DenseTensor<float>(output.ToArray(), output.Dimensions.ToArray());
     }
 
     private static OnnxModel CreateInlineFunctionalConvModel()

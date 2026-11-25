@@ -7,6 +7,7 @@
     <File Path="../TORCH_OPERATOR_COVERAGE.md" />
   </Folder>
   <Folder Name="/.docs/nuget/">
+    <File Path="../.docs/nuget/Onnxify.Compiler.md" />
     <File Path="../.docs/nuget/Onnxify.CLI.md" />
     <File Path="../.docs/nuget/Onnxify.HuggingFace.md" />
     <File Path="../.docs/nuget/Onnxify.ModelGenerator.md" />
@@ -18,6 +19,7 @@
     <File Path="../.docs/nuget/Onnxify.TorchSharp.md" />
   </Folder>
   <Folder Name="/.docs/nuget/release-notes/">
+    <File Path="../.docs/nuget/release-notes/Onnxify.Compiler.md" />
     <File Path="../.docs/nuget/release-notes/Onnxify.CLI.md" />
     <File Path="../.docs/nuget/release-notes/Onnxify.HuggingFace.md" />
     <File Path="../.docs/nuget/release-notes/Onnxify.ModelGenerator.md" />
@@ -46,6 +48,7 @@
     <Project Path="Onnxify.ProjectGenerator/Onnxify.ProjectGenerator.csproj" Id="1aa227d0-394a-4013-ba5d-9193f0ab85a3" />
     <Project Path="Onnxify.Safetensors/Onnxify.Safetensors.csproj" Id="cdb0c08a-09e2-4d60-9070-f5363374abe3" />
     <Project Path="Onnxify.TorchSharp/Onnxify.TorchSharp.csproj" Id="90452197-f039-4f45-a177-04f0af4e1957" />
+    <Project Path="Onnxify.Compiler/Onnxify.Compiler.csproj" Id="5a4b89f1-2d6c-4f1e-9a2b-6c7d8e9f0123" />
     <Project Path="Onnxify/Onnxify.csproj" Id="c2d6af74-de08-469c-ae86-91955fc31cb4" />
   </Folder>
   <Folder Name="/tests/">
@@ -53,5 +56,6 @@
     <Project Path="Onnxify.Examples.Models/Onnxify.Examples.Models.csproj" Id="9fcbfc5e-2f83-4dd5-b0af-fdd6b1725dd5" />
     <Project Path="Onnxify.Examples/Onnxify.Examples.csproj" Id="f31ca623-5d5c-498e-b96f-a88cbb5348f8" />
     <Project Path="Onnxify.Tests/Onnxify.Tests.csproj" Id="f5756bb4-50cc-4816-8297-e2e28b5be08e" />
+    <Project Path="Onnxify.Compiler.Tests/Onnxify.Compiler.Tests.csproj" Id="7c8d9e0f-1a2b-4c3d-8e5f-6a7b8c9d0123" />
   </Folder>
 </Solution>

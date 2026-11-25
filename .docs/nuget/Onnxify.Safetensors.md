@@ -19,11 +19,14 @@ Modern ML workflows often keep model weights in `.safetensors` because the forma
 
 `Onnxify.Safetensors` exists to give .NET a dedicated safetensors surface for those tasks. It lets you read metadata, deserialize archives into zero-copy tensor views, slice tensor payloads, and serialize new safetensors files in a format-compatible way.
 
+The package targets .NET Standard 2.0, .NET 8, and .NET 10. Its typed APIs use `Onnxify.Data.Numerics.Float16` on .NET Standard 2.0 and the platform `System.Half` on modern .NET. Bfloat16 values use the shared `Onnxify.Data.Numerics.BFloat16` type from `Onnxify`.
+
 ## What It Provides
 
 - Read safetensors metadata and tensor layout information.
 - Work with tensor slices and tensor-backed storage abstractions.
 - Support safetensors-related flows that integrate with the broader Onnxify toolchain.
+- Read and write supported CLR arrays through typed APIs, including exact platform `Float16` and bfloat16 payloads.
 
 ## Code Examples
 
@@ -69,6 +72,19 @@ Console.WriteLine(string.Join(", ", archive.Names()));
 Console.WriteLine($"Shape: [{string.Join(", ", loaded.Shape)}]");
 Console.WriteLine(string.Join(", ", loadedValues.Select(x => x.ToString(CultureInfo.InvariantCulture))));
 ```
+
+For typed values, use `Set<T>` / `Get<T>` or `SetTensor` when the array's element type is known only at runtime:
+
+```csharp
+var archive = new SafeTensors();
+archive.Set("weights", new[] { 1.0f, 2.0f }, 1, 2);
+archive.SetTensor("bias", (Array)new[] { 0.5f, -0.5f }, 1, 2);
+
+var loadedWeights = SafeTensors.Deserialize(archive.Serialize());
+float[] weights = loadedWeights.Get<float>("weights");
+```
+
+`Get<Float16>` and `Get<BFloat16>` return encoded floating-point values with a `ToSingle()` conversion for callers that need single-precision values.
 
 ### Read Only Metadata Before Touching Tensor Payloads
 

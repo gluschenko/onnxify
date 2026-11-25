@@ -321,6 +321,56 @@ public class OnnxGraph
     }
 
     /// <summary>
+    /// Adds a sparse initializer with explicit value and coordinate tensors.
+    /// </summary>
+    /// <typeparam name="TValue">CLR element type used by sparse values.</typeparam>
+    /// <typeparam name="TIndex">CLR element type used by sparse coordinates.</typeparam>
+    /// <param name="name">Tensor name used by node inputs.</param>
+    /// <param name="shape">Dense sparse-tensor dimensions.</param>
+    /// <param name="valueShape">Shape of the sparse values tensor.</param>
+    /// <param name="values">Sparse value payload in row-major order.</param>
+    /// <param name="indexShape">Shape of the sparse indices tensor.</param>
+    /// <param name="indices">Sparse coordinate payload in row-major order.</param>
+    /// <returns>The added sparse tensor.</returns>
+    public OnnxSparseTensor AddSparseTensor<TValue, TIndex>(
+        string name,
+        long[] shape,
+        long[] valueShape,
+        TValue[] values,
+        long[] indexShape,
+        TIndex[] indices
+    )
+    {
+        if (_sparseInitializers.Contains(name))
+        {
+            throw new InvalidOperationException($"Sparse tensor '{name}' is already added into graph");
+        }
+
+        var valueTensor = new OnnxTensor<TValue>(
+            name: name,
+            dataLocation: OnnxTensor.TensorDataLocation.Default,
+            shape: valueShape,
+            value: values,
+            tensor: null);
+        var indexTensor = new OnnxTensor<TIndex>(
+            name: name,
+            dataLocation: OnnxTensor.TensorDataLocation.Default,
+            shape: indexShape,
+            value: indices,
+            tensor: null);
+        var proto = new SparseTensorProto
+        {
+            Values = valueTensor.ToProto(),
+            Indices = indexTensor.ToProto(),
+        };
+        proto.Dims.Set(shape);
+
+        var sparse = new OnnxSparseTensor<TValue>(proto, _options);
+        _sparseInitializers.Add(sparse);
+        return sparse;
+    }
+
+    /// <summary>
     /// Removes an initializer tensor and clears node input or output references to the same graph wire.
     /// </summary>
     /// <param name="name">Initializer name to remove.</param>

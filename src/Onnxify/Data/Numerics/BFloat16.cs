@@ -25,6 +25,14 @@ public readonly struct BFloat16
         Value = (ushort)(bits >> 16);
     }
 
+    /// <summary>Creates a value from its encoded ONNX payload.</summary>
+    public static BFloat16 FromEncoded(ushort value) => new(value, encoded: true);
+
+    private BFloat16(ushort value, bool encoded)
+    {
+        Value = value;
+    }
+
     /// <summary>
     /// Expands the encoded bfloat16 payload to a single-precision value.
     /// </summary>

@@ -11,6 +11,20 @@ namespace Onnxify.Tests;
 public sealed class TorchModuleDeepExportTests
 {
     [Fact]
+    public void DeepExport_UsesCompilerForFullyCoveredActivationMapping()
+    {
+        // Mapping source: third_party/onnxscript/tests/function_libs/torch_lib/ops_test_data.py (nn.functional.relu).
+        using var module = new CompilerCompatibleReluModule();
+
+        var model = ExportDeep(
+            module,
+            input: OnnxTensorType.Create<float>([2, 3]),
+            output: OnnxTensorType.Create<float>([2, 3]));
+
+        Assert.Equal("Relu", Assert.Single(model.Graph.Nodes).OpType);
+    }
+
+    [Fact]
     public void DeepExport_ForLstmStyleForward_EmitsGraphFromForwardAst()
     {
         using var module = new DeepExportTestModule();
@@ -1606,6 +1620,20 @@ public sealed class TorchModuleDeepExportTests
             var x = relu(_linear.forward(input));
             x = global::TorchSharp.torch.sigmoid(x);
             return log_softmax(x, dim: 1);
+        }
+    }
+
+    [ModuleInput("input", ScalarType.Float32, 2, 3)]
+    [ModuleOutput("output", ScalarType.Float32, 2, 3)]
+    private sealed class CompilerCompatibleReluModule : TorchModule
+    {
+        public CompilerCompatibleReluModule()
+            : base(nameof(CompilerCompatibleReluModule))
+        { }
+
+        public override Tensor forward(Tensor input)
+        {
+            return global::TorchSharp.torch.nn.functional.relu(input);
         }
     }
 
